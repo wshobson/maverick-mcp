@@ -11,7 +11,7 @@ import logging
 import os
 import uuid
 from collections.abc import AsyncGenerator, Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pandas as pd
@@ -28,9 +28,9 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
     create_engine,
 )
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, relationship, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
@@ -42,6 +42,17 @@ from maverick_mcp.database.base import Base
 logger = logging.getLogger("maverick_mcp.data.models")
 settings = get_settings()
 
+
+# Helper function to get the right integer type for autoincrement primary keys
+def get_primary_key_type():
+    """Get the appropriate primary key type based on database backend."""
+    # SQLite works better with INTEGER for autoincrement, PostgreSQL can use BIGINT
+    if "sqlite" in DATABASE_URL:
+        return Integer
+    else:
+        return BigInteger
+
+
 # Database connection setup
 # Try multiple possible environment variable names
 # Use SQLite in-memory for GitHub Actions or test environments
@@ -49,9 +60,9 @@ if os.getenv("GITHUB_ACTIONS") == "true" or os.getenv("CI") == "true":
     DATABASE_URL = "sqlite:///:memory:"
 else:
     DATABASE_URL = (
-        os.getenv("POSTGRES_URL")
-        or os.getenv("DATABASE_URL")
-        or "postgresql://localhost/maverick_mcp"
+        os.getenv("DATABASE_URL")
+        or os.getenv("POSTGRES_URL")
+        or "sqlite:///maverick_mcp.db"  # Default to SQLite
     )
 
 # Database configuration from settings
@@ -101,7 +112,9 @@ if DB_USE_POOLING:
             "options": f"-c statement_timeout={settings.db.statement_timeout}",
         }
         if "postgresql" in DATABASE_URL
-        else {},
+        else (
+            {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+        ),  # SQLite-specific args
     )
 else:
     # Use NullPool for serverless/development environments
@@ -149,7 +162,9 @@ def _get_async_engine():
                     }
                 }
                 if "postgresql" in async_url
-                else {},
+                else (
+                    {"check_same_thread": False} if "sqlite" in async_url else {}
+                ),  # SQLite-specific args
             )
         else:
             _async_engine = create_async_engine(
@@ -238,7 +253,7 @@ class Stock(Base, TimestampMixin):
 
     __tablename__ = "mcp_stocks"
 
-    stock_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    stock_id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     ticker_symbol = Column(String(10), unique=True, nullable=False, index=True)
     company_name = Column(String(255))
     description = Column(Text)
@@ -303,10 +318,8 @@ class PriceCache(Base, TimestampMixin):
         Index("mcp_price_cache_ticker_date_idx", "stock_id", "date"),
     )
 
-    price_cache_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    stock_id = Column(
-        UUID(as_uuid=True), ForeignKey("mcp_stocks.stock_id"), nullable=False
-    )
+    price_cache_id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    stock_id = Column(Uuid, ForeignKey("mcp_stocks.stock_id"), nullable=False)
     date = Column(Date, nullable=False)
     open_price = Column(Numeric(12, 4))
     high_price = Column(Numeric(12, 4))
@@ -394,9 +407,9 @@ class MaverickStocks(Base, TimestampMixin):
         Index("mcp_maverick_stocks_stock_date_idx", "stock_id", "date_analyzed"),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(get_primary_key_type(), primary_key=True, autoincrement=True)
     stock_id = Column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("mcp_stocks.stock_id"),
         nullable=False,
         index=True,
@@ -508,9 +521,9 @@ class MaverickBearStocks(Base, TimestampMixin):
         Index("mcp_maverick_bear_stocks_stock_date_idx", "stock_id", "date_analyzed"),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(get_primary_key_type(), primary_key=True, autoincrement=True)
     stock_id = Column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("mcp_stocks.stock_id"),
         nullable=False,
         index=True,
@@ -639,9 +652,9 @@ class SupplyDemandBreakoutStocks(Base, TimestampMixin):
         ),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(get_primary_key_type(), primary_key=True, autoincrement=True)
     stock_id = Column(
-        UUID(as_uuid=True),
+        Uuid,
         ForeignKey("mcp_stocks.stock_id"),
         nullable=False,
         index=True,
@@ -788,10 +801,8 @@ class TechnicalCache(Base, TimestampMixin):
         Index("mcp_technical_cache_date_idx", "date"),
     )
 
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    stock_id = Column(
-        UUID(as_uuid=True), ForeignKey("mcp_stocks.stock_id"), nullable=False
-    )
+    id = Column(get_primary_key_type(), primary_key=True, autoincrement=True)
+    stock_id = Column(Uuid, ForeignKey("mcp_stocks.stock_id"), nullable=False)
     date = Column(Date, nullable=False)
     indicator_type = Column(
         String(50), nullable=False
@@ -929,15 +940,15 @@ def bulk_insert_price_data(
     # Prepare data for bulk insert
     records = []
     new_count = 0
-    for date, row in df.iterrows():
+    for date_idx, row in df.iterrows():
         # Handle different index types - datetime index vs date index
-        if hasattr(date, "date") and callable(date.date):
-            date_val = date.date()  # type: ignore[attr-defined]
-        elif hasattr(date, "to_pydatetime") and callable(date.to_pydatetime):
-            date_val = date.to_pydatetime().date()  # type: ignore[attr-defined]
+        if hasattr(date_idx, "date") and callable(date_idx.date):
+            date_val = date_idx.date()  # type: ignore[attr-defined]
+        elif hasattr(date_idx, "to_pydatetime") and callable(date_idx.to_pydatetime):
+            date_val = date_idx.to_pydatetime().date()  # type: ignore[attr-defined]
         else:
             # Assume it's already a date-like object
-            date_val = date
+            date_val = date_idx
 
         # Skip if already exists
         if date_val in existing_dates:
@@ -972,10 +983,19 @@ def bulk_insert_price_data(
 
     # Only insert if there are new records
     if records:
-        from sqlalchemy.dialects.postgresql import insert
+        # Use database-specific upsert logic
+        if "postgresql" in DATABASE_URL:
+            from sqlalchemy.dialects.postgresql import insert
 
-        stmt = insert(PriceCache).values(records)
-        stmt = stmt.on_conflict_do_nothing(index_elements=["stock_id", "date"])
+            stmt = insert(PriceCache).values(records)
+            stmt = stmt.on_conflict_do_nothing(index_elements=["stock_id", "date"])
+        else:
+            # For SQLite, use INSERT OR IGNORE
+            from sqlalchemy import insert
+
+            stmt = insert(PriceCache).values(records)
+            # SQLite doesn't support on_conflict_do_nothing, use INSERT OR IGNORE
+            stmt = stmt.prefix_with("OR IGNORE")
 
         result = session.execute(stmt)
         session.commit()
@@ -1025,7 +1045,7 @@ def bulk_insert_screening_data(
     session: Session,
     model_class,
     screening_data: list[dict],
-    date_analyzed: datetime.date | None = None,
+    date_analyzed: date | None = None,
 ) -> int:
     """
     Bulk insert screening data for any screening model.
@@ -1092,13 +1112,7 @@ def bulk_insert_screening_data(
     return inserted_count
 
 
-# Import auth models to ensure they're registered with the Base
-try:
-    from maverick_mcp.auth.models_enhanced import User as AuthUser  # noqa: F401
-    from maverick_mcp.queue.models import AsyncJob  # noqa: F401
-except ImportError:
-    # Models may not be available in all contexts
-    pass
+# Auth models removed for personal use - no multi-user functionality needed
 
 # Initialize tables when module is imported
 if __name__ == "__main__":

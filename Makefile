@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel worker beat flower queue-stats queue-purge docker-up docker-down docker-logs
+.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -24,11 +24,6 @@ help:
 	@echo "  make check        - Run all checks (lint + type check)"
 	@echo ""
 	@echo "  make tail-log     - Follow backend logs"
-	@echo "  make worker       - Start Celery worker for async jobs"
-	@echo "  make beat         - Start Celery beat scheduler"
-	@echo "  make flower       - Start Flower monitoring (port 5555)"
-	@echo "  make queue-stats  - Show queue statistics"
-	@echo "  make queue-purge  - Purge all queues (DESTRUCTIVE)"
 	@echo ""
 	@echo "  make experiment   - Watch and auto-run .py files"
 	@echo "  make benchmark-parallel - Test parallel screening"
@@ -173,35 +168,6 @@ benchmark-parallel:
 	@echo "Benchmarking parallel screening performance..."
 	@python -c "from tools.quick_test import test_parallel_screening; import asyncio; asyncio.run(test_parallel_screening())"
 
-# Message Queue Management
-worker:
-	@echo "Starting Celery worker..."
-	@./scripts/start-celery-worker.sh
-
-beat:
-	@echo "Starting Celery beat scheduler..."
-	@./scripts/start-celery-beat.sh
-
-flower:
-	@echo "Starting Flower monitoring on port 5555..."
-	@./scripts/start-flower.sh
-
-queue-stats:
-	@echo "Getting queue statistics..."
-	@python -c "from maverick_mcp.queue.utils import get_queue_statistics; import json; print(json.dumps(get_queue_statistics(), indent=2))"
-
-queue-purge:
-	@echo "WARNING: This will purge all queues and cancel running jobs!"
-	@read -p "Are you sure? [y/N] " -n 1 -r; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		echo ""; \
-		echo "Purging all queues..."; \
-		celery -A maverick_mcp.queue.celery_app purge -f; \
-		echo "All queues purged."; \
-	else \
-		echo ""; \
-		echo "Queue purge cancelled."; \
-	fi
 
 # Docker commands
 docker-up:

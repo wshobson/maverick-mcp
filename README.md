@@ -9,7 +9,7 @@
 
 **MaverickMCP** is a personal-use FastMCP 2.0 server that provides professional-grade financial data analysis, technical indicators, and portfolio optimization tools directly to your Claude Desktop interface. Built for individual traders and investors, it offers comprehensive stock analysis capabilities without any authentication or billing complexity.
 
-The server runs locally with stdio transport for seamless Claude Desktop integration, focusing on simplicity and core functionality for personal stock analysis needs.
+The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with HTTP/SSE/STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
 
 ## 🌟 Why MaverickMCP?
 
@@ -20,7 +20,7 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 - **No Setup Complexity**: Simple `make dev` command gets you running (or `uv sync` + `make dev`)
 - **Modern Python Tooling**: Built with `uv` for lightning-fast dependency management
 - **Claude Desktop Integration**: Native MCP support for seamless AI-powered analysis
-- **Comprehensive Analysis**: 29 financial tools covering technical indicators, screening, and portfolio optimization
+- **Comprehensive Analysis**: 29+ financial tools covering technical indicators, screening, and portfolio optimization
 - **Smart Caching**: Redis-powered performance with graceful fallbacks
 - **Fast Development**: Hot reload, smart error handling, and parallel processing
 - **Open Source**: MIT licensed, community-driven development
@@ -28,16 +28,16 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 
 ## Features
 
+- **🚀 Pre-seeded Database**: 520 S&P 500 stocks with comprehensive screening recommendations
 - **🚀 Fast Development**: Comprehensive Makefile, smart error handling, hot reload, and parallel processing
 - **Stock Data Access**: Historical and real-time stock data with intelligent caching
 - **Technical Analysis**: 20+ indicators including SMA, EMA, RSI, MACD, Bollinger Bands, and more
-- **Stock Screening**: Multiple strategies (Bullish/Bearish momentum, Trending Breakouts) with parallel processing
+- **Stock Screening**: Multiple strategies (Maverick Bullish/Bearish, Trending Breakouts) with parallel processing
 - **Portfolio Tools**: Correlation analysis, returns calculation, and optimization
 - **Market Data**: Sector performance, market movers, and earnings information
-- **News Analysis**: Stock news sentiment and fundamental data
 - **Smart Caching**: Redis-powered performance with automatic fallback to in-memory storage
-- **Database Support**: SQLAlchemy integration with PostgreSQL/SQLite
-- **Claude Desktop Ready**: Native MCP stdio transport for seamless AI integration
+- **Database Support**: SQLAlchemy integration with PostgreSQL/SQLite (defaults to SQLite)
+- **Multi-Transport Support**: HTTP, SSE, and STDIO transports for all MCP clients
 
 ## 🚀 Quick Start
 
@@ -98,10 +98,13 @@ cp .env.example .env
 ### Start the Server
 
 ```bash
-# One command to start everything
+# One command to start everything (includes S&P 500 data seeding on first run)
 make dev
 
-# The server is now running and ready for Claude Desktop!
+# The server is now running with:
+# - HTTP endpoint: http://localhost:8000/mcp
+# - SSE endpoint: http://localhost:8000/sse
+# - 520 S&P 500 stocks pre-loaded with screening data
 ```
 
 ### Connect to Claude Desktop
@@ -113,7 +116,7 @@ Claude Desktop uses STDIO to communicate with mcp-remote, which then connects to
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/sse"]
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
     }
   }
 }
@@ -322,7 +325,7 @@ The `mcp-remote` tool bridges the gap between STDIO-only clients (like Claude De
 
 ## Available Tools
 
-MaverickMCP provides 29 financial analysis tools organized into focused categories:
+MaverickMCP provides 29+ financial analysis tools organized into focused categories, with access to pre-seeded S&P 500 screening data:
 
 ### Development Commands
 
@@ -389,8 +392,9 @@ Configure MaverickMCP via `.env` file or environment variables:
 **Essential Settings:**
 
 - `REDIS_HOST`, `REDIS_PORT` - Redis cache (optional, defaults to localhost:6379)
-- `DATABASE_URL` - PostgreSQL connection or `sqlite:///maverick.db` for SQLite
+- `DATABASE_URL` - PostgreSQL connection or `sqlite:///maverick_mcp.db` for SQLite (default)
 - `LOG_LEVEL` - Logging verbosity (INFO, DEBUG, ERROR)
+- S&P 500 data automatically seeds on first startup
 
 **Required API Keys:**
 
@@ -409,7 +413,7 @@ Configure MaverickMCP via `.env` file or environment variables:
 
 ## Tools
 
-MaverickMCP provides 29 financial analysis tools organized by category:
+MaverickMCP provides 29+ financial analysis tools organized by category, with pre-seeded S&P 500 data:
 
 ### Stock Data Tools
 
@@ -432,12 +436,13 @@ MaverickMCP provides 29 financial analysis tools organized by category:
 - `compare_tickers` - Side-by-side ticker comparison
 - `portfolio_correlation_analysis` - Correlation matrix analysis
 
-### Stock Screening Tools
+### Stock Screening Tools (Pre-seeded with S&P 500)
 
-- `get_maverick_stocks` - Bullish momentum screening
-- `get_maverick_bear_stocks` - Bearish setup identification
-- `get_trending_breakout_stocks` - Strong uptrend phase screening
-- `get_all_screening_recommendations` - Combined screening results
+- `get_maverick_stocks` - Bullish momentum screening from 520 S&P 500 stocks
+- `get_maverick_bear_stocks` - Bearish setup identification from pre-analyzed data
+- `get_trending_breakout_stocks` - Strong uptrend phase screening with supply/demand analysis
+- `get_all_screening_recommendations` - Combined screening results across all strategies
+- Database includes comprehensive screening data updated regularly
 
 ### Market Data Tools
 
@@ -488,6 +493,7 @@ make clean             # Clean up cache files
 # Redis connection refused → brew services start redis
 # Tests failing → make test (unit tests only)
 # Slow startup → ./tools/fast_dev.sh
+# Missing S&P 500 data → uv run python scripts/seed_sp500.py
 ```
 
 ## Extending MaverickMCP
@@ -554,9 +560,16 @@ For issues or questions:
 
 ## Recent Updates
 
+### Personal Use Optimization
+
+- **No Authentication Required**: Removed all authentication/billing complexity for personal use
+- **Pre-seeded S&P 500 Database**: 520 stocks with comprehensive screening recommendations
+- **Simplified Architecture**: Clean, focused codebase for core stock analysis functionality
+- **Multi-Transport Support**: HTTP, SSE, and STDIO for all MCP clients
+
 ### Development Experience Improvements
 
-- **Comprehensive Makefile**: One command (`make dev`) starts everything
+- **Comprehensive Makefile**: One command (`make dev`) starts everything including database seeding
 - **Smart Error Handling**: Automatic fix suggestions for common issues
 - **Fast Development**: < 3 second startup with `./tools/fast_dev.sh`
 - **Parallel Processing**: 4x speedup for stock screening operations
@@ -564,9 +577,10 @@ For issues or questions:
 
 ### Technical Improvements
 
-- **Type Checker**: Migrated from mypy to pyright for better performance
+- **Modern Tooling**: Migrated to uv and ty for faster dependency management and type checking
 - **Market Data**: Improved fallback logic and async support
 - **Caching**: Smart Redis caching with graceful in-memory fallback
+- **Database**: SQLite default with PostgreSQL option for enhanced performance
 
 ## Acknowledgments
 

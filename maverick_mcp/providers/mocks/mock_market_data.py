@@ -2,7 +2,7 @@
 Mock market data provider implementation for testing.
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 
@@ -185,25 +185,19 @@ class MockMarketDataProvider:
             {
                 "ticker": "EARN1",
                 "name": "Earnings Corp 1",
-                "earnings_date": (base_date + datetime.timedelta(days=1)).strftime(
-                    "%Y-%m-%d"
-                ),
+                "earnings_date": (base_date + timedelta(days=1)).strftime("%Y-%m-%d"),
                 "eps_estimate": 1.25,
             },
             {
                 "ticker": "EARN2",
                 "name": "Earnings Corp 2",
-                "earnings_date": (base_date + datetime.timedelta(days=3)).strftime(
-                    "%Y-%m-%d"
-                ),
+                "earnings_date": (base_date + timedelta(days=3)).strftime("%Y-%m-%d"),
                 "eps_estimate": 0.85,
             },
             {
                 "ticker": "EARN3",
                 "name": "Earnings Corp 3",
-                "earnings_date": (base_date + datetime.timedelta(days=5)).strftime(
-                    "%Y-%m-%d"
-                ),
+                "earnings_date": (base_date + timedelta(days=5)).strftime("%Y-%m-%d"),
                 "eps_estimate": 2.15,
             },
         ]

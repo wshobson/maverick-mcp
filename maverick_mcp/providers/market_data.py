@@ -16,6 +16,7 @@ import requests
 import yfinance as yf
 from dotenv import load_dotenv
 from finvizfinance.screener.overview import Overview
+from requests.adapters import HTTPAdapter, Retry
 from tiingo import TiingoClient
 
 from maverick_mcp.utils.circuit_breaker_decorators import (
@@ -73,13 +74,13 @@ class ExternalAPIClient:
         ) if self.api_key else None
 
         # Configure retry strategy
-        retry_strategy = requests.adapters.Retry(
+        retry_strategy = Retry(
             total=3,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["GET"],
         )
-        adapter = requests.adapters.HTTPAdapter(
+        adapter = HTTPAdapter(
             max_retries=retry_strategy, pool_connections=10, pool_maxsize=10
         )
         self.session.mount("http://", adapter)
@@ -370,13 +371,13 @@ class MarketDataProvider:
 
     def __init__(self):
         self.session = requests.Session()
-        retry_strategy = requests.adapters.Retry(
+        retry_strategy = Retry(
             total=3,
             backoff_factor=1,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["GET"],
         )
-        adapter = requests.adapters.HTTPAdapter(
+        adapter = HTTPAdapter(
             max_retries=retry_strategy, pool_connections=10, pool_maxsize=10
         )
         self.session.mount("http://", adapter)

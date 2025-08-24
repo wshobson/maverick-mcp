@@ -27,13 +27,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from maverick_mcp.api.api_server import create_api_app
 
 # Import all models to ensure they're registered with Base
-from maverick_mcp.auth import models_enhanced  # noqa: F401
 from maverick_mcp.data.models import get_db
 from maverick_mcp.database.base import Base
-from maverick_mcp.queue import models  # noqa: F401
-
-# Explicitly import the queue models to ensure they're registered
-from maverick_mcp.queue.models import AsyncJob, JobProgress, JobResult  # noqa: F401
 
 
 # Container fixtures (session scope for efficiency)
@@ -194,84 +189,20 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
         yield client
 
 
-# Authentication fixtures
+# Authentication fixtures (disabled for personal use)
 @pytest.fixture
 async def test_user(db_session: Session):
-    """Create a test user with credits."""
-    import uuid
-
-    from maverick_mcp.auth.models import User, UserMapping
-
-    # Create user with unique email
-    unique_id = str(uuid.uuid4())[:8]
-    email = f"test_{unique_id}@example.com"
-
-    user = User(
-        email=email,
-        name="testuser",
-        is_active=True,
-    )
-    user.set_password("testpassword123")
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-
-    # Create user mapping entry (required for foreign key constraints)
-    user_mapping = UserMapping(
-        user_id=user.id,
-        django_user_id=user.id,  # For testing, use same ID
-        email=user.email,
-        is_active=True,
-    )
-    db_session.add(user_mapping)
-    db_session.commit()
-
-    # Add some credits directly
-    from maverick_mcp.auth.models import CreditTransactionModel, UserCreditModel
-
-    user_credits = UserCreditModel(
-        user_id=user.id,
-        balance=1000,
-        free_balance=0,
-        total_purchased=1000,
-    )
-    db_session.add(user_credits)
-
-    transaction = CreditTransactionModel(
-        user_id=user.id,
-        amount=1000,
-        balance_after=1000,
-        transaction_type="BONUS",
-        transaction_metadata={
-            "description": "Test credits",
-            "reference": f"test_credits_{user.id}",
-        },
-    )
-    db_session.add(transaction)
-    db_session.commit()
-
-    yield user
-
-    # Cleanup
-    # Clean up credits and transactions first due to foreign keys
-    db_session.query(UserCreditModel).filter_by(user_id=user.id).delete()
-    db_session.query(CreditTransactionModel).filter_by(user_id=user.id).delete()
-    db_session.query(UserMapping).filter_by(user_id=user.id).delete()
-    db_session.delete(user)
-    db_session.commit()
+    """Create a test user with credits (disabled for personal use)."""
+    # Auth disabled for personal use - return None
+    # All auth-related imports and functionality removed
+    return None
 
 
 @pytest.fixture
 async def auth_headers(client: AsyncClient, test_user):
-    """Get authentication headers for a test user."""
-    # Login to get token
-    response = await client.post(
-        "/api/auth/login", json={"username": "testuser", "password": "testpassword123"}
-    )
-    assert response.status_code == 200
-    token = response.json()["access_token"]
-
-    return {"Authorization": f"Bearer {token}"}
+    """Get authentication headers for a test user (disabled for personal use)."""
+    # Auth disabled for personal use - return empty headers
+    return {}
 
 
 # Event loop configuration for async tests

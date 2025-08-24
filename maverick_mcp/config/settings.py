@@ -39,10 +39,8 @@ class DatabaseSettings(BaseModel):
         env_url = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL")
         if env_url:
             return env_url
-        # Build from components
-        if self.password:
-            return f"postgresql://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}"
-        return f"postgresql://{self.username}@{self.host}:{self.port}/{self.database}"
+        # Default to SQLite for development
+        return "sqlite:///maverick_mcp.db"
 
 
 class APISettings(BaseModel):
@@ -138,9 +136,7 @@ class EmailSettings(BaseModel):
         description="Mailgun sending domain",
     )
     from_address: str = Field(
-        default_factory=lambda: os.getenv(
-            "EMAIL_FROM_ADDRESS", "noreply@localhost"
-        ),
+        default_factory=lambda: os.getenv("EMAIL_FROM_ADDRESS", "noreply@localhost"),
         description="Default from email address",
     )
     from_name: str = Field(

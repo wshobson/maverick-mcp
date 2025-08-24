@@ -70,4 +70,4 @@ Thumbs.db
 /openapi-spec.json
 
 # database
-maverick.db
+*.db

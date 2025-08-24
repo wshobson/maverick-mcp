@@ -280,13 +280,13 @@ class TestBatchScreener:
             {"symbol": "A", "score": 0.8, "passed": True},
             {"symbol": "B", "score": 0.6, "passed": True},
         ]
-        batch_screener.failed_symbols = ["C", "D"]
-        batch_screener.total_processed = 4
+        batch_screener.progress = 2
+        batch_screener.total = 4
 
-        # BatchScreener doesn't have get_summary method, test attributes instead
+        # Test the actual BatchScreener attributes
         assert len(batch_screener.results) == 2
-        assert batch_screener.failed_symbols == ["C", "D"]
-        assert batch_screener.total_processed == 4
+        assert batch_screener.progress == 2
+        assert batch_screener.total == 4
 
 
 class TestParallelScreenAsync:

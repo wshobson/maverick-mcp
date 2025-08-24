@@ -8,10 +8,9 @@ handling JSON-RPC messages directly over the SSE connection.
 import asyncio
 import json
 import logging
+from typing import Any
 from uuid import uuid4
 
-import mcp.types as types
-from mcp.server.session import ServerSession
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
@@ -24,7 +23,7 @@ class InspectorCompatibleSSE:
     """SSE handler that properly implements MCP protocol for Inspector."""
 
     def __init__(self):
-        self.sessions: dict[str, ServerSession] = {}
+        self.sessions: dict[str, dict[str, Any]] = {}
         self.message_queues: dict[str, asyncio.Queue] = {}
 
     async def handle_sse(self, request: Request):
@@ -33,16 +32,17 @@ class InspectorCompatibleSSE:
         logger.info(f"New Inspector SSE connection: {session_id}")
 
         # Create a message queue for this session
-        message_queue = asyncio.Queue()
+        message_queue: asyncio.Queue = asyncio.Queue()
         self.message_queues[session_id] = message_queue
 
-        # Create a server session
-        session = ServerSession(
-            create_initialization_options=lambda: types.InitializationOptions(
-                server_name="MaverickMCP", server_version="1.0.0"
-            )
-        )
-        self.sessions[session_id] = session
+        # Create a simple session state tracker
+        session_state = {
+            "initialized": False,
+            "server_name": "MaverickMCP",
+            "server_version": "1.0.0",
+            "protocol_version": "2024-11-05"
+        }
+        self.sessions[session_id] = session_state
 
         async def event_generator():
             """Generate SSE events and handle bidirectional communication."""
@@ -66,7 +66,7 @@ class InspectorCompatibleSSE:
                         # Process the message through MCP session
                         if isinstance(message, dict) and "jsonrpc" in message:
                             # Handle the JSON-RPC request
-                            response = await self._process_message(session, message)
+                            response = await self._process_message(session_state, message)
                             if response:
                                 yield f"data: {json.dumps(response)}\n\n"
 
@@ -124,8 +124,8 @@ class InspectorCompatibleSSE:
             return {"error": str(e)}
 
     async def _process_message(
-        self, session: ServerSession, message: dict
-    ) -> dict | None:
+        self, session_state: dict[str, Any], message: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Process a JSON-RPC message through the MCP session."""
         method = message.get("method")
         params = message.get("params", {})
@@ -134,43 +134,32 @@ class InspectorCompatibleSSE:
         try:
             # Handle different MCP methods
             if method == "initialize":
-                # Initialize the session
-                result = await session.initialize(
-                    types.InitializeRequest(
-                        protocolVersion=params.get("protocolVersion", "2024-11-05"),
-                        capabilities=types.ClientCapabilities(
-                            **params.get("capabilities", {})
-                        ),
-                        clientInfo=types.Implementation(
-                            **params.get(
-                                "clientInfo",
-                                {"name": "mcp-inspector", "version": "1.0.0"},
-                            )
-                        ),
-                    )
-                )
+                # Mark session as initialized
+                session_state["initialized"] = True
+                protocol_version = params.get("protocolVersion", "2024-11-05")
 
                 # Get server capabilities
                 return {
                     "jsonrpc": "2.0",
                     "id": msg_id,
                     "result": {
-                        "protocolVersion": result.protocolVersion,
+                        "protocolVersion": protocol_version,
                         "capabilities": {
                             "tools": {"listChanged": True}
-                            if mcp._tool_manager.tools
+                            if hasattr(mcp, '_tool_manager') and hasattr(mcp._tool_manager, 'tools') and mcp._tool_manager.tools
                             else {},
                             "resources": {"listChanged": True}
-                            if mcp._resource_manager.resources
+                            if hasattr(mcp, '_resource_manager') and hasattr(mcp._resource_manager, 'resources') and mcp._resource_manager.resources
                             else {},
                             "prompts": {"listChanged": True}
                             if hasattr(mcp, "_prompt_manager")
+                            and hasattr(mcp._prompt_manager, 'prompts')
                             and mcp._prompt_manager.prompts
                             else {},
                         },
                         "serverInfo": {
-                            "name": result.serverInfo.name,
-                            "version": result.serverInfo.version,
+                            "name": session_state["server_name"],
+                            "version": session_state["server_version"],
                         },
                     },
                 }
@@ -178,31 +167,33 @@ class InspectorCompatibleSSE:
             elif method == "tools/list":
                 # List available tools
                 tools = []
-                for tool_name, tool_func in mcp._tool_manager.tools.items():
-                    tools.append(
-                        {
-                            "name": tool_name,
-                            "description": tool_func.__doc__ or "No description",
-                            "inputSchema": getattr(tool_func, "input_schema", {}),
-                        }
-                    )
+                if hasattr(mcp, '_tool_manager') and hasattr(mcp._tool_manager, 'tools') and hasattr(mcp._tool_manager.tools, 'items'):
+                    for tool_name, tool_func in mcp._tool_manager.tools.items():
+                        tools.append(
+                            {
+                                "name": tool_name,
+                                "description": tool_func.__doc__ or "No description",
+                                "inputSchema": getattr(tool_func, "input_schema", {}),
+                            }
+                        )
 
                 return {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": tools}}
 
             elif method == "resources/list":
                 # List available resources
                 resources = []
-                for (
-                    resource_uri,
-                    resource_func,
-                ) in mcp._resource_manager.resources.items():
-                    resources.append(
-                        {
-                            "uri": resource_uri,
-                            "name": resource_func.__name__,
-                            "description": resource_func.__doc__ or "No description",
-                        }
-                    )
+                if hasattr(mcp, '_resource_manager') and hasattr(mcp._resource_manager, 'resources') and hasattr(mcp._resource_manager.resources, 'items'):
+                    for (
+                        resource_uri,
+                        resource_func,
+                    ) in mcp._resource_manager.resources.items():
+                        resources.append(
+                            {
+                                "uri": resource_uri,
+                                "name": getattr(resource_func, '__name__', str(resource_func)),
+                                "description": getattr(resource_func, '__doc__', None) or "No description",
+                            }
+                        )
 
                 return {
                     "jsonrpc": "2.0",
@@ -215,18 +206,31 @@ class InspectorCompatibleSSE:
                 tool_name = params.get("name")
                 tool_args = params.get("arguments", {})
 
-                if tool_name in mcp._tool_manager.tools:
+                if (hasattr(mcp, '_tool_manager')
+                    and hasattr(mcp._tool_manager, 'tools')
+                    and hasattr(mcp._tool_manager.tools, '__contains__')
+                    and tool_name in mcp._tool_manager.tools):
                     tool_func = mcp._tool_manager.tools[tool_name]
-                    # Execute the tool
-                    result = await tool_func(**tool_args)
+                    try:
+                        # Execute the tool
+                        result = await tool_func(**tool_args)
 
-                    return {
-                        "jsonrpc": "2.0",
-                        "id": msg_id,
-                        "result": {
-                            "content": [{"type": "text", "text": json.dumps(result)}]
-                        },
-                    }
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": msg_id,
+                            "result": {
+                                "content": [{"type": "text", "text": json.dumps(result, default=str)}]
+                            },
+                        }
+                    except Exception as tool_error:
+                        return {
+                            "jsonrpc": "2.0",
+                            "id": msg_id,
+                            "error": {
+                                "code": -32603,
+                                "message": f"Tool execution error: {str(tool_error)}",
+                            },
+                        }
                 else:
                     return {
                         "jsonrpc": "2.0",

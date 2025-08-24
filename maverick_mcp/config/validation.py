@@ -90,13 +90,13 @@ class EnvironmentValidator:
             if not parsed.scheme:
                 self.errors.append("DATABASE_URL missing scheme")
                 return
-            
+
             # SQLite validation (for personal use)
             if parsed.scheme == "sqlite":
                 if not parsed.path:
                     self.errors.append("SQLite DATABASE_URL missing database path")
                 return
-            
+
             # PostgreSQL validation (for production)
             if parsed.scheme.startswith("postgresql"):
                 if not parsed.hostname:
@@ -111,7 +111,9 @@ class EnvironmentValidator:
                 )
 
             # Production-specific PostgreSQL checks
-            if settings.environment == "production" and parsed.scheme.startswith("postgresql"):
+            if settings.environment == "production" and parsed.scheme.startswith(
+                "postgresql"
+            ):
                 if parsed.hostname in ["localhost", "127.0.0.1"]:
                     self.warnings.append(
                         "Using localhost database in production. "

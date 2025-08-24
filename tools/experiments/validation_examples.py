@@ -27,7 +27,6 @@ print("=" * 60)
 print("\n📊 1. Adding a new technical indicator (Stochastic Oscillator)...")
 
 
-@agent_friendly_errors
 def calculate_stochastic(
     df: pd.DataFrame, k_period: int = 14, d_period: int = 3
 ) -> pd.DataFrame:
@@ -48,6 +47,7 @@ def calculate_stochastic(
 
 
 # Mock tool registration (would normally use @mcp.tool())
+@agent_friendly_errors
 def get_stochastic_analysis(symbol: str, period: int = 14) -> dict[str, Any]:
     """
     Get Stochastic Oscillator analysis for a stock.

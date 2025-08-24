@@ -8,14 +8,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It provides:
 
+- Pre-seeded database with all 520 S&P 500 stocks and screening recommendations
 - Real-time and historical stock data access with intelligent caching
 - Advanced technical analysis tools (RSI, MACD, Bollinger Bands, etc.)
-- Multiple stock screening strategies (momentum, bearish, trending breakout)
+- Multiple stock screening strategies (Maverick Bullish/Bearish, Supply/Demand Breakouts)
 - Portfolio optimization and correlation analysis
 - Market and macroeconomic data integration
-- SQLAlchemy-based database integration for persistent storage
+- SQLAlchemy-based database integration with SQLite default (PostgreSQL optional)
 - Redis caching for high performance (optional)
-- Clean, simple architecture focused on stock analysis
+- Clean, personal-use architecture without authentication complexity
 
 ## Project Structure
 
@@ -369,7 +370,6 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 
 **Alternatives for Remote Access:**
 - Use Claude.ai web interface for native remote server support (no mcp-remote needed)
-- Host MCP server with proper authentication for web access
 
 ## Key Features
 
@@ -380,11 +380,12 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 - Support/resistance levels
 - Volume analysis and patterns
 
-### Stock Screening
+### Stock Screening (Pre-seeded S&P 500 Data)
 
-- **Maverick Bullish**: High momentum stocks with strong technicals
-- **Maverick Bearish**: Weak setups for short opportunities
-- **Trending Breakout**: Stocks in confirmed uptrend phases
+- **Maverick Bullish**: High momentum stocks with strong technicals from 520 S&P 500 stocks
+- **Maverick Bearish**: Weak setups for short opportunities with pre-analyzed data
+- **Supply/Demand Breakouts**: Stocks in confirmed uptrend phases with technical breakout patterns
+- All screening data is pre-calculated and stored in database for instant results
 
 ### Portfolio Analysis
 
@@ -402,11 +403,11 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 
 All tools are organized into logical groups:
 
-### Data Tools (`/data/*`)
+### Data Tools (`/data/*`) - S&P 500 Pre-seeded
 
-- `get_stock_data` - Historical price data
-- `get_stock_info` - Company information
-- `get_multiple_stocks_data` - Batch data fetching
+- `get_stock_data` - Historical price data with database caching
+- `get_stock_info` - Company information from pre-seeded S&P 500 database
+- `get_multiple_stocks_data` - Batch data fetching with optimized queries
 
 ### Technical Analysis (`/technical/*`)
 
@@ -416,11 +417,12 @@ All tools are organized into logical groups:
 - `calculate_bollinger_bands` - Bollinger Bands
 - `get_full_technical_analysis` - Complete analysis suite
 
-### Screening (`/screening/*`)
+### Screening (`/screening/*`) - Pre-calculated Results
 
-- `get_maverick_recommendations` - Bullish momentum stocks
-- `get_maverick_bear_recommendations` - Bearish setups
-- `get_trending_breakout_recommendations` - Breakout candidates
+- `get_maverick_recommendations` - Bullish momentum stocks from S&P 500 database
+- `get_maverick_bear_recommendations` - Bearish setups with pre-analyzed data
+- `get_trending_breakout_recommendations` - Supply/demand breakout candidates from 520 stocks
+- All screening results are pre-calculated and stored for instant access
 
 ### Portfolio Analysis (`/portfolio/*`)
 
@@ -501,10 +503,10 @@ ty check .               # Type checking
 
 ### Database Options
 
-**SQLite (Default - No Setup Required)**:
+**SQLite (Default - No Setup Required, includes S&P 500 data)**:
 
 ```bash
-# Uses SQLite automatically - no configuration needed
+# Uses SQLite automatically with S&P 500 data seeding on first run
 make dev
 ```
 
@@ -609,6 +611,13 @@ make migrate
 3. Restart Claude Desktop completely
 4. Test with: "Get AAPL stock data"
 
+**Missing S&P 500 screening data**:
+
+```bash
+# Manually seed S&P 500 database if needed
+uv run python scripts/seed_sp500.py
+```
+
 ### Performance Tips
 
 - **Use Redis caching** for better performance
@@ -632,11 +641,11 @@ lsof -i :8000
 
 ### Personal Use Optimization
 
-- Removed authentication system - no login required
-- Removed credit/billing system - unlimited usage
-- Simplified server architecture
-- Focus on core stock analysis functionality
-- Modern Claude Desktop integration via `mcp-remote`
+- **No Authentication/Billing**: Completely removed for personal use simplicity
+- **Pre-seeded S&P 500 Database**: 520 stocks with comprehensive screening data on first startup
+- **Simplified Architecture**: Clean, focused codebase without commercial complexity
+- **Multi-Transport Support**: HTTP, SSE, and STDIO for all MCP clients
+- **SQLite Default**: No database setup required, PostgreSQL optional for performance
 
 ### Performance Improvements
 
@@ -664,4 +673,4 @@ For detailed technical information and advanced usage, see the full documentatio
 
 ---
 
-**Note**: This project is designed for personal use. It provides powerful stock analysis tools for Claude Desktop without the complexity of multi-user systems, authentication, or billing.
+**Note**: This project is designed for personal use. It provides powerful stock analysis tools for Claude Desktop with pre-seeded S&P 500 data, without the complexity of multi-user systems, authentication, or billing. The database automatically seeds with 520 S&P 500 stocks and screening recommendations on first startup.

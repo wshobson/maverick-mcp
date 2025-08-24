@@ -50,10 +50,10 @@ class SelfContainedDatabaseConfig:
             return "sqlite:///:memory:"
 
         return (
-            os.getenv("MCP_DATABASE_URL")  # Prefer MCP-specific URL
+            os.getenv("DATABASE_URL")  # Prefer standard DATABASE_URL
+            or os.getenv("MCP_DATABASE_URL")
             or os.getenv("POSTGRES_URL")
-            or os.getenv("DATABASE_URL")
-            or "postgresql://localhost/maverick_mcp"  # Default to MCP-specific database
+            or "sqlite:///maverick_mcp.db"  # Default to SQLite for development
         )
 
     def create_engine(self) -> Engine:
