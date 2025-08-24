@@ -11,6 +11,8 @@
 
 The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with HTTP/SSE/STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
 
+📖 **Read the full build guide**: [How to Build an MCP Stock Analysis Server](https://sethhobson.com/2025/08/how-to-build-an-mcp-stock-analysis-server/)
+
 ## 🌟 Why MaverickMCP?
 
 MaverickMCP provides professional-grade financial analysis tools directly within your Claude Desktop interface. Perfect for individual traders and investors who want comprehensive stock analysis capabilities without the complexity of expensive platforms or commercial services.
