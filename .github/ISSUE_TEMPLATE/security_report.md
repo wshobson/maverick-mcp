@@ -67,7 +67,7 @@ Describe the security issue or improvement suggestion.
 
 **System information:**
 - MaverickMCP version: [e.g., 0.1.0]
-- Python version: [e.g., 3.11.5]
+- Python version: [e.g., 3.12.0]
 - Operating system: [e.g., Ubuntu 22.04]
 - Database: [PostgreSQL/SQLite version]
 

@@ -5,7 +5,7 @@ Welcome to MaverickMCP! We're excited to have you contribute to this open-source
 ## Table of Contents
 
 - [Development Setup](#development-setup)
-- [Project Structure](#project-structure)  
+- [Project Structure](#project-structure)
 - [Running Tests](#running-tests)
 - [Code Style](#code-style)
 - [Making Changes](#making-changes)
@@ -17,7 +17,7 @@ Welcome to MaverickMCP! We're excited to have you contribute to this open-source
 
 ### Prerequisites
 
-- Python 3.11+ 
+- Python 3.12+
 - [uv](https://docs.astral.sh/uv/) for dependency management
 - PostgreSQL (optional, SQLite works for development)
 - Redis (optional for development)
@@ -25,17 +25,20 @@ Welcome to MaverickMCP! We're excited to have you contribute to this open-source
 ### Quick Start
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/wshobson/maverick-mcp.git
    cd maverick-mcp
    ```
 
 2. **Install dependencies**
+
    ```bash
-   uv sync
+   uv sync --extra dev
    ```
 
 3. **Set up environment**
+
    ```bash
    cp .env.example .env
    # Edit .env with your configuration
@@ -52,7 +55,7 @@ Welcome to MaverickMCP! We're excited to have you contribute to this open-source
 - `make dev` - Start everything (recommended)
 - `make test` - Run unit tests (5-10 seconds)
 - `make lint` - Check code quality
-- `make format` - Auto-format code  
+- `make format` - Auto-format code
 - `make typecheck` - Run type checking
 
 ### Pre-commit Hooks (Optional but Recommended)
@@ -71,9 +74,10 @@ pre-commit run --all-files
 ```
 
 Pre-commit hooks will automatically run on every commit and include:
+
 - Code formatting (ruff)
 - Linting (ruff)
-- Security scanning (bandit, safety) 
+- Security scanning (bandit, safety)
 - Custom financial domain validations
 
 **Note**: Pre-commit hooks are optional for contributors but recommended for maintainers.
@@ -118,8 +122,9 @@ pytest --cov=maverick_mcp
 We enforce strict code quality standards:
 
 ### Tools
+
 - **ruff** for linting and formatting
-- **pyright** for type checking  
+- **pyright** for type checking
 - **pytest** for testing
 
 ### Guidelines
@@ -145,6 +150,7 @@ make format
 
 1. **Start with an issue** - Create or find an existing issue
 2. **Create a branch** - Use descriptive branch names:
+
    - `feature/add-new-indicator`
    - `fix/authentication-bug`
    - `docs/improve-setup-guide`
@@ -168,7 +174,7 @@ When working with financial logic:
 ### Checklist
 
 - [ ] Tests pass (`make test`)
-- [ ] Code is formatted (`make format`)  
+- [ ] Code is formatted (`make format`)
 - [ ] Type checking passes (`make typecheck`)
 - [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
 - [ ] Documentation is updated
@@ -179,20 +185,24 @@ When working with financial logic:
 
 ```markdown
 ## Description
+
 Brief description of the changes
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Documentation update
 - [ ] Refactoring
 
 ## Financial Impact
+
 - [ ] No financial calculations affected
 - [ ] Financial calculations verified for accuracy
 - [ ] New financial calculations added with tests
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added (if applicable)
 - [ ] Manual testing completed
@@ -215,6 +225,7 @@ Use the bug report template and include:
 ### Feature Requests
 
 Include:
+
 - **Use case** - What problem does this solve?
 - **Proposed solution** - How should it work?
 - **Financial domain knowledge** - Any domain-specific requirements
@@ -225,7 +236,7 @@ Include:
 ### Market Data
 
 - **Respect rate limits** - All providers have API limits
-- **Cache appropriately** - Balance freshness with performance  
+- **Cache appropriately** - Balance freshness with performance
 - **Handle market closures** - Account for weekends and holidays
 - **Validate symbols** - Check ticker symbol formats
 
@@ -258,14 +269,14 @@ Include:
 def calculate_risk_metric(data: pd.DataFrame) -> float:
     """
     Calculate a financial risk metric.
-    
-    DISCLAIMER: This is for educational purposes only and does not 
-    constitute financial advice. Past performance does not guarantee 
+
+    DISCLAIMER: This is for educational purposes only and does not
+    constitute financial advice. Past performance does not guarantee
     future results.
-    
+
     Args:
         data: Historical price data
-        
+
     Returns:
         Risk metric value
     """
@@ -290,7 +301,7 @@ def calculate_risk_metric(data: pd.DataFrame) -> float:
 ## Getting Help
 
 - **Discussions** - Use GitHub Discussions for questions
-- **Issues** - Create issues for bugs or feature requests  
+- **Issues** - Create issues for bugs or feature requests
 - **Code Review** - Participate in PR reviews to learn
 - **Documentation** - Check existing docs and CLAUDE.md for project context
 
@@ -309,6 +320,7 @@ MaverickMCP follows the [Contributor Covenant Code of Conduct](https://www.contr
 ### Recognition
 
 Contributors are recognized in multiple ways:
+
 - **CHANGELOG.md** - All contributors listed in release notes
 - **GitHub contributors** - Automatic recognition via commits
 - **Special mentions** - Outstanding contributions highlighted in README
@@ -317,8 +329,9 @@ Contributors are recognized in multiple ways:
 ### Continuous Integration
 
 Our CI/CD pipeline ensures code quality:
+
 - **Automated testing** - All PRs run comprehensive test suites
-- **Security scanning** - Automated vulnerability detection  
+- **Security scanning** - Automated vulnerability detection
 - **Code quality checks** - Linting, formatting, and type checking
 - **Performance testing** - Benchmark validation on PRs
 - **Documentation validation** - Ensures docs stay current
@@ -326,6 +339,7 @@ Our CI/CD pipeline ensures code quality:
 ### Current Architecture (Simplified for Personal Use)
 
 MaverickMCP has been cleaned up and simplified:
+
 - **No Complex Auth**: Removed enterprise JWT/OAuth systems for simplicity
 - **No Billing System**: Personal-use focused, no subscription management
 - **Local First**: Designed to run locally with Claude Desktop

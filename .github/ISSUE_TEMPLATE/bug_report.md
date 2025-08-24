@@ -37,7 +37,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Desktop/Server:**
  - OS: [e.g. macOS, Ubuntu, Windows]
- - Python Version: [e.g. 3.11.5]
+ - Python Version: [e.g. 3.12.0]
  - MaverickMCP Version: [e.g. 0.1.0]
  - Installation Method: [e.g. pip, uv, git clone]
 

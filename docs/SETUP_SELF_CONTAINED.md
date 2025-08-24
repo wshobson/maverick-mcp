@@ -10,7 +10,7 @@ MaverickMCP is now fully self-contained and doesn't require any external databas
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - PostgreSQL 14+ (or SQLite for development)
 - Redis (optional, for caching)
 - Tiingo API account (free tier available)

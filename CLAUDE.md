@@ -40,7 +40,7 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 
 1. **Prerequisites**:
 
-   - **Python 3.11+**: Core runtime environment
+   - **Python 3.12+**: Core runtime environment
    - **[uv](https://docs.astral.sh/uv/)**: Modern Python package manager (recommended)
    - Redis server (optional, for enhanced caching performance)
    - PostgreSQL (optional, SQLite works fine for personal use)
@@ -544,7 +544,7 @@ make redis-start
 
 ### General Principles
 
-- Python 3.11+ with modern features
+- Python 3.12+ with modern features
 - Type hints for all functions
 - Google-style docstrings for public APIs
 - Comprehensive error handling

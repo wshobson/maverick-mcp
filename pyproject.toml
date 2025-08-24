@@ -3,7 +3,7 @@ name = "maverick_mcp"
 version = "0.1.0"
 description = "Personal-use MCP server for Claude Desktop providing professional-grade stock analysis and technical indicators"
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     # Core MCP and server dependencies
     "fastmcp>=2.7.0",
@@ -118,7 +118,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 88
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [

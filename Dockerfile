@@ -1,7 +1,7 @@
 # Dockerfile for Maverick-MCP
 # Python-only MCP server
 
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -42,7 +42,6 @@ COPY alembic.ini setup.py ./
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV AUTH_ENABLED=false
 
 # Create non-root user
 RUN groupadd -g 1000 maverick && \
