@@ -194,29 +194,46 @@ make c                # Alias for make check
 
 ### Other Popular MCP Clients
 
-**Claude Desktop** (Most Commonly Used)
-Claude Desktop is the most popular MCP client but has STDIO-only limitations:
+> ⚠️ **Critical Transport Warning**: MCP clients have specific transport limitations. Using incorrect configurations will cause connection failures. Always verify which transports your client supports.
+
+#### Transport Compatibility Matrix
+
+| MCP Client           | STDIO | HTTP | SSE | Direct Config Support                         |
+|----------------------|-------|------|-----|-----------------------------------------------|
+| **Claude Desktop**   | ✅    | ❌   | ❌  | STDIO-only, requires mcp-remote for HTTP/SSE |
+| **Cursor IDE**       | ✅    | ❌   | ✅  | STDIO and SSE supported                       |
+| **Claude Code CLI**  | ✅    | ✅   | ✅  | All transports supported                      |
+| **Continue.dev**     | ✅    | ❌   | ✅  | STDIO and SSE supported                       |
+| **Windsurf IDE**     | ✅    | ❌   | ✅  | STDIO and SSE supported                       |
+
+#### Claude Desktop (Most Commonly Used)
+
+**⚠️ CRITICAL**: Claude Desktop ONLY supports STDIO transport. It cannot directly connect to HTTP or SSE endpoints.
 
 **Configuration Location:**
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
 
-**Connection Options:**
+**For HTTP Server (Recommended):**
 ```json
 {
   "mcpServers": {
-    "maverick-mcp-http": {
+    "maverick-mcp": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
-    },
-    "maverick-mcp-sse": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/sse"]
-    },
-    "maverick-mcp-direct": {
+    }
+  }
+}
+```
+
+**For Direct STDIO (Development Only):**
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
       "command": "uv",
-      "args": ["run", "python", "-m", "maverick_mcp.api.server"],
+      "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"],
       "cwd": "/path/to/maverick-mcp"
     }
   }
@@ -225,77 +242,9 @@ Claude Desktop is the most popular MCP client but has STDIO-only limitations:
 
 **Restart Required:** Always restart Claude Desktop after config changes.
 
-**Cursor IDE**
-Cursor has native MCP support through its settings:
+#### Cursor IDE - STDIO and SSE Support
 
-1. Open Cursor → Settings → MCP Servers
-2. Add server configuration:
-   ```json
-   {
-     "mcpServers": {
-       "maverick-mcp": {
-         "command": "npx",
-         "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
-       }
-     }
-   }
-   ```
-3. Restart Cursor to apply changes
-
-**Claude Code (CLI Tool)**
-Anthropic's official CLI tool with excellent MCP support:
-
-```bash
-# Add HTTP server (recommended)
-claude mcp add --transport http maverick-mcp http://localhost:8000/mcp
-
-# Add SSE server (legacy)
-claude mcp add --transport sse maverick-mcp http://localhost:8000/sse
-
-# Add direct STDIO server (development)
-claude mcp add --scope user maverick-stdio \
-  uv run python -m maverick_mcp.api.server
-
-# List configured servers
-claude mcp list
-```
-
-Or manually edit `~/.claude.json`:
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"],
-      "env": {}
-    }
-  }
-}
-```
-
-**Continue.dev (VS Code Extension)**
-Continue was the first MCP client with full protocol support:
-
-1. Install Continue extension in VS Code
-2. Edit `~/.continue/config.json`:
-   ```json
-   {
-     "experimental": {
-       "modelContextProtocolServer": {
-         "transport": {
-           "type": "stdio",
-           "command": "npx",
-           "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
-         }
-       }
-     }
-   }
-   ```
-3. Use `@MCP` in Continue chat to access tools
-
-**Windsurf IDE**
-Similar to Cursor, with native MCP support:
+**Option 1: STDIO via mcp-remote (Recommended):**
 ```json
 {
   "mcpServers": {
@@ -307,25 +256,120 @@ Similar to Cursor, with native MCP support:
 }
 ```
 
-**Key Transport Notes:**
-- Most clients support STDIO transport only in local config
-- HTTP/SSE servers require `mcp-remote` bridge for most clients
-- Claude Code CLI has the most comprehensive transport support
-- Continue.dev offers excellent MCP integration with VS Code
+**Option 2: Direct SSE:**
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+**Location:** Cursor → Settings → MCP Servers
+
+#### Claude Code CLI - Full Transport Support
+
+**HTTP Transport (Modern Standard):**
+```bash
+claude mcp add --transport http maverick-mcp http://localhost:8000/mcp
+```
+
+**SSE Transport (Legacy Compatibility):**
+```bash
+claude mcp add --transport sse maverick-mcp http://localhost:8000/sse
+```
+
+**STDIO Transport (Development):**
+```bash
+claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
+```
+
+#### Continue.dev - STDIO and SSE Support
+
+**Option 1: STDIO via mcp-remote:**
+```json
+{
+  "experimental": {
+    "modelContextProtocolServer": {
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+      }
+    }
+  }
+}
+```
+
+**Option 2: Direct SSE:**
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+**Location:** `~/.continue/config.json`
+
+#### Windsurf IDE - STDIO and SSE Support
+
+**Option 1: STDIO via mcp-remote:**
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    }
+  }
+}
+```
+
+**Option 2: Direct SSE:**
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "serverUrl": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+**Location:** Windsurf → Settings → Advanced Settings → MCP Servers
 
 ### How It Works
 
-- **MCP Server**: Runs locally with multiple endpoints:
-  - HTTP (FastMCP 2.0 standard): `http://localhost:8000/mcp`
-  - SSE (legacy compatibility): `http://localhost:8000/sse`
-  - STDIO: Direct connection for development
-- **mcp-remote**: Third-party bridge tool that connects STDIO-only clients to HTTP/SSE servers
-- **Claude Desktop Limitation**: Only supports STDIO transport in local config
-- **Connection Flow**: MCP Client (STDIO) ↔ mcp-remote ↔ HTTP/SSE Server
-- **Client Support**: Multiple MCP clients available (Claude Desktop, Cursor, Claude Code, Continue.dev, Windsurf)
-- **Transport Limitation**: Most clients only support STDIO locally, requiring mcp-remote for HTTP/SSE
-- **Alternative**: Use Claude.ai web interface for native remote server support
-- **No authentication**: Simple personal use - no login required
+**Server Architecture:**
+- **HTTP Endpoint** (Modern): `http://localhost:8000/mcp` - FastMCP 2.0 standard
+- **SSE Endpoint** (Legacy): `http://localhost:8000/sse` - Server-Sent Events compatibility  
+- **STDIO Mode**: Direct subprocess communication for development
+
+**Transport Limitations by Client:**
+- **Claude Desktop**: STDIO-only, cannot directly connect to HTTP/SSE
+- **Most Other Clients**: Support STDIO + SSE (but not HTTP)
+- **Claude Code CLI**: Full transport support (STDIO, HTTP, SSE)
+
+**mcp-remote Bridge Tool:**
+- **Purpose**: Converts STDIO client calls to HTTP/SSE server requests
+- **Why Needed**: Bridges the gap between STDIO-only clients and HTTP/SSE servers
+- **Connection Flow**: Client (STDIO) ↔ mcp-remote ↔ HTTP/SSE Server
+- **Installation**: `npx mcp-remote <server-url>`
+
+**Key Transport Facts:**
+- **STDIO**: All clients support this for local connections
+- **HTTP**: Only Claude Code CLI supports direct HTTP connections
+- **SSE**: Cursor, Continue.dev, Windsurf support direct SSE connections  
+- **Claude Desktop Limitation**: Cannot connect to HTTP/SSE without mcp-remote bridge
+
+**Alternatives for Remote Access:**
+- Use Claude.ai web interface for native remote server support (no mcp-remote needed)
+- Host MCP server with proper authentication for web access
 
 ## Key Features
 
