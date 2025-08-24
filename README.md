@@ -11,7 +11,6 @@
 
 The server runs locally with stdio transport for seamless Claude Desktop integration, focusing on simplicity and core functionality for personal stock analysis needs.
 
-
 ## 🌟 Why MaverickMCP?
 
 MaverickMCP provides professional-grade financial analysis tools directly within your Claude Desktop interface. Perfect for individual traders and investors who want comprehensive stock analysis capabilities without the complexity of expensive platforms or commercial services.
@@ -74,7 +73,7 @@ cd maverick-mcp
 # Install dependencies and create virtual environment in one command
 uv sync
 
-# Copy environment template  
+# Copy environment template
 cp .env.example .env
 # Add your Tiingo API key (free at tiingo.com)
 ```
@@ -91,7 +90,7 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 
-# Copy environment template  
+# Copy environment template
 cp .env.example .env
 # Add your Tiingo API key (free at tiingo.com)
 ```
@@ -107,26 +106,7 @@ make dev
 
 ### Connect to Claude Desktop
 
-**Important**: Claude Desktop only supports STDIO transport in its local configuration. To connect to HTTP/SSE servers, you need the `mcp-remote` bridge.
-
-**Option 1: HTTP Transport via mcp-remote (Recommended)**
-
-Add this configuration to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
-    }
-  }
-}
-```
-
-**Option 2: SSE Transport via mcp-remote (Legacy)**
-
-For SSE endpoint:
+Claude Desktop uses STDIO to communicate with mcp-remote, which then connects to your HTTP server:
 
 ```json
 {
@@ -139,16 +119,23 @@ For SSE endpoint:
 }
 ```
 
-**Option 3: Direct STDIO (Development - No HTTP Layer)**
+**Alternate option: Direct STDIO Connection (Development Only)**
 
-For direct connection without HTTP server:
+Claude Desktop directly connects via STDIO without any HTTP layer:
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
       "command": "uv",
-      "args": ["run", "python", "-m", "maverick_mcp.api.server"],
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "maverick_mcp.api.server",
+        "--transport",
+        "stdio"
+      ],
       "cwd": "/path/to/maverick-mcp"
     }
   }
@@ -165,20 +152,21 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 
 #### Transport Compatibility Matrix
 
-| MCP Client        | STDIO | HTTP | SSE | Notes                                      |
-|-------------------|-------|------|-----|--------------------------------------------|
+| MCP Client         | STDIO | HTTP | SSE | Notes                                        |
+| ------------------ | ----- | ---- | --- | -------------------------------------------- |
 | **Claude Desktop** | ✅    | ❌   | ❌  | STDIO-only, requires mcp-remote for HTTP/SSE |
-| **Cursor IDE**     | ✅    | ❌   | ✅  | Supports STDIO and SSE                     |
-| **Claude Code**    | ✅    | ✅   | ✅  | Supports all transports                    |
-| **Continue.dev**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                     |
-| **Windsurf IDE**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                     |
-| **Goose CLI**      | ✅    | ❌   | ✅  | Supports STDIO and SSE                     |
+| **Cursor IDE**     | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
+| **Claude Code**    | ✅    | ✅   | ✅  | Supports all transports                      |
+| **Continue.dev**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
+| **Windsurf IDE**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
+| **Goose CLI**      | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
 
 #### Claude Desktop (Most Popular) - STDIO Only
 
 **⚠️ Important**: Claude Desktop ONLY supports STDIO transport. It cannot directly connect to HTTP or SSE servers and requires the `mcp-remote` bridge tool.
 
 **For HTTP Server Connection (Recommended)**:
+
 ```json
 {
   "mcpServers": {
@@ -191,24 +179,34 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 ```
 
 **For Direct STDIO (Development Only)**:
+
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
       "command": "uv",
-      "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"]
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "maverick_mcp.api.server",
+        "--transport",
+        "stdio"
+      ]
     }
   }
 }
 ```
 
-**Config Location**: 
+**Config Location**:
+
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 #### Cursor IDE - STDIO and SSE
 
 **Option 1: STDIO (via mcp-remote)**:
+
 ```json
 {
   "mcpServers": {
@@ -221,6 +219,7 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 ```
 
 **Option 2: Direct SSE**:
+
 ```json
 {
   "mcpServers": {
@@ -236,16 +235,19 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 #### Claude Code CLI - All Transports
 
 **HTTP Transport (Recommended)**:
+
 ```bash
 claude mcp add --transport http maverick-mcp http://localhost:8000/mcp
 ```
 
 **SSE Transport (Legacy)**:
+
 ```bash
 claude mcp add --transport sse maverick-mcp http://localhost:8000/sse
 ```
 
 **STDIO Transport (Development)**:
+
 ```bash
 claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
 ```
@@ -253,6 +255,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 #### Continue.dev - STDIO and SSE
 
 **Option 1: STDIO (via mcp-remote)**:
+
 ```json
 {
   "experimental": {
@@ -268,6 +271,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 ```
 
 **Option 2: Direct SSE**:
+
 ```json
 {
   "mcpServers": {
@@ -283,6 +287,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 #### Windsurf IDE - STDIO and SSE
 
 **Option 1: STDIO (via mcp-remote)**:
+
 ```json
 {
   "mcpServers": {
@@ -295,6 +300,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 ```
 
 **Option 2: Direct SSE**:
+
 ```json
 {
   "mcpServers": {
@@ -393,7 +399,7 @@ Configure MaverickMCP via `.env` file or environment variables:
 **Optional API Keys:**
 
 - `OPENAI_API_KEY` - For AI-powered analysis features
-- `ANTHROPIC_API_KEY` - Alternative LLM provider  
+- `ANTHROPIC_API_KEY` - Alternative LLM provider
 - `FRED_API_KEY` - Federal Reserve economic data
 
 **Performance:**
