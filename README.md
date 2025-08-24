@@ -18,7 +18,8 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 
 **🚀 Key Benefits:**
 
-- **No Setup Complexity**: Simple `make dev` command gets you running
+- **No Setup Complexity**: Simple `make dev` command gets you running (or `uv sync` + `make dev`)
+- **Modern Python Tooling**: Built with `uv` for lightning-fast dependency management
 - **Claude Desktop Integration**: Native MCP support for seamless AI-powered analysis
 - **Comprehensive Analysis**: 29 financial tools covering technical indicators, screening, and portfolio optimization
 - **Smart Caching**: Redis-powered performance with graceful fallbacks
@@ -43,21 +44,51 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- **Python 3.11+**: Core runtime environment
+- **[uv](https://docs.astral.sh/uv/)**: Modern Python package manager (recommended)
 - Redis (optional, for enhanced caching)
 - PostgreSQL or SQLite (optional, for data persistence)
 
+#### Installing uv (Recommended)
+
+```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Alternative: via pip
+pip install uv
+```
+
 ### Installation
+
+#### Option 1: Using uv (Recommended - Fastest)
 
 ```bash
 # Clone the repository
 git clone https://github.com/wshobson/maverick-mcp.git
 cd maverick-mcp
 
-# Install dependencies (uv recommended for speed)
+# Install dependencies and create virtual environment in one command
 uv sync
 
-# Or use standard pip
+# Copy environment template  
+cp .env.example .env
+# Add your Tiingo API key (free at tiingo.com)
+```
+
+#### Option 2: Using pip (Traditional)
+
+```bash
+# Clone the repository
+git clone https://github.com/wshobson/maverick-mcp.git
+cd maverick-mcp
+
+# Create virtual environment and install
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -e .
 
 # Copy environment template  
@@ -76,6 +107,8 @@ make dev
 
 ### Connect to Claude Desktop
 
+**Option 1: HTTP Transport (Recommended - FastMCP 2.0 Standard)**
+
 Add this configuration to your `claude_desktop_config.json`:
 
 ```json
@@ -83,7 +116,38 @@ Add this configuration to your `claude_desktop_config.json`:
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    }
+  }
+}
+```
+
+**Option 2: SSE Transport (Legacy Compatibility)**
+
+For older setups or specific requirements:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
       "args": ["-y", "mcp-remote", "http://localhost:8000/sse"]
+    }
+  }
+}
+```
+
+**Option 3: Direct Python STDIO (Development Only)**
+
+For development without HTTP transport:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "maverick_mcp.api.server"],
+      "cwd": "/path/to/maverick-mcp"
     }
   }
 }
@@ -104,10 +168,11 @@ make dev
 # Alternative startup methods
 ./scripts/start-backend.sh --dev    # Script-based startup
 ./tools/fast_dev.sh                 # Ultra-fast startup (< 3 seconds)
-python tools/hot_reload.py          # Auto-restart on file changes
+uv run python tools/hot_reload.py   # Auto-restart on file changes
 
 # Server will be available at:
-# - SSE endpoint: http://localhost:8000/sse (for Claude Desktop via mcp-remote)
+# - HTTP endpoint: http://localhost:8000/mcp (recommended for Claude Desktop via mcp-remote)
+# - SSE endpoint: http://localhost:8000/sse (legacy compatibility)
 # - Health check: http://localhost:8000/health
 ```
 
@@ -119,7 +184,12 @@ make test              # Run unit tests (5-10 seconds)
 make test-specific TEST=test_name  # Run specific test
 make test-watch        # Auto-run tests on file changes
 
-# Manual pytest commands
+# Using uv (recommended)
+uv run pytest                 # Unit tests only
+uv run pytest --cov=maverick_mcp  # With coverage
+uv run pytest -m ""           # All tests (requires PostgreSQL/Redis)
+
+# Alternative: Direct pytest (if activated in venv)
 pytest                 # Unit tests only
 pytest --cov=maverick_mcp  # With coverage
 pytest -m ""           # All tests (requires PostgreSQL/Redis)
@@ -129,14 +199,22 @@ pytest -m ""           # All tests (requires PostgreSQL/Redis)
 
 ```bash
 # Quick quality commands
-make lint              # Check code quality
-make format            # Auto-format code
-make typecheck         # Run type checking
+make lint              # Check code quality (ruff)
+make format            # Auto-format code (ruff)
+make typecheck         # Run type checking (ty)
 
-# Manual commands
+# Using uv (recommended)
+uv run ruff check .    # Linting
+uv run ruff format .   # Formatting
+uv run ty check .      # Type checking (Astral's modern type checker)
+
+# Alternative: Direct commands (if activated in venv)
 ruff check .           # Linting
 ruff format .          # Formatting
-pyright                # Type checking
+ty check .             # Type checking
+
+# Ultra-fast one-liner (no installation needed)
+uvx ty check .         # Run ty directly without installing
 ```
 
 ## Configuration
@@ -222,13 +300,15 @@ For containerized deployment:
 # Copy and configure environment
 cp .env.example .env
 
-# Start with docker-compose
-docker-compose up -d
-
-# Or build and run manually
+# Using uv in Docker (recommended for faster builds)
 docker build -t maverick_mcp .
 docker run -p 8000:8000 --env-file .env maverick_mcp
+
+# Or start with docker-compose
+docker-compose up -d
 ```
+
+**Note**: The Dockerfile uses `uv` for fast dependency installation and smaller image sizes.
 
 ## Troubleshooting
 
@@ -286,9 +366,9 @@ MaverickMCP includes helpful error diagnostics:
 
 ### Fast Development Options
 
-- **Hot Reload**: `python tools/hot_reload.py` - Auto-restart on changes
+- **Hot Reload**: `uv run python tools/hot_reload.py` - Auto-restart on changes
 - **Fast Startup**: `./tools/fast_dev.sh` - < 3 second startup
-- **Quick Testing**: `python tools/quick_test.py --test stock` - Test specific features
+- **Quick Testing**: `uv run python tools/quick_test.py --test stock` - Test specific features
 - **Experiment Harness**: Drop .py files in `tools/experiments/` for auto-execution
 
 ### Performance Features

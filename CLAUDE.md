@@ -39,8 +39,9 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 
 1. **Prerequisites**:
 
-   - Python 3.11+
-   - Redis server (optional, for caching)
+   - **Python 3.11+**: Core runtime environment
+   - **[uv](https://docs.astral.sh/uv/)**: Modern Python package manager (recommended)
+   - Redis server (optional, for enhanced caching performance)
    - PostgreSQL (optional, SQLite works fine for personal use)
 
 2. **Installation**:
@@ -50,10 +51,12 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
    git clone https://github.com/wshobson/maverick-mcp.git
    cd maverick-mcp
 
-   # Install dependencies using uv (recommended)
+   # Install dependencies using uv (recommended - fastest)
    uv sync
 
-   # Or use pip
+   # Or use traditional pip
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    pip install -e .
 
    # Set up environment
@@ -132,12 +135,29 @@ The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
 1. **Start the server**:
 
    ```bash
-   make dev  # Server runs on http://localhost:8000/sse
+   make dev  # Server runs with both HTTP and SSE endpoints
    ```
 
 2. **Configure Claude Desktop**:
 
+   **Option A: HTTP Transport (FastMCP 2.0 Standard - Recommended)**
+   
    Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+   ```json
+   {
+     "mcpServers": {
+       "maverick-mcp": {
+         "command": "npx",
+         "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+       }
+     }
+   }
+   ```
+
+   **Option B: SSE Transport (Legacy Compatibility)**
+   
+   For older setups:
 
    ```json
    {
@@ -150,13 +170,33 @@ The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
    }
    ```
 
+   **Option C: Direct STDIO (Development Only)**
+   
+   For development without HTTP layer:
+
+   ```json
+   {
+     "mcpServers": {
+       "maverick-mcp": {
+         "command": "uv",
+         "args": ["run", "python", "-m", "maverick_mcp.api.server"],
+         "cwd": "/path/to/maverick-mcp"
+       }
+     }
+   }
+   ```
+
 3. **Restart Claude Desktop** and test with: "Show me technical analysis for AAPL"
 
 ### How It Works
 
-- **MCP Server**: Runs locally on `http://localhost:8000/sse`
+- **MCP Server**: Runs locally with multiple endpoints:
+  - HTTP (recommended): `http://localhost:8000/mcp`
+  - SSE (legacy): `http://localhost:8000/sse`
+  - STDIO: Direct connection for development
 - **mcp-remote**: Official bridge tool that connects stdio clients to HTTP servers
 - **Claude Desktop**: Connects via stdio to mcp-remote, which forwards to your server
+- **Transport Options**: HTTP (modern), SSE (legacy), or direct STDIO (development)
 - **No authentication**: Simple personal use - no login required
 
 ## Key Features
@@ -230,7 +270,16 @@ All tools are organized into logical groups:
 make dev                    # Uses Makefile for full setup
 
 # Alternative direct commands
-python -m maverick_mcp.api.server --transport sse --port 8000
+# HTTP transport (FastMCP 2.0 standard)
+uv run python -m maverick_mcp.api.server --transport http --port 8000
+
+# SSE transport (legacy compatibility)
+uv run python -m maverick_mcp.api.server --transport sse --port 8000
+
+# STDIO transport (development)
+uv run python -m maverick_mcp.api.server  # Defaults to stdio
+
+# Script-based startup
 ./scripts/dev.sh           # Includes additional setup
 ```
 
@@ -242,7 +291,12 @@ make test                  # Unit tests only (5-10 seconds)
 make test-specific TEST=test_name  # Run specific test
 make test-watch           # Auto-run on changes
 
-# Advanced testing
+# Using uv (recommended)
+uv run pytest                    # Manual pytest execution
+uv run pytest --cov=maverick_mcp # With coverage
+uv run pytest -m integration    # Integration tests (requires PostgreSQL/Redis)
+
+# Alternative: Direct pytest (if activated in venv)
 pytest                    # Manual pytest execution
 pytest --cov=maverick_mcp # With coverage
 pytest -m integration    # Integration tests (requires PostgreSQL/Redis)
@@ -253,14 +307,22 @@ pytest -m integration    # Integration tests (requires PostgreSQL/Redis)
 ```bash
 # Automated quality checks
 make format               # Auto-format with ruff
-make lint                 # Check code quality
-make typecheck           # Type check with pyright
-make check               # Run all checks
+make lint                 # Check code quality with ruff
+make typecheck            # Type check with ty (Astral's modern type checker)
+make check                # Run all checks
 
-# Manual commands
+# Using uv (recommended)
+uv run ruff check .       # Linting
+uv run ruff format .      # Formatting
+uv run ty check .         # Type checking (Astral's modern type checker)
+
+# Ultra-fast one-liner (no installation needed)
+uvx ty check .            # Run ty directly without installing
+
+# Alternative: Direct commands (if activated in venv)
 ruff check .             # Linting
 ruff format .            # Formatting
-pyright                  # Type checking
+ty check .               # Type checking
 ```
 
 ## Configuration
@@ -417,7 +479,7 @@ lsof -i :8000
 - Smart error handling with automatic fix suggestions
 - Hot reload development mode
 - Extensive test suite with quick unit tests
-- Type checking with pyright for better IDE support
+- Type checking with ty (Astral's extremely fast type checker) for better IDE support
 
 ## Additional Resources
 
