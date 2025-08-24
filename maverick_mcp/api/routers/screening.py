@@ -163,11 +163,11 @@ def get_all_screening_recommendations() -> dict[str, Any]:
 
 
 def get_screening_by_criteria(
-    min_momentum_score: float | None = None,
-    min_volume: int | None = None,
-    max_price: float | None = None,
+    min_momentum_score: float | str | None = None,
+    min_volume: int | str | None = None,
+    max_price: float | str | None = None,
     sector: str | None = None,
-    limit: int = 20,
+    limit: int | str = 20,
 ) -> dict[str, Any]:
     """
     Get stocks filtered by specific screening criteria.
@@ -191,6 +191,16 @@ def get_screening_by_criteria(
     try:
         from maverick_mcp.data.models import MaverickStocks, SessionLocal
 
+        # Convert string inputs to appropriate numeric types
+        if min_momentum_score is not None:
+            min_momentum_score = float(min_momentum_score)
+        if min_volume is not None:
+            min_volume = int(min_volume)
+        if max_price is not None:
+            max_price = float(max_price)
+        if isinstance(limit, str):
+            limit = int(limit)
+
         with SessionLocal() as session:
             query = session.query(MaverickStocks)
 
@@ -203,7 +213,7 @@ def get_screening_by_criteria(
                 query = query.filter(MaverickStocks.avg_vol_30d >= min_volume)
 
             if max_price:
-                query = query.filter(MaverickStocks.close <= max_price)
+                query = query.filter(MaverickStocks.close_price <= max_price)
 
             # Note: Sector filtering would require joining with Stock table
             # This is a simplified version

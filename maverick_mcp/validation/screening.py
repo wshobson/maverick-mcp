@@ -10,6 +10,7 @@ from typing import Literal
 from pydantic import Field, field_validator
 
 from .base import (
+    BaseRequest,
     PaginationMixin,
     PositiveFloat,
     PositiveInt,
@@ -48,7 +49,7 @@ class SupplyDemandBreakoutRequest(StrictBaseModel, PaginationMixin):
     }
 
 
-class CustomScreeningRequest(StrictBaseModel, PaginationMixin):
+class CustomScreeningRequest(BaseRequest, PaginationMixin):
     """Validation for get_screening_by_criteria tool."""
 
     min_momentum_score: float | None = Field(
