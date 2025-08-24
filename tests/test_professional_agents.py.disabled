@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""
+Quick test script to verify professional agent functionality.
+"""
+
+import asyncio
+
+from langchain_openai import ChatOpenAI
+
+from maverick_mcp.agents.market_analysis import MarketAnalysisAgent
+from maverick_mcp.agents.technical_analysis import TechnicalAnalysisAgent
+
+
+async def test_market_analysis():
+    """Test the enhanced market analysis agent."""
+    print("\n=== Testing Market Analysis Agent ===")
+
+    # Create agent with moderate persona
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    agent = MarketAnalysisAgent(llm=llm, persona="moderate")
+
+    # Test market analysis
+    result = await agent.analyze_market(
+        query="Find top momentum stocks with good risk/reward",
+        session_id="test_session_1",
+        screening_strategy="momentum",
+        max_results=10,
+    )
+
+    print(f"Status: {result['status']}")
+    print(f"Market Regime: {result['market_analysis']['regime']}")
+    print(f"Screening Strategy: {result['screening_results']['strategy']}")
+    print(f"Stocks Found: {result['screening_results']['count']}")
+    print(f"Execution Time: {result['execution_metrics']['execution_time_ms']}ms")
+
+    # Show top 5 stocks if any
+    symbols = result["screening_results"]["symbols"][:5]
+    if symbols:
+        print(f"\nTop 5 Stocks: {', '.join(symbols)}")
+
+    return result
+
+
+async def test_technical_analysis():
+    """Test the technical analysis agent."""
+    print("\n=== Testing Technical Analysis Agent ===")
+
+    # Create agent with aggressive persona
+    llm = ChatOpenAI(model="gpt-4", temperature=0)
+    agent = TechnicalAnalysisAgent(llm=llm, persona="aggressive")
+
+    # Analyze a specific stock
+    result = await agent.analyze_stock(
+        symbol="AAPL", timeframe="1d", indicators=["RSI", "MACD", "BB"]
+    )
+
+    print(f"Status: {result['status']}")
+    print(f"Symbol: {result['symbol']}")
+    print(f"Trend: {result['analysis']['market_structure']['trend']}")
+    print(f"Setup Quality: {result['analysis']['trade_setup']['quality']}")
+    print(f"Confidence: {result['analysis']['trade_setup']['confidence']}%")
+
+    # Show entry/exit levels
+    setup = result["analysis"]["trade_setup"]
+    if setup["entries"]:
+        print(f"\nEntry Points: {setup['entries']}")
+        print(f"Stop Loss: {setup['stop_loss']}")
+        print(f"Targets: {setup['targets']}")
+        print(f"Risk/Reward: {setup['risk_reward']}")
+
+    return result
+
+
+async def test_risk_tools():
+    """Test risk management tools."""
+    print("\n=== Testing Risk Management Tools ===")
+
+    from maverick_mcp.agents.base import INVESTOR_PERSONAS
+    from maverick_mcp.tools.risk_management import PositionSizeTool
+
+    # Create position sizing tool with conservative persona
+    tool = PositionSizeTool()
+    tool.set_persona(INVESTOR_PERSONAS["conservative"])
+
+    # Calculate position size
+    result = tool._run(
+        account_size=100000, entry_price=150, stop_loss_price=145, risk_percentage=2.0
+    )
+
+    print("Position Sizing (Conservative):")
+    print(result)
+
+    return result
+
+
+async def test_sentiment_analysis():
+    """Test sentiment analysis tools."""
+    print("\n=== Testing Sentiment Analysis ===")
+
+    from maverick_mcp.tools.sentiment_analysis import MarketBreadthTool
+
+    # Create market breadth tool
+    tool = MarketBreadthTool()
+
+    # Analyze market breadth
+    result = tool._run(index="SPY")
+
+    print("Market Breadth Analysis:")
+    print(result)
+
+    return result
+
+
+async def main():
+    """Run all tests."""
+    print("Testing Professional Trading Agents Implementation")
+    print("=" * 50)
+
+    try:
+        # Test each component
+        await test_market_analysis()
+        await test_technical_analysis()
+        await test_risk_tools()
+        await test_sentiment_analysis()
+
+        print("\n✅ All tests completed successfully!")
+
+    except Exception as e:
+        print(f"\n❌ Test failed with error: {e}")
+        import traceback
+
+        traceback.print_exc()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

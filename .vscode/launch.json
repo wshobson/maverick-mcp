@@ -1,0 +1,11 @@
+{
+  "configurations": [
+    {
+      "name": "Maverick-MCP CLI",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "maverick_mcp.cli.server",
+      "args": ["--debug"]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/wshobson/maverick-mcp/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📖 Documentation
+    url: https://github.com/wshobson/maverick-mcp/blob/main/README.md
+    about: Read the documentation and setup guides
+  - name: 🔒 Security Advisories
+    url: https://github.com/wshobson/maverick-mcp/security/advisories/new
+    about: Report security vulnerabilities privately (recommended for serious issues)

@@ -1,0 +1,37 @@
+{
+  "makefile.configureOnOpen": false,
+  "editor.formatOnSave": true,
+  "notebook.formatOnSave.enabled": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.REPL.enableREPLSmartSend": false,
+  "files.associations": {
+    "*.html": "jinja-html",
+    "*.js": "javascript",
+    "*.jsx": "javascriptreact",
+    "*.jinja2": "jinja-html",
+    "*.jinja": "jinja-html"
+  },
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  },
+  "emmet.includeLanguages": {
+    "jinja-html": "html"
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "css.lint.unknownProperties": "ignore",
+  "yaml.customTags": ["!reference sequence", "!Ref", "!Sub", "!secret"],
+  "yaml.validate": false
+}
