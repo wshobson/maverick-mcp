@@ -11,40 +11,6 @@
 
 The server runs locally with stdio transport for seamless Claude Desktop integration, focusing on simplicity and core functionality for personal stock analysis needs.
 
-## ⚠️ Important Financial Disclaimer
-
-**This software is for educational and informational purposes only. It is NOT financial advice.**
-
-### Investment Risk Warning
-- **Past performance does not guarantee future results**
-- **All investments carry risk of loss, including total loss of capital**
-- **Technical analysis and screening results are not predictive of future performance**
-- **Market data may be delayed, inaccurate, or incomplete**
-
-### No Professional Advice
-- This tool provides data analysis, not investment recommendations
-- Always consult with a qualified financial advisor before making investment decisions
-- The developers are not licensed financial advisors or investment professionals
-- Nothing in this software constitutes professional financial, investment, legal, or tax advice
-
-### Data and Accuracy
-- Market data provided by third-party sources (Tiingo, Yahoo Finance, FRED)
-- Data may contain errors, delays, or omissions
-- Technical indicators are mathematical calculations based on historical data
-- No warranty is made regarding data accuracy or completeness
-
-### Regulatory Compliance
-- **US Users**: This software is not registered with the SEC, CFTC, or other regulatory bodies
-- **International Users**: Check local financial software regulations before use
-- Users are responsible for compliance with all applicable laws and regulations
-- Some features may not be available in certain jurisdictions
-
-### Limitation of Liability
-- Developers disclaim all liability for investment losses or damages
-- Use this software at your own risk
-- No guarantee is made regarding software availability or functionality
-
-**By using MaverickMCP, you acknowledge these risks and agree to use the software for educational purposes only.**
 
 ## 🌟 Why MaverickMCP?
 
@@ -384,3 +350,19 @@ If you find MaverickMCP useful:
 ---
 
 Built for traders and investors. Happy Trading!
+
+## Disclaimer
+
+<sub>**This software is for educational and informational purposes only. It is NOT financial advice.**</sub>
+
+<sub>**Investment Risk Warning**: Past performance does not guarantee future results. All investments carry risk of loss, including total loss of capital. Technical analysis and screening results are not predictive of future performance. Market data may be delayed, inaccurate, or incomplete.</sub>
+
+<sub>**No Professional Advice**: This tool provides data analysis, not investment recommendations. Always consult with a qualified financial advisor before making investment decisions. The developers are not licensed financial advisors or investment professionals. Nothing in this software constitutes professional financial, investment, legal, or tax advice.</sub>
+
+<sub>**Data and Accuracy**: Market data provided by third-party sources (Tiingo, Yahoo Finance, FRED). Data may contain errors, delays, or omissions. Technical indicators are mathematical calculations based on historical data. No warranty is made regarding data accuracy or completeness.</sub>
+
+<sub>**Regulatory Compliance**: US Users - This software is not registered with the SEC, CFTC, or other regulatory bodies. International Users - Check local financial software regulations before use. Users are responsible for compliance with all applicable laws and regulations. Some features may not be available in certain jurisdictions.</sub>
+
+<sub>**Limitation of Liability**: Developers disclaim all liability for investment losses or damages. Use this software at your own risk. No guarantee is made regarding software availability or functionality.</sub>
+
+<sub>By using MaverickMCP, you acknowledge these risks and agree to use the software for educational purposes only.</sub>
