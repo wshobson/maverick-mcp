@@ -107,7 +107,9 @@ make dev
 
 ### Connect to Claude Desktop
 
-**Option 1: HTTP Transport (Recommended - FastMCP 2.0 Standard)**
+**Important**: Claude Desktop only supports STDIO transport in its local configuration. To connect to HTTP/SSE servers, you need the `mcp-remote` bridge.
+
+**Option 1: HTTP Transport via mcp-remote (Recommended)**
 
 Add this configuration to your `claude_desktop_config.json`:
 
@@ -122,9 +124,9 @@ Add this configuration to your `claude_desktop_config.json`:
 }
 ```
 
-**Option 2: SSE Transport (Legacy Compatibility)**
+**Option 2: SSE Transport via mcp-remote (Legacy)**
 
-For older setups or specific requirements:
+For SSE endpoint:
 
 ```json
 {
@@ -137,9 +139,9 @@ For older setups or specific requirements:
 }
 ```
 
-**Option 3: Direct Python STDIO (Development Only)**
+**Option 3: Direct STDIO (Development - No HTTP Layer)**
 
-For development without HTTP transport:
+For direct connection without HTTP server:
 
 ```json
 {
@@ -153,7 +155,111 @@ For development without HTTP transport:
 }
 ```
 
+> **Note**: The `mcp-remote` package bridges Claude Desktop's STDIO-only support to HTTP/SSE servers. For native remote server support, use [Claude.ai web interface](https://claude.ai/settings/integrations) instead of Claude Desktop.
+
 That's it! MaverickMCP tools will now be available in your Claude Desktop interface.
+
+### Connect to Other MCP Clients
+
+**Claude Desktop** (Most Popular)
+
+Claude Desktop only supports STDIO transport locally. Choose from these options:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    }
+  }
+}
+```
+
+Location: `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS)
+or `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+
+**Cursor IDE**
+
+Cursor supports MCP through its settings. Add to your Cursor configuration:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    }
+  }
+}
+```
+
+Location: Cursor → Settings → MCP Servers
+
+**Claude Code (CLI)**
+
+Add MCP servers using the CLI:
+
+```bash
+# HTTP transport (recommended)
+claude mcp add --transport http maverick-mcp http://localhost:8000/mcp
+
+# SSE transport (legacy)
+claude mcp add --transport sse maverick-mcp http://localhost:8000/sse
+
+# Direct STDIO (development)
+claude mcp add --scope user maverick-stdio uv run python -m maverick_mcp.api.server
+```
+
+Or manually edit `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Continue.dev (VS Code Extension)**
+
+Add to your Continue configuration (`~/.continue/config.json`):
+
+```json
+{
+  "experimental": {
+    "modelContextProtocolServer": {
+      "transport": {
+        "type": "stdio",
+        "command": "npx",
+        "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+      }
+    }
+  }
+}
+```
+
+Then use `@MCP` in Continue chat to access MaverickMCP tools.
+
+**Windsurf IDE**
+
+Similar to Cursor, add to Windsurf MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    }
+  }
+}
+```
 
 ## Available Tools
 

@@ -128,9 +128,9 @@ make c                # Alias for make check
 
 ## Claude Desktop Setup
 
-### Modern Connection Method (Recommended)
+### Connection Methods
 
-The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
+**Important Limitation**: Claude Desktop only supports STDIO transport in its local configuration file. To connect to HTTP/SSE servers, you must use the `mcp-remote` bridge.
 
 1. **Start the server**:
 
@@ -140,7 +140,7 @@ The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
 
 2. **Configure Claude Desktop**:
 
-   **Option A: HTTP Transport (FastMCP 2.0 Standard - Recommended)**
+   **Method A: HTTP Transport via mcp-remote (Recommended)**
    
    Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -155,9 +155,9 @@ The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
    }
    ```
 
-   **Option B: SSE Transport (Legacy Compatibility)**
+   **Method B: SSE Transport via mcp-remote (Legacy)**
    
-   For older setups:
+   For SSE endpoint:
 
    ```json
    {
@@ -170,9 +170,9 @@ The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
    }
    ```
 
-   **Option C: Direct STDIO (Development Only)**
+   **Method C: Direct STDIO (Development - No HTTP Layer)**
    
-   For development without HTTP layer:
+   For development without HTTP server:
 
    ```json
    {
@@ -186,17 +186,145 @@ The server runs as an HTTP service and Claude Desktop connects via `mcp-remote`:
    }
    ```
 
+   **Method D: Remote via Claude.ai (Alternative)**
+   
+   For native remote server support, use [Claude.ai web interface](https://claude.ai/settings/integrations) instead of Claude Desktop.
+
 3. **Restart Claude Desktop** and test with: "Show me technical analysis for AAPL"
+
+### Other Popular MCP Clients
+
+**Claude Desktop** (Most Commonly Used)
+Claude Desktop is the most popular MCP client but has STDIO-only limitations:
+
+**Configuration Location:**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+
+**Connection Options:**
+```json
+{
+  "mcpServers": {
+    "maverick-mcp-http": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    },
+    "maverick-mcp-sse": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/sse"]
+    },
+    "maverick-mcp-direct": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "maverick_mcp.api.server"],
+      "cwd": "/path/to/maverick-mcp"
+    }
+  }
+}
+```
+
+**Restart Required:** Always restart Claude Desktop after config changes.
+
+**Cursor IDE**
+Cursor has native MCP support through its settings:
+
+1. Open Cursor → Settings → MCP Servers
+2. Add server configuration:
+   ```json
+   {
+     "mcpServers": {
+       "maverick-mcp": {
+         "command": "npx",
+         "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+       }
+     }
+   }
+   ```
+3. Restart Cursor to apply changes
+
+**Claude Code (CLI Tool)**
+Anthropic's official CLI tool with excellent MCP support:
+
+```bash
+# Add HTTP server (recommended)
+claude mcp add --transport http maverick-mcp http://localhost:8000/mcp
+
+# Add SSE server (legacy)
+claude mcp add --transport sse maverick-mcp http://localhost:8000/sse
+
+# Add direct STDIO server (development)
+claude mcp add --scope user maverick-stdio \
+  uv run python -m maverick_mcp.api.server
+
+# List configured servers
+claude mcp list
+```
+
+Or manually edit `~/.claude.json`:
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+**Continue.dev (VS Code Extension)**
+Continue was the first MCP client with full protocol support:
+
+1. Install Continue extension in VS Code
+2. Edit `~/.continue/config.json`:
+   ```json
+   {
+     "experimental": {
+       "modelContextProtocolServer": {
+         "transport": {
+           "type": "stdio",
+           "command": "npx",
+           "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+         }
+       }
+     }
+   }
+   ```
+3. Use `@MCP` in Continue chat to access tools
+
+**Windsurf IDE**
+Similar to Cursor, with native MCP support:
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+    }
+  }
+}
+```
+
+**Key Transport Notes:**
+- Most clients support STDIO transport only in local config
+- HTTP/SSE servers require `mcp-remote` bridge for most clients
+- Claude Code CLI has the most comprehensive transport support
+- Continue.dev offers excellent MCP integration with VS Code
 
 ### How It Works
 
 - **MCP Server**: Runs locally with multiple endpoints:
-  - HTTP (recommended): `http://localhost:8000/mcp`
-  - SSE (legacy): `http://localhost:8000/sse`
+  - HTTP (FastMCP 2.0 standard): `http://localhost:8000/mcp`
+  - SSE (legacy compatibility): `http://localhost:8000/sse`
   - STDIO: Direct connection for development
-- **mcp-remote**: Official bridge tool that connects stdio clients to HTTP servers
-- **Claude Desktop**: Connects via stdio to mcp-remote, which forwards to your server
-- **Transport Options**: HTTP (modern), SSE (legacy), or direct STDIO (development)
+- **mcp-remote**: Third-party bridge tool that connects STDIO-only clients to HTTP/SSE servers
+- **Claude Desktop Limitation**: Only supports STDIO transport in local config
+- **Connection Flow**: MCP Client (STDIO) ↔ mcp-remote ↔ HTTP/SSE Server
+- **Client Support**: Multiple MCP clients available (Claude Desktop, Cursor, Claude Code, Continue.dev, Windsurf)
+- **Transport Limitation**: Most clients only support STDIO locally, requiring mcp-remote for HTTP/SSE
+- **Alternative**: Use Claude.ai web interface for native remote server support
 - **No authentication**: Simple personal use - no login required
 
 ## Key Features
