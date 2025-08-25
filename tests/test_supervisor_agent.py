@@ -432,7 +432,7 @@ class TestSupervisorIntegration:
 
         from maverick_mcp.agents.supervisor import QueryClassifier
 
-        real_llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
+        real_llm = ChatOpenAI(model="gpt-5-mini", temperature=0)
         classifier = QueryClassifier(real_llm)
 
         result = await classifier.classify_query(

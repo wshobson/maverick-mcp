@@ -20,23 +20,50 @@ from maverick_mcp.utils.logging import get_logger
 
 # OpenTelemetry imports with graceful fallback
 try:
-    from opentelemetry import trace
-    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.exporter.zipkin.json import ZipkinExporter
-    from opentelemetry.instrumentation.asyncio import AsyncioInstrumentor
-    from opentelemetry.instrumentation.asyncpg import AsyncPGInstrumentor
-    from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-    from opentelemetry.instrumentation.httpx import HTTPXInstrumentor
-    from opentelemetry.instrumentation.redis import RedisInstrumentor
-    from opentelemetry.instrumentation.requests import RequestsInstrumentor
-    from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-    from opentelemetry.propagate import set_global_textmap
-    from opentelemetry.propagators.b3 import B3MultiFormat
-    from opentelemetry.sdk.resources import Resource
-    from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
-    from opentelemetry.semconv.resource import ResourceAttributes
-    from opentelemetry.trace import Status, StatusCode
+    from opentelemetry import trace  # type: ignore[import-untyped]
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+        OTLPSpanExporter,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.exporter.zipkin.json import (
+        ZipkinExporter,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.asyncio import (
+        AsyncioInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.asyncpg import (
+        AsyncPGInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.fastapi import (
+        FastAPIInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.httpx import (
+        HTTPXInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.redis import (
+        RedisInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.requests import (
+        RequestsInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.instrumentation.sqlalchemy import (
+        SQLAlchemyInstrumentor,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.propagate import (
+        set_global_textmap,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.propagators.b3 import (
+        B3MultiFormat,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.sdk.resources import Resource  # type: ignore[import-untyped]
+    from opentelemetry.sdk.trace import TracerProvider  # type: ignore[import-untyped]
+    from opentelemetry.sdk.trace.export import (  # type: ignore[import-untyped]
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
+    from opentelemetry.semconv.resource import (
+        ResourceAttributes,  # type: ignore[import-untyped]
+    )
+    from opentelemetry.trace import Status, StatusCode  # type: ignore[import-untyped]
 
     OTEL_AVAILABLE = True
 except ImportError:
@@ -137,7 +164,7 @@ class TracingService:
         # Console exporter (for development)
         if settings.environment == "development":
             console_exporter = ConsoleSpanExporter()
-            tracer_provider.add_span_processor(BatchSpanProcessor(console_exporter))
+            tracer_provider.add_span_processor(BatchSpanProcessor(console_exporter))  # type: ignore[attr-defined]
 
         # Jaeger exporter via OTLP (modern approach)
         jaeger_endpoint = os.getenv("JAEGER_ENDPOINT")
@@ -159,14 +186,14 @@ class TracingService:
                 # Add Jaeger-specific headers if needed
                 headers={},
             )
-            tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_otlp_exporter))
+            tracer_provider.add_span_processor(BatchSpanProcessor(jaeger_otlp_exporter))  # type: ignore[attr-defined]
             logger.info(f"Jaeger OTLP exporter configured: {otlp_endpoint}")
 
         # Zipkin exporter
         zipkin_endpoint = os.getenv("ZIPKIN_ENDPOINT")
         if zipkin_endpoint:
             zipkin_exporter = ZipkinExporter(endpoint=zipkin_endpoint)
-            tracer_provider.add_span_processor(BatchSpanProcessor(zipkin_exporter))
+            tracer_provider.add_span_processor(BatchSpanProcessor(zipkin_exporter))  # type: ignore[attr-defined]
             logger.info(f"Zipkin exporter configured: {zipkin_endpoint}")
 
         # OTLP exporter (for services like Honeycomb, New Relic, etc.)
@@ -176,7 +203,7 @@ class TracingService:
                 endpoint=otlp_endpoint,
                 headers={"x-honeycomb-team": os.getenv("HONEYCOMB_API_KEY", "")},
             )
-            tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+            tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))  # type: ignore[attr-defined]
             logger.info(f"OTLP exporter configured: {otlp_endpoint}")
 
     def _configure_propagators(self):
@@ -260,7 +287,7 @@ class TracingService:
             if not self.enabled:
                 return await func(*args, **kwargs)
 
-            tool_name = func.__name__
+            tool_name = getattr(func, "__name__", "unknown_tool")
             with self.trace_operation(
                 f"tool.{tool_name}",
                 attributes={

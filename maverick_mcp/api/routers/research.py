@@ -12,10 +12,13 @@ from typing import Any
 from fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-from maverick_mcp.agents.circuit_breaker import circuit_breaker
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.providers.llm_factory import get_llm
+from maverick_mcp.utils.orchestration_logging import (
+    log_performance_metrics,
+    log_tool_invocation,
+)
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -57,9 +60,7 @@ class SentimentAnalysisRequest(BaseModel):
     """Request model for sentiment analysis."""
 
     topic: str = Field(description="Topic for sentiment analysis")
-    timeframe: str | None = Field(
-        default="1w", description="Time frame for analysis"
-    )
+    timeframe: str | None = Field(default="1w", description="Time frame for analysis")
     persona: str | None = Field(default="moderate", description="Investor persona")
     session_id: str | None = Field(default=None, description="Session identifier")
 
@@ -101,6 +102,20 @@ def create_research_router() -> FastMCP:
         Returns:
             Comprehensive research results with insights, sentiment, and recommendations
         """
+        # Log tool invocation
+        log_tool_invocation(
+            "comprehensive_research",
+            {
+                "query": request.query[:100],  # Truncate for logging
+                "persona": request.persona,
+                "research_scope": request.research_scope,
+                "max_sources": request.max_sources,
+                "timeframe": request.timeframe,
+            },
+        )
+
+        start_time = datetime.now()
+
         try:
             agent = get_research_agent()
 
@@ -123,6 +138,20 @@ def create_research_router() -> FastMCP:
                 research_scope=request.research_scope,
                 max_sources=request.max_sources,
                 timeframe=request.timeframe,
+            )
+
+            # Calculate execution metrics
+            execution_time = (datetime.now() - start_time).total_seconds() * 1000
+
+            # Log performance metrics
+            log_performance_metrics(
+                "comprehensive_research",
+                {
+                    "execution_time_ms": execution_time,
+                    "sources_analyzed": result.get("sources_found", 0),
+                    "confidence_score": result.get("research_confidence", 0.0),
+                    "success": "error" not in result,
+                },
             )
 
             # Format response for MCP
@@ -155,7 +184,7 @@ def create_research_router() -> FastMCP:
                     "scope": request.research_scope,
                     "timeframe": request.timeframe,
                     "max_sources": request.max_sources,
-                    "execution_time_ms": result.get("total_execution_time_ms", 0),
+                    "execution_time_ms": execution_time,
                 },
                 "timestamp": datetime.now().isoformat(),
             }
@@ -192,6 +221,18 @@ def create_research_router() -> FastMCP:
         Returns:
             Detailed sentiment analysis with directional bias and confidence scores
         """
+        # Log tool invocation
+        log_tool_invocation(
+            "analyze_market_sentiment",
+            {
+                "topic": request.topic[:100],
+                "timeframe": request.timeframe,
+                "persona": request.persona,
+            },
+        )
+
+        start_time = datetime.now()
+
         try:
             agent = get_research_agent()
 
@@ -210,6 +251,20 @@ def create_research_router() -> FastMCP:
             # Perform sentiment analysis
             result = await agent.analyze_market_sentiment(
                 topic=request.topic, session_id=session_id, timeframe=request.timeframe
+            )
+
+            # Calculate execution metrics
+            execution_time = (datetime.now() - start_time).total_seconds() * 1000
+
+            # Log performance metrics
+            log_performance_metrics(
+                "analyze_market_sentiment",
+                {
+                    "execution_time_ms": execution_time,
+                    "sources_analyzed": result.get("sources_found", 0),
+                    "confidence_score": result.get("research_confidence", 0.0),
+                    "success": "error" not in result,
+                },
             )
 
             # Format response
@@ -242,7 +297,7 @@ def create_research_router() -> FastMCP:
                     "timeframe": request.timeframe,
                     "persona": request.persona,
                     "sources_analyzed": result.get("sources_found", 0),
-                    "execution_time_ms": result.get("total_execution_time_ms", 0),
+                    "execution_time_ms": execution_time,
                 },
                 "timestamp": datetime.now().isoformat(),
             }
@@ -281,6 +336,18 @@ def create_research_router() -> FastMCP:
         Returns:
             Comprehensive company analysis with financial insights and recommendations
         """
+        # Log tool invocation
+        log_tool_invocation(
+            "research_company_comprehensive",
+            {
+                "symbol": request.symbol,
+                "include_competitive_analysis": request.include_competitive_analysis,
+                "persona": request.persona,
+            },
+        )
+
+        start_time = datetime.now()
+
         try:
             agent = get_research_agent()
 
@@ -304,6 +371,21 @@ def create_research_router() -> FastMCP:
                 symbol=request.symbol,
                 session_id=session_id,
                 include_competitive_analysis=request.include_competitive_analysis,
+            )
+
+            # Calculate execution metrics
+            execution_time = (datetime.now() - start_time).total_seconds() * 1000
+
+            # Log performance metrics
+            log_performance_metrics(
+                "research_company_comprehensive",
+                {
+                    "execution_time_ms": execution_time,
+                    "sources_analyzed": result.get("sources_found", 0),
+                    "confidence_score": result.get("research_confidence", 0.0),
+                    "success": "error" not in result,
+                    "include_competitive": request.include_competitive_analysis,
+                },
             )
 
             # Format response
@@ -345,7 +427,7 @@ def create_research_router() -> FastMCP:
                     "persona": request.persona,
                     "sources_analyzed": result.get("sources_found", 0),
                     "research_scope": "comprehensive",
-                    "execution_time_ms": result.get("total_execution_time_ms", 0),
+                    "execution_time_ms": execution_time,
                 },
                 "timestamp": datetime.now().isoformat(),
             }

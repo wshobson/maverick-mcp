@@ -3,7 +3,7 @@ State definitions for LangGraph workflows using TypedDict pattern.
 """
 
 from datetime import datetime
-from typing import Annotated, Any, Dict, List
+from typing import Annotated, Any
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph import add_messages
@@ -345,21 +345,27 @@ class DeepResearchState(BaseAgentState):
     follow_up_research_suggestions: list[str]  # Suggestions for additional research
 
     # Parallel execution tracking
-    parallel_tasks: Dict[str, Dict[str, Any]]  # task_id -> task info
-    parallel_results: Dict[str, Dict[str, Any]]  # task_id -> results
+    parallel_tasks: dict[str, dict[str, Any]]  # task_id -> task info
+    parallel_results: dict[str, dict[str, Any]]  # task_id -> results
     parallel_execution_enabled: bool  # Whether parallel execution is enabled
     concurrent_agents_count: int  # Number of agents running concurrently
     parallel_efficiency_score: float  # Parallel vs sequential execution efficiency
     task_distribution_strategy: str  # How tasks were distributed
-    
+
     # Subagent specialization results
-    fundamental_research_results: Dict[str, Any]  # Results from fundamental analysis agent
-    technical_research_results: Dict[str, Any]  # Results from technical analysis agent  
-    sentiment_research_results: Dict[str, Any]  # Results from sentiment analysis agent
-    competitive_research_results: Dict[str, Any]  # Results from competitive analysis agent
-    
+    fundamental_research_results: dict[
+        str, Any
+    ]  # Results from fundamental analysis agent
+    technical_research_results: dict[str, Any]  # Results from technical analysis agent
+    sentiment_research_results: dict[str, Any]  # Results from sentiment analysis agent
+    competitive_research_results: dict[
+        str, Any
+    ]  # Results from competitive analysis agent
+
     # Cross-agent synthesis
-    consensus_findings: List[Dict[str, Any]]  # Findings agreed upon by multiple agents
-    conflicting_findings: List[Dict[str, Any]]  # Findings where agents disagree
-    confidence_weighted_analysis: Dict[str, Any]  # Analysis weighted by agent confidence
+    consensus_findings: list[dict[str, Any]]  # Findings agreed upon by multiple agents
+    conflicting_findings: list[dict[str, Any]]  # Findings where agents disagree
+    confidence_weighted_analysis: dict[
+        str, Any
+    ]  # Analysis weighted by agent confidence
     multi_agent_synthesis_quality: float  # Quality score for multi-agent synthesis

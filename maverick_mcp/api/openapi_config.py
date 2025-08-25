@@ -427,7 +427,7 @@ def configure_openapi(app: FastAPI) -> None:
         app: FastAPI application instance
     """
     # Override the default OpenAPI function
-    app.openapi = lambda: custom_openapi(app)
+    app.openapi = lambda: custom_openapi(app)  # type: ignore[assignment]
 
     # Add export endpoints
     @app.get("/api/openapi.json", include_in_schema=False)

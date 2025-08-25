@@ -235,8 +235,10 @@ def circuit_breaker(
             pass
     """
 
-    def decorator(func: Callable) -> Callable:
-        breaker_name = name or f"{func.__module__}.{func.__name__}"
+    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+        breaker_name = (
+            name or f"{func.__module__}.{getattr(func, '__name__', 'unknown')}"
+        )
 
         if asyncio.iscoroutinefunction(func):
 

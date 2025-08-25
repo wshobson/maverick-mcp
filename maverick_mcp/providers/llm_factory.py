@@ -26,13 +26,15 @@ def get_llm() -> Any:
     if openai_api_key:
         try:
             from langchain_openai import ChatOpenAI
-            return ChatOpenAI(model="gpt-4o-mini", temperature=0.3, streaming=True)
+
+            return ChatOpenAI(model="gpt-5-mini", temperature=0.3, streaming=True)
         except ImportError:
             pass
 
     if anthropic_api_key:
         try:
             from langchain_anthropic import ChatAnthropic
+
             return ChatAnthropic(model="claude-3-sonnet-20240229", temperature=0.3)
         except ImportError:
             pass

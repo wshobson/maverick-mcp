@@ -21,7 +21,7 @@ try:
 
     has_agents = True
 except ImportError:
-    agents_router = None
+    agents_router = None  # type: ignore[assignment]
     has_agents = False
 
 __all__ = [

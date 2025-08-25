@@ -178,7 +178,7 @@ class InspectorCompatibleSSE:
                     and hasattr(mcp._tool_manager, "tools")
                     and hasattr(mcp._tool_manager.tools, "items")
                 ):
-                    for tool_name, tool_func in mcp._tool_manager.tools.items():
+                    for tool_name, tool_func in mcp._tool_manager.tools.items():  # type: ignore[attr-defined]
                         tools.append(
                             {
                                 "name": tool_name,
@@ -200,7 +200,7 @@ class InspectorCompatibleSSE:
                     for (
                         resource_uri,
                         resource_func,
-                    ) in mcp._resource_manager.resources.items():
+                    ) in mcp._resource_manager.resources.items():  # type: ignore[attr-defined]
                         resources.append(
                             {
                                 "uri": resource_uri,
@@ -227,9 +227,9 @@ class InspectorCompatibleSSE:
                     hasattr(mcp, "_tool_manager")
                     and hasattr(mcp._tool_manager, "tools")
                     and hasattr(mcp._tool_manager.tools, "__contains__")
-                    and tool_name in mcp._tool_manager.tools
+                    and tool_name in mcp._tool_manager.tools  # type: ignore[operator]
                 ):
-                    tool_func = mcp._tool_manager.tools[tool_name]
+                    tool_func = mcp._tool_manager.tools[tool_name]  # type: ignore[index]
                     try:
                         # Execute the tool
                         result = await tool_func(**tool_args)

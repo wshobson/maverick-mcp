@@ -463,7 +463,7 @@ class SupervisorAgent(PersonaAwareAgent):
 
             @tool
             async def query_technical_agent(
-                symbol: str, timeframe: str = "1d", indicators: list[str] = None
+                symbol: str, timeframe: str = "1d", indicators: list[str] | None = None
             ) -> dict[str, Any]:
                 """Query the technical analysis agent for chart analysis and indicators."""
                 try:
@@ -536,7 +536,7 @@ class SupervisorAgent(PersonaAwareAgent):
 
         return tools
 
-    def _build_graph(self) -> StateGraph:
+    def _build_graph(self):
         """Build supervisor graph with multi-agent coordination."""
         workflow = StateGraph(SupervisorState)
 

@@ -23,14 +23,21 @@ from maverick_mcp.exceptions import (
     WebSearchError,
 )
 from maverick_mcp.memory.stores import ConversationStore
-from maverick_mcp.workflows.state import DeepResearchState
+from maverick_mcp.utils.orchestration_logging import (
+    get_orchestration_logger,
+    log_agent_execution,
+    log_method_call,
+    log_performance_metrics,
+    log_synthesis_operation,
+)
 from maverick_mcp.utils.parallel_research import (
     ParallelResearchConfig,
     ParallelResearchOrchestrator,
-    ResearchTask,
     ResearchResult,
+    ResearchTask,
     TaskDistributionEngine,
 )
+from maverick_mcp.workflows.state import DeepResearchState
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -409,9 +416,11 @@ class DeepResearchAgent(PersonaAwareAgent):
 
         # Configuration
         self.default_depth = research_depth or default_depth
-        self.max_sources = max_sources or RESEARCH_DEPTH_LEVELS.get(self.default_depth, {}).get("max_sources", 10)
+        self.max_sources = max_sources or RESEARCH_DEPTH_LEVELS.get(
+            self.default_depth, {}
+        ).get("max_sources", 10)
         self.content_analyzer = ContentAnalyzer(llm)
-        
+
         # Parallel execution configuration
         self.enable_parallel_execution = enable_parallel_execution
         self.parallel_config = parallel_config or ParallelResearchConfig(
@@ -490,7 +499,7 @@ class DeepResearchAgent(PersonaAwareAgent):
 
         return tools
 
-    def _build_graph(self) -> StateGraph:
+    def _build_graph(self):
         """Build research workflow graph with multi-step research process."""
         workflow = StateGraph(DeepResearchState)
 
@@ -545,12 +554,13 @@ class DeepResearchAgent(PersonaAwareAgent):
 
         return workflow.compile(checkpointer=self.checkpointer)
 
+    @log_method_call(component="DeepResearchAgent", include_timing=True)
     async def research_comprehensive(
         self,
         topic: str,
         session_id: str,
-        depth: str = None,
-        focus_areas: list[str] = None,
+        depth: str | None = None,
+        focus_areas: list[str] | None = None,
         timeframe: str = "30d",
         **kwargs,
     ) -> dict[str, Any]:
@@ -610,11 +620,28 @@ class DeepResearchAgent(PersonaAwareAgent):
         # Add additional parameters
         initial_state.update(kwargs)
 
+        # Set up orchestration logging
+        orchestration_logger = get_orchestration_logger("DeepResearchAgent")
+        orchestration_logger.set_request_context(
+            session_id=session_id,
+            research_topic=topic[:50],  # Truncate for logging
+            research_depth=depth,
+        )
+
         # Check if parallel execution is enabled and requested
-        use_parallel = kwargs.get("use_parallel_execution", self.enable_parallel_execution)
-        
+        use_parallel = kwargs.get(
+            "use_parallel_execution", self.enable_parallel_execution
+        )
+
+        orchestration_logger.info(
+            "🔍 RESEARCH_START",
+            execution_mode="parallel" if use_parallel else "sequential",
+            focus_areas=focus_areas[:3] if focus_areas else None,
+            timeframe=timeframe,
+        )
+
         if use_parallel:
-            logger.info(f"Using parallel execution for research: {topic}")
+            orchestration_logger.info("🚀 PARALLEL_EXECUTION_SELECTED")
             try:
                 result = await self._execute_parallel_research(
                     topic=topic,
@@ -624,16 +651,21 @@ class DeepResearchAgent(PersonaAwareAgent):
                     timeframe=timeframe,
                     initial_state=initial_state,
                     start_time=start_time,
-                    **kwargs
+                    **kwargs,
                 )
+                orchestration_logger.info("✅ PARALLEL_EXECUTION_SUCCESS")
                 return result
             except Exception as e:
-                logger.warning(f"Parallel execution failed, falling back to sequential: {e}")
+                orchestration_logger.warning(
+                    "⚠️ PARALLEL_FALLBACK_TRIGGERED",
+                    error=str(e),
+                    fallback_mode="sequential",
+                )
                 # Fall through to sequential execution
-        
+
         # Execute research workflow (sequential)
+        orchestration_logger.info("🔄 SEQUENTIAL_EXECUTION_START")
         try:
-            logger.info(f"Using sequential execution for research: {topic}")
             result = await self.graph.ainvoke(
                 initial_state,
                 config={
@@ -977,9 +1009,9 @@ class DeepResearchAgent(PersonaAwareAgent):
             return {"direction": "neutral", "confidence": 0.5, "consensus": 0.5}
 
         # Weighted average sentiment
-        weighted_sentiment = sum(s * w for s, w in zip(sentiments, weights, strict=False)) / sum(
-            weights
-        )
+        weighted_sentiment = sum(
+            s * w for s, w in zip(sentiments, weights, strict=False)
+        ) / sum(weights)
 
         # Convert back to direction
         if weighted_sentiment > 0.2:
@@ -1173,19 +1205,20 @@ class DeepResearchAgent(PersonaAwareAgent):
         """
         topic = f"{symbol} company financial analysis and outlook"
         if include_competitive_analysis:
-            kwargs["focus_areas"] = kwargs.get("focus_areas", []) + ["competitive_analysis", "market_position"]
+            kwargs["focus_areas"] = kwargs.get("focus_areas", []) + [
+                "competitive_analysis",
+                "market_position",
+            ]
 
         return await self.research_comprehensive(
-            topic=topic,
-            session_id=session_id,
-            **kwargs
+            topic=topic, session_id=session_id, **kwargs
         )
 
     async def research_topic(
         self,
         query: str,
         session_id: str,
-        focus_areas: list[str] = None,
+        focus_areas: list[str] | None = None,
         timeframe: str = "30d",
         **kwargs,
     ) -> dict[str, Any]:
@@ -1207,15 +1240,11 @@ class DeepResearchAgent(PersonaAwareAgent):
             session_id=session_id,
             focus_areas=focus_areas,
             timeframe=timeframe,
-            **kwargs
+            **kwargs,
         )
 
     async def analyze_market_sentiment(
-        self,
-        topic: str,
-        session_id: str,
-        timeframe: str = "7d",
-        **kwargs
+        self, topic: str, session_id: str, timeframe: str = "7d", **kwargs
     ) -> dict[str, Any]:
         """
         Analyze market sentiment around a topic.
@@ -1234,25 +1263,26 @@ class DeepResearchAgent(PersonaAwareAgent):
             session_id=session_id,
             focus_areas=["sentiment", "market_mood", "investor_sentiment"],
             timeframe=timeframe,
-            **kwargs
+            **kwargs,
         )
 
     # Parallel Execution Implementation
 
+    @log_method_call(component="DeepResearchAgent", include_timing=True)
     async def _execute_parallel_research(
         self,
         topic: str,
         session_id: str,
         depth: str,
-        focus_areas: list[str] = None,
+        focus_areas: list[str] | None = None,
         timeframe: str = "30d",
-        initial_state: dict[str, Any] = None,
-        start_time: datetime = None,
-        **kwargs
+        initial_state: dict[str, Any] | None = None,
+        start_time: datetime | None = None,
+        **kwargs,
     ) -> dict[str, Any]:
         """
         Execute research using parallel subagent execution.
-        
+
         Args:
             topic: Research topic
             session_id: Session identifier
@@ -1262,158 +1292,261 @@ class DeepResearchAgent(PersonaAwareAgent):
             initial_state: Initial state for backward compatibility
             start_time: Start time for execution measurement
             **kwargs: Additional parameters
-            
+
         Returns:
             Research results in same format as sequential execution
         """
+        orchestration_logger = get_orchestration_logger("ParallelExecution")
+        orchestration_logger.set_request_context(session_id=session_id)
+
         try:
             # Generate research tasks using task distributor
+            orchestration_logger.info("🎯 TASK_DISTRIBUTION_START")
             research_tasks = self.task_distributor.distribute_research_tasks(
-                topic=topic,
-                session_id=session_id,
-                focus_areas=focus_areas
+                topic=topic, session_id=session_id, focus_areas=focus_areas
             )
-            
-            logger.info(f"Generated {len(research_tasks)} parallel research tasks")
-            
+
+            orchestration_logger.info(
+                "📋 TASKS_GENERATED",
+                task_count=len(research_tasks),
+                task_types=[t.task_type for t in research_tasks],
+            )
+
             # Execute tasks in parallel
-            research_result = await self.parallel_orchestrator.execute_parallel_research(
-                tasks=research_tasks,
-                research_executor=self._execute_subagent_task,
-                synthesis_callback=self._synthesize_parallel_results
+            orchestration_logger.info("🚀 PARALLEL_ORCHESTRATION_START")
+            research_result = (
+                await self.parallel_orchestrator.execute_parallel_research(
+                    tasks=research_tasks,
+                    research_executor=self._execute_subagent_task,
+                    synthesis_callback=self._synthesize_parallel_results,
+                )
             )
-            
+
+            # Log parallel execution metrics
+            log_performance_metrics(
+                "ParallelExecution",
+                {
+                    "total_tasks": research_result.successful_tasks
+                    + research_result.failed_tasks,
+                    "successful_tasks": research_result.successful_tasks,
+                    "failed_tasks": research_result.failed_tasks,
+                    "parallel_efficiency": research_result.parallel_efficiency,
+                    "execution_time": research_result.total_execution_time,
+                },
+            )
+
             # Convert parallel results to expected format
+            orchestration_logger.info("🔄 RESULT_FORMATTING_START")
             formatted_result = await self._format_parallel_research_response(
                 research_result=research_result,
                 topic=topic,
                 session_id=session_id,
                 depth=depth,
                 initial_state=initial_state,
-                start_time=start_time
+                start_time=start_time,
             )
-            
+
+            orchestration_logger.info(
+                "✅ PARALLEL_RESEARCH_COMPLETE",
+                result_confidence=formatted_result.get("confidence_score", 0.0),
+                sources_analyzed=formatted_result.get("sources_analyzed", 0),
+            )
+
             return formatted_result
-            
+
         except Exception as e:
-            logger.error(f"Parallel research execution failed: {e}")
+            orchestration_logger.error("❌ PARALLEL_RESEARCH_FAILED", error=str(e))
             raise  # Re-raise to trigger fallback to sequential
-    
+
     async def _execute_subagent_task(self, task: ResearchTask) -> dict[str, Any]:
         """
         Execute a single research task using specialized subagent.
-        
+
         Args:
             task: ResearchTask to execute
-            
+
         Returns:
             Research results from specialized subagent
         """
-        logger.info(f"Executing subagent task: {task.task_id} ({task.task_type})")
-        
-        # Route to appropriate subagent based on task type
-        if task.task_type == "fundamental":
-            subagent = FundamentalResearchAgent(self)
-            return await subagent.execute_research(task)
-        elif task.task_type == "technical":
-            subagent = TechnicalResearchAgent(self)
-            return await subagent.execute_research(task)
-        elif task.task_type == "sentiment":
-            subagent = SentimentResearchAgent(self)
-            return await subagent.execute_research(task)
-        elif task.task_type == "competitive":
-            subagent = CompetitiveResearchAgent(self)
-            return await subagent.execute_research(task)
-        else:
-            # Default to fundamental analysis
-            subagent = FundamentalResearchAgent(self)
-            return await subagent.execute_research(task)
-    
+        with log_agent_execution(
+            task.task_type, task.task_id, task.focus_areas
+        ) as agent_logger:
+            agent_logger.info(
+                "🎯 SUBAGENT_ROUTING",
+                target_topic=task.target_topic[:50],
+                focus_count=len(task.focus_areas),
+                priority=task.priority,
+            )
+
+            # Route to appropriate subagent based on task type
+            if task.task_type == "fundamental":
+                subagent = FundamentalResearchAgent(self)
+                return await subagent.execute_research(task)
+            elif task.task_type == "technical":
+                subagent = TechnicalResearchAgent(self)
+                return await subagent.execute_research(task)
+            elif task.task_type == "sentiment":
+                subagent = SentimentResearchAgent(self)
+                return await subagent.execute_research(task)
+            elif task.task_type == "competitive":
+                subagent = CompetitiveResearchAgent(self)
+                return await subagent.execute_research(task)
+            else:
+                # Default to fundamental analysis
+                agent_logger.warning("⚠️ UNKNOWN_TASK_TYPE", fallback="fundamental")
+                subagent = FundamentalResearchAgent(self)
+                return await subagent.execute_research(task)
+
     async def _synthesize_parallel_results(
         self, task_results: dict[str, ResearchTask]
     ) -> dict[str, Any]:
         """
         Synthesize results from multiple parallel research tasks.
-        
+
         Args:
             task_results: Dictionary of task IDs to ResearchTask objects
-            
+
         Returns:
             Synthesized research insights
         """
-        logger.info(f"Synthesizing results from {len(task_results)} parallel tasks")
-        
+        synthesis_logger = get_orchestration_logger("ResultSynthesis")
+
+        log_synthesis_operation(
+            "parallel_research_synthesis",
+            len(task_results),
+            f"Synthesizing from {len(task_results)} research tasks",
+        )
+
+        # Extract successful results
+        successful_results = {
+            task_id: task.result
+            for task_id, task in task_results.items()
+            if task.status == "completed" and task.result
+        }
+
+        synthesis_logger.info(
+            "📊 SYNTHESIS_INPUT_ANALYSIS",
+            total_tasks=len(task_results),
+            successful_tasks=len(successful_results),
+            failed_tasks=len(task_results) - len(successful_results),
+        )
+
+        if not successful_results:
+            synthesis_logger.warning("⚠️ NO_SUCCESSFUL_RESULTS")
+            return {
+                "synthesis": "No research results available for synthesis",
+                "confidence_score": 0.0,
+            }
+
         all_insights = []
         all_risks = []
         all_opportunities = []
         sentiment_scores = []
         credibility_scores = []
-        
+
         # Aggregate results from all successful tasks
         for task_id, task in task_results.items():
             if task.status == "completed" and task.result:
+                task_type = task_id.split("_")[-1] if "_" in task_id else "unknown"
+                synthesis_logger.debug(
+                    "🔍 PROCESSING_TASK_RESULT",
+                    task_id=task_id,
+                    task_type=task_type,
+                    has_insights="insights" in task.result
+                    if isinstance(task.result, dict)
+                    else False,
+                )
+
                 result = task.result
-                
+
                 # Extract insights
                 insights = result.get("insights", [])
                 all_insights.extend(insights)
-                
+
                 # Extract risks and opportunities
                 risks = result.get("risk_factors", [])
                 opportunities = result.get("opportunities", [])
                 all_risks.extend(risks)
                 all_opportunities.extend(opportunities)
-                
+
                 # Extract sentiment
                 sentiment = result.get("sentiment", {})
                 if sentiment:
                     sentiment_scores.append(sentiment)
-                
+
                 # Extract credibility
                 credibility = result.get("credibility_score", 0.5)
                 credibility_scores.append(credibility)
-        
+
         # Calculate overall metrics
         overall_sentiment = self._calculate_aggregated_sentiment(sentiment_scores)
-        average_credibility = sum(credibility_scores) / len(credibility_scores) if credibility_scores else 0.5
-        
+        average_credibility = (
+            sum(credibility_scores) / len(credibility_scores)
+            if credibility_scores
+            else 0.5
+        )
+
         # Generate synthesis using LLM
         synthesis_prompt = self._build_parallel_synthesis_prompt(
             task_results, all_insights, all_risks, all_opportunities, overall_sentiment
         )
-        
+
         try:
-            synthesis_response = await self.llm.ainvoke([
-                SystemMessage(content="You are a financial research synthesizer. Combine insights from multiple specialized research agents."),
-                HumanMessage(content=synthesis_prompt)
-            ])
-            
+            synthesis_response = await self.llm.ainvoke(
+                [
+                    SystemMessage(
+                        content="You are a financial research synthesizer. Combine insights from multiple specialized research agents."
+                    ),
+                    HumanMessage(content=synthesis_prompt),
+                ]
+            )
+
             synthesis_text = synthesis_response.content
+            synthesis_logger.info("🧠 LLM_SYNTHESIS_SUCCESS")
         except Exception as e:
-            logger.warning(f"LLM synthesis failed, using fallback: {e}")
-            synthesis_text = self._generate_fallback_synthesis(all_insights, overall_sentiment)
-        
-        return {
+            synthesis_logger.warning(
+                "⚠️ LLM_SYNTHESIS_FAILED", error=str(e), fallback="text_fallback"
+            )
+            synthesis_text = self._generate_fallback_synthesis(
+                all_insights, overall_sentiment
+            )
+
+        synthesis_result = {
             "synthesis": synthesis_text,
-            "key_insights": list(dict.fromkeys(all_insights))[:10],  # Deduplicate and limit
+            "key_insights": list(dict.fromkeys(all_insights))[
+                :10
+            ],  # Deduplicate and limit
             "overall_sentiment": overall_sentiment,
             "risk_assessment": list(dict.fromkeys(all_risks))[:8],
             "investment_implications": {
                 "opportunities": list(dict.fromkeys(all_opportunities))[:5],
                 "threats": list(dict.fromkeys(all_risks))[:5],
-                "recommended_action": self._derive_parallel_recommendation(overall_sentiment),
+                "recommended_action": self._derive_parallel_recommendation(
+                    overall_sentiment
+                ),
             },
             "confidence_score": average_credibility,
             "task_breakdown": {
                 task_id: {
                     "type": task.task_type,
                     "status": task.status,
-                    "execution_time": (task.end_time - task.start_time) if task.start_time and task.end_time else 0
+                    "execution_time": (task.end_time - task.start_time)
+                    if task.start_time and task.end_time
+                    else 0,
                 }
                 for task_id, task in task_results.items()
-            }
+            },
         }
-    
+
+        synthesis_logger.info(
+            "✅ SYNTHESIS_COMPLETE",
+            insights_count=len(all_insights),
+            overall_confidence=average_credibility,
+            sentiment_direction=synthesis_result["overall_sentiment"]["direction"],
+        )
+
+        return synthesis_result
+
     async def _format_parallel_research_response(
         self,
         research_result: ResearchResult,
@@ -1421,21 +1554,21 @@ class DeepResearchAgent(PersonaAwareAgent):
         session_id: str,
         depth: str,
         initial_state: dict[str, Any],
-        start_time: datetime
+        start_time: datetime,
     ) -> dict[str, Any]:
         """Format parallel research results to match expected sequential format."""
-        
+
         execution_time = (datetime.now() - start_time).total_seconds() * 1000
-        
+
         # Extract synthesis from research result
         synthesis = research_result.synthesis or {}
-        
+
         # Create citations from task results
         citations = []
         all_sources = []
         citation_id = 1
-        
-        for task_id, task in research_result.task_results.items():
+
+        for _task_id, task in research_result.task_results.items():
             if task.status == "completed" and task.result:
                 sources = task.result.get("sources", [])
                 for source in sources:
@@ -1447,12 +1580,12 @@ class DeepResearchAgent(PersonaAwareAgent):
                         "author": source.get("author"),
                         "credibility_score": source.get("credibility_score", 0.5),
                         "relevance_score": source.get("relevance_score", 0.5),
-                        "research_type": task.task_type
+                        "research_type": task.task_type,
                     }
                     citations.append(citation)
                     all_sources.append(source)
                     citation_id += 1
-        
+
         return {
             "status": "success",
             "agent_type": "deep_research",
@@ -1470,40 +1603,43 @@ class DeepResearchAgent(PersonaAwareAgent):
                 "successful_tasks": research_result.successful_tasks,
                 "failed_tasks": research_result.failed_tasks,
                 "parallel_efficiency": research_result.parallel_efficiency,
-                "task_breakdown": synthesis.get("task_breakdown", {})
+                "task_breakdown": synthesis.get("task_breakdown", {}),
             },
             "search_queries_used": [],  # Will be populated by subagents
-            "source_diversity": len(set(source.get("url", "") for source in all_sources)) / max(len(all_sources), 1),
+            "source_diversity": len({source.get("url", "") for source in all_sources})
+            / max(len(all_sources), 1),
         }
-    
+
     # Helper methods for parallel execution
-    
-    def _calculate_aggregated_sentiment(self, sentiment_scores: list[dict[str, Any]]) -> dict[str, Any]:
+
+    def _calculate_aggregated_sentiment(
+        self, sentiment_scores: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate overall sentiment from multiple sentiment scores."""
         if not sentiment_scores:
             return {"direction": "neutral", "confidence": 0.5}
-        
+
         # Convert sentiment directions to numeric values
         numeric_scores = []
         confidences = []
-        
+
         for sentiment in sentiment_scores:
             direction = sentiment.get("direction", "neutral")
             confidence = sentiment.get("confidence", 0.5)
-            
+
             if direction == "bullish":
                 numeric_scores.append(1 * confidence)
             elif direction == "bearish":
                 numeric_scores.append(-1 * confidence)
             else:
                 numeric_scores.append(0)
-            
+
             confidences.append(confidence)
-        
+
         # Calculate weighted average
         avg_score = sum(numeric_scores) / len(numeric_scores)
         avg_confidence = sum(confidences) / len(confidences)
-        
+
         # Convert back to direction
         if avg_score > 0.2:
             direction = "bullish"
@@ -1511,46 +1647,48 @@ class DeepResearchAgent(PersonaAwareAgent):
             direction = "bearish"
         else:
             direction = "neutral"
-        
+
         return {
             "direction": direction,
             "confidence": avg_confidence,
             "consensus": 1 - abs(avg_score) if abs(avg_score) < 1 else 0,
-            "source_count": len(sentiment_scores)
+            "source_count": len(sentiment_scores),
         }
-    
+
     def _build_parallel_synthesis_prompt(
-        self, 
+        self,
         task_results: dict[str, ResearchTask],
         all_insights: list[str],
         all_risks: list[str],
         all_opportunities: list[str],
-        overall_sentiment: dict[str, Any]
+        overall_sentiment: dict[str, Any],
     ) -> str:
         """Build synthesis prompt for parallel research results."""
-        successful_tasks = [task for task in task_results.values() if task.status == "completed"]
-        
+        successful_tasks = [
+            task for task in task_results.values() if task.status == "completed"
+        ]
+
         prompt = f"""
         Synthesize comprehensive research findings from {len(successful_tasks)} specialized research agents.
-        
+
         Research Task Results:
         """
-        
+
         for task in successful_tasks:
             if task.result:
                 prompt += f"\n{task.task_type.upper()} RESEARCH:"
                 prompt += f"  - Status: {task.status}"
                 prompt += f"  - Key Insights: {', '.join(task.result.get('insights', [])[:3])}"
                 prompt += f"  - Sentiment: {task.result.get('sentiment', {}).get('direction', 'neutral')}"
-        
+
         prompt += f"""
-        
+
         AGGREGATED DATA:
         - Total Insights: {len(all_insights)}
-        - Risk Factors: {len(all_risks)}  
+        - Risk Factors: {len(all_risks)}
         - Opportunities: {len(all_opportunities)}
-        - Overall Sentiment: {overall_sentiment.get('direction')} (confidence: {overall_sentiment.get('confidence', 0.5):.2f})
-        
+        - Overall Sentiment: {overall_sentiment.get("direction")} (confidence: {overall_sentiment.get("confidence", 0.5):.2f})
+
         Please provide a comprehensive synthesis that includes:
         1. Executive Summary (2-3 sentences)
         2. Key Findings from all research areas
@@ -1558,47 +1696,50 @@ class DeepResearchAgent(PersonaAwareAgent):
         4. Risk Assessment and Mitigation
         5. Recommended Actions based on parallel analysis
         6. Confidence Level and reasoning
-        
+
         Focus on insights that are supported by multiple research agents and highlight any contradictions.
         """
-        
+
         return prompt
-    
-    def _generate_fallback_synthesis(self, insights: list[str], sentiment: dict[str, Any]) -> str:
+
+    def _generate_fallback_synthesis(
+        self, insights: list[str], sentiment: dict[str, Any]
+    ) -> str:
         """Generate fallback synthesis when LLM synthesis fails."""
         return f"""
         Research synthesis generated from {len(insights)} insights.
-        
-        Overall sentiment: {sentiment.get('direction', 'neutral')} with {sentiment.get('confidence', 0.5):.2f} confidence.
-        
+
+        Overall sentiment: {sentiment.get("direction", "neutral")} with {sentiment.get("confidence", 0.5):.2f} confidence.
+
         Key insights identified:
         {chr(10).join(f"- {insight}" for insight in insights[:5])}
-        
+
         This is a fallback synthesis due to LLM processing limitations.
         """
-    
+
     def _derive_parallel_recommendation(self, sentiment: dict[str, Any]) -> str:
         """Derive investment recommendation from parallel analysis."""
         direction = sentiment.get("direction", "neutral")
         confidence = sentiment.get("confidence", 0.5)
-        
+
         if direction == "bullish" and confidence > 0.7:
-            return f"Strong buy signal based on parallel analysis from multiple research angles"
+            return "Strong buy signal based on parallel analysis from multiple research angles"
         elif direction == "bullish" and confidence > 0.5:
-            return f"Consider position building with appropriate risk management"
+            return "Consider position building with appropriate risk management"
         elif direction == "bearish" and confidence > 0.7:
-            return f"Exercise significant caution - multiple research areas show negative signals"
+            return "Exercise significant caution - multiple research areas show negative signals"
         elif direction == "bearish" and confidence > 0.5:
-            return f"Monitor closely - mixed to negative signals suggest waiting"
+            return "Monitor closely - mixed to negative signals suggest waiting"
         else:
-            return f"Neutral stance recommended - parallel analysis shows mixed signals"
+            return "Neutral stance recommended - parallel analysis shows mixed signals"
 
 
 # Specialized Subagent Classes
 
+
 class BaseSubagent:
     """Base class for specialized research subagents."""
-    
+
     def __init__(self, parent_agent: "DeepResearchAgent"):
         self.parent = parent_agent
         self.llm = parent_agent.llm
@@ -1606,25 +1747,27 @@ class BaseSubagent:
         self.content_analyzer = parent_agent.content_analyzer
         self.persona = parent_agent.persona
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
-    
+
     async def execute_research(self, task: ResearchTask) -> dict[str, Any]:
         """Execute research task - to be implemented by subclasses."""
         raise NotImplementedError
-    
+
     async def _perform_specialized_search(
         self, topic: str, specialized_queries: list[str], max_results: int = 10
     ) -> list[dict[str, Any]]:
         """Perform specialized web search for this subagent type."""
         all_results = []
-        
+
         for query in specialized_queries:
             for provider in self.search_providers:
                 try:
-                    results = await provider.search(query, num_results=max_results // len(specialized_queries))
+                    results = await provider.search(
+                        query, num_results=max_results // len(specialized_queries)
+                    )
                     all_results.extend(results)
                 except Exception as e:
                     self.logger.warning(f"Search failed for {query}: {e}")
-        
+
         # Deduplicate results
         seen_urls = set()
         unique_results = []
@@ -1632,38 +1775,42 @@ class BaseSubagent:
             if result.get("url") not in seen_urls:
                 seen_urls.add(result["url"])
                 unique_results.append(result)
-        
+
         return unique_results[:max_results]
-    
+
     async def _analyze_search_results(
         self, results: list[dict[str, Any]], analysis_focus: str
     ) -> list[dict[str, Any]]:
         """Analyze search results with specialized focus."""
         analyzed_results = []
-        
+
         for result in results:
             if result.get("content"):
                 try:
                     analysis = await self.content_analyzer.analyze_content(
                         content=result["content"],
                         persona=self.persona.name.lower(),
-                        analysis_focus=analysis_focus
+                        analysis_focus=analysis_focus,
                     )
-                    
+
                     # Add source credibility
                     credibility_score = self._calculate_source_credibility(result)
                     analysis["credibility_score"] = credibility_score
-                    
-                    analyzed_results.append({
-                        **result,
-                        "analysis": analysis,
-                        "credibility_score": credibility_score
-                    })
+
+                    analyzed_results.append(
+                        {
+                            **result,
+                            "analysis": analysis,
+                            "credibility_score": credibility_score,
+                        }
+                    )
                 except Exception as e:
-                    self.logger.warning(f"Content analysis failed for {result.get('url', 'unknown')}: {e}")
-        
+                    self.logger.warning(
+                        f"Content analysis failed for {result.get('url', 'unknown')}: {e}"
+                    )
+
         return analyzed_results
-    
+
     def _calculate_source_credibility(self, source: dict[str, Any]) -> float:
         """Calculate credibility score for a source - reuse from parent."""
         return self.parent._calculate_source_credibility(source)
@@ -1671,45 +1818,45 @@ class BaseSubagent:
 
 class FundamentalResearchAgent(BaseSubagent):
     """Specialized agent for fundamental financial analysis."""
-    
+
     async def execute_research(self, task: ResearchTask) -> dict[str, Any]:
         """Execute fundamental analysis research."""
         self.logger.info(f"Executing fundamental research for: {task.target_topic}")
-        
+
         # Generate fundamental-specific search queries
         queries = self._generate_fundamental_queries(task.target_topic)
-        
+
         # Perform specialized search
         search_results = await self._perform_specialized_search(
-            topic=task.target_topic,
-            specialized_queries=queries,
-            max_results=8
+            topic=task.target_topic, specialized_queries=queries, max_results=8
         )
-        
+
         # Analyze results with fundamental focus
         analyzed_results = await self._analyze_search_results(
             search_results, analysis_focus="fundamental_analysis"
         )
-        
+
         # Extract fundamental-specific insights
         insights = []
         risks = []
         opportunities = []
         sources = []
-        
+
         for result in analyzed_results:
             analysis = result.get("analysis", {})
             insights.extend(analysis.get("insights", []))
             risks.extend(analysis.get("risk_factors", []))
             opportunities.extend(analysis.get("opportunities", []))
-            sources.append({
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "credibility_score": result.get("credibility_score", 0.5),
-                "published_date": result.get("published_date"),
-                "author": result.get("author")
-            })
-        
+            sources.append(
+                {
+                    "title": result.get("title", ""),
+                    "url": result.get("url", ""),
+                    "credibility_score": result.get("credibility_score", 0.5),
+                    "published_date": result.get("published_date"),
+                    "author": result.get("author"),
+                }
+            )
+
         return {
             "research_type": "fundamental",
             "insights": list(dict.fromkeys(insights))[:8],  # Deduplicate
@@ -1718,9 +1865,14 @@ class FundamentalResearchAgent(BaseSubagent):
             "sentiment": self._calculate_fundamental_sentiment(analyzed_results),
             "credibility_score": self._calculate_average_credibility(analyzed_results),
             "sources": sources,
-            "focus_areas": ["earnings", "valuation", "financial_health", "growth_prospects"]
+            "focus_areas": [
+                "earnings",
+                "valuation",
+                "financial_health",
+                "growth_prospects",
+            ],
         }
-    
+
     def _generate_fundamental_queries(self, topic: str) -> list[str]:
         """Generate fundamental analysis specific queries."""
         return [
@@ -1730,8 +1882,10 @@ class FundamentalResearchAgent(BaseSubagent):
             f"{topic} valuation PE ratio price earnings",
             f"{topic} cash flow dividend payout",
         ]
-    
-    def _calculate_fundamental_sentiment(self, results: list[dict[str, Any]]) -> dict[str, Any]:
+
+    def _calculate_fundamental_sentiment(
+        self, results: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate sentiment specific to fundamental analysis."""
         sentiments = []
         for result in results:
@@ -1739,71 +1893,67 @@ class FundamentalResearchAgent(BaseSubagent):
             sentiment = analysis.get("sentiment", {})
             if sentiment:
                 sentiments.append(sentiment)
-        
+
         if not sentiments:
             return {"direction": "neutral", "confidence": 0.5}
-        
-        # Weight fundamental sentiment more heavily on financial metrics
-        positive_indicators = ["growth", "profit", "strong", "beat", "exceeded"]
-        negative_indicators = ["loss", "decline", "weak", "missed", "below"]
-        
+
         # Simple aggregation for now
         bullish_count = sum(1 for s in sentiments if s.get("direction") == "bullish")
         bearish_count = sum(1 for s in sentiments if s.get("direction") == "bearish")
-        
+
         if bullish_count > bearish_count:
             return {"direction": "bullish", "confidence": 0.7}
         elif bearish_count > bullish_count:
             return {"direction": "bearish", "confidence": 0.7}
         else:
             return {"direction": "neutral", "confidence": 0.5}
-    
+
     def _calculate_average_credibility(self, results: list[dict[str, Any]]) -> float:
         """Calculate average credibility of sources."""
         if not results:
             return 0.5
-        
+
         credibility_scores = [r.get("credibility_score", 0.5) for r in results]
         return sum(credibility_scores) / len(credibility_scores)
 
 
 class TechnicalResearchAgent(BaseSubagent):
     """Specialized agent for technical analysis research."""
-    
+
     async def execute_research(self, task: ResearchTask) -> dict[str, Any]:
         """Execute technical analysis research."""
         self.logger.info(f"Executing technical research for: {task.target_topic}")
-        
+
         queries = self._generate_technical_queries(task.target_topic)
         search_results = await self._perform_specialized_search(
-            topic=task.target_topic,
-            specialized_queries=queries,
-            max_results=6
+            topic=task.target_topic, specialized_queries=queries, max_results=6
         )
-        
+
         analyzed_results = await self._analyze_search_results(
             search_results, analysis_focus="technical_analysis"
         )
-        
+
         # Extract technical-specific insights
         insights = []
         risks = []
         opportunities = []
         sources = []
-        
+
         for result in analyzed_results:
             analysis = result.get("analysis", {})
             insights.extend(analysis.get("insights", []))
             risks.extend(analysis.get("risk_factors", []))
             opportunities.extend(analysis.get("opportunities", []))
-            sources.append({
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "credibility_score": result.get("credibility_score", 0.5),
-                "published_date": result.get("published_date"),
-                "author": result.get("author")
-            })
-        
+            sources.append(
+                {
+                    "title": result.get("title", ""),
+                    "url": result.get("url", ""),
+                    "credibility_score": result.get("credibility_score", 0.5),
+                    "published_date": result.get("published_date"),
+                    "author": result.get("author"),
+                }
+            )
+
         return {
             "research_type": "technical",
             "insights": list(dict.fromkeys(insights))[:8],
@@ -1812,9 +1962,14 @@ class TechnicalResearchAgent(BaseSubagent):
             "sentiment": self._calculate_technical_sentiment(analyzed_results),
             "credibility_score": self._calculate_average_credibility(analyzed_results),
             "sources": sources,
-            "focus_areas": ["price_action", "chart_patterns", "technical_indicators", "support_resistance"]
+            "focus_areas": [
+                "price_action",
+                "chart_patterns",
+                "technical_indicators",
+                "support_resistance",
+            ],
         }
-    
+
     def _generate_technical_queries(self, topic: str) -> list[str]:
         """Generate technical analysis specific queries."""
         return [
@@ -1824,26 +1979,32 @@ class TechnicalResearchAgent(BaseSubagent):
             f"{topic} breakout trend analysis",
             f"{topic} volume analysis price movement",
         ]
-    
-    def _calculate_technical_sentiment(self, results: list[dict[str, Any]]) -> dict[str, Any]:
+
+    def _calculate_technical_sentiment(
+        self, results: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate sentiment specific to technical analysis."""
         # Similar to fundamental but focused on technical indicators
-        sentiments = [r.get("analysis", {}).get("sentiment", {}) for r in results if r.get("analysis")]
+        sentiments = [
+            r.get("analysis", {}).get("sentiment", {})
+            for r in results
+            if r.get("analysis")
+        ]
         sentiments = [s for s in sentiments if s]
-        
+
         if not sentiments:
             return {"direction": "neutral", "confidence": 0.5}
-        
+
         bullish_count = sum(1 for s in sentiments if s.get("direction") == "bullish")
         bearish_count = sum(1 for s in sentiments if s.get("direction") == "bearish")
-        
+
         if bullish_count > bearish_count:
             return {"direction": "bullish", "confidence": 0.6}
         elif bearish_count > bullish_count:
             return {"direction": "bearish", "confidence": 0.6}
         else:
             return {"direction": "neutral", "confidence": 0.5}
-    
+
     def _calculate_average_credibility(self, results: list[dict[str, Any]]) -> float:
         """Calculate average credibility of sources."""
         if not results:
@@ -1854,41 +2015,41 @@ class TechnicalResearchAgent(BaseSubagent):
 
 class SentimentResearchAgent(BaseSubagent):
     """Specialized agent for market sentiment analysis."""
-    
+
     async def execute_research(self, task: ResearchTask) -> dict[str, Any]:
         """Execute sentiment analysis research."""
         self.logger.info(f"Executing sentiment research for: {task.target_topic}")
-        
+
         queries = self._generate_sentiment_queries(task.target_topic)
         search_results = await self._perform_specialized_search(
-            topic=task.target_topic,
-            specialized_queries=queries,
-            max_results=10
+            topic=task.target_topic, specialized_queries=queries, max_results=10
         )
-        
+
         analyzed_results = await self._analyze_search_results(
             search_results, analysis_focus="sentiment_analysis"
         )
-        
+
         # Extract sentiment-specific insights
         insights = []
         risks = []
         opportunities = []
         sources = []
-        
+
         for result in analyzed_results:
             analysis = result.get("analysis", {})
             insights.extend(analysis.get("insights", []))
             risks.extend(analysis.get("risk_factors", []))
             opportunities.extend(analysis.get("opportunities", []))
-            sources.append({
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "credibility_score": result.get("credibility_score", 0.5),
-                "published_date": result.get("published_date"),
-                "author": result.get("author")
-            })
-        
+            sources.append(
+                {
+                    "title": result.get("title", ""),
+                    "url": result.get("url", ""),
+                    "credibility_score": result.get("credibility_score", 0.5),
+                    "published_date": result.get("published_date"),
+                    "author": result.get("author"),
+                }
+            )
+
         return {
             "research_type": "sentiment",
             "insights": list(dict.fromkeys(insights))[:8],
@@ -1897,9 +2058,14 @@ class SentimentResearchAgent(BaseSubagent):
             "sentiment": self._calculate_market_sentiment(analyzed_results),
             "credibility_score": self._calculate_average_credibility(analyzed_results),
             "sources": sources,
-            "focus_areas": ["market_sentiment", "analyst_opinions", "news_sentiment", "social_sentiment"]
+            "focus_areas": [
+                "market_sentiment",
+                "analyst_opinions",
+                "news_sentiment",
+                "social_sentiment",
+            ],
         }
-    
+
     def _generate_sentiment_queries(self, topic: str) -> list[str]:
         """Generate sentiment analysis specific queries."""
         return [
@@ -1909,45 +2075,51 @@ class SentimentResearchAgent(BaseSubagent):
             f"{topic} social sentiment reddit twitter discussion",
             f"{topic} institutional investor sentiment",
         ]
-    
-    def _calculate_market_sentiment(self, results: list[dict[str, Any]]) -> dict[str, Any]:
+
+    def _calculate_market_sentiment(
+        self, results: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate overall market sentiment."""
-        sentiments = [r.get("analysis", {}).get("sentiment", {}) for r in results if r.get("analysis")]
+        sentiments = [
+            r.get("analysis", {}).get("sentiment", {})
+            for r in results
+            if r.get("analysis")
+        ]
         sentiments = [s for s in sentiments if s]
-        
+
         if not sentiments:
             return {"direction": "neutral", "confidence": 0.5}
-        
+
         # Weighted by confidence
         weighted_scores = []
         total_confidence = 0
-        
+
         for sentiment in sentiments:
             direction = sentiment.get("direction", "neutral")
             confidence = sentiment.get("confidence", 0.5)
-            
+
             if direction == "bullish":
                 weighted_scores.append(1 * confidence)
             elif direction == "bearish":
                 weighted_scores.append(-1 * confidence)
             else:
                 weighted_scores.append(0)
-            
+
             total_confidence += confidence
-        
+
         if not weighted_scores:
             return {"direction": "neutral", "confidence": 0.5}
-        
+
         avg_score = sum(weighted_scores) / len(weighted_scores)
         avg_confidence = total_confidence / len(sentiments)
-        
+
         if avg_score > 0.3:
             return {"direction": "bullish", "confidence": avg_confidence}
         elif avg_score < -0.3:
             return {"direction": "bearish", "confidence": avg_confidence}
         else:
             return {"direction": "neutral", "confidence": avg_confidence}
-    
+
     def _calculate_average_credibility(self, results: list[dict[str, Any]]) -> float:
         """Calculate average credibility of sources."""
         if not results:
@@ -1958,41 +2130,41 @@ class SentimentResearchAgent(BaseSubagent):
 
 class CompetitiveResearchAgent(BaseSubagent):
     """Specialized agent for competitive and industry analysis."""
-    
+
     async def execute_research(self, task: ResearchTask) -> dict[str, Any]:
         """Execute competitive analysis research."""
         self.logger.info(f"Executing competitive research for: {task.target_topic}")
-        
+
         queries = self._generate_competitive_queries(task.target_topic)
         search_results = await self._perform_specialized_search(
-            topic=task.target_topic,
-            specialized_queries=queries,
-            max_results=8
+            topic=task.target_topic, specialized_queries=queries, max_results=8
         )
-        
+
         analyzed_results = await self._analyze_search_results(
             search_results, analysis_focus="competitive_analysis"
         )
-        
+
         # Extract competitive-specific insights
         insights = []
         risks = []
         opportunities = []
         sources = []
-        
+
         for result in analyzed_results:
             analysis = result.get("analysis", {})
             insights.extend(analysis.get("insights", []))
             risks.extend(analysis.get("risk_factors", []))
             opportunities.extend(analysis.get("opportunities", []))
-            sources.append({
-                "title": result.get("title", ""),
-                "url": result.get("url", ""),
-                "credibility_score": result.get("credibility_score", 0.5),
-                "published_date": result.get("published_date"),
-                "author": result.get("author")
-            })
-        
+            sources.append(
+                {
+                    "title": result.get("title", ""),
+                    "url": result.get("url", ""),
+                    "credibility_score": result.get("credibility_score", 0.5),
+                    "published_date": result.get("published_date"),
+                    "author": result.get("author"),
+                }
+            )
+
         return {
             "research_type": "competitive",
             "insights": list(dict.fromkeys(insights))[:8],
@@ -2001,9 +2173,14 @@ class CompetitiveResearchAgent(BaseSubagent):
             "sentiment": self._calculate_competitive_sentiment(analyzed_results),
             "credibility_score": self._calculate_average_credibility(analyzed_results),
             "sources": sources,
-            "focus_areas": ["competitive_position", "market_share", "industry_trends", "competitive_advantages"]
+            "focus_areas": [
+                "competitive_position",
+                "market_share",
+                "industry_trends",
+                "competitive_advantages",
+            ],
         }
-    
+
     def _generate_competitive_queries(self, topic: str) -> list[str]:
         """Generate competitive analysis specific queries."""
         return [
@@ -2013,26 +2190,32 @@ class CompetitiveResearchAgent(BaseSubagent):
             f"{topic} competitive landscape market dynamics",
             f"{topic} industry outlook sector performance",
         ]
-    
-    def _calculate_competitive_sentiment(self, results: list[dict[str, Any]]) -> dict[str, Any]:
+
+    def _calculate_competitive_sentiment(
+        self, results: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Calculate sentiment specific to competitive positioning."""
-        sentiments = [r.get("analysis", {}).get("sentiment", {}) for r in results if r.get("analysis")]
+        sentiments = [
+            r.get("analysis", {}).get("sentiment", {})
+            for r in results
+            if r.get("analysis")
+        ]
         sentiments = [s for s in sentiments if s]
-        
+
         if not sentiments:
             return {"direction": "neutral", "confidence": 0.5}
-        
+
         # Focus on competitive strength indicators
         bullish_count = sum(1 for s in sentiments if s.get("direction") == "bullish")
         bearish_count = sum(1 for s in sentiments if s.get("direction") == "bearish")
-        
+
         if bullish_count > bearish_count:
             return {"direction": "bullish", "confidence": 0.6}
         elif bearish_count > bullish_count:
             return {"direction": "bearish", "confidence": 0.6}
         else:
             return {"direction": "neutral", "confidence": 0.5}
-    
+
     def _calculate_average_credibility(self, results: list[dict[str, Any]]) -> float:
         """Calculate average credibility of sources."""
         if not results:

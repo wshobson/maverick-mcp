@@ -35,12 +35,12 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
         if openai_api_key:
             from langchain_openai import ChatOpenAI
 
-            llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.3, streaming=True)
+            llm = ChatOpenAI(model="gpt-5-mini", temperature=0.3, streaming=True)
         else:
             # Fallback for testing
             from langchain_core.language_models import FakeListLLM
 
-            llm = FakeListLLM(
+            llm = FakeListLLM(  # type: ignore[assignment]
                 responses=[
                     "Mock market analysis response",
                     "Mock technical analysis response",

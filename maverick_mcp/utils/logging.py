@@ -24,10 +24,10 @@ import psutil
 from fastmcp import Context as MCPContext
 
 # Context variables for request tracking
-request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
-user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
-tool_name_var: ContextVar[str | None] = ContextVar("tool_name", default=None)
-request_start_var: ContextVar[float | None] = ContextVar("request_start", default=None)
+request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)  # type: ignore[assignment]
+user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)  # type: ignore[assignment]
+tool_name_var: ContextVar[str | None] = ContextVar("tool_name", default=None)  # type: ignore[assignment]
+request_start_var: ContextVar[float | None] = ContextVar("request_start", default=None)  # type: ignore[assignment]
 
 
 class StructuredFormatter(logging.Formatter):
@@ -237,7 +237,7 @@ def log_tool_execution(func: Callable) -> Callable:
         request_id_var.set(request_id)
 
         # Set tool name
-        tool_name = func.__name__
+        tool_name = getattr(func, "__name__", "unknown_function")
         tool_name_var.set(tool_name)
 
         # Set start time
