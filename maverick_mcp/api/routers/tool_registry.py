@@ -3,7 +3,10 @@ Tool registry to register router tools directly on main server.
 This avoids Claude Desktop's issue with mounted router tool names.
 """
 
+import logging
 from fastmcp import FastMCP
+
+logger = logging.getLogger(__name__)
 
 
 def register_technical_tools(mcp: FastMCP) -> None:
@@ -115,19 +118,45 @@ def register_agent_tools(mcp: FastMCP) -> None:
     try:
         from maverick_mcp.api.routers.agents import (
             analyze_market_with_agent,
+            compare_multi_agent_analysis,
             compare_personas_analysis,
+            deep_research_financial,
             get_agent_streaming_analysis,
             list_available_agents,
+            orchestrated_analysis,
         )
 
+        # Original agent tools
         mcp.tool(name="agents_analyze_market_with_agent")(analyze_market_with_agent)
         mcp.tool(name="agents_get_agent_streaming_analysis")(
             get_agent_streaming_analysis
         )
         mcp.tool(name="agents_list_available_agents")(list_available_agents)
         mcp.tool(name="agents_compare_personas_analysis")(compare_personas_analysis)
+
+        # New orchestration tools
+        mcp.tool(name="agents_orchestrated_analysis")(orchestrated_analysis)
+        mcp.tool(name="agents_deep_research_financial")(deep_research_financial)
+        mcp.tool(name="agents_compare_multi_agent_analysis")(
+            compare_multi_agent_analysis
+        )
     except ImportError:
         # Agents module not available
+        pass
+
+
+def register_research_tools(mcp: FastMCP) -> None:
+    """Register deep research tools directly on main server"""
+    try:
+        from maverick_mcp.api.routers.research import research_router
+
+        # TODO: Fix tool extraction from research router
+        # The _tools attribute doesn't exist on FastMCP objects
+        # For now, skip research tool registration to allow server startup
+        logger.warning("Research tools registration temporarily disabled")
+        pass
+    except ImportError:
+        # Research module not available - skip
         pass
 
 
@@ -139,3 +168,4 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     register_data_tools(mcp)
     register_performance_tools(mcp)
     register_agent_tools(mcp)
+    register_research_tools(mcp)  # Add deep research tools

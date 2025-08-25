@@ -211,3 +211,56 @@ class CircuitBreakerManager:
 
 # Global circuit breaker manager
 circuit_manager = CircuitBreakerManager()
+
+
+def circuit_breaker(
+    name: str | None = None,
+    failure_threshold: int = 5,
+    recovery_timeout: int = 60,
+    expected_exception: type[Exception] = Exception,
+):
+    """
+    Decorator to wrap functions with circuit breaker protection.
+
+    Args:
+        name: Circuit breaker name (uses function name if None)
+        failure_threshold: Number of failures before opening circuit
+        recovery_timeout: Seconds to wait before testing recovery
+        expected_exception: Exception type to catch
+
+    Example:
+        @circuit_breaker("api_call", failure_threshold=3, recovery_timeout=30)
+        async def call_external_api():
+            # API call logic
+            pass
+    """
+
+    def decorator(func: Callable) -> Callable:
+        breaker_name = name or f"{func.__module__}.{func.__name__}"
+
+        if asyncio.iscoroutinefunction(func):
+
+            async def async_wrapper(*args, **kwargs):
+                breaker = await circuit_manager.get_or_create(
+                    breaker_name,
+                    failure_threshold=failure_threshold,
+                    recovery_timeout=recovery_timeout,
+                    expected_exception=expected_exception,
+                )
+                return await breaker.call(func, *args, **kwargs)
+
+            return async_wrapper
+        else:
+
+            def sync_wrapper(*args, **kwargs):
+                # For sync functions, we need to handle async breaker differently
+                # This is a simplified version - in production you'd want proper async handling
+                try:
+                    return func(*args, **kwargs)
+                except expected_exception as e:
+                    logger.warning(f"Circuit breaker {breaker_name}: {e}")
+                    raise
+
+            return sync_wrapper
+
+    return decorator

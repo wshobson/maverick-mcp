@@ -22,9 +22,13 @@ dependencies = [
     "langchain-openai>=0.3.19",
     "langchain-mcp-adapters>=0.1.6",
     "langgraph>=0.4.8",
+    "langgraph-supervisor>=0.0.18",
     "anthropic>=0.52.2",
     "openai>=1.84.0",
     "tiktoken>=0.6.0",
+    # Deep research dependencies
+    "exa-py>=1.0.0",
+    "tavily-python>=0.5.0",
     # Database and caching
     "sqlalchemy>=2.0.40",
     "alembic>=1.16.1",
