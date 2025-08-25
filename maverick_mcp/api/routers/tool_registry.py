@@ -4,6 +4,8 @@ This avoids Claude Desktop's issue with mounted router tool names.
 """
 
 import logging
+from datetime import datetime
+
 from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
@@ -148,16 +150,146 @@ def register_agent_tools(mcp: FastMCP) -> None:
 def register_research_tools(mcp: FastMCP) -> None:
     """Register deep research tools directly on main server"""
     try:
-        from maverick_mcp.api.routers.research import research_router
+        # Import the tool functions directly from the research router
+        # This is cleaner than extracting from router and avoids async complications
+        from maverick_mcp.api.routers.research import (
+            get_research_agent,
+            ResearchRequest, 
+            SentimentAnalysisRequest,
+            CompanyResearchRequest
+        )
+        
+        # Register research tool functions directly with prefixed names
+        @mcp.tool(name="research_comprehensive_research")
+        async def comprehensive_research(request: ResearchRequest) -> dict:
+            """
+            Perform comprehensive research on any financial topic using web search and AI analysis.
+            Perfect for researching stocks, sectors, market trends, company analysis.
+            """
+            agent = get_research_agent()
+            if request.persona and request.persona in ["conservative", "moderate", "aggressive", "day_trader"]:
+                agent.persona = agent.persona.__class__.get(request.persona)
+            
+            session_id = request.session_id or f"research_{datetime.now().timestamp()}"
+            
+            result = await agent.research_topic(
+                query=request.query,
+                session_id=session_id,
+                research_scope=request.research_scope,
+                max_sources=request.max_sources,
+                timeframe=request.timeframe,
+            )
+            
+            if "error" in result:
+                return {"success": False, "error": result["error"], "query": request.query}
+                
+            return {
+                "success": True,
+                "query": request.query,
+                "research_results": {
+                    "summary": result.get("content", "Research completed"),
+                    "confidence_score": result.get("research_confidence", 0.0),
+                    "sources_analyzed": result.get("sources_found", 0),
+                    "persona_insights": result.get("persona_insights", {}),
+                    "key_themes": result.get("content_analysis", {}).get("key_themes", []),
+                    "sentiment": result.get("content_analysis", {}).get("consensus_view", {}),
+                    "actionable_insights": result.get("actionable_insights", []),
+                }
+            }
 
-        # TODO: Fix tool extraction from research router
-        # The _tools attribute doesn't exist on FastMCP objects
-        # For now, skip research tool registration to allow server startup
-        logger.warning("Research tools registration temporarily disabled")
-        pass
-    except ImportError:
-        # Research module not available - skip
-        pass
+        @mcp.tool(name="research_analyze_market_sentiment")
+        async def analyze_market_sentiment(request: SentimentAnalysisRequest) -> dict:
+            """Analyze market sentiment for stocks, sectors, or market trends."""
+            agent = get_research_agent()
+            if request.persona and request.persona in ["conservative", "moderate", "aggressive", "day_trader"]:
+                agent.persona = agent.persona.__class__.get(request.persona)
+            
+            session_id = request.session_id or f"sentiment_{datetime.now().timestamp()}"
+            
+            result = await agent.analyze_market_sentiment(
+                topic=request.topic, 
+                session_id=session_id, 
+                timeframe=request.timeframe
+            )
+            
+            if "error" in result:
+                return {"success": False, "error": result["error"], "topic": request.topic}
+                
+            return {
+                "success": True,
+                "topic": request.topic,
+                "sentiment_analysis": {
+                    "overall_sentiment": result.get("content_analysis", {}).get("consensus_view", {}),
+                    "sentiment_confidence": result.get("research_confidence", 0.0),
+                    "sentiment_themes": result.get("content_analysis", {}).get("key_themes", []),
+                    "contrarian_indicators": result.get("content_analysis", {}).get("contrarian_views", []),
+                }
+            }
+
+        @mcp.tool(name="research_company_comprehensive") 
+        async def research_company_comprehensive(request: CompanyResearchRequest) -> dict:
+            """Perform comprehensive company research and fundamental analysis."""
+            agent = get_research_agent()
+            if request.persona and request.persona in ["conservative", "moderate", "aggressive", "day_trader"]:
+                agent.persona = agent.persona.__class__.get(request.persona)
+            
+            session_id = request.session_id or f"company_{request.symbol}_{datetime.now().timestamp()}"
+            
+            result = await agent.research_company_comprehensive(
+                symbol=request.symbol,
+                session_id=session_id,
+                include_competitive_analysis=request.include_competitive_analysis,
+            )
+            
+            if "error" in result:
+                return {"success": False, "error": result["error"], "symbol": request.symbol}
+                
+            return {
+                "success": True,
+                "symbol": request.symbol,
+                "company_research": {
+                    "executive_summary": result.get("content", "Company research completed"),
+                    "research_confidence": result.get("research_confidence", 0.0),
+                    "fundamental_insights": result.get("persona_insights", {}),
+                    "business_analysis": result.get("content_analysis", {}).get("insights", []),
+                }
+            }
+
+        @mcp.tool(name="research_search_financial_news")
+        async def search_financial_news(
+            query: str,
+            timeframe: str = "1w",
+            max_results: int = 20,
+            persona: str = "moderate",
+        ) -> dict:
+            """Search for recent financial news and analysis on any topic."""
+            agent = get_research_agent()
+            
+            # Use basic research for news search
+            result = await agent.research_topic(
+                query=f"{query} news",
+                session_id=f"news_{datetime.now().timestamp()}",
+                research_scope="basic",
+                max_sources=max_results,
+                timeframe=timeframe,
+            )
+            
+            return {
+                "success": True,
+                "query": query,
+                "news_results": result.get("processed_sources", [])[:max_results],
+                "total_found": len(result.get("processed_sources", [])),
+                "timeframe": timeframe,
+                "persona": persona,
+            }
+            
+        logger.info("Successfully registered 4 research tools directly")
+        
+    except ImportError as e:
+        logger.warning(f"Research module not available: {e}")
+    except Exception as e:
+        logger.error(f"Failed to register research tools: {e}")
+        # Don't raise - allow server to continue without research tools
 
 
 def register_all_router_tools(mcp: FastMCP) -> None:
