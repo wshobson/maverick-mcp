@@ -973,15 +973,16 @@ wheels = [
 
 [[package]]
 name = "langchain-mcp-adapters"
-version = "0.1.7"
+version = "0.1.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "mcp" },
+    { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/5f/f6d2b724f7100bd53e4413a72dd7b77a61e5284549c9de63ba043e63d163/langchain_mcp_adapters-0.1.7.tar.gz", hash = "sha256:b5d0ab520211d8c12cfc4df83fd6335f8197a3557ee7ca4f14e3380846610535", size = 20023, upload-time = "2025-06-05T20:18:39.425Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b9/74/e36003a43136f9095a5f968c730fbfe894f94284ebe6d2b50bb17d41b8b5/langchain_mcp_adapters-0.1.9.tar.gz", hash = "sha256:0018cf7b5f7bc4c044e05ec20fcb9ebe345311c8d1060c61d411188001ab3aab", size = 22101, upload-time = "2025-07-09T15:56:14.455Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/05/b6cf2f4651c9429b374c8837117ecc0619bfb8b6e106ce8390f2c932a293/langchain_mcp_adapters-0.1.7-py3-none-any.whl", hash = "sha256:6b3ded5f51b311e67cefa87b500f776c454caf2269d2eae4b2338ecec19a9258", size = 13318, upload-time = "2025-06-05T20:18:38.477Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/eb/9e98822d3db22beff44449a8f61fca208d4f59d592a7ce67ce4c400b8f8f/langchain_mcp_adapters-0.1.9-py3-none-any.whl", hash = "sha256:fd131009c60c9e5a864f96576bbe757fc1809abd604891cb2e5d6e8aebd6975c", size = 15300, upload-time = "2025-07-09T15:56:13.316Z" },
 ]
 
 [[package]]
