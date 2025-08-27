@@ -1,5 +1,3 @@
-[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/wshobson-maverick-mcp-badge.png)](https://mseep.ai/app/wshobson-maverick-mcp)
-
 # MaverickMCP - Personal Stock Analysis MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -613,6 +611,8 @@ If you find MaverickMCP useful:
 ---
 
 Built for traders and investors. Happy Trading!
+
+[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/wshobson-maverick-mcp-badge.png)](https://mseep.ai/app/wshobson-maverick-mcp)
 
 ## Disclaimer
 
