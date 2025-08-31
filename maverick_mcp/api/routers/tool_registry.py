@@ -14,19 +14,63 @@ logger = logging.getLogger(__name__)
 def register_technical_tools(mcp: FastMCP) -> None:
     """Register technical analysis tools directly on main server"""
     from maverick_mcp.api.routers.technical import (
-        get_full_technical_analysis,
         get_macd_analysis,
         get_rsi_analysis,
-        get_stock_chart_analysis,
         get_support_resistance,
     )
+    
+    # Import enhanced versions with proper timeout handling and logging
+    from maverick_mcp.api.routers.technical_enhanced import (
+        get_full_technical_analysis_enhanced,
+        get_stock_chart_analysis_enhanced,
+    )
+    from maverick_mcp.validation.technical import TechnicalAnalysisRequest
 
     # Register with prefixed names to maintain organization
     mcp.tool(name="technical_get_rsi_analysis")(get_rsi_analysis)
     mcp.tool(name="technical_get_macd_analysis")(get_macd_analysis)
     mcp.tool(name="technical_get_support_resistance")(get_support_resistance)
-    mcp.tool(name="technical_get_full_technical_analysis")(get_full_technical_analysis)
-    mcp.tool(name="technical_get_stock_chart_analysis")(get_stock_chart_analysis)
+    
+    # Use enhanced versions with timeout handling and comprehensive logging
+    @mcp.tool(name="technical_get_full_technical_analysis")
+    async def technical_get_full_technical_analysis(ticker: str, days: int = 365):
+        """
+        Get comprehensive technical analysis for a given ticker with enhanced logging and timeout handling.
+        
+        This enhanced version provides:
+        - Step-by-step logging for debugging
+        - 25-second timeout to prevent hangs
+        - Comprehensive error handling
+        - Guaranteed JSON-RPC responses
+        
+        Args:
+            ticker: Stock ticker symbol
+            days: Number of days of historical data to analyze (default: 365)
+            
+        Returns:
+            Dictionary containing complete technical analysis or error information
+        """
+        request = TechnicalAnalysisRequest(ticker=ticker, days=days)
+        return await get_full_technical_analysis_enhanced(request)
+    
+    @mcp.tool(name="technical_get_stock_chart_analysis") 
+    async def technical_get_stock_chart_analysis(ticker: str):
+        """
+        Generate a comprehensive technical analysis chart with enhanced error handling.
+        
+        This enhanced version provides:
+        - 15-second timeout for chart generation
+        - Progressive chart sizing for Claude Desktop compatibility
+        - Detailed logging for debugging
+        - Graceful fallback on errors
+        
+        Args:
+            ticker: The ticker symbol of the stock to analyze
+            
+        Returns:
+            Dictionary containing chart data or error information
+        """
+        return await get_stock_chart_analysis_enhanced(ticker)
 
 
 def register_screening_tools(mcp: FastMCP) -> None:
@@ -71,14 +115,40 @@ def register_data_tools(mcp: FastMCP) -> None:
         fetch_stock_data_batch,
         get_cached_price_data,
         get_chart_links,
-        get_news_sentiment,
         get_stock_info,
+    )
+    
+    # Import enhanced news sentiment that uses Tiingo or LLM
+    from maverick_mcp.api.routers.news_sentiment_enhanced import (
+        get_news_sentiment_enhanced,
     )
 
     mcp.tool(name="data_fetch_stock_data")(fetch_stock_data)
     mcp.tool(name="data_fetch_stock_data_batch")(fetch_stock_data_batch)
     mcp.tool(name="data_get_stock_info")(get_stock_info)
-    mcp.tool(name="data_get_news_sentiment")(get_news_sentiment)
+    
+    # Use enhanced news sentiment that doesn't rely on EXTERNAL_DATA_API_KEY
+    @mcp.tool(name="data_get_news_sentiment")
+    async def get_news_sentiment(ticker: str, timeframe: str = "7d", limit: int = 10):
+        """
+        Get news sentiment analysis for a stock using Tiingo News API or LLM analysis.
+        
+        This enhanced tool provides reliable sentiment analysis by:
+        - Using Tiingo's news API if available (requires paid plan)
+        - Analyzing sentiment with LLM (Claude/GPT)
+        - Falling back to research-based sentiment
+        - Never failing due to missing EXTERNAL_DATA_API_KEY
+        
+        Args:
+            ticker: Stock ticker symbol
+            timeframe: Time frame for news (1d, 7d, 30d, etc.)
+            limit: Maximum number of news articles to analyze
+            
+        Returns:
+            Dictionary containing sentiment analysis with confidence scores
+        """
+        return await get_news_sentiment_enhanced(ticker, timeframe, limit)
+    
     mcp.tool(name="data_get_cached_price_data")(get_cached_price_data)
     mcp.tool(name="data_get_chart_links")(get_chart_links)
     mcp.tool(name="data_clear_cache")(clear_cache)
@@ -159,145 +229,75 @@ def register_research_tools(mcp: FastMCP) -> None:
             get_research_agent,
         )
 
-        # Register research tool functions directly with prefixed names
+        # Import all enhanced research tools with timeout protection
+        from maverick_mcp.api.routers.research_enhanced import (
+            analyze_market_sentiment_enhanced,
+            research_company_comprehensive_enhanced,
+            research_comprehensive_research_enhanced,
+        )
+
+        # Register enhanced research tool with timeout protection
         @mcp.tool(name="research_comprehensive_research")
         async def comprehensive_research(request: ResearchRequest) -> dict:
             """
             Perform comprehensive research on any financial topic using web search and AI analysis.
+            
+            Enhanced version with:
+            - 20-second timeout protection to prevent hanging
+            - Step-by-step logging for debugging  
+            - Guaranteed responses to Claude Desktop
+            - Optimized scope for faster execution
+            
             Perfect for researching stocks, sectors, market trends, company analysis.
             """
-            agent = get_research_agent()
-            if request.persona and request.persona in [
-                "conservative",
-                "moderate",
-                "aggressive",
-                "day_trader",
-            ]:
-                agent.persona = agent.persona.__class__.get(request.persona)
-
-            session_id = request.session_id or f"research_{datetime.now().timestamp()}"
-
-            result = await agent.research_topic(
+            return await research_comprehensive_research_enhanced(
                 query=request.query,
-                session_id=session_id,
-                research_scope=request.research_scope,
-                max_sources=request.max_sources,
-                timeframe=request.timeframe,
+                persona=request.persona or "moderate",
+                research_scope=request.research_scope or "standard",
+                max_sources=min(request.max_sources or 15, 15),  # Cap at 15 for speed
+                timeframe=request.timeframe or "1m",
             )
 
-            if "error" in result:
-                return {
-                    "success": False,
-                    "error": result["error"],
-                    "query": request.query,
-                }
-
-            return {
-                "success": True,
-                "query": request.query,
-                "research_results": {
-                    "summary": result.get("content", "Research completed"),
-                    "confidence_score": result.get("research_confidence", 0.0),
-                    "sources_analyzed": result.get("sources_found", 0),
-                    "persona_insights": result.get("persona_insights", {}),
-                    "key_themes": result.get("content_analysis", {}).get(
-                        "key_themes", []
-                    ),
-                    "sentiment": result.get("content_analysis", {}).get(
-                        "consensus_view", {}
-                    ),
-                    "actionable_insights": result.get("actionable_insights", []),
-                },
-            }
+        # Enhanced sentiment analysis (imported above)
 
         @mcp.tool(name="research_analyze_market_sentiment")
         async def analyze_market_sentiment(request: SentimentAnalysisRequest) -> dict:
-            """Analyze market sentiment for stocks, sectors, or market trends."""
-            agent = get_research_agent()
-            if request.persona and request.persona in [
-                "conservative",
-                "moderate",
-                "aggressive",
-                "day_trader",
-            ]:
-                agent.persona = agent.persona.__class__.get(request.persona)
-
-            session_id = request.session_id or f"sentiment_{datetime.now().timestamp()}"
-
-            result = await agent.analyze_market_sentiment(
-                topic=request.topic, session_id=session_id, timeframe=request.timeframe
+            """
+            Analyze market sentiment for stocks, sectors, or market trends.
+            
+            Enhanced version with:
+            - 20-second timeout protection
+            - Streamlined execution for speed
+            - Step-by-step logging for debugging
+            - Guaranteed responses
+            """
+            return await analyze_market_sentiment_enhanced(
+                topic=request.topic,
+                timeframe=request.timeframe or "1w",
+                persona=request.persona or "moderate",
             )
 
-            if "error" in result:
-                return {
-                    "success": False,
-                    "error": result["error"],
-                    "topic": request.topic,
-                }
+        # Enhanced company research (imported above)
 
-            return {
-                "success": True,
-                "topic": request.topic,
-                "sentiment_analysis": {
-                    "overall_sentiment": result.get("content_analysis", {}).get(
-                        "consensus_view", {}
-                    ),
-                    "sentiment_confidence": result.get("research_confidence", 0.0),
-                    "sentiment_themes": result.get("content_analysis", {}).get(
-                        "key_themes", []
-                    ),
-                    "contrarian_indicators": result.get("content_analysis", {}).get(
-                        "contrarian_views", []
-                    ),
-                },
-            }
-
-        @mcp.tool(name="research_company_comprehensive")
+        @mcp.tool(name="research_company_comprehensive") 
         async def research_company_comprehensive(
             request: CompanyResearchRequest,
         ) -> dict:
-            """Perform comprehensive company research and fundamental analysis."""
-            agent = get_research_agent()
-            if request.persona and request.persona in [
-                "conservative",
-                "moderate",
-                "aggressive",
-                "day_trader",
-            ]:
-                agent.persona = agent.persona.__class__.get(request.persona)
-
-            session_id = (
-                request.session_id
-                or f"company_{request.symbol}_{datetime.now().timestamp()}"
-            )
-
-            result = await agent.research_company_comprehensive(
+            """
+            Perform comprehensive company research and fundamental analysis.
+            
+            Enhanced version with:
+            - 20-second timeout protection to prevent hanging
+            - Streamlined analysis for faster execution  
+            - Step-by-step logging for debugging
+            - Focus on core financial metrics
+            - Guaranteed responses to Claude Desktop
+            """
+            return await research_company_comprehensive_enhanced(
                 symbol=request.symbol,
-                session_id=session_id,
-                include_competitive_analysis=request.include_competitive_analysis,
+                include_competitive_analysis=request.include_competitive_analysis or False,
+                persona=request.persona or "moderate",
             )
-
-            if "error" in result:
-                return {
-                    "success": False,
-                    "error": result["error"],
-                    "symbol": request.symbol,
-                }
-
-            return {
-                "success": True,
-                "symbol": request.symbol,
-                "company_research": {
-                    "executive_summary": result.get(
-                        "content", "Company research completed"
-                    ),
-                    "research_confidence": result.get("research_confidence", 0.0),
-                    "fundamental_insights": result.get("persona_insights", {}),
-                    "business_analysis": result.get("content_analysis", {}).get(
-                        "insights", []
-                    ),
-                },
-            }
 
         @mcp.tool(name="research_search_financial_news")
         async def search_financial_news(

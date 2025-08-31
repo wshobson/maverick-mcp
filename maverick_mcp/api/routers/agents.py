@@ -30,28 +30,22 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
     cache_key = f"{agent_type}:{persona}"
 
     if cache_key not in _agent_cache:
-        # Create LLM based on settings
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        if openai_api_key:
-            from langchain_openai import ChatOpenAI
-
-            llm = ChatOpenAI(model="gpt-5-mini", temperature=0.3, streaming=True)
-        else:
-            # Fallback for testing
-            from langchain_core.language_models import FakeListLLM
-
-            llm = FakeListLLM(  # type: ignore[assignment]
-                responses=[
-                    "Mock market analysis response",
-                    "Mock technical analysis response",
-                    "Mock risk analysis response",
-                    "Mock orchestrated analysis response",
-                    "Mock deep research response",
-                ]
-            )
-            logger.warning(
-                "Using FakeListLLM - configure OPENAI_API_KEY for real analysis"
-            )
+        # Import task-aware LLM factory
+        from maverick_mcp.providers.llm_factory import get_llm
+        from maverick_mcp.providers.openrouter_provider import TaskType
+        
+        # Map agent types to task types for optimal model selection
+        task_mapping = {
+            "market": TaskType.MARKET_ANALYSIS,
+            "technical": TaskType.TECHNICAL_ANALYSIS,
+            "supervisor": TaskType.MULTI_AGENT_ORCHESTRATION,
+            "deep_research": TaskType.DEEP_RESEARCH,
+        }
+        
+        task_type = task_mapping.get(agent_type, TaskType.GENERAL)
+        
+        # Get optimized LLM for this task
+        llm = get_llm(task_type=task_type)
 
         # Create agent based on type
         if agent_type == "market":

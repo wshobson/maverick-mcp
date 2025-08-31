@@ -404,9 +404,12 @@ Configure MaverickMCP via `.env` file or environment variables:
 
 **Optional API Keys:**
 
-- `OPENAI_API_KEY` - For AI-powered analysis features
-- `ANTHROPIC_API_KEY` - Alternative LLM provider
+- `OPENROUTER_API_KEY` - **Recommended**: Access to 400+ AI models with intelligent cost optimization
+- `OPENAI_API_KEY` - Direct OpenAI access (fallback)
+- `ANTHROPIC_API_KEY` - Direct Anthropic access (fallback)
 - `FRED_API_KEY` - Federal Reserve economic data
+- `EXA_API_KEY` - Enhanced web search for deep research
+- `TAVILY_API_KEY` - Alternative web search provider
 
 **Performance:**
 

@@ -79,6 +79,33 @@ mcp: FastMCP = FastMCP(
 )
 mcp.dependencies = []
 
+# Add comprehensive MCP logging middleware for debugging tool calls and protocol communication
+logger.info("Adding comprehensive MCP logging middleware...")
+try:
+    from maverick_mcp.api.middleware.mcp_logging import add_mcp_logging_middleware
+    
+    # Add logging middleware with debug mode based on settings
+    include_payloads = settings.api.debug or settings.api.log_level.upper() == "DEBUG"
+    import logging as py_logging
+    add_mcp_logging_middleware(
+        mcp, 
+        include_payloads=include_payloads,
+        max_payload_length=3000,  # Larger payloads in debug mode
+        log_level=getattr(py_logging, settings.api.log_level.upper())
+    )
+    logger.info("✅ MCP logging middleware added successfully")
+    
+    # Add console notification
+    print("🔧 MCP Server Enhanced Logging Enabled")
+    print("   📊 Tool calls will be logged with execution details")
+    print("   🔍 Protocol messages will be tracked for debugging")
+    print("   ⏱️  Timeout detection and warnings active")
+    print()
+    
+except Exception as e:
+    logger.warning(f"Failed to add MCP logging middleware: {e}")
+    print("⚠️  Warning: MCP logging middleware could not be added")
+
 # Initialize monitoring and observability systems
 logger.info("Initializing monitoring and observability systems...")
 

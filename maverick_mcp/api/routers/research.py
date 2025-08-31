@@ -37,6 +37,8 @@ def get_research_agent() -> DeepResearchAgent:
             persona="moderate",  # Default persona, can be overridden
             max_sources=50,
             research_depth="comprehensive",
+            exa_api_key=settings.research.exa_api_key,
+            tavily_api_key=settings.research.tavily_api_key,
         )
     return research_agent
 

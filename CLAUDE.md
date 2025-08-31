@@ -75,6 +75,9 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 4. **Optional Configuration** (add to `.env`):
 
    ```
+   # OpenRouter API (recommended - access to 400+ AI models with intelligent cost optimization)
+   OPENROUTER_API_KEY=your-openrouter-key
+
    # Enhanced data providers (optional)
    FRED_API_KEY=your-fred-key
 
@@ -87,6 +90,8 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
    ```
 
    **Get a free Tiingo API key**: Sign up at [tiingo.com](https://tiingo.com) - free tier includes 500 requests/day.
+
+   **OpenRouter API (Recommended)**: Sign up at [openrouter.ai](https://openrouter.ai) for access to 400+ AI models with intelligent cost optimization. The system automatically selects optimal models based on task requirements.
 
 ## Quick Start Commands
 
@@ -646,6 +651,13 @@ lsof -i :8000
 - **Simplified Architecture**: Clean, focused codebase without commercial complexity
 - **Multi-Transport Support**: HTTP, SSE, and STDIO for all MCP clients
 - **SQLite Default**: No database setup required, PostgreSQL optional for performance
+
+### AI/LLM Integration
+
+- **OpenRouter Integration**: Access to 400+ AI models with intelligent cost optimization
+- **Smart Model Selection**: Automatic model selection based on task requirements (sentiment analysis, market research, technical analysis)
+- **Cost-Efficient by Default**: Prioritizes cost-effectiveness while maintaining quality, 60-80% cost savings over premium-only approaches
+- **Multiple Model Support**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Haiku, GPT-5, GPT-5 Nano, Gemini 2.5 Pro, DeepSeek R1, and more
 
 ### Performance Improvements
 

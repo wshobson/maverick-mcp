@@ -26,7 +26,7 @@ stock_provider = StockDataProvider()
 
 
 def risk_adjusted_analysis(
-    ticker: str, risk_level: float | None = 50.0
+    ticker: str, risk_level: float | str | None = 50.0
 ) -> dict[str, Any]:
     """
     Perform risk-adjusted stock analysis with position sizing.
@@ -54,10 +54,34 @@ def risk_adjusted_analysis(
         Dictionary containing risk-adjusted analysis results
     """
     try:
-        df = stock_provider.get_stock_data(ticker)
-        df["atr"] = ta.atr(df["high"], df["low"], df["close"], length=20)
+        # Convert risk_level to float if it's a string
+        if isinstance(risk_level, str):
+            try:
+                risk_level = float(risk_level)
+            except ValueError:
+                risk_level = 50.0
+        
+        # Use explicit date range to avoid weekend/holiday issues
+        from datetime import UTC, datetime, timedelta
+        end_date = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")  # Last week to be safe
+        start_date = (datetime.now(UTC) - timedelta(days=365)).strftime("%Y-%m-%d")  # 1 year ago
+        df = stock_provider.get_stock_data(ticker, start_date=start_date, end_date=end_date)
+        
+        # Validate dataframe has required columns (check for both upper and lower case)
+        required_cols = ["high", "low", "close"]
+        actual_cols_lower = [col.lower() for col in df.columns]
+        if df.empty or not all(col in actual_cols_lower for col in required_cols):
+            return {
+                "error": f"Insufficient data for {ticker}",
+                "details": "Unable to retrieve required price data (High, Low, Close) for analysis",
+                "ticker": ticker,
+                "required_data": ["High", "Low", "Close", "Volume"],
+                "available_columns": list(df.columns)
+            }
+        
+        df["atr"] = ta.atr(df["High"], df["Low"], df["Close"], length=20)
         atr = df["atr"].iloc[-1]
-        current_price = df["close"].iloc[-1]
+        current_price = df["Close"].iloc[-1]
         risk_factor = (risk_level or 50.0) / 100  # Convert to 0-1 scale
         account_size = 100000
         analysis = {

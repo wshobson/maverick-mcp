@@ -17,6 +17,7 @@ help:
 	@echo "  make test-specific TEST=name - Run specific test"
 	@echo "  make test-parallel - Run tests in parallel"
 	@echo "  make test-cov     - Run tests with coverage report"
+	@echo "  make test-fixes   - Validate MCP tool fixes are working"
 	@echo ""
 	@echo "  make lint         - Run code quality checks"
 	@echo "  make format       - Auto-format code"
@@ -85,6 +86,14 @@ test-parallel:
 test-cov:
 	@echo "Running tests with coverage..."
 	@uv run pytest --cov=maverick_mcp --cov-report=html --cov-report=term
+
+test-fixes:
+	@echo "Running MCP tool fixes validation..."
+	@uv run python maverick_mcp/tests/test_mcp_tool_fixes.py
+
+test-fixes-verbose:
+	@echo "Running MCP tool fixes validation (verbose)..."
+	@uv run python -u maverick_mcp/tests/test_mcp_tool_fixes.py
 
 # Code quality commands
 lint:

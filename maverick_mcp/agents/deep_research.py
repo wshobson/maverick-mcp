@@ -578,6 +578,15 @@ class DeepResearchAgent(PersonaAwareAgent):
         Returns:
             Comprehensive research results with analysis and citations
         """
+        # Check if search providers are available
+        if not self.search_providers:
+            return {
+                "error": "Research functionality unavailable - no search providers configured",
+                "details": "Please configure EXA_API_KEY or TAVILY_API_KEY environment variables to enable research capabilities",
+                "topic": topic,
+                "available_functionality": "Limited to pre-existing data and basic analysis",
+            }
+
         start_time = datetime.now()
         depth = depth or self.default_depth
 
