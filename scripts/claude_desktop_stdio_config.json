@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"],
+      "cwd": "/Users/wshobson/workspace/major7apps/maverick-mcp",
+      "env": {
+        "TIINGO_API_KEY": "your-api-key-here",
+        "OPENROUTER_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}

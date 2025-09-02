@@ -18,7 +18,7 @@ def register_technical_tools(mcp: FastMCP) -> None:
         get_rsi_analysis,
         get_support_resistance,
     )
-    
+
     # Import enhanced versions with proper timeout handling and logging
     from maverick_mcp.api.routers.technical_enhanced import (
         get_full_technical_analysis_enhanced,
@@ -30,43 +30,43 @@ def register_technical_tools(mcp: FastMCP) -> None:
     mcp.tool(name="technical_get_rsi_analysis")(get_rsi_analysis)
     mcp.tool(name="technical_get_macd_analysis")(get_macd_analysis)
     mcp.tool(name="technical_get_support_resistance")(get_support_resistance)
-    
+
     # Use enhanced versions with timeout handling and comprehensive logging
     @mcp.tool(name="technical_get_full_technical_analysis")
     async def technical_get_full_technical_analysis(ticker: str, days: int = 365):
         """
         Get comprehensive technical analysis for a given ticker with enhanced logging and timeout handling.
-        
+
         This enhanced version provides:
         - Step-by-step logging for debugging
         - 25-second timeout to prevent hangs
         - Comprehensive error handling
         - Guaranteed JSON-RPC responses
-        
+
         Args:
             ticker: Stock ticker symbol
             days: Number of days of historical data to analyze (default: 365)
-            
+
         Returns:
             Dictionary containing complete technical analysis or error information
         """
         request = TechnicalAnalysisRequest(ticker=ticker, days=days)
         return await get_full_technical_analysis_enhanced(request)
-    
-    @mcp.tool(name="technical_get_stock_chart_analysis") 
+
+    @mcp.tool(name="technical_get_stock_chart_analysis")
     async def technical_get_stock_chart_analysis(ticker: str):
         """
         Generate a comprehensive technical analysis chart with enhanced error handling.
-        
+
         This enhanced version provides:
         - 15-second timeout for chart generation
         - Progressive chart sizing for Claude Desktop compatibility
         - Detailed logging for debugging
         - Graceful fallback on errors
-        
+
         Args:
             ticker: The ticker symbol of the stock to analyze
-            
+
         Returns:
             Dictionary containing chart data or error information
         """
@@ -117,7 +117,7 @@ def register_data_tools(mcp: FastMCP) -> None:
         get_chart_links,
         get_stock_info,
     )
-    
+
     # Import enhanced news sentiment that uses Tiingo or LLM
     from maverick_mcp.api.routers.news_sentiment_enhanced import (
         get_news_sentiment_enhanced,
@@ -126,29 +126,29 @@ def register_data_tools(mcp: FastMCP) -> None:
     mcp.tool(name="data_fetch_stock_data")(fetch_stock_data)
     mcp.tool(name="data_fetch_stock_data_batch")(fetch_stock_data_batch)
     mcp.tool(name="data_get_stock_info")(get_stock_info)
-    
+
     # Use enhanced news sentiment that doesn't rely on EXTERNAL_DATA_API_KEY
     @mcp.tool(name="data_get_news_sentiment")
     async def get_news_sentiment(ticker: str, timeframe: str = "7d", limit: int = 10):
         """
         Get news sentiment analysis for a stock using Tiingo News API or LLM analysis.
-        
+
         This enhanced tool provides reliable sentiment analysis by:
         - Using Tiingo's news API if available (requires paid plan)
         - Analyzing sentiment with LLM (Claude/GPT)
         - Falling back to research-based sentiment
         - Never failing due to missing EXTERNAL_DATA_API_KEY
-        
+
         Args:
             ticker: Stock ticker symbol
             timeframe: Time frame for news (1d, 7d, 30d, etc.)
             limit: Maximum number of news articles to analyze
-            
+
         Returns:
             Dictionary containing sentiment analysis with confidence scores
         """
         return await get_news_sentiment_enhanced(ticker, timeframe, limit)
-    
+
     mcp.tool(name="data_get_cached_price_data")(get_cached_price_data)
     mcp.tool(name="data_get_chart_links")(get_chart_links)
     mcp.tool(name="data_clear_cache")(clear_cache)
@@ -220,58 +220,54 @@ def register_agent_tools(mcp: FastMCP) -> None:
 def register_research_tools(mcp: FastMCP) -> None:
     """Register deep research tools directly on main server"""
     try:
-        # Import the tool functions directly from the research router
-        # This is cleaner than extracting from router and avoids async complications
+        # Import all research tools from the consolidated research module
         from maverick_mcp.api.routers.research import (
             CompanyResearchRequest,
             ResearchRequest,
             SentimentAnalysisRequest,
+            analyze_market_sentiment,
+            company_comprehensive_research,
+            comprehensive_research,
             get_research_agent,
         )
 
-        # Import all enhanced research tools with timeout protection
-        from maverick_mcp.api.routers.research_enhanced import (
-            analyze_market_sentiment_enhanced,
-            research_company_comprehensive_enhanced,
-            research_comprehensive_research_enhanced,
-        )
-
-        # Register enhanced research tool with timeout protection
+        # Register comprehensive research tool with all enhanced features
         @mcp.tool(name="research_comprehensive_research")
-        async def comprehensive_research(request: ResearchRequest) -> dict:
+        async def research_comprehensive(request: ResearchRequest) -> dict:
             """
             Perform comprehensive research on any financial topic using web search and AI analysis.
-            
+
             Enhanced version with:
-            - 20-second timeout protection to prevent hanging
-            - Step-by-step logging for debugging  
+            - Adaptive timeout based on research scope (basic: 15s, standard: 30s, comprehensive: 60s, exhaustive: 90s)
+            - Step-by-step logging for debugging
             - Guaranteed responses to Claude Desktop
-            - Optimized scope for faster execution
-            
+            - Optimized parallel execution for faster results
+
             Perfect for researching stocks, sectors, market trends, company analysis.
             """
-            return await research_comprehensive_research_enhanced(
+            return await comprehensive_research(
                 query=request.query,
                 persona=request.persona or "moderate",
                 research_scope=request.research_scope or "standard",
-                max_sources=min(request.max_sources or 15, 15),  # Cap at 15 for speed
+                max_sources=min(
+                    request.max_sources or 25, 25
+                ),  # Increased cap due to adaptive timeout
                 timeframe=request.timeframe or "1m",
             )
 
         # Enhanced sentiment analysis (imported above)
-
         @mcp.tool(name="research_analyze_market_sentiment")
-        async def analyze_market_sentiment(request: SentimentAnalysisRequest) -> dict:
+        async def analyze_market_sentiment_tool(request: SentimentAnalysisRequest) -> dict:
             """
             Analyze market sentiment for stocks, sectors, or market trends.
-            
+
             Enhanced version with:
             - 20-second timeout protection
             - Streamlined execution for speed
             - Step-by-step logging for debugging
             - Guaranteed responses
             """
-            return await analyze_market_sentiment_enhanced(
+            return await analyze_market_sentiment(
                 topic=request.topic,
                 timeframe=request.timeframe or "1w",
                 persona=request.persona or "moderate",
@@ -279,23 +275,24 @@ def register_research_tools(mcp: FastMCP) -> None:
 
         # Enhanced company research (imported above)
 
-        @mcp.tool(name="research_company_comprehensive") 
+        @mcp.tool(name="research_company_comprehensive")
         async def research_company_comprehensive(
             request: CompanyResearchRequest,
         ) -> dict:
             """
             Perform comprehensive company research and fundamental analysis.
-            
+
             Enhanced version with:
             - 20-second timeout protection to prevent hanging
-            - Streamlined analysis for faster execution  
+            - Streamlined analysis for faster execution
             - Step-by-step logging for debugging
             - Focus on core financial metrics
             - Guaranteed responses to Claude Desktop
             """
-            return await research_company_comprehensive_enhanced(
+            return await company_comprehensive_research(
                 symbol=request.symbol,
-                include_competitive_analysis=request.include_competitive_analysis or False,
+                include_competitive_analysis=request.include_competitive_analysis
+                or False,
                 persona=request.persona or "moderate",
             )
 
@@ -338,10 +335,52 @@ def register_research_tools(mcp: FastMCP) -> None:
 
 def register_all_router_tools(mcp: FastMCP) -> None:
     """Register all router tools directly on the main server"""
-    register_technical_tools(mcp)
-    register_screening_tools(mcp)
-    register_portfolio_tools(mcp)
-    register_data_tools(mcp)
-    register_performance_tools(mcp)
-    register_agent_tools(mcp)
-    register_research_tools(mcp)  # Add deep research tools
+    logger.info("Starting tool registration process...")
+    
+    try:
+        register_technical_tools(mcp)
+        logger.info("✓ Technical tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register technical tools: {e}")
+    
+    try:
+        register_screening_tools(mcp)
+        logger.info("✓ Screening tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register screening tools: {e}")
+    
+    try:
+        register_portfolio_tools(mcp)
+        logger.info("✓ Portfolio tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register portfolio tools: {e}")
+    
+    try:
+        register_data_tools(mcp)
+        logger.info("✓ Data tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register data tools: {e}")
+    
+    try:
+        register_performance_tools(mcp)
+        logger.info("✓ Performance tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register performance tools: {e}")
+    
+    try:
+        register_agent_tools(mcp)
+        logger.info("✓ Agent tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register agent tools: {e}")
+    
+    try:
+        # Import and register research tools on the main MCP instance
+        from maverick_mcp.api.routers.research import create_research_router
+        
+        # Pass the main MCP instance to register tools directly on it
+        create_research_router(mcp)
+        logger.info("✓ Research tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register research tools: {e}")
+    
+    logger.info("Tool registration process completed")

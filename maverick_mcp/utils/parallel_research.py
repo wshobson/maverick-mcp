@@ -32,9 +32,9 @@ class ParallelResearchConfig:
     def __init__(
         self,
         max_concurrent_agents: int = 4,
-        timeout_per_agent: int = 300,  # 5 minutes per agent
-        enable_fallbacks: bool = True,
-        rate_limit_delay: float = 1.0,  # Delay between agent starts
+        timeout_per_agent: int = 180,  # 3 minutes per agent for thorough research
+        enable_fallbacks: bool = False,  # Disabled by default for speed
+        rate_limit_delay: float = 0.5,  # Reduced delay for faster parallelization
     ):
         self.max_concurrent_agents = max_concurrent_agents
         self.timeout_per_agent = timeout_per_agent

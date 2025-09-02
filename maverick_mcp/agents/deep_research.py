@@ -5,6 +5,7 @@ Provides comprehensive financial research capabilities with web search,
 content analysis, sentiment detection, and source validation.
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any
@@ -42,29 +43,59 @@ from maverick_mcp.workflows.state import DeepResearchState
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Research depth levels with different scopes
+# Global search provider cache and connection manager
+_search_provider_cache: dict[str, Any] = {}
+
+
+async def get_cached_search_provider(
+    exa_api_key: str | None = None
+) -> Any | None:
+    """Get cached Exa search provider to avoid repeated initialization delays."""
+    cache_key = f"exa:{exa_api_key is not None}"
+
+    if cache_key in _search_provider_cache:
+        logger.debug(f"Using cached Exa search provider")
+        return _search_provider_cache[cache_key]
+
+    logger.info(f"Initializing Exa search provider")
+    provider = None
+
+    # Initialize Exa provider with caching
+    if exa_api_key:
+        try:
+            provider = ExaSearchProvider(exa_api_key)
+            logger.info("Initialized Exa search provider")
+            # Cache the provider
+            _search_provider_cache[cache_key] = provider
+        except ImportError as e:
+            logger.warning(f"Failed to initialize Exa provider: {e}")
+
+    return provider
+
+
+# Research depth levels optimized for quick searches
 RESEARCH_DEPTH_LEVELS = {
     "basic": {
         "max_sources": 3,
-        "max_searches": 2,
+        "max_searches": 1,  # Reduced for speed
         "analysis_depth": "summary",
         "validation_required": False,
     },
     "standard": {
-        "max_sources": 8,
-        "max_searches": 4,
+        "max_sources": 5,  # Reduced from 8
+        "max_searches": 2,  # Reduced from 4
         "analysis_depth": "detailed",
-        "validation_required": True,
+        "validation_required": False,  # Disabled for speed
     },
     "comprehensive": {
-        "max_sources": 15,
-        "max_searches": 6,
+        "max_sources": 10,  # Reduced from 15
+        "max_searches": 3,  # Reduced from 6
         "analysis_depth": "comprehensive",
-        "validation_required": True,
+        "validation_required": False,  # Disabled for speed
     },
     "exhaustive": {
-        "max_sources": 25,
-        "max_searches": 10,
+        "max_sources": 15,  # Reduced from 25
+        "max_searches": 5,  # Reduced from 10
         "analysis_depth": "exhaustive",
         "validation_required": True,
     },
@@ -124,11 +155,95 @@ PERSONA_RESEARCH_FOCUS = {
 
 
 class WebSearchProvider:
-    """Base class for web search providers."""
+    """Base class for web search providers with early abort mechanism."""
 
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.rate_limiter = None  # Implement rate limiting
+        self._failure_count = 0
+        self._max_failures = 3  # Abort after 3 consecutive failures
+        self._is_healthy = True
+        self.settings = get_settings()
+
+    def _calculate_timeout(
+        self, query: str, timeout_budget: float | None = None
+    ) -> float:
+        """Calculate generous timeout for thorough research operations."""
+        query_words = len(query.split())
+
+        # Generous timeout calculation for thorough search operations
+        if query_words <= 3:
+            base_timeout = 30.0  # Simple queries - 30s for thorough results
+        elif query_words <= 8:
+            base_timeout = 45.0  # Standard queries - 45s for comprehensive search
+        else:
+            base_timeout = 60.0  # Complex queries - 60s for exhaustive search
+
+        # Apply budget constraints if available
+        if timeout_budget and timeout_budget > 0:
+            # Use generous portion of available budget per search operation
+            budget_timeout = max(timeout_budget * 0.6, 30.0)  # At least 30s, use 60% of budget
+            calculated_timeout = min(base_timeout, budget_timeout)
+            
+            # Ensure minimum timeout (at least 30s for thorough search)
+            calculated_timeout = max(calculated_timeout, 30.0)
+        else:
+            calculated_timeout = base_timeout
+
+        # Final timeout with generous minimum for thorough search
+        final_timeout = max(calculated_timeout, 30.0)
+
+        query_snippet = query[:50] + ("..." if len(query) > 50 else "")
+        logger.debug(
+            f"Calculated timeout for query '{query_snippet}': "
+            f"{final_timeout:.1f}s (words: {query_words}, base: {base_timeout}s, "
+            f"budget: {timeout_budget or 'none'}s) [Generous timeouts for thorough search]"
+        )
+
+        return final_timeout
+
+    def _record_failure(self, error_type: str = "unknown") -> None:
+        """Record a search failure and check if provider should be disabled."""
+        self._failure_count += 1
+        
+        # Use separate thresholds for timeout vs other failures
+        timeout_threshold = getattr(
+            self.settings.performance, 'search_timeout_failure_threshold', 12
+        )
+        
+        # Much more tolerant of timeout failures - they may be due to network/complexity
+        if error_type == "timeout" and self._failure_count >= timeout_threshold:
+            self._is_healthy = False
+            logger.warning(
+                f"Search provider {self.__class__.__name__} disabled after "
+                f"{self._failure_count} consecutive timeout failures (threshold: {timeout_threshold})"
+            )
+        elif error_type != "timeout" and self._failure_count >= self._max_failures * 2:
+            # Be more lenient for non-timeout failures (2x threshold)
+            self._is_healthy = False
+            logger.warning(
+                f"Search provider {self.__class__.__name__} disabled after "
+                f"{self._failure_count} total non-timeout failures"
+            )
+        
+        logger.debug(
+            f"Provider {self.__class__.__name__} failure recorded: "
+            f"type={error_type}, count={self._failure_count}, healthy={self._is_healthy}"
+        )
+
+    def _record_success(self) -> None:
+        """Record a successful search and reset failure count."""
+        if self._failure_count > 0:
+            logger.info(
+                f"Search provider {self.__class__.__name__} recovered after "
+                f"{self._failure_count} failures"
+            )
+        self._failure_count = 0
+        self._is_healthy = True
+
+    def is_healthy(self) -> bool:
+        """Check if provider is healthy and should be used."""
+        return self._is_healthy
 
     async def search(self, query: str, num_results: int = 10) -> list[dict[str, Any]]:
         """Perform web search and return results."""
@@ -139,116 +254,112 @@ class WebSearchProvider:
         raise NotImplementedError
 
 
+
 class ExaSearchProvider(WebSearchProvider):
-    """Exa AI search provider for high-quality research content."""
+    """Exa search provider for comprehensive web search using MCP tools."""
 
     def __init__(self, api_key: str):
         super().__init__(api_key)
-        try:
-            from exa_py import Exa
+        # Store the API key for verification
+        self._api_key_verified = bool(api_key)
+        logger.info("Initialized ExaSearchProvider with MCP integration")
 
-            self.client = Exa(api_key=api_key)
-        except ImportError:
-            raise ImportError("exa-py library required for ExaSearchProvider")
+    async def search(
+        self, query: str, num_results: int = 10, timeout_budget: float | None = None
+    ) -> list[dict[str, Any]]:
+        """Search using Exa via MCP tools for comprehensive web results with adaptive timeout."""
+        # Check provider health before attempting search
+        if not self.is_healthy():
+            logger.warning("Exa provider is unhealthy - skipping search")
+            raise WebSearchError("Exa provider disabled due to repeated failures")
 
-    async def search(self, query: str, num_results: int = 10) -> list[dict[str, Any]]:
-        """Search using Exa AI for high-quality content."""
+        # Calculate adaptive timeout
+        search_timeout = self._calculate_timeout(query, timeout_budget)
+
         try:
-            circuit_breaker = await circuit_manager.get_or_create("exa_search")
+            # Use search-specific circuit breaker settings (more tolerant)
+            circuit_breaker = await circuit_manager.get_or_create(
+                "exa_search",
+                failure_threshold=getattr(self.settings.performance, 'search_circuit_breaker_failure_threshold', 8),
+                recovery_timeout=getattr(self.settings.performance, 'search_circuit_breaker_recovery_timeout', 30),
+            )
 
             async def _search():
-                response = self.client.search_and_contents(
-                    query=query,
-                    num_results=num_results,
-                    text=True,
-                    highlights=True,
-                    summary=True,
-                )
-
-                results = []
-                for result in response.results:
-                    results.append(
-                        {
-                            "url": result.url,
-                            "title": result.title,
-                            "content": result.text[:2000] if result.text else "",
-                            "summary": result.summary,
-                            "highlights": result.highlights,
-                            "published_date": result.published_date,
-                            "author": result.author,
-                            "score": result.score,
-                            "provider": "exa",
-                        }
+                # Use the exa-py library directly for web search
+                try:
+                    from exa_py import Exa
+                    
+                    # Initialize Exa client with API key
+                    exa_client = Exa(api_key=self.api_key)
+                    
+                    # Call Exa search with proper parameters
+                    exa_response = await asyncio.to_thread(
+                        exa_client.search_and_contents,
+                        query,
+                        num_results=num_results,
+                        text={"max_characters": 3000},
+                        exclude_domains=["facebook.com", "twitter.com", "x.com"],  # Filter social media
+                        type="neural",  # Use neural search for better results
                     )
+                    
+                    # Convert Exa response to standard format
+                    results = []
+                    if exa_response and hasattr(exa_response, 'results'):
+                        for result in exa_response.results:
+                            results.append(
+                                {
+                                    "url": result.url,
+                                    "title": result.title,
+                                    "content": (result.text or "")[:2000],
+                                    "raw_content": (result.text or "")[:3000],
+                                    "published_date": result.published_date,
+                                    "score": result.score if hasattr(result, 'score') else 0.7,
+                                    "provider": "exa",
+                                    "author": result.author if hasattr(result, 'author') else None,
+                                }
+                            )
 
-                return results
+                    return results
+                    
+                except ImportError:
+                    logger.error("exa-py library not available - cannot perform search")
+                    raise WebSearchError("exa-py library required for ExaSearchProvider")
+                except Exception as e:
+                    logger.error(f"Error calling Exa API: {e}")
+                    raise e
 
-            return await circuit_breaker.call(_search)
+            # Use adaptive timeout based on query complexity and budget
+            result = await asyncio.wait_for(
+                circuit_breaker.call(_search), timeout=search_timeout
+            )
+            self._record_success()  # Record successful search
+            logger.debug(
+                f"Exa search completed in {search_timeout:.1f}s timeout window"
+            )
+            return result
 
+        except TimeoutError:
+            self._record_failure("timeout")  # Record timeout as specific failure type
+            query_snippet = query[:100] + ("..." if len(query) > 100 else "")
+            logger.error(
+                f"Exa search timeout after {search_timeout:.1f} seconds (failure #{self._failure_count}) "
+                f"for query: '{query_snippet}'"
+            )
+            raise WebSearchError(
+                f"Exa search timed out after {search_timeout:.1f} seconds"
+            )
         except Exception as e:
-            logger.error(f"Exa search error: {e}")
+            self._record_failure("error")  # Record non-timeout failure
+            logger.error(f"Exa search error (failure #{self._failure_count}): {e}")
             raise WebSearchError(f"Exa search failed: {str(e)}")
 
 
-class TavilySearchProvider(WebSearchProvider):
-    """Tavily search provider for comprehensive web search."""
-
-    def __init__(self, api_key: str):
-        super().__init__(api_key)
-        try:
-            from tavily import TavilyClient
-
-            self.client = TavilyClient(api_key=api_key)
-        except ImportError:
-            raise ImportError("tavily-python library required for TavilySearchProvider")
-
-    async def search(self, query: str, num_results: int = 10) -> list[dict[str, Any]]:
-        """Search using Tavily for comprehensive web results."""
-        try:
-            circuit_breaker = await circuit_manager.get_or_create("tavily_search")
-
-            async def _search():
-                response = self.client.search(
-                    query=query,
-                    search_depth="advanced",
-                    max_results=num_results,
-                    include_domains=None,
-                    exclude_domains=[
-                        "facebook.com",
-                        "twitter.com",
-                    ],  # Filter social media for financial research
-                    include_answer=True,
-                    include_raw_content=True,
-                )
-
-                results = []
-                for result in response.get("results", []):
-                    results.append(
-                        {
-                            "url": result.get("url"),
-                            "title": result.get("title"),
-                            "content": result.get("content", "")[:2000],
-                            "raw_content": result.get("raw_content", "")[:3000],
-                            "published_date": result.get("published_date"),
-                            "score": result.get("score", 0.5),
-                            "provider": "tavily",
-                        }
-                    )
-
-                return results
-
-            return await circuit_breaker.call(_search)
-
-        except Exception as e:
-            logger.error(f"Tavily search error: {e}")
-            raise WebSearchError(f"Tavily search failed: {str(e)}")
-
-
 class ContentAnalyzer:
-    """AI-powered content analysis for research results."""
+    """AI-powered content analysis for research results with batch processing capability."""
 
     def __init__(self, llm: BaseChatModel):
         self.llm = llm
+        self._batch_size = 4  # Process up to 4 sources concurrently
 
     async def analyze_content(
         self, content: str, persona: str, analysis_focus: str = "general"
@@ -367,6 +478,76 @@ class ContentAnalyzer:
             "fallback_used": True,
         }
 
+    async def analyze_content_batch(
+        self,
+        content_items: list[tuple[str, str]],
+        persona: str,
+        analysis_focus: str = "general",
+    ) -> list[dict[str, Any]]:
+        """
+        Analyze multiple content items in parallel batches for improved performance.
+
+        Args:
+            content_items: List of (content, source_identifier) tuples
+            persona: Investor persona for analysis perspective
+            analysis_focus: Focus area for analysis
+
+        Returns:
+            List of analysis results in same order as input
+        """
+        if not content_items:
+            return []
+
+        # Process items in batches to avoid overwhelming the LLM
+        results = []
+        for i in range(0, len(content_items), self._batch_size):
+            batch = content_items[i : i + self._batch_size]
+
+            # Create concurrent tasks for this batch
+            tasks = [
+                self.analyze_content(content, persona, analysis_focus)
+                for content, _ in batch
+            ]
+
+            # Wait for all tasks in this batch to complete
+            try:
+                batch_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+                # Process results and handle exceptions
+                for j, result in enumerate(batch_results):
+                    if isinstance(result, Exception):
+                        logger.warning(
+                            f"Batch analysis failed for item {i + j}: {result}"
+                        )
+                        # Use fallback for failed items
+                        content, source_id = batch[j]
+                        fallback_result = self._fallback_analysis(content, persona)
+                        fallback_result["source_identifier"] = source_id
+                        fallback_result["batch_processed"] = True
+                        results.append(fallback_result)
+                    else:
+                        # Add source identifier to successful results
+                        result["source_identifier"] = batch[j][1]
+                        result["batch_processed"] = True
+                        results.append(result)
+
+            except Exception as e:
+                logger.error(f"Batch analysis completely failed: {e}")
+                # Fallback for entire batch
+                for content, source_id in batch:
+                    fallback_result = self._fallback_analysis(content, persona)
+                    fallback_result["source_identifier"] = source_id
+                    fallback_result["batch_processed"] = True
+                    fallback_result["batch_error"] = str(e)
+                    results.append(fallback_result)
+
+        logger.info(
+            f"Batch content analysis completed: {len(content_items)} items processed "
+            f"in {(len(content_items) + self._batch_size - 1) // self._batch_size} batches"
+        )
+
+        return results
+
 
 class DeepResearchAgent(PersonaAwareAgent):
     """
@@ -383,7 +564,6 @@ class DeepResearchAgent(PersonaAwareAgent):
         checkpointer: MemorySaver | None = None,
         ttl_hours: int = 24,  # Research results cached longer
         exa_api_key: str | None = None,
-        tavily_api_key: str | None = None,
         default_depth: str = "standard",
         max_sources: int | None = None,
         research_depth: str | None = None,
@@ -392,27 +572,13 @@ class DeepResearchAgent(PersonaAwareAgent):
     ):
         """Initialize deep research agent."""
 
-        # Initialize search providers
+        # Store API key for immediate loading of search provider (pre-initialization)
+        self._exa_api_key = exa_api_key
+        self._search_providers_loaded = False
         self.search_providers = []
 
-        if exa_api_key:
-            try:
-                self.search_providers.append(ExaSearchProvider(exa_api_key))
-                logger.info("Initialized Exa search provider")
-            except ImportError as e:
-                logger.warning(f"Failed to initialize Exa provider: {e}")
-
-        if tavily_api_key:
-            try:
-                self.search_providers.append(TavilySearchProvider(tavily_api_key))
-                logger.info("Initialized Tavily search provider")
-            except ImportError as e:
-                logger.warning(f"Failed to initialize Tavily provider: {e}")
-
-        if not self.search_providers:
-            logger.warning(
-                "No search providers available - research capabilities will be limited"
-            )
+        # Pre-initialize search providers immediately (async init will be called separately)
+        self._initialization_pending = True
 
         # Configuration
         self.default_depth = research_depth or default_depth
@@ -425,9 +591,9 @@ class DeepResearchAgent(PersonaAwareAgent):
         self.enable_parallel_execution = enable_parallel_execution
         self.parallel_config = parallel_config or ParallelResearchConfig(
             max_concurrent_agents=settings.data_limits.max_parallel_agents,
-            timeout_per_agent=300,
-            enable_fallbacks=True,
-            rate_limit_delay=1.0,
+            timeout_per_agent=180,  # 3 minutes per agent for thorough research
+            enable_fallbacks=False,  # Disable fallbacks for speed
+            rate_limit_delay=0.5,  # Reduced delay for faster execution
         )
         self.parallel_orchestrator = ParallelResearchOrchestrator(self.parallel_config)
         self.task_distributor = TaskDistributionEngine()
@@ -447,10 +613,51 @@ class DeepResearchAgent(PersonaAwareAgent):
         # Initialize components
         self.conversation_store = ConversationStore(ttl_hours=ttl_hours)
 
+    async def initialize(self) -> None:
+        """Pre-initialize Exa search provider to eliminate lazy loading overhead during research."""
+        if not self._initialization_pending:
+            return
+
+        try:
+            provider = await get_cached_search_provider(self._exa_api_key)
+            self.search_providers = [provider] if provider else []
+            self._search_providers_loaded = True
+            self._initialization_pending = False
+
+            if not self.search_providers:
+                logger.warning(
+                    "Exa search provider not available - research capabilities will be limited"
+                )
+            else:
+                logger.info("Pre-initialized Exa search provider")
+
+        except Exception as e:
+            logger.error(f"Failed to pre-initialize Exa search provider: {e}")
+            self.search_providers = []
+            self._search_providers_loaded = True
+            self._initialization_pending = False
+
         logger.info(
-            f"DeepResearchAgent initialized with {len(self.search_providers)} search providers, "
+            f"DeepResearchAgent pre-initialized with {len(self.search_providers)} search providers, "
             f"parallel execution: {self.enable_parallel_execution}"
         )
+
+    async def _ensure_search_providers_loaded(self) -> None:
+        """Ensure search providers are loaded - fallback to initialization if not pre-initialized."""
+        if self._search_providers_loaded:
+            return
+
+        # Check if initialization was marked as needed
+        if hasattr(self, "_needs_initialization") and self._needs_initialization:
+            logger.info("Performing deferred initialization of search providers")
+            await self.initialize()
+            self._needs_initialization = False
+        else:
+            # Fallback to pre-initialization if not done during agent creation
+            logger.warning(
+                "Search providers not pre-initialized - falling back to lazy loading"
+            )
+            await self.initialize()
 
     def get_state_schema(self) -> type:
         """Return DeepResearchState schema."""
@@ -562,6 +769,7 @@ class DeepResearchAgent(PersonaAwareAgent):
         depth: str | None = None,
         focus_areas: list[str] | None = None,
         timeframe: str = "30d",
+        timeout_budget: float | None = None,  # Total timeout budget in seconds
         **kwargs,
     ) -> dict[str, Any]:
         """
@@ -573,22 +781,43 @@ class DeepResearchAgent(PersonaAwareAgent):
             depth: Research depth (basic/standard/comprehensive/exhaustive)
             focus_areas: Specific areas to focus on
             timeframe: Time range for research
+            timeout_budget: Total timeout budget in seconds (enables budget allocation)
             **kwargs: Additional parameters
 
         Returns:
             Comprehensive research results with analysis and citations
         """
+        # Ensure search providers are loaded (cached for performance)
+        await self._ensure_search_providers_loaded()
+
         # Check if search providers are available
         if not self.search_providers:
             return {
                 "error": "Research functionality unavailable - no search providers configured",
-                "details": "Please configure EXA_API_KEY or TAVILY_API_KEY environment variables to enable research capabilities",
+                "details": "Please configure EXA_API_KEY environment variable to enable research capabilities",
                 "topic": topic,
                 "available_functionality": "Limited to pre-existing data and basic analysis",
             }
 
         start_time = datetime.now()
         depth = depth or self.default_depth
+
+        # Calculate timeout budget allocation for generous research timeouts
+        timeout_budgets = {}
+        if timeout_budget and timeout_budget > 0:
+            timeout_budgets = {
+                "search_budget": timeout_budget * 0.50,  # 50% for search operations (generous allocation)
+                "analysis_budget": timeout_budget * 0.30,  # 30% for content analysis  
+                "synthesis_budget": timeout_budget * 0.20,  # 20% for result synthesis
+                "total_budget": timeout_budget,
+                "allocation_strategy": "comprehensive_research",
+            }
+            logger.info(
+                f"TIMEOUT_BUDGET_ALLOCATION: total={timeout_budget}s → "
+                f"search={timeout_budgets['search_budget']:.1f}s, "
+                f"analysis={timeout_budgets['analysis_budget']:.1f}s, "
+                f"synthesis={timeout_budgets['synthesis_budget']:.1f}s"
+            )
 
         # Initialize research state
         initial_state = {
@@ -617,6 +846,8 @@ class DeepResearchAgent(PersonaAwareAgent):
             "api_calls_made": 0,
             "cache_hits": 0,
             "cache_misses": 0,
+            # Timeout budget allocation for intelligent time management
+            "timeout_budgets": timeout_budgets,
             # Legacy fields
             "token_count": 0,
             "error": None,
@@ -719,23 +950,81 @@ class DeepResearchAgent(PersonaAwareAgent):
             update={"search_queries": search_queries, "research_status": "searching"},
         )
 
+    async def _safe_search(
+        self,
+        provider: WebSearchProvider,
+        query: str,
+        num_results: int = 5,
+        timeout_budget: float | None = None,
+    ) -> list[dict[str, Any]]:
+        """Safely execute search with a provider, handling exceptions gracefully."""
+        try:
+            return await provider.search(
+                query, num_results=num_results, timeout_budget=timeout_budget
+            )
+        except Exception as e:
+            logger.warning(
+                f"Search failed for '{query}' with provider {type(provider).__name__}: {e}"
+            )
+            return []  # Return empty list on failure
+
     async def _execute_searches(self, state: DeepResearchState) -> Command:
-        """Execute web searches using available providers."""
+        """Execute web searches using available providers with timeout budget awareness."""
         search_queries = state["search_queries"]
         depth_config = RESEARCH_DEPTH_LEVELS[state["research_depth"]]
 
+        # Calculate timeout budget per search operation
+        timeout_budgets = state.get("timeout_budgets", {})
+        search_budget = timeout_budgets.get("search_budget")
+
+        if search_budget:
+            # Divide search budget across queries and providers
+            total_search_operations = len(
+                search_queries[: depth_config["max_searches"]]
+            ) * len(self.search_providers)
+            timeout_per_search = (
+                search_budget / max(total_search_operations, 1)
+                if total_search_operations > 0
+                else search_budget
+            )
+            logger.info(
+                f"SEARCH_BUDGET_ALLOCATION: {search_budget:.1f}s total → "
+                f"{timeout_per_search:.1f}s per search ({total_search_operations} operations)"
+            )
+        else:
+            timeout_per_search = None
+
         all_results = []
 
-        # Execute searches in parallel across providers
+        # Create all search tasks for parallel execution with budget-aware timeouts
+        search_tasks = []
         for query in search_queries[: depth_config["max_searches"]]:
             for provider in self.search_providers:
-                try:
-                    results = await provider.search(query, num_results=5)
-                    all_results.extend(results)
-                except Exception as e:
-                    logger.warning(
-                        f"Search failed for {query} with provider {type(provider).__name__}: {e}"
+                # Create async task for each provider/query combination with timeout budget
+                search_tasks.append(
+                    self._safe_search(
+                        provider,
+                        query,
+                        num_results=5,
+                        timeout_budget=timeout_per_search,
                     )
+                )
+
+        # Execute all searches in parallel using asyncio.gather()
+        if search_tasks:
+            parallel_results = await asyncio.gather(
+                *search_tasks, return_exceptions=True
+            )
+
+            # Process results and filter out exceptions
+            for result in parallel_results:
+                if isinstance(result, Exception):
+                    # Log the exception but continue with other results
+                    logger.warning(f"Search task failed: {result}")
+                elif isinstance(result, list):
+                    all_results.extend(result)
+                elif result is not None:
+                    all_results.append(result)
 
         # Deduplicate and limit results
         unique_results = []
@@ -747,6 +1036,10 @@ class DeepResearchAgent(PersonaAwareAgent):
             ):
                 unique_results.append(result)
                 seen_urls.add(result["url"])
+
+        logger.info(
+            f"Search completed: {len(unique_results)} unique results from {len(all_results)} total"
+        )
 
         return Command(
             goto="analyze_content",
@@ -1761,21 +2054,76 @@ class BaseSubagent:
         """Execute research task - to be implemented by subclasses."""
         raise NotImplementedError
 
+    async def _safe_search(
+        self,
+        provider: WebSearchProvider,
+        query: str,
+        num_results: int = 5,
+        timeout_budget: float | None = None,
+    ) -> list[dict[str, Any]]:
+        """Safely execute search with a provider, handling exceptions gracefully."""
+        try:
+            return await provider.search(
+                query, num_results=num_results, timeout_budget=timeout_budget
+            )
+        except Exception as e:
+            self.logger.warning(
+                f"Search failed for '{query}' with provider {type(provider).__name__}: {e}"
+            )
+            return []  # Return empty list on failure
+
     async def _perform_specialized_search(
-        self, topic: str, specialized_queries: list[str], max_results: int = 10
+        self,
+        topic: str,
+        specialized_queries: list[str],
+        max_results: int = 10,
+        timeout_budget: float | None = None,
     ) -> list[dict[str, Any]]:
         """Perform specialized web search for this subagent type."""
         all_results = []
 
+        # Create all search tasks for parallel execution
+        search_tasks = []
+        results_per_query = (
+            max_results // len(specialized_queries)
+            if specialized_queries
+            else max_results
+        )
+
+        # Calculate timeout per search if budget provided
+        if timeout_budget:
+            total_searches = len(specialized_queries) * len(self.search_providers)
+            timeout_per_search = timeout_budget / max(total_searches, 1)
+        else:
+            timeout_per_search = None
+
         for query in specialized_queries:
             for provider in self.search_providers:
-                try:
-                    results = await provider.search(
-                        query, num_results=max_results // len(specialized_queries)
+                # Create async task for each provider/query combination
+                search_tasks.append(
+                    self._safe_search(
+                        provider,
+                        query,
+                        num_results=results_per_query,
+                        timeout_budget=timeout_per_search,
                     )
-                    all_results.extend(results)
-                except Exception as e:
-                    self.logger.warning(f"Search failed for {query}: {e}")
+                )
+
+        # Execute all searches in parallel using asyncio.gather()
+        if search_tasks:
+            parallel_results = await asyncio.gather(
+                *search_tasks, return_exceptions=True
+            )
+
+            # Process results and filter out exceptions
+            for result in parallel_results:
+                if isinstance(result, Exception):
+                    # Log the exception but continue with other results
+                    self.logger.warning(f"Search task failed: {result}")
+                elif isinstance(result, list):
+                    all_results.extend(result)
+                elif result is not None:
+                    all_results.append(result)
 
         # Deduplicate results
         seen_urls = set()

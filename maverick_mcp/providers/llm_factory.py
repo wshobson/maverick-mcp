@@ -10,7 +10,6 @@ from typing import Any
 from langchain_community.llms import FakeListLLM
 
 from maverick_mcp.providers.openrouter_provider import (
-    OpenRouterProvider,
     TaskType,
     get_openrouter_llm,
 )
@@ -46,7 +45,9 @@ def get_llm(
     # Check for OpenRouter first (preferred)
     openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
     if openrouter_api_key:
-        logger.info(f"Using OpenRouter with intelligent model selection for task: {task_type}")
+        logger.info(
+            f"Using OpenRouter with intelligent model selection for task: {task_type}"
+        )
         return get_openrouter_llm(
             api_key=openrouter_api_key,
             task_type=task_type,

@@ -60,13 +60,20 @@ def risk_adjusted_analysis(
                 risk_level = float(risk_level)
             except ValueError:
                 risk_level = 50.0
-        
+
         # Use explicit date range to avoid weekend/holiday issues
         from datetime import UTC, datetime, timedelta
-        end_date = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")  # Last week to be safe
-        start_date = (datetime.now(UTC) - timedelta(days=365)).strftime("%Y-%m-%d")  # 1 year ago
-        df = stock_provider.get_stock_data(ticker, start_date=start_date, end_date=end_date)
-        
+
+        end_date = (datetime.now(UTC) - timedelta(days=7)).strftime(
+            "%Y-%m-%d"
+        )  # Last week to be safe
+        start_date = (datetime.now(UTC) - timedelta(days=365)).strftime(
+            "%Y-%m-%d"
+        )  # 1 year ago
+        df = stock_provider.get_stock_data(
+            ticker, start_date=start_date, end_date=end_date
+        )
+
         # Validate dataframe has required columns (check for both upper and lower case)
         required_cols = ["high", "low", "close"]
         actual_cols_lower = [col.lower() for col in df.columns]
@@ -76,9 +83,9 @@ def risk_adjusted_analysis(
                 "details": "Unable to retrieve required price data (High, Low, Close) for analysis",
                 "ticker": ticker,
                 "required_data": ["High", "Low", "Close", "Volume"],
-                "available_columns": list(df.columns)
+                "available_columns": list(df.columns),
             }
-        
+
         df["atr"] = ta.atr(df["High"], df["Low"], df["Close"], length=20)
         atr = df["atr"].iloc[-1]
         current_price = df["Close"].iloc[-1]

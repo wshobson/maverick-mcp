@@ -13,9 +13,7 @@ This test suite covers:
 
 import asyncio
 import time
-from datetime import datetime
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -34,7 +32,7 @@ class TestParallelResearchConfig:
     def test_default_configuration(self):
         """Test default configuration values."""
         config = ParallelResearchConfig()
-        
+
         assert config.max_concurrent_agents == 4
         assert config.timeout_per_agent == 300
         assert config.enable_fallbacks is True
@@ -48,7 +46,7 @@ class TestParallelResearchConfig:
             enable_fallbacks=False,
             rate_limit_delay=0.5,
         )
-        
+
         assert config.max_concurrent_agents == 8
         assert config.timeout_per_agent == 180
         assert config.enable_fallbacks is False
@@ -68,7 +66,7 @@ class TestResearchTask:
             priority=8,
             timeout=240,
         )
-        
+
         assert task.task_id == "test_123_fundamental"
         assert task.task_type == "fundamental"
         assert task.target_topic == "AAPL financial analysis"
@@ -87,22 +85,22 @@ class TestResearchTask:
             target_topic="TSLA sentiment analysis",
             focus_areas=["news", "social"],
         )
-        
+
         # Initial state
         assert task.status == "pending"
         assert task.start_time is None
         assert task.end_time is None
-        
+
         # Simulate task execution
         task.start_time = time.time()
         task.status = "running"
-        
+
         # Simulate completion
         time.sleep(0.01)  # Small delay to ensure different timestamps
         task.end_time = time.time()
         task.status = "completed"
         task.result = {"insights": ["Test insight"]}
-        
+
         assert task.status == "completed"
         assert task.start_time < task.end_time
         assert task.result is not None
@@ -115,12 +113,12 @@ class TestResearchTask:
             target_topic="NVDA technical analysis",
             focus_areas=["chart_patterns"],
         )
-        
+
         # Simulate error
         task.status = "failed"
         task.error = "API timeout occurred"
         task.end_time = time.time()
-        
+
         assert task.status == "failed"
         assert task.error == "API timeout occurred"
         assert task.result is None
@@ -174,7 +172,7 @@ class TestParallelResearchOrchestrator:
     def test_orchestrator_initialization(self, config):
         """Test orchestrator initialization."""
         orchestrator = ParallelResearchOrchestrator(config)
-        
+
         assert orchestrator.config == config
         assert orchestrator.active_tasks == {}
         assert orchestrator._semaphore._value == config.max_concurrent_agents
@@ -183,13 +181,14 @@ class TestParallelResearchOrchestrator:
     def test_orchestrator_default_config(self):
         """Test orchestrator with default configuration."""
         orchestrator = ParallelResearchOrchestrator()
-        
+
         assert orchestrator.config.max_concurrent_agents == 4
         assert orchestrator.config.timeout_per_agent == 300
 
     @pytest.mark.asyncio
     async def test_successful_parallel_execution(self, orchestrator, sample_tasks):
         """Test successful parallel execution of research tasks."""
+
         # Mock research executor that returns success
         async def mock_executor(task: ResearchTask) -> dict[str, Any]:
             await asyncio.sleep(0.1)  # Simulate work
@@ -201,7 +200,9 @@ class TestParallelResearchOrchestrator:
             }
 
         # Mock synthesis callback
-        async def mock_synthesis(task_results: dict[str, ResearchTask]) -> dict[str, Any]:
+        async def mock_synthesis(
+            task_results: dict[str, ResearchTask],
+        ) -> dict[str, Any]:
             return {
                 "synthesis": "Combined analysis from parallel research",
                 "confidence_score": 0.85,
@@ -222,11 +223,15 @@ class TestParallelResearchOrchestrator:
         assert result.successful_tasks == 3
         assert result.failed_tasks == 0
         assert result.synthesis is not None
-        assert result.synthesis["synthesis"] == "Combined analysis from parallel research"
+        assert (
+            result.synthesis["synthesis"] == "Combined analysis from parallel research"
+        )
         assert len(result.task_results) == 3
-        
+
         # Verify parallel efficiency (should be faster than sequential)
-        assert execution_time < 0.5  # Should complete much faster than 3 * 0.1s sequential
+        assert (
+            execution_time < 0.5
+        )  # Should complete much faster than 3 * 0.1s sequential
         assert result.parallel_efficiency > 1.0  # Should show speedup
 
     @pytest.mark.asyncio
@@ -235,16 +240,16 @@ class TestParallelResearchOrchestrator:
         execution_order = []
         active_count = 0
         max_concurrent = 0
-        
+
         async def mock_executor(task: ResearchTask) -> dict[str, Any]:
             nonlocal active_count, max_concurrent
-            
+
             active_count += 1
             max_concurrent = max(max_concurrent, active_count)
             execution_order.append(f"start_{task.task_id}")
-            
+
             await asyncio.sleep(0.1)  # Simulate work
-            
+
             active_count -= 1
             execution_order.append(f"end_{task.task_id}")
             return {"result": f"completed_{task.task_id}"}
@@ -252,7 +257,9 @@ class TestParallelResearchOrchestrator:
         # Create more tasks than max concurrent agents
         tasks = [
             ResearchTask(f"task_{i}", "fundamental", "topic", ["focus"], priority=i)
-            for i in range(config.max_concurrent_agents + 2)  # 5 tasks, max 3 concurrent
+            for i in range(
+                config.max_concurrent_agents + 2
+            )  # 5 tasks, max 3 concurrent
         ]
 
         result = await orchestrator.execute_parallel_research(
@@ -262,12 +269,15 @@ class TestParallelResearchOrchestrator:
 
         # Verify concurrency was limited
         assert max_concurrent <= config.max_concurrent_agents
-        assert result.successful_tasks == config.max_concurrent_agents  # Limited by config
+        assert (
+            result.successful_tasks == config.max_concurrent_agents
+        )  # Limited by config
         assert len(execution_order) > 0
 
     @pytest.mark.asyncio
     async def test_task_timeout_handling(self, orchestrator):
         """Test handling of task timeouts."""
+
         async def slow_executor(task: ResearchTask) -> dict[str, Any]:
             await asyncio.sleep(10)  # Longer than timeout
             return {"result": "should_not_complete"}
@@ -290,7 +300,7 @@ class TestParallelResearchOrchestrator:
         # Verify timeout was handled
         assert result.successful_tasks == 0
         assert result.failed_tasks == 1
-        
+
         failed_task = result.task_results["timeout_task"]
         assert failed_task.status == "failed"
         assert "timeout" in failed_task.error.lower()
@@ -298,6 +308,7 @@ class TestParallelResearchOrchestrator:
     @pytest.mark.asyncio
     async def test_task_error_handling(self, orchestrator, sample_tasks):
         """Test handling of task execution errors."""
+
         async def error_executor(task: ResearchTask) -> dict[str, Any]:
             if task.task_type == "technical":
                 raise ValueError(f"Error in {task.task_type} analysis")
@@ -314,7 +325,8 @@ class TestParallelResearchOrchestrator:
 
         # Check specific task status
         technical_task = next(
-            task for task in result.task_results.values() 
+            task
+            for task in result.task_results.values()
             if task.task_type == "technical"
         )
         assert technical_task.status == "failed"
@@ -325,7 +337,9 @@ class TestParallelResearchOrchestrator:
         """Test task preparation and priority-based ordering."""
         tasks = [
             ResearchTask("low_priority", "technical", "topic", ["focus"], priority=2),
-            ResearchTask("high_priority", "fundamental", "topic", ["focus"], priority=9),
+            ResearchTask(
+                "high_priority", "fundamental", "topic", ["focus"], priority=9
+            ),
             ResearchTask("med_priority", "sentiment", "topic", ["focus"], priority=5),
         ]
 
@@ -339,7 +353,7 @@ class TestParallelResearchOrchestrator:
 
         # Verify all tasks were prepared (limited by max_concurrent_agents = 3)
         assert len(result.task_results) == 3
-        
+
         # Verify tasks have default timeout set
         for task in result.task_results.values():
             assert task.timeout == orchestrator.config.timeout_per_agent
@@ -347,10 +361,13 @@ class TestParallelResearchOrchestrator:
     @pytest.mark.asyncio
     async def test_synthesis_callback_error_handling(self, orchestrator, sample_tasks):
         """Test synthesis callback error handling."""
+
         async def success_executor(task: ResearchTask) -> dict[str, Any]:
             return {"result": f"success_{task.task_type}"}
 
-        async def failing_synthesis(task_results: dict[str, ResearchTask]) -> dict[str, Any]:
+        async def failing_synthesis(
+            task_results: dict[str, ResearchTask],
+        ) -> dict[str, Any]:
             raise RuntimeError("Synthesis failed!")
 
         result = await orchestrator.execute_parallel_research(
@@ -368,6 +385,7 @@ class TestParallelResearchOrchestrator:
     @pytest.mark.asyncio
     async def test_no_synthesis_callback(self, orchestrator, sample_tasks):
         """Test execution without synthesis callback."""
+
         async def success_executor(task: ResearchTask) -> dict[str, Any]:
             return {"result": f"success_{task.task_type}"}
 
@@ -408,6 +426,7 @@ class TestParallelResearchOrchestrator:
     @pytest.mark.asyncio
     async def test_empty_task_list(self, orchestrator):
         """Test handling of empty task list."""
+
         async def unused_executor(task: ResearchTask) -> dict[str, Any]:
             return {"result": "should_not_be_called"}
 
@@ -441,11 +460,11 @@ class TestParallelResearchOrchestrator:
         # Verify performance metrics
         assert result.total_execution_time > 0
         assert result.parallel_efficiency > 0
-        
+
         # Parallel efficiency should be roughly: sum(individual_durations) / total_wall_time
         expected_sequential_time = sum(task_durations)
         efficiency_ratio = expected_sequential_time / result.total_execution_time
-        
+
         # Allow some tolerance for timing variations
         assert abs(result.parallel_efficiency - efficiency_ratio) < 0.5
 
@@ -484,52 +503,62 @@ class TestTaskDistributionEngine:
     def test_task_distribution_engine_creation(self):
         """Test creation of task distribution engine."""
         engine = TaskDistributionEngine()
-        assert hasattr(engine, 'TASK_TYPES')
-        assert 'fundamental' in engine.TASK_TYPES
-        assert 'technical' in engine.TASK_TYPES
-        assert 'sentiment' in engine.TASK_TYPES
-        assert 'competitive' in engine.TASK_TYPES
+        assert hasattr(engine, "TASK_TYPES")
+        assert "fundamental" in engine.TASK_TYPES
+        assert "technical" in engine.TASK_TYPES
+        assert "sentiment" in engine.TASK_TYPES
+        assert "competitive" in engine.TASK_TYPES
 
     def test_topic_relevance_analysis(self):
         """Test analysis of topic relevance to different research types."""
         engine = TaskDistributionEngine()
-        
+
         # Test financial topic
-        relevance = engine._analyze_topic_relevance("AAPL earnings revenue profit analysis")
-        
-        assert relevance['fundamental'] > relevance['technical']  # Should favor fundamental
+        relevance = engine._analyze_topic_relevance(
+            "AAPL earnings revenue profit analysis"
+        )
+
+        assert (
+            relevance["fundamental"] > relevance["technical"]
+        )  # Should favor fundamental
         assert all(0 <= score <= 1 for score in relevance.values())  # Valid range
         assert len(relevance) == 4  # All task types
 
     def test_distribute_research_tasks(self):
         """Test distribution of research topic into specialized tasks."""
         engine = TaskDistributionEngine()
-        
+
         tasks = engine.distribute_research_tasks(
             topic="Tesla financial performance and market sentiment",
             session_id="test_123",
-            focus_areas=["earnings", "sentiment"]
+            focus_areas=["earnings", "sentiment"],
         )
-        
+
         assert len(tasks) > 0
         assert all(isinstance(task, ResearchTask) for task in tasks)
-        assert all(task.session_id == "test_123" for task in [])  # Tasks don't have session_id directly
-        assert all(task.target_topic == "Tesla financial performance and market sentiment" for task in tasks)
-        
+        assert all(
+            task.session_id == "test_123" for task in []
+        )  # Tasks don't have session_id directly
+        assert all(
+            task.target_topic == "Tesla financial performance and market sentiment"
+            for task in tasks
+        )
+
         # Verify task types are relevant
         task_types = {task.task_type for task in tasks}
-        assert 'fundamental' in task_types or 'sentiment' in task_types  # Should include relevant types
+        assert (
+            "fundamental" in task_types or "sentiment" in task_types
+        )  # Should include relevant types
 
     def test_fallback_task_creation(self):
         """Test fallback task creation when no relevant tasks found."""
         engine = TaskDistributionEngine()
-        
+
         # Use a topic with very low relevance scores
         tasks = engine.distribute_research_tasks(
-            topic="completely unrelated topic xyz123",
-            session_id="fallback_test"
+            topic="completely unrelated topic xyz123", session_id="fallback_test"
         )
-        
+
         # Should create at least one fallback task
         assert len(tasks) >= 1
         # Should have fundamental as fallback
@@ -540,14 +569,14 @@ class TestTaskDistributionEngine:
     def test_task_priority_assignment(self):
         """Test priority assignment based on relevance scores."""
         engine = TaskDistributionEngine()
-        
+
         tasks = engine.distribute_research_tasks(
             topic="Apple dividend yield earnings cash flow stability",  # Should favor fundamental
-            session_id="priority_test"
+            session_id="priority_test",
         )
-        
+
         # Find fundamental task (should have higher priority for this topic)
-        fundamental_tasks = [task for task in tasks if task.task_type == 'fundamental']
+        fundamental_tasks = [task for task in tasks if task.task_type == "fundamental"]
         if fundamental_tasks:
             fundamental_task = fundamental_tasks[0]
             assert fundamental_task.priority >= 5  # Should have decent priority
@@ -555,13 +584,13 @@ class TestTaskDistributionEngine:
     def test_focus_areas_integration(self):
         """Test integration of provided focus areas."""
         engine = TaskDistributionEngine()
-        
+
         tasks = engine.distribute_research_tasks(
             topic="Microsoft analysis",
             session_id="focus_test",
-            focus_areas=["technical_analysis", "chart_patterns"]
+            focus_areas=["technical_analysis", "chart_patterns"],
         )
-        
+
         # Should include technical analysis tasks when focus areas suggest it
         task_types = {task.task_type for task in tasks}
         # Should favor technical analysis given the focus areas
@@ -574,7 +603,7 @@ class TestResearchResult:
     def test_research_result_initialization(self):
         """Test ResearchResult initialization."""
         result = ResearchResult()
-        
+
         assert result.task_results == {}
         assert result.synthesis is None
         assert result.total_execution_time == 0.0
@@ -585,20 +614,20 @@ class TestResearchResult:
     def test_research_result_data_storage(self):
         """Test storing data in ResearchResult."""
         result = ResearchResult()
-        
+
         # Add sample task results
         task1 = ResearchTask("task_1", "fundamental", "topic", ["focus"])
         task1.status = "completed"
-        task2 = ResearchTask("task_2", "technical", "topic", ["focus"])  
+        task2 = ResearchTask("task_2", "technical", "topic", ["focus"])
         task2.status = "failed"
-        
+
         result.task_results = {"task_1": task1, "task_2": task2}
         result.successful_tasks = 1
         result.failed_tasks = 1
         result.total_execution_time = 2.5
         result.parallel_efficiency = 1.8
         result.synthesis = {"findings": "Test findings"}
-        
+
         assert len(result.task_results) == 2
         assert result.successful_tasks == 1
         assert result.failed_tasks == 1
@@ -629,22 +658,24 @@ class TestParallelResearchIntegration:
         engine = TaskDistributionEngine()
         tasks = engine.distribute_research_tasks(
             topic="Apple Inc financial analysis and market outlook",
-            session_id="integration_test"
+            session_id="integration_test",
         )
 
         # Mock a realistic research executor
         async def realistic_executor(task: ResearchTask) -> dict[str, Any]:
             await asyncio.sleep(0.1)  # Simulate API calls
-            
+
             return {
                 "research_type": task.task_type,
                 "insights": [
                     f"{task.task_type} insight 1 for {task.target_topic}",
-                    f"{task.task_type} insight 2 based on {task.focus_areas[0] if task.focus_areas else 'general'}"
+                    f"{task.task_type} insight 2 based on {task.focus_areas[0] if task.focus_areas else 'general'}",
                 ],
                 "sentiment": {
-                    "direction": "bullish" if task.task_type != "technical" else "neutral",
-                    "confidence": 0.75
+                    "direction": "bullish"
+                    if task.task_type != "technical"
+                    else "neutral",
+                    "confidence": 0.75,
                 },
                 "risk_factors": [f"{task.task_type} risk factor"],
                 "opportunities": [f"{task.task_type} opportunity"],
@@ -653,28 +684,31 @@ class TestParallelResearchIntegration:
                     {
                         "title": f"Source for {task.task_type} research",
                         "url": f"https://example.com/{task.task_type}",
-                        "credibility_score": 0.85
+                        "credibility_score": 0.85,
                     }
-                ]
+                ],
             }
 
         # Mock synthesis callback
-        async def integration_synthesis(task_results: dict[str, ResearchTask]) -> dict[str, Any]:
+        async def integration_synthesis(
+            task_results: dict[str, ResearchTask],
+        ) -> dict[str, Any]:
             successful_results = [
-                task.result for task in task_results.values() 
+                task.result
+                for task in task_results.values()
                 if task.status == "completed" and task.result
             ]
-            
+
             all_insights = []
             for result in successful_results:
                 all_insights.extend(result.get("insights", []))
-            
+
             return {
                 "synthesis": f"Integrated analysis from {len(successful_results)} research angles",
                 "confidence_score": 0.82,
                 "key_findings": all_insights[:5],  # Top 5 insights
                 "overall_sentiment": "bullish",
-                "research_depth": "comprehensive"
+                "research_depth": "comprehensive",
             }
 
         # Execute the integration test
@@ -691,12 +725,12 @@ class TestParallelResearchIntegration:
         assert result.successful_tasks > 0
         assert result.total_execution_time > 0
         assert execution_time < 5  # Should complete reasonably quickly
-        
+
         # Verify synthesis was generated
         assert result.synthesis is not None
         assert "synthesis" in result.synthesis
         assert result.synthesis["confidence_score"] > 0
-        
+
         # Verify task results structure
         for task_id, task in result.task_results.items():
             assert isinstance(task, ResearchTask)

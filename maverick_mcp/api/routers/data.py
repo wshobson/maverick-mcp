@@ -242,14 +242,16 @@ def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
         api_key = settings.external_data.api_key
         base_url = settings.external_data.base_url
         if not api_key:
-            logger.info("External sentiment API not configured, providing basic response")
+            logger.info(
+                "External sentiment API not configured, providing basic response"
+            )
             return {
                 "ticker": request.ticker,
                 "sentiment": "neutral",
                 "message": "External sentiment API not configured - configure EXTERNAL_DATA_API_KEY for enhanced sentiment analysis",
                 "status": "fallback_mode",
                 "confidence": 0.5,
-                "source": "fallback"
+                "source": "fallback",
             }
 
         url = f"{base_url}/sentiment/{request.ticker}"

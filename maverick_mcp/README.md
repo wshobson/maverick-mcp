@@ -64,17 +64,17 @@ To start the Maverick-MCP server:
 make dev
 
 # Alternative: Direct FastMCP server
-python -m maverick_mcp.api.server --transport sse --port 8000
+python -m maverick_mcp.api.server --transport streamable-http --port 8003
 
 # Development mode with hot reload
 ./scripts/dev.sh
 ```
 
-Note: The server will start using SSE transport on the default MCP port. While you can specify host and port parameters, these are only for documentation purposes, as the FastMCP library has its own internal configuration. The server normally runs on port 8000.
+Note: The server will start using streamable-http transport on port 8003. The streamable-http transport is compatible with mcp-remote, while SSE transport is not (SSE requires GET requests but mcp-remote sends POST requests).
 
 When the server starts, you can access it at:
 
-- http://localhost:8000
+- http://localhost:8003
 
 You can also start the server programmatically:
 

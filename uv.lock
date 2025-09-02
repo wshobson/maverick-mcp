@@ -489,7 +489,7 @@ wheels = [
 
 [[package]]
 name = "exa-py"
-version = "1.15.2"
+version = "1.15.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -498,9 +498,9 @@ dependencies = [
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/5c/8b4a371327422f2328b5b54393252f7a0f7d4792af020422cd93239f533a/exa_py-1.15.2.tar.gz", hash = "sha256:1d35fc0a9f401329d92a581dcd2b74a7cdfce1420ba49010a6d0bbfef0df47d7", size = 40224, upload-time = "2025-08-23T01:55:28.77Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/39/750a4a62e25afad962cf4f6d2c7e998ac25e8001b448ab6906292f86a88f/exa_py-1.15.4.tar.gz", hash = "sha256:707781bead63e495576375385729ebff4f5e843559e8acd78a0f0feb120292ca", size = 40250, upload-time = "2025-08-29T02:40:51.073Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/8a/9fd8650e8158b6350ac999bfff2c8f0566dc5b7772718912dcc2bfba435e/exa_py-1.15.2-py3-none-any.whl", hash = "sha256:11d1fd3a9156c29e6e9dca4cf10126955b37a91625054448ce3be14ad95ba783", size = 55139, upload-time = "2025-08-23T01:55:27.332Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/9a/3503696c939aee273a55a20f434d1f61ea623ff12f09a612f0efed1087c7/exa_py-1.15.4-py3-none-any.whl", hash = "sha256:2c29e74f130a086e061bab10cb042f5c7894beb471eddb58dad8b2ed5e916cba", size = 55176, upload-time = "2025-08-29T02:40:49.695Z" },
 ]
 
 [[package]]
@@ -1257,6 +1257,9 @@ dependencies = [
     { name = "plotly" },
     { name = "psutil" },
     { name = "psycopg2-binary" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "pytz" },
@@ -1266,9 +1269,9 @@ dependencies = [
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sqlalchemy" },
     { name = "ta-lib" },
-    { name = "tavily-python" },
     { name = "tiingo" },
     { name = "tiktoken" },
+    { name = "ty" },
     { name = "uvicorn" },
     { name = "watchdog" },
     { name = "yfinance" },
@@ -1305,7 +1308,7 @@ requires-dist = [
     { name = "bandit", marker = "extra == 'dev'", specifier = ">=1.7.5" },
     { name = "certifi", specifier = ">=2024.2.2" },
     { name = "cryptography", specifier = ">=42.0.0" },
-    { name = "exa-py", specifier = ">=1.0.0" },
+    { name = "exa-py", specifier = ">=1.0.19" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastmcp", specifier = ">=2.7.0" },
     { name = "finvizfinance", specifier = ">=1.1.0" },
@@ -1334,8 +1337,11 @@ requires-dist = [
     { name = "plotly", specifier = ">=5.0.0" },
     { name = "psutil", specifier = ">=6.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+    { name = "pytest", specifier = ">=8.4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
+    { name = "pytest-asyncio", specifier = ">=1.1.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24.0" },
+    { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.6.0" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
@@ -1349,10 +1355,10 @@ requires-dist = [
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.22.0" },
     { name = "sqlalchemy", specifier = ">=2.0.40" },
     { name = "ta-lib", specifier = ">=0.6.3" },
-    { name = "tavily-python", specifier = ">=0.5.0" },
     { name = "testcontainers", extras = ["postgres", "redis"], marker = "extra == 'dev'", specifier = ">=4.5.0" },
     { name = "tiingo", specifier = ">=0.16.1" },
     { name = "tiktoken", specifier = ">=0.6.0" },
+    { name = "ty", specifier = ">=0.0.1a19" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.1a19" },
     { name = "types-pytz", marker = "extra == 'dev'", specifier = ">=2024.1.0" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0" },
@@ -2354,20 +2360,6 @@ dependencies = [
     { name = "setuptools" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ba/97/a49816dd468a18ee080cf3a04640772a9f6321790d4049cece2490c4b7ad/ta_lib-0.6.4.tar.gz", hash = "sha256:08f55bc5771a6d1ceb1a2b713aad7b05f04eb0061e980c9113571c532d32e9cb", size = 381774, upload-time = "2025-06-08T15:28:15.452Z" }
-
-[[package]]
-name = "tavily-python"
-version = "0.7.11"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "httpx" },
-    { name = "requests" },
-    { name = "tiktoken" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/a4/2b816cbb287c6417e7997195a2b8ce32200ea2acc7099fba1ddf37d0d051/tavily_python-0.7.11.tar.gz", hash = "sha256:58c3ab71bb62820ade5498acc17bc372f436e88151389912672add6bf6d31aed", size = 19278, upload-time = "2025-08-18T23:56:57.899Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/85/53/371a39e17f02e3df8ab3493c77453b0f8f0d2783bd23d6e0fc879d211217/tavily_python-0.7.11-py3-none-any.whl", hash = "sha256:50559d8b605b6854fd85b1b785c603851b86eb4d0e9fd29154f81b54b734dd6e", size = 15826, upload-time = "2025-08-18T23:56:52.203Z" },
-]
 
 [[package]]
 name = "tenacity"

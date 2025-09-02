@@ -104,29 +104,39 @@ cp .env.example .env
 make dev
 
 # The server is now running with:
-# - HTTP endpoint: http://localhost:8000/mcp
-# - SSE endpoint: http://localhost:8000/sse
+# - HTTP endpoint: http://localhost:8003/mcp
+# - SSE endpoint: http://localhost:8003/sse
 # - 520 S&P 500 stocks pre-loaded with screening data
 ```
 
 ### Connect to Claude Desktop
 
-Claude Desktop uses STDIO to communicate with mcp-remote, which then connects to your HTTP server:
+**✅ Recommended: SSE Connection (Stable and Reliable)**
+
+This configuration provides stable tool registration and prevents tools from disappearing:
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
     }
   }
 }
 ```
 
-**Alternate option: Direct STDIO Connection (Development Only)**
+**Config File Location:**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Claude Desktop directly connects via STDIO without any HTTP layer:
+**Why This Configuration Works Best:**
+- ✅ Stable tool registration - tools don't disappear after initial connection
+- ✅ Reliable connection management through SSE transport
+- ✅ Proper session persistence for long-running analysis tasks
+- ✅ All 29+ financial tools available consistently
+
+**Alternative: Direct STDIO Connection (Development Only)**
 
 ```json
 {
@@ -147,7 +157,7 @@ Claude Desktop directly connects via STDIO without any HTTP layer:
 }
 ```
 
-> **Note**: The `mcp-remote` package bridges Claude Desktop's STDIO-only support to HTTP/SSE servers. For native remote server support, use [Claude.ai web interface](https://claude.ai/settings/integrations) instead of Claude Desktop.
+> **Important**: Always **restart Claude Desktop** after making configuration changes. The SSE configuration via mcp-remote has been tested and confirmed to provide stable, persistent tool access without connection drops.
 
 That's it! MaverickMCP tools will now be available in your Claude Desktop interface.
 
@@ -157,33 +167,37 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 
 #### Transport Compatibility Matrix
 
-| MCP Client         | STDIO | HTTP | SSE | Notes                                        |
-| ------------------ | ----- | ---- | --- | -------------------------------------------- |
-| **Claude Desktop** | ✅    | ❌   | ❌  | STDIO-only, requires mcp-remote for HTTP/SSE |
+| MCP Client         | STDIO | HTTP | SSE | Notes                                       |
+| ------------------ | ----- | ---- | --- | --------------------------------------------|
+| **Claude Desktop** | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
 | **Cursor IDE**     | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
 | **Claude Code**    | ✅    | ✅   | ✅  | Supports all transports                      |
 | **Continue.dev**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
 | **Windsurf IDE**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
 | **Goose CLI**      | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
 
-#### Claude Desktop (Most Popular) - STDIO Only
+#### Claude Desktop (Most Popular) - Recommended Configuration
 
-**⚠️ Important**: Claude Desktop ONLY supports STDIO transport. It cannot directly connect to HTTP or SSE servers and requires the `mcp-remote` bridge tool.
-
-**For HTTP Server Connection (Recommended)**:
+**✅ SSE Connection (Recommended - Prevents Tool Disappearing)**:
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
     }
   }
 }
 ```
 
-**For Direct STDIO (Development Only)**:
+**Benefits of SSE Configuration:**
+- ✅ **Stable Tool Registration**: Tools remain available throughout your session
+- ✅ **No Tool Disappearing**: Prevents the common issue where tools initially appear then vanish
+- ✅ **Reliable Connection**: SSE transport provides consistent communication
+- ✅ **Session Persistence**: Maintains connection state for complex analysis workflows
+
+**Alternative: Direct STDIO (Development/Testing Only)**:
 
 ```json
 {
@@ -197,7 +211,8 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
         "maverick_mcp.api.server",
         "--transport",
         "stdio"
-      ]
+      ],
+      "cwd": "/path/to/maverick-mcp"
     }
   }
 }
@@ -217,7 +232,7 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
     }
   }
 }
@@ -229,7 +244,7 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 {
   "mcpServers": {
     "maverick-mcp": {
-      "url": "http://localhost:8000/sse"
+      "url": "http://localhost:8003/sse"
     }
   }
 }
@@ -242,13 +257,13 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 **HTTP Transport (Recommended)**:
 
 ```bash
-claude mcp add --transport http maverick-mcp http://localhost:8000/mcp
+claude mcp add --transport http maverick-mcp http://localhost:8003/mcp
 ```
 
 **SSE Transport (Legacy)**:
 
 ```bash
-claude mcp add --transport sse maverick-mcp http://localhost:8000/sse
+claude mcp add --transport sse maverick-mcp http://localhost:8003/sse
 ```
 
 **STDIO Transport (Development)**:
@@ -268,7 +283,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
       "transport": {
         "type": "stdio",
         "command": "npx",
-        "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+        "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]
       }
     }
   }
@@ -281,7 +296,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 {
   "mcpServers": {
     "maverick-mcp": {
-      "url": "http://localhost:8000/sse"
+      "url": "http://localhost:8003/sse"
     }
   }
 }
@@ -298,7 +313,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/mcp"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]
     }
   }
 }
@@ -310,7 +325,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 {
   "mcpServers": {
     "maverick-mcp": {
-      "serverUrl": "http://localhost:8000/sse"
+      "serverUrl": "http://localhost:8003/sse"
     }
   }
 }
@@ -341,9 +356,9 @@ make dev
 uv run python tools/hot_reload.py   # Auto-restart on file changes
 
 # Server will be available at:
-# - HTTP endpoint: http://localhost:8000/mcp (recommended for Claude Desktop via mcp-remote)
-# - SSE endpoint: http://localhost:8000/sse (legacy compatibility)
-# - Health check: http://localhost:8000/health
+# - HTTP endpoint: http://localhost:8003/mcp (streamable-http - use with mcp-remote)
+# - SSE endpoint: http://localhost:8003/sse (SSE - direct connection only, not mcp-remote)
+# - Health check: http://localhost:8003/health
 ```
 
 ### Testing
@@ -477,7 +492,7 @@ cp .env.example .env
 
 # Using uv in Docker (recommended for faster builds)
 docker build -t maverick_mcp .
-docker run -p 8000:8000 --env-file .env maverick_mcp
+docker run -p 8003:8003 --env-file .env maverick_mcp
 
 # Or start with docker-compose
 docker-compose up -d

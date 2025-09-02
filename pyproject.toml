@@ -27,8 +27,7 @@ dependencies = [
     "openai>=1.84.0",
     "tiktoken>=0.6.0",
     # Deep research dependencies
-    "exa-py>=1.0.0",
-    "tavily-python>=0.5.0",
+    "exa-py>=1.0.19",
     # Database and caching
     "sqlalchemy>=2.0.40",
     "alembic>=1.16.1",
@@ -65,6 +64,10 @@ dependencies = [
     "kaleido>=0.2.1", # Required for Plotly image export
     # Development tools
     "watchdog>=6.0.0",
+    "ty>=0.0.1a19",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
 ]
 
 [project.optional-dependencies]

@@ -106,7 +106,7 @@ After database setup, start the MCP server:
 make dev
 
 # Or manually
-uvicorn maverick_mcp.api.server:app --host 0.0.0.0 --port 8000
+uvicorn maverick_mcp.api.server:app --host 0.0.0.0 --port 8003
 ```
 
 Then connect with Claude Desktop using `mcp-remote`:
@@ -116,7 +116,7 @@ Then connect with Claude Desktop using `mcp-remote`:
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/sse"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]
     }
   }
 }
@@ -170,10 +170,10 @@ SELECT
 
 ```bash
 # Check server is running
-curl http://localhost:8000/health
+curl http://localhost:8003/health
 
 # Check MCP endpoint
-curl http://localhost:8000/mcp/capabilities
+curl http://localhost:8003/mcp/capabilities
 ```
 
 ## Advanced Configuration

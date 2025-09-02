@@ -33,7 +33,7 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
         # Import task-aware LLM factory
         from maverick_mcp.providers.llm_factory import get_llm
         from maverick_mcp.providers.openrouter_provider import TaskType
-        
+
         # Map agent types to task types for optimal model selection
         task_mapping = {
             "market": TaskType.MARKET_ANALYSIS,
@@ -41,9 +41,9 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
             "supervisor": TaskType.MULTI_AGENT_ORCHESTRATION,
             "deep_research": TaskType.DEEP_RESEARCH,
         }
-        
+
         task_type = task_mapping.get(agent_type, TaskType.GENERAL)
-        
+
         # Get optimized LLM for this task
         llm = get_llm(task_type=task_type)
 
@@ -64,15 +64,16 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
         elif agent_type == "deep_research":
             # Get web search API keys from environment
             exa_api_key = os.getenv("EXA_API_KEY")
-            tavily_api_key = os.getenv("TAVILY_API_KEY")
 
-            _agent_cache[cache_key] = DeepResearchAgent(
+            agent = DeepResearchAgent(
                 llm=llm,
                 persona=persona,
                 ttl_hours=1,
                 exa_api_key=exa_api_key,
-                tavily_api_key=tavily_api_key,
             )
+            # Mark for initialization - will be initialized on first use
+            agent._needs_initialization = True
+            _agent_cache[cache_key] = agent
         else:
             raise ValueError(f"Unknown agent type: {agent_type}")
 

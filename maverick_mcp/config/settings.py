@@ -56,13 +56,10 @@ class APISettings(BaseModel):
         description="CORS allowed origins",
     )
 
-    # Web search API keys
+    # Web search API key
     exa_api_key: str | None = Field(
-        default_factory=lambda: os.getenv("EXA_API_KEY"), description="Exa AI API key"
-    )
-    tavily_api_key: str | None = Field(
-        default_factory=lambda: os.getenv("TAVILY_API_KEY"),
-        description="Tavily API key",
+        default_factory=lambda: os.getenv("EXA_API_KEY"),
+        description="Exa API key",
     )
 
 
@@ -130,14 +127,10 @@ class RedisSettings(BaseModel):
 class ResearchSettings(BaseModel):
     """Research and web search configuration settings."""
 
-    # API keys for web search providers
+    # API key for web search provider
     exa_api_key: str | None = Field(
         default_factory=lambda: os.getenv("EXA_API_KEY"),
-        description="Exa AI API key for web search",
-    )
-    tavily_api_key: str | None = Field(
-        default_factory=lambda: os.getenv("TAVILY_API_KEY"),
-        description="Tavily API key for web search",
+        description="Exa API key for web search",
     )
 
     # Research parameters
@@ -187,7 +180,7 @@ class ResearchSettings(BaseModel):
     @property
     def api_keys(self) -> dict[str, str | None]:
         """Get API keys as dictionary."""
-        return {"exa_api_key": self.exa_api_key, "tavily_api_key": self.tavily_api_key}
+        return {"exa_api_key": self.exa_api_key}
 
 
 class DataLimitsConfig(BaseModel):
@@ -242,7 +235,7 @@ class DataLimitsConfig(BaseModel):
     )
     max_agent_execution_time_seconds: int = Field(
         default_factory=lambda: int(
-            os.getenv("MAX_AGENT_EXECUTION_TIME_SECONDS", "300")
+            os.getenv("MAX_AGENT_EXECUTION_TIME_SECONDS", "720")
         ),
         description="Maximum agent execution time in seconds",
     )
@@ -442,16 +435,30 @@ class PerformanceConfig(BaseModel):
 
     # Timeout settings
     api_request_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("API_REQUEST_TIMEOUT", "30")),
+        default_factory=lambda: int(os.getenv("API_REQUEST_TIMEOUT", "120")),
         description="Default API request timeout in seconds",
     )
     yfinance_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("YFINANCE_TIMEOUT_SECONDS", "30")),
+        default_factory=lambda: int(os.getenv("YFINANCE_TIMEOUT_SECONDS", "60")),
         description="yfinance API timeout in seconds",
     )
     database_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("DATABASE_TIMEOUT", "30")),
+        default_factory=lambda: int(os.getenv("DATABASE_TIMEOUT", "60")),
         description="Database operation timeout in seconds",
+    )
+
+    # Search provider timeouts
+    search_timeout_base: int = Field(
+        default_factory=lambda: int(os.getenv("SEARCH_TIMEOUT_BASE", "60")),
+        description="Base search timeout in seconds for simple queries",
+    )
+    search_timeout_complex: int = Field(
+        default_factory=lambda: int(os.getenv("SEARCH_TIMEOUT_COMPLEX", "120")),
+        description="Search timeout in seconds for complex queries",
+    )
+    search_timeout_max: int = Field(
+        default_factory=lambda: int(os.getenv("SEARCH_TIMEOUT_MAX", "180")),
+        description="Maximum search timeout in seconds",
     )
 
     # Retry settings
@@ -584,7 +591,7 @@ class ProviderConfig(BaseModel):
         description="External data API requests per minute",
     )
     external_data_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("EXTERNAL_DATA_TIMEOUT", "30")),
+        default_factory=lambda: int(os.getenv("EXTERNAL_DATA_TIMEOUT", "120")),
         description="External data API timeout in seconds",
     )
 
@@ -606,7 +613,7 @@ class ProviderConfig(BaseModel):
         description="Finviz requests per minute",
     )
     finviz_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("FINVIZ_TIMEOUT", "20")),
+        default_factory=lambda: int(os.getenv("FINVIZ_TIMEOUT", "60")),
         description="Finviz timeout in seconds",
     )
 
@@ -664,6 +671,26 @@ class AgentConfig(BaseModel):
             os.getenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "60")
         ),
         description="Seconds to wait before testing recovery",
+    )
+
+    # Search-specific circuit breaker settings (more tolerant)
+    search_circuit_breaker_failure_threshold: int = Field(
+        default_factory=lambda: int(
+            os.getenv("SEARCH_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "8")
+        ),
+        description="Number of failures before opening search circuit (more tolerant)",
+    )
+    search_circuit_breaker_recovery_timeout: int = Field(
+        default_factory=lambda: int(
+            os.getenv("SEARCH_CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "30")
+        ),
+        description="Seconds to wait before testing search recovery (faster recovery)",
+    )
+    search_timeout_failure_threshold: int = Field(
+        default_factory=lambda: int(
+            os.getenv("SEARCH_TIMEOUT_FAILURE_THRESHOLD", "12")
+        ),
+        description="Number of timeout failures before disabling search provider",
     )
 
     # Market data limits for sentiment analysis

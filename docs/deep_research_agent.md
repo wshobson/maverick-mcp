@@ -150,7 +150,7 @@ Available MCP tools for Claude Desktop:
   "mcpServers": {
     "maverick-research": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/research"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/research"]
     }
   }
 }

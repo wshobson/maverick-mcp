@@ -1,0 +1,149 @@
+{
+  "timestamp": "2025-09-01T19:25:54.313474",
+  "benchmark_version": "1.0.0",
+  "system_info": {
+    "platform": "macOS-15.6.1-arm64-arm-64bit",
+    "python_version": "3.12.11",
+    "cpu_count": 8,
+    "memory_gb": 16.0,
+    "timestamp": "2025-09-01T19:25:54.370073"
+  },
+  "test_results": {
+    "quick": {
+      "emergency_mode": [
+        {
+          "complexity": "emergency",
+          "query": "Quick Apple sentiment - bullish or bearish right n...",
+          "execution_time": 0,
+          "result": {
+            "success": true,
+            "execution_time": 11.85926079750061,
+            "within_budget": true,
+            "result_status": "success",
+            "emergency_mode_used": false,
+            "optimization_metrics": {
+              "time_budget_seconds": 25.0,
+              "time_used_seconds": 11.857909917831421,
+              "time_utilization_pct": 47.431639671325684,
+              "sources_found": 10,
+              "sources_filtered": 3,
+              "sources_processed": 3,
+              "content_filtering_applied": true,
+              "parallel_processing_used": false,
+              "synthesis_optimized": true,
+              "optimization_features_used": [
+                "adaptive_model_selection",
+                "progressive_token_budgeting",
+                "content_filtering",
+                "optimized_prompts",
+                "early_termination"
+              ]
+            }
+          }
+        }
+      ],
+      "model_selection": [
+        {
+          "scenario": "emergency_10s",
+          "selected_model": "google/gemini-2.5-flash",
+          "timeout_seconds": 12.0,
+          "is_fast_model": true
+        }
+      ],
+      "speedup_validation": [
+        {
+          "complexity": "simple",
+          "query": "Apple Inc current stock price and basic sentiment...",
+          "execution_time": 0,
+          "result": {
+            "baseline_time": 0.00023293495178222656,
+            "optimized_time": 37.10392379760742,
+            "speedup_factor": 6.277906160351885e-06,
+            "baseline_success": true,
+            "optimized_success": true,
+            "meets_2x_target": false,
+            "meets_3x_target": false,
+            "baseline_result": {
+              "error": "Research functionality unavailable - no search providers configured",
+              "details": "Please configure EXA_API_KEY or TAVILY_API_KEY environment variables to enable research capabilities",
+              "topic": "Apple Inc current stock price and basic sentiment",
+              "available_functionality": "Limited to pre-existing data and basic analysis"
+            },
+            "optimized_result": {
+              "status": "success",
+              "agent_type": "optimized_deep_research",
+              "optimization_enabled": true,
+              "persona": "Moderate",
+              "research_topic": "Apple Inc current stock price and basic sentiment",
+              "research_depth": "standard",
+              "findings": {
+                "synthesis": "Mock response from openai/gpt-4o-mini (simulated 16.37s)",
+                "confidence_score": 0.217,
+                "early_terminated": true,
+                "termination_reason": "strong_consensus",
+                "processing_mode": "sequential_early_termination"
+              },
+              "sources_analyzed": 3,
+              "citations": [
+                {
+                  "id": 1,
+                  "title": "Mock search result 1 for: Apple Inc current stock price ",
+                  "url": "https://example.com/result1",
+                  "published_date": "2025-09-01T19:26:06.417666",
+                  "credibility_score": 0.7,
+                  "relevance_score": 0.6,
+                  "optimized_analysis": true
+                },
+                {
+                  "id": 2,
+                  "title": "Mock search result 2 for: Apple Inc current stock price ",
+                  "url": "https://example.com/result2",
+                  "published_date": "2025-09-01T19:26:06.417681",
+                  "credibility_score": 0.7,
+                  "relevance_score": 0.6,
+                  "optimized_analysis": true
+                },
+                {
+                  "id": 3,
+                  "title": "Mock search result 3 for: Apple Inc current stock price ",
+                  "url": "https://example.com/result3",
+                  "published_date": "2025-09-01T19:26:06.417685",
+                  "credibility_score": 0.7,
+                  "relevance_score": 0.6,
+                  "optimized_analysis": true
+                }
+              ],
+              "execution_time_ms": 37103.7380695343,
+              "optimization_metrics": {
+                "time_budget_seconds": 60.0,
+                "time_used_seconds": 37.1037380695343,
+                "time_utilization_pct": 61.83956344922383,
+                "sources_found": 20,
+                "sources_filtered": 3,
+                "sources_processed": 3,
+                "content_filtering_applied": true,
+                "parallel_processing_used": false,
+                "synthesis_optimized": true,
+                "optimization_features_used": [
+                  "adaptive_model_selection",
+                  "progressive_token_budgeting",
+                  "content_filtering",
+                  "optimized_prompts",
+                  "early_termination"
+                ]
+              },
+              "search_queries_used": [
+                "Apple Inc current stock price and basic sentiment financial analysis",
+                "Apple Inc current stock price and basic sentiment investment research",
+                "Apple Inc current stock price and basic sentiment market outlook",
+                "Apple Inc current stock price and basic sentiment growth"
+              ],
+              "session_id": "optimized_test"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "summary": {}
+}
