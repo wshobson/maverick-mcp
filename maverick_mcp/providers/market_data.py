@@ -1161,7 +1161,7 @@ class MarketDataProvider:
         ]
 
         # Wait for all tasks to complete
-        summary, gainers, losers, sectors = await asyncio.gather(*tasks)
+        summary, gainers, losers, sectors = await asyncio.gather(*tasks)  # type: ignore[assignment]
 
         return {
             "timestamp": datetime.now(UTC).isoformat(),

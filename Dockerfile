@@ -53,4 +53,4 @@ USER maverick
 EXPOSE 8000
 
 # Start MCP server
-CMD ["python", "-m", "maverick_mcp.api.server", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "python", "-m", "maverick_mcp.api.server", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]

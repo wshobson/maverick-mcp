@@ -22,9 +22,12 @@ dependencies = [
     "langchain-openai>=0.3.19",
     "langchain-mcp-adapters>=0.1.6",
     "langgraph>=0.4.8",
+    "langgraph-supervisor>=0.0.18",
     "anthropic>=0.52.2",
     "openai>=1.84.0",
     "tiktoken>=0.6.0",
+    # Deep research dependencies
+    "exa-py>=1.0.19",
     # Database and caching
     "sqlalchemy>=2.0.40",
     "alembic>=1.16.1",
@@ -61,6 +64,11 @@ dependencies = [
     "kaleido>=0.2.1", # Required for Plotly image export
     # Development tools
     "watchdog>=6.0.0",
+    "ty>=0.0.1a19",
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
+    "vcrpy>=7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -145,4 +153,9 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "testcontainers[postgres]>=4.10.0",
+]
 

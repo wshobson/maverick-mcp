@@ -98,6 +98,14 @@ class GetNewsRequest(StrictBaseModel):
         ..., description="Stock ticker symbol", json_schema_extra={"examples": ["AAPL"]}
     )
 
+    limit: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of news articles to return",
+        json_schema_extra={"examples": [10, 20, 50]}
+    )
+
     @field_validator("ticker")
     @classmethod
     def normalize_ticker(cls, v: str) -> str:

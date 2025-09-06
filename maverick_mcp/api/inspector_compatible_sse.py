@@ -40,7 +40,7 @@ class InspectorCompatibleSSE:
             "initialized": False,
             "server_name": "MaverickMCP",
             "server_version": "1.0.0",
-            "protocol_version": "2024-11-05"
+            "protocol_version": "2024-11-05",
         }
         self.sessions[session_id] = session_state
 
@@ -66,7 +66,9 @@ class InspectorCompatibleSSE:
                         # Process the message through MCP session
                         if isinstance(message, dict) and "jsonrpc" in message:
                             # Handle the JSON-RPC request
-                            response = await self._process_message(session_state, message)
+                            response = await self._process_message(
+                                session_state, message
+                            )
                             if response:
                                 yield f"data: {json.dumps(response)}\n\n"
 
@@ -146,14 +148,18 @@ class InspectorCompatibleSSE:
                         "protocolVersion": protocol_version,
                         "capabilities": {
                             "tools": {"listChanged": True}
-                            if hasattr(mcp, '_tool_manager') and hasattr(mcp._tool_manager, 'tools') and mcp._tool_manager.tools
+                            if hasattr(mcp, "_tool_manager")
+                            and hasattr(mcp._tool_manager, "tools")
+                            and mcp._tool_manager.tools
                             else {},
                             "resources": {"listChanged": True}
-                            if hasattr(mcp, '_resource_manager') and hasattr(mcp._resource_manager, 'resources') and mcp._resource_manager.resources
+                            if hasattr(mcp, "_resource_manager")
+                            and hasattr(mcp._resource_manager, "resources")
+                            and mcp._resource_manager.resources
                             else {},
                             "prompts": {"listChanged": True}
                             if hasattr(mcp, "_prompt_manager")
-                            and hasattr(mcp._prompt_manager, 'prompts')
+                            and hasattr(mcp._prompt_manager, "prompts")
                             and mcp._prompt_manager.prompts
                             else {},
                         },
@@ -167,8 +173,12 @@ class InspectorCompatibleSSE:
             elif method == "tools/list":
                 # List available tools
                 tools = []
-                if hasattr(mcp, '_tool_manager') and hasattr(mcp._tool_manager, 'tools') and hasattr(mcp._tool_manager.tools, 'items'):
-                    for tool_name, tool_func in mcp._tool_manager.tools.items():
+                if (
+                    hasattr(mcp, "_tool_manager")
+                    and hasattr(mcp._tool_manager, "tools")
+                    and hasattr(mcp._tool_manager.tools, "items")
+                ):
+                    for tool_name, tool_func in mcp._tool_manager.tools.items():  # type: ignore[attr-defined]
                         tools.append(
                             {
                                 "name": tool_name,
@@ -182,16 +192,23 @@ class InspectorCompatibleSSE:
             elif method == "resources/list":
                 # List available resources
                 resources = []
-                if hasattr(mcp, '_resource_manager') and hasattr(mcp._resource_manager, 'resources') and hasattr(mcp._resource_manager.resources, 'items'):
+                if (
+                    hasattr(mcp, "_resource_manager")
+                    and hasattr(mcp._resource_manager, "resources")
+                    and hasattr(mcp._resource_manager.resources, "items")
+                ):
                     for (
                         resource_uri,
                         resource_func,
-                    ) in mcp._resource_manager.resources.items():
+                    ) in mcp._resource_manager.resources.items():  # type: ignore[attr-defined]
                         resources.append(
                             {
                                 "uri": resource_uri,
-                                "name": getattr(resource_func, '__name__', str(resource_func)),
-                                "description": getattr(resource_func, '__doc__', None) or "No description",
+                                "name": getattr(
+                                    resource_func, "__name__", str(resource_func)
+                                ),
+                                "description": getattr(resource_func, "__doc__", None)
+                                or "No description",
                             }
                         )
 
@@ -206,11 +223,13 @@ class InspectorCompatibleSSE:
                 tool_name = params.get("name")
                 tool_args = params.get("arguments", {})
 
-                if (hasattr(mcp, '_tool_manager')
-                    and hasattr(mcp._tool_manager, 'tools')
-                    and hasattr(mcp._tool_manager.tools, '__contains__')
-                    and tool_name in mcp._tool_manager.tools):
-                    tool_func = mcp._tool_manager.tools[tool_name]
+                if (
+                    hasattr(mcp, "_tool_manager")
+                    and hasattr(mcp._tool_manager, "tools")
+                    and hasattr(mcp._tool_manager.tools, "__contains__")
+                    and tool_name in mcp._tool_manager.tools  # type: ignore[operator]
+                ):
+                    tool_func = mcp._tool_manager.tools[tool_name]  # type: ignore[index]
                     try:
                         # Execute the tool
                         result = await tool_func(**tool_args)
@@ -219,7 +238,12 @@ class InspectorCompatibleSSE:
                             "jsonrpc": "2.0",
                             "id": msg_id,
                             "result": {
-                                "content": [{"type": "text", "text": json.dumps(result, default=str)}]
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": json.dumps(result, default=str),
+                                    }
+                                ]
                             },
                         }
                     except Exception as tool_error:

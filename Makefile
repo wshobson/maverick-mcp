@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel docker-up docker-down docker-logs
+.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -17,6 +17,11 @@ help:
 	@echo "  make test-specific TEST=name - Run specific test"
 	@echo "  make test-parallel - Run tests in parallel"
 	@echo "  make test-cov     - Run tests with coverage report"
+	@echo "  make test-fixes   - Validate MCP tool fixes are working"
+	@echo "  make test-speed   - Run speed optimization validation tests"
+	@echo "  make test-speed-quick - Quick speed validation for CI"
+	@echo "  make test-speed-emergency - Emergency mode speed tests"
+	@echo "  make test-speed-comparison - Before/after performance comparison"
 	@echo ""
 	@echo "  make lint         - Run code quality checks"
 	@echo "  make format       - Auto-format code"
@@ -27,6 +32,7 @@ help:
 	@echo ""
 	@echo "  make experiment   - Watch and auto-run .py files"
 	@echo "  make benchmark-parallel - Test parallel screening"
+	@echo "  make benchmark-speed - Run comprehensive speed benchmark"
 	@echo "  make migrate      - Run database migrations"
 	@echo "  make setup        - Initial project setup"
 	@echo "  make clean        - Clean up generated files"
@@ -85,6 +91,31 @@ test-parallel:
 test-cov:
 	@echo "Running tests with coverage..."
 	@uv run pytest --cov=maverick_mcp --cov-report=html --cov-report=term
+
+test-fixes:
+	@echo "Running MCP tool fixes validation..."
+	@uv run python maverick_mcp/tests/test_mcp_tool_fixes.py
+
+test-fixes-verbose:
+	@echo "Running MCP tool fixes validation (verbose)..."
+	@uv run python -u maverick_mcp/tests/test_mcp_tool_fixes.py
+
+# Speed optimization testing commands
+test-speed:
+	@echo "Running speed optimization validation tests..."
+	@uv run pytest -v tests/test_speed_optimization_validation.py
+
+test-speed-quick:
+	@echo "Running quick speed validation for CI..."
+	@uv run python scripts/speed_benchmark.py --mode quick
+
+test-speed-emergency:
+	@echo "Running emergency mode speed tests..."
+	@uv run python scripts/speed_benchmark.py --mode emergency
+
+test-speed-comparison:
+	@echo "Running before/after performance comparison..."
+	@uv run python scripts/speed_benchmark.py --mode comparison
 
 # Code quality commands
 lint:
@@ -167,6 +198,10 @@ c: check
 benchmark-parallel:
 	@echo "Benchmarking parallel screening performance..."
 	@python -c "from tools.quick_test import test_parallel_screening; import asyncio; asyncio.run(test_parallel_screening())"
+
+benchmark-speed:
+	@echo "Running comprehensive speed benchmark..."
+	@uv run python scripts/speed_benchmark.py --mode full
 
 
 # Docker commands

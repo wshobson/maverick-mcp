@@ -13,7 +13,7 @@ from functools import wraps
 from typing import Any
 
 # Context variable for correlation ID
-correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)  # type: ignore[assignment]
 
 
 class StructuredFormatter(logging.Formatter):
@@ -26,7 +26,7 @@ class StructuredFormatter(logging.Formatter):
 
         # Build structured log entry
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now().isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -221,4 +221,4 @@ def setup_logging(
 try:
     import asyncio
 except ImportError:
-    asyncio = None
+    asyncio = None  # type: ignore[assignment]
