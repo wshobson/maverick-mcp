@@ -11,8 +11,6 @@
 
 The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with HTTP/SSE/STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
 
-📖 **Read the full build guide**: [How to Build an MCP Stock Analysis Server](https://sethhobson.com/2025/08/how-to-build-an-mcp-stock-analysis-server/)
-
 ## 🌟 Why MaverickMCP?
 
 MaverickMCP provides professional-grade financial analysis tools directly within your Claude Desktop interface. Perfect for individual traders and investors who want comprehensive stock analysis capabilities without the complexity of expensive platforms or commercial services.
@@ -163,62 +161,7 @@ This configuration provides stable tool registration and prevents tools from dis
 
 That's it! MaverickMCP tools will now be available in your Claude Desktop interface.
 
-### Connect to Other MCP Clients
-
-> ⚠️ **Transport Compatibility Warning**: Different MCP clients support different transport methods. Using the wrong configuration will result in connection failures. Please use the exact configuration for your client.
-
-#### Transport Compatibility Matrix
-
-| MCP Client         | STDIO | HTTP | SSE | Notes                                       |
-| ------------------ | ----- | ---- | --- | --------------------------------------------|
-| **Claude Desktop** | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
-| **Cursor IDE**     | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
-| **Claude Code**    | ✅    | ✅   | ✅  | Supports all transports                      |
-| **Continue.dev**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
-| **Windsurf IDE**   | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
-| **Goose CLI**      | ✅    | ❌   | ✅  | Supports STDIO and SSE                       |
-
 #### Claude Desktop (Most Popular) - Recommended Configuration
-
-**✅ SSE Connection (Recommended - Prevents Tool Disappearing)**:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
-    }
-  }
-}
-```
-
-**Benefits of SSE Configuration:**
-- ✅ **Stable Tool Registration**: Tools remain available throughout your session
-- ✅ **No Tool Disappearing**: Prevents the common issue where tools initially appear then vanish
-- ✅ **Reliable Connection**: SSE transport provides consistent communication
-- ✅ **Session Persistence**: Maintains connection state for complex analysis workflows
-
-**Alternative: Direct STDIO (Development/Testing Only)**:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "command": "uv",
-      "args": [
-        "run",
-        "python",
-        "-m",
-        "maverick_mcp.api.server",
-        "--transport",
-        "stdio"
-      ],
-      "cwd": "/path/to/maverick-mcp"
-    }
-  }
-}
-```
 
 **Config Location**:
 
@@ -273,38 +216,6 @@ claude mcp add --transport sse maverick-mcp http://localhost:8003/sse/
 ```bash
 claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
 ```
-
-#### Continue.dev - STDIO and SSE
-
-**Option 1: STDIO (via mcp-remote)**:
-
-```json
-{
-  "experimental": {
-    "modelContextProtocolServer": {
-      "transport": {
-        "type": "stdio",
-        "command": "npx",
-        "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
-      }
-    }
-  }
-}
-```
-
-**Option 2: Direct SSE**:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "url": "http://localhost:8003/sse/"
-    }
-  }
-}
-```
-
-**Config Location**: `~/.continue/config.json`
 
 #### Windsurf IDE - STDIO and SSE
 
@@ -788,6 +699,8 @@ If you find MaverickMCP useful:
 Built for traders and investors. Happy Trading!
 
 [![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/wshobson-maverick-mcp-badge.png)](https://mseep.ai/app/wshobson-maverick-mcp)
+
+📖 **Read the full build guide**: [How to Build an MCP Stock Analysis Server](https://sethhobson.com/2025/08/how-to-build-an-mcp-stock-analysis-server/)
 
 ## Disclaimer
 
