@@ -11,11 +11,11 @@
 
 The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with HTTP/SSE/STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
 
-## 🌟 Why MaverickMCP?
+## Why MaverickMCP?
 
 MaverickMCP provides professional-grade financial analysis tools directly within your Claude Desktop interface. Perfect for individual traders and investors who want comprehensive stock analysis capabilities without the complexity of expensive platforms or commercial services.
 
-**🚀 Key Benefits:**
+**Key Benefits:**
 
 - **No Setup Complexity**: Simple `make dev` command gets you running (or `uv sync` + `make dev`)
 - **Modern Python Tooling**: Built with `uv` for lightning-fast dependency management
@@ -28,8 +28,8 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 
 ## Features
 
-- **🚀 Pre-seeded Database**: 520 S&P 500 stocks with comprehensive screening recommendations
-- **🚀 Fast Development**: Comprehensive Makefile, smart error handling, hot reload, and parallel processing
+- **Pre-seeded Database**: 520 S&P 500 stocks with comprehensive screening recommendations
+- **Fast Development**: Comprehensive Makefile, smart error handling, hot reload, and parallel processing
 - **Stock Data Access**: Historical and real-time stock data with intelligent caching
 - **Technical Analysis**: 20+ indicators including SMA, EMA, RSI, MACD, Bollinger Bands, and more
 - **Stock Screening**: Multiple strategies (Maverick Bullish/Bearish, Trending Breakouts) with parallel processing
@@ -39,7 +39,7 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 - **Database Support**: SQLAlchemy integration with PostgreSQL/SQLite (defaults to SQLite)
 - **Multi-Transport Support**: HTTP, SSE, and STDIO transports for all MCP clients
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -109,7 +109,7 @@ make dev
 
 ### Connect to Claude Desktop
 
-**✅ Recommended: SSE Connection (Stable and Reliable)**
+**Recommended: SSE Connection (Stable and Reliable)**
 
 This configuration provides stable tool registration and prevents tools from disappearing:
 
@@ -131,10 +131,10 @@ This configuration provides stable tool registration and prevents tools from dis
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
 **Why This Configuration Works Best:**
-- ✅ Stable tool registration - tools don't disappear after initial connection
-- ✅ Reliable connection management through SSE transport
-- ✅ Proper session persistence for long-running analysis tasks
-- ✅ All 29+ financial tools available consistently
+- Stable tool registration - tools don't disappear after initial connection
+- Reliable connection management through SSE transport
+- Proper session persistence for long-running analysis tasks
+- All 29+ financial tools available consistently
 
 **Alternative: Direct STDIO Connection (Development Only)**
 
@@ -411,7 +411,7 @@ MaverickMCP provides 35+ financial analysis tools organized by category, includi
 - `market_comparison(tickers)` - Compare multiple stocks
 - `portfolio_optimization(tickers, risk_profile)` - Portfolio optimization guidance
 
-## 🧪 Test Examples - Validate All Features
+## Test Examples - Validate All Features
 
 Test the comprehensive research capabilities and parallel processing improvements with these examples:
 
@@ -615,11 +615,11 @@ MaverickMCP includes helpful error diagnostics:
 
 For issues or questions:
 
-1. **📖 Check Documentation**: Start with this README and [CLAUDE.md](CLAUDE.md)
-2. **🔍 Search Issues**: Look through existing [GitHub issues](https://github.com/wshobson/maverick-mcp/issues)
-3. **🐛 Report Bugs**: Create a new [issue](https://github.com/wshobson/maverick-mcp/issues/new) with details
-4. **💡 Request Features**: Suggest improvements via GitHub issues
-5. **🤝 Contribute**: See our [Contributing Guide](CONTRIBUTING.md) for development setup
+1. **Check Documentation**: Start with this README and [CLAUDE.md](CLAUDE.md)
+2. **Search Issues**: Look through existing [GitHub issues](https://github.com/wshobson/maverick-mcp/issues)
+3. **Report Bugs**: Create a new [issue](https://github.com/wshobson/maverick-mcp/issues/new) with details
+4. **Request Features**: Suggest improvements via GitHub issues
+5. **Contribute**: See our [Contributing Guide](CONTRIBUTING.md) for development setup
 
 ## Recent Updates
 
@@ -689,10 +689,10 @@ MIT License - see [LICENSE](LICENSE) file for details. Free to use for personal 
 
 If you find MaverickMCP useful:
 
-- ⭐ Star the repository
-- 🐛 Report bugs via GitHub issues
-- 💡 Suggest features
-- 📖 Improve documentation
+- Star the repository
+- Report bugs via GitHub issues
+- Suggest features
+- Improve documentation
 
 ---
 
@@ -700,7 +700,7 @@ Built for traders and investors. Happy Trading!
 
 [![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/wshobson-maverick-mcp-badge.png)](https://mseep.ai/app/wshobson-maverick-mcp)
 
-📖 **Read the full build guide**: [How to Build an MCP Stock Analysis Server](https://sethhobson.com/2025/08/how-to-build-an-mcp-stock-analysis-server/)
+**Read the full build guide**: [How to Build an MCP Stock Analysis Server](https://sethhobson.com/2025/08/how-to-build-an-mcp-stock-analysis-server/)
 
 ## Disclaimer
 
