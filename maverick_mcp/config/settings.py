@@ -56,6 +56,12 @@ class APISettings(BaseModel):
         description="CORS allowed origins",
     )
 
+    # Web search API key
+    exa_api_key: str | None = Field(
+        default_factory=lambda: os.getenv("EXA_API_KEY"),
+        description="Exa API key",
+    )
+
 
 class DataProviderSettings(BaseModel):
     """Data provider configuration settings."""
@@ -67,6 +73,17 @@ class DataProviderSettings(BaseModel):
     )
     cache_expiry: int = Field(default=86400, description="Cache expiry in seconds")
     rate_limit: int = Field(default=5, description="Rate limit per minute")
+
+    # Research-specific settings
+    max_search_results: int = Field(
+        default=100, description="Max search results per query"
+    )
+    research_cache_ttl: int = Field(
+        default=3600, description="Research cache TTL in seconds"
+    )
+    content_max_length: int = Field(
+        default=2000, description="Max content length per source"
+    )
 
 
 class RedisSettings(BaseModel):
@@ -105,6 +122,143 @@ class RedisSettings(BaseModel):
         elif self.password:
             auth = f":{self.password}@"
         return f"{scheme}://{auth}{self.host}:{self.port}/{self.db}"
+
+
+class ResearchSettings(BaseModel):
+    """Research and web search configuration settings."""
+
+    # API key for web search provider
+    exa_api_key: str | None = Field(
+        default_factory=lambda: os.getenv("EXA_API_KEY"),
+        description="Exa API key for web search",
+    )
+
+    # Research parameters
+    default_max_sources: int = Field(
+        default=50, description="Default max sources per research"
+    )
+    default_research_depth: str = Field(
+        default="comprehensive", description="Default research depth"
+    )
+    cache_ttl_hours: int = Field(default=4, description="Research cache TTL in hours")
+
+    # Content analysis settings
+    max_content_length: int = Field(
+        default=2000, description="Max content length per source"
+    )
+    sentiment_confidence_threshold: float = Field(
+        default=0.7, description="Sentiment confidence threshold"
+    )
+    credibility_score_threshold: float = Field(
+        default=0.6, description="Source credibility threshold"
+    )
+
+    # Rate limiting
+    search_rate_limit: int = Field(default=10, description="Search requests per minute")
+    content_analysis_batch_size: int = Field(
+        default=5, description="Content analysis batch size"
+    )
+
+    # Domain filtering
+    trusted_domains: list[str] = Field(
+        default=[
+            "reuters.com",
+            "bloomberg.com",
+            "wsj.com",
+            "ft.com",
+            "marketwatch.com",
+            "cnbc.com",
+            "yahoo.com",
+            "seekingalpha.com",
+        ],
+        description="Trusted news domains for research",
+    )
+    blocked_domains: list[str] = Field(
+        default=[], description="Blocked domains for research"
+    )
+
+    @property
+    def api_keys(self) -> dict[str, str | None]:
+        """Get API keys as dictionary."""
+        return {"exa_api_key": self.exa_api_key}
+
+
+class DataLimitsConfig(BaseModel):
+    """Data limits and constraints configuration settings."""
+
+    # API Rate limits
+    max_api_requests_per_minute: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_API_REQUESTS_PER_MINUTE", "60")),
+        description="Maximum API requests per minute",
+    )
+    max_api_requests_per_hour: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_API_REQUESTS_PER_HOUR", "1000")),
+        description="Maximum API requests per hour",
+    )
+
+    # Data size limits
+    max_data_rows_per_request: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_DATA_ROWS_PER_REQUEST", "10000")),
+        description="Maximum data rows per request",
+    )
+    max_symbols_per_batch: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_SYMBOLS_PER_BATCH", "100")),
+        description="Maximum symbols per batch request",
+    )
+    max_response_size_mb: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_RESPONSE_SIZE_MB", "50")),
+        description="Maximum response size in MB",
+    )
+
+    # Research limits
+    max_research_sources: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_RESEARCH_SOURCES", "100")),
+        description="Maximum research sources per query",
+    )
+    max_research_depth_level: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_RESEARCH_DEPTH_LEVEL", "5")),
+        description="Maximum research depth level",
+    )
+    max_content_analysis_items: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_CONTENT_ANALYSIS_ITEMS", "50")),
+        description="Maximum content items for analysis",
+    )
+
+    # Agent limits
+    max_agent_iterations: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_AGENT_ITERATIONS", "10")),
+        description="Maximum agent workflow iterations",
+    )
+    max_parallel_agents: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_PARALLEL_AGENTS", "5")),
+        description="Maximum parallel agents in orchestration",
+    )
+    max_agent_execution_time_seconds: int = Field(
+        default_factory=lambda: int(
+            os.getenv("MAX_AGENT_EXECUTION_TIME_SECONDS", "720")
+        ),
+        description="Maximum agent execution time in seconds",
+    )
+
+    # Cache limits
+    max_cache_size_mb: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_CACHE_SIZE_MB", "500")),
+        description="Maximum cache size in MB",
+    )
+    max_cached_items: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_CACHED_ITEMS", "10000")),
+        description="Maximum number of cached items",
+    )
+
+    # Database limits
+    max_db_connections: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_DB_CONNECTIONS", "100")),
+        description="Maximum database connections",
+    )
+    max_query_results: int = Field(
+        default_factory=lambda: int(os.getenv("MAX_QUERY_RESULTS", "50000")),
+        description="Maximum query results",
+    )
 
 
 class ExternalDataSettings(BaseModel):
@@ -157,6 +311,11 @@ class FinancialConfig(BaseModel):
         default_factory=lambda: Decimal(os.getenv("DEFAULT_ACCOUNT_SIZE", "100000")),
         description="Default account size for calculations (USD)",
     )
+
+    @property
+    def api_keys(self) -> dict[str, str | None]:
+        """Get API keys as dictionary (placeholder for financial data APIs)."""
+        return {}
 
     # Risk management
     max_position_size_conservative: float = Field(
@@ -276,16 +435,30 @@ class PerformanceConfig(BaseModel):
 
     # Timeout settings
     api_request_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("API_REQUEST_TIMEOUT", "30")),
+        default_factory=lambda: int(os.getenv("API_REQUEST_TIMEOUT", "120")),
         description="Default API request timeout in seconds",
     )
     yfinance_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("YFINANCE_TIMEOUT_SECONDS", "30")),
+        default_factory=lambda: int(os.getenv("YFINANCE_TIMEOUT_SECONDS", "60")),
         description="yfinance API timeout in seconds",
     )
     database_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("DATABASE_TIMEOUT", "30")),
+        default_factory=lambda: int(os.getenv("DATABASE_TIMEOUT", "60")),
         description="Database operation timeout in seconds",
+    )
+
+    # Search provider timeouts
+    search_timeout_base: int = Field(
+        default_factory=lambda: int(os.getenv("SEARCH_TIMEOUT_BASE", "60")),
+        description="Base search timeout in seconds for simple queries",
+    )
+    search_timeout_complex: int = Field(
+        default_factory=lambda: int(os.getenv("SEARCH_TIMEOUT_COMPLEX", "120")),
+        description="Search timeout in seconds for complex queries",
+    )
+    search_timeout_max: int = Field(
+        default_factory=lambda: int(os.getenv("SEARCH_TIMEOUT_MAX", "180")),
+        description="Maximum search timeout in seconds",
     )
 
     # Retry settings
@@ -418,7 +591,7 @@ class ProviderConfig(BaseModel):
         description="External data API requests per minute",
     )
     external_data_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("EXTERNAL_DATA_TIMEOUT", "30")),
+        default_factory=lambda: int(os.getenv("EXTERNAL_DATA_TIMEOUT", "120")),
         description="External data API timeout in seconds",
     )
 
@@ -440,7 +613,7 @@ class ProviderConfig(BaseModel):
         description="Finviz requests per minute",
     )
     finviz_timeout: int = Field(
-        default_factory=lambda: int(os.getenv("FINVIZ_TIMEOUT", "20")),
+        default_factory=lambda: int(os.getenv("FINVIZ_TIMEOUT", "60")),
         description="Finviz timeout in seconds",
     )
 
@@ -498,6 +671,26 @@ class AgentConfig(BaseModel):
             os.getenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "60")
         ),
         description="Seconds to wait before testing recovery",
+    )
+
+    # Search-specific circuit breaker settings (more tolerant)
+    search_circuit_breaker_failure_threshold: int = Field(
+        default_factory=lambda: int(
+            os.getenv("SEARCH_CIRCUIT_BREAKER_FAILURE_THRESHOLD", "8")
+        ),
+        description="Number of failures before opening search circuit (more tolerant)",
+    )
+    search_circuit_breaker_recovery_timeout: int = Field(
+        default_factory=lambda: int(
+            os.getenv("SEARCH_CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "30")
+        ),
+        description="Seconds to wait before testing search recovery (faster recovery)",
+    )
+    search_timeout_failure_threshold: int = Field(
+        default_factory=lambda: int(
+            os.getenv("SEARCH_TIMEOUT_FAILURE_THRESHOLD", "12")
+        ),
+        description="Number of timeout failures before disabling search provider",
     )
 
     # Market data limits for sentiment analysis
@@ -678,6 +871,18 @@ class Settings(BaseModel):
         default_factory=EmailSettings, description="Email service configuration"
     )
     financial: FinancialConfig = Field(
+        default_factory=FinancialConfig, description="Financial settings"
+    )
+    research: ResearchSettings = Field(
+        default_factory=ResearchSettings, description="Research settings"
+    )
+    data_limits: DataLimitsConfig = Field(
+        default_factory=DataLimitsConfig, description="Data limits settings"
+    )
+    agent: AgentConfig = Field(
+        default_factory=AgentConfig, description="Agent settings"
+    )
+    validation: ValidationConfig = Field(
         default_factory=FinancialConfig, description="Financial calculation settings"
     )
     performance: PerformanceConfig = Field(

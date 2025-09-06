@@ -130,7 +130,7 @@ python scripts/load_tiingo_data.py \
 make dev
 
 # Alternative: Direct FastMCP server
-python -m maverick_mcp.api.server --transport sse --port 8000
+python -m maverick_mcp.api.server --transport streamable-http --port 8003
 
 # Development mode with hot reload
 ./scripts/dev.sh
@@ -140,13 +140,13 @@ python -m maverick_mcp.api.server --transport sse --port 8000
 
 ```bash
 # Check health endpoint
-curl http://localhost:8000/health
+curl http://localhost:8003/health
 
 # Test a simple query (if using MCP client)
-echo '{"method": "tools/list"}' | nc localhost 8000
+echo '{"method": "tools/list"}' | nc localhost 8003
 
 # Or use the API directly
-curl http://localhost:8000/api/data/stock/AAPL
+curl http://localhost:8003/api/data/stock/AAPL
 ```
 
 ## Database Schema
@@ -362,7 +362,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8000/sse"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]
     }
   }
 }
@@ -411,12 +411,12 @@ with get_db() as session:
 
 ```bash
 # List available tools
-curl -X POST http://localhost:8000/mcp \
+curl -X POST http://localhost:8003/mcp \
     -H "Content-Type: application/json" \
     -d '{"method": "tools/list"}'
 
 # Get screening results
-curl -X POST http://localhost:8000/mcp \
+curl -X POST http://localhost:8003/mcp \
     -H "Content-Type: application/json" \
     -d '{
         "method": "tools/call",

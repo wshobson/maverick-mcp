@@ -5,7 +5,7 @@ Fallback strategies for circuit breakers to provide graceful degradation.
 import logging
 from abc import ABC, abstractmethod
 from datetime import UTC, datetime, timedelta
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 import pandas as pd
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-class FallbackStrategy(ABC, Generic[T]):
+class FallbackStrategy[T](ABC):
     """Base class for fallback strategies."""
 
     @abstractmethod
@@ -32,7 +32,7 @@ class FallbackStrategy(ABC, Generic[T]):
         pass
 
 
-class FallbackChain(Generic[T]):
+class FallbackChain[T]:
     """
     Chain of fallback strategies to execute in order.
     Stops at the first successful strategy.

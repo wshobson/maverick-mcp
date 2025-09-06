@@ -124,7 +124,7 @@ def find_error_fix(error_str: str) -> dict[str, str] | None:
     return None
 
 
-def agent_friendly_errors(
+def agent_friendly_errors[T](
     func: Callable[..., T] | None = None,
     *,
     provide_fix: bool = True,

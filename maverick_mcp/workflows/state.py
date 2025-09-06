@@ -10,6 +10,11 @@ from langgraph.graph import add_messages
 from typing_extensions import TypedDict
 
 
+def take_latest_status(current: str, new: str) -> str:
+    """Reducer function that takes the latest status update."""
+    return new if new else current
+
+
 class BaseAgentState(TypedDict):
     """Base state for all agents with comprehensive tracking."""
 
@@ -214,23 +219,153 @@ class PortfolioState(BaseAgentState):
 
 
 class SupervisorState(BaseAgentState):
-    """State for supervisor agent coordinating multiple agents."""
+    """Enhanced state for supervisor agent coordinating multiple agents."""
 
-    # Query routing
-    query_type: str  # screening, analysis, risk, portfolio
-    subtasks: list[dict[str, Any]]
-    current_subtask: int
+    # Query routing and classification
+    query_classification: dict[str, Any]  # Query type, complexity, required agents
+    execution_plan: list[dict[str, Any]]  # Subtasks with dependencies and timing
+    current_subtask_index: int  # Current execution position
+    routing_strategy: str  # "llm_powered", "rule_based", "hybrid"
 
     # Agent coordination
-    active_agents: list[str]
-    agent_results: dict[str, Any]
+    active_agents: list[str]  # Currently active agent names
+    agent_results: dict[str, dict[str, Any]]  # Results from each agent
+    agent_confidence: dict[str, float]  # Confidence scores per agent
+    agent_execution_times: dict[str, float]  # Execution times per agent
+    agent_errors: dict[str, str | None]  # Errors from agents
 
     # Workflow control
-    workflow_plan: list[str]
-    completed_steps: list[str]
-    pending_steps: list[str]
+    workflow_status: (
+        str  # "planning", "executing", "aggregating", "synthesizing", "completed"
+    )
+    parallel_execution: bool  # Whether to run agents in parallel
+    dependency_graph: dict[str, list[str]]  # Task dependencies
+    max_iterations: int  # Maximum iterations to prevent loops
+    current_iteration: int  # Current iteration count
 
-    # Aggregated results
-    final_recommendations: list[dict[str, Any]]
-    confidence_scores: dict[str, float]
-    risk_warnings: list[str]
+    # Result synthesis and conflict resolution
+    conflicts_detected: list[dict[str, Any]]  # Conflicts between agent results
+    conflict_resolution: dict[str, Any]  # How conflicts were resolved
+    synthesis_weights: dict[str, float]  # Weights applied to agent results
+    final_recommendation_confidence: float  # Overall confidence in final result
+    synthesis_mode: str  # "weighted", "consensus", "priority"
+
+    # Performance and monitoring
+    total_execution_time_ms: float  # Total workflow execution time
+    agent_coordination_overhead_ms: float  # Time spent coordinating agents
+    synthesis_time_ms: float  # Time spent synthesizing results
+    cache_utilization: dict[str, int]  # Cache usage per agent
+
+    # Legacy fields for backward compatibility
+    query_type: str | None  # Legacy field - use query_classification instead
+    subtasks: list[dict[str, Any]] | None  # Legacy field - use execution_plan instead
+    current_subtask: int | None  # Legacy field - use current_subtask_index instead
+    workflow_plan: list[str] | None  # Legacy field
+    completed_steps: list[str] | None  # Legacy field
+    pending_steps: list[str] | None  # Legacy field
+    final_recommendations: list[dict[str, Any]] | None  # Legacy field
+    confidence_scores: (
+        dict[str, float] | None
+    )  # Legacy field - use agent_confidence instead
+    risk_warnings: list[str] | None  # Legacy field
+
+
+class DeepResearchState(BaseAgentState):
+    """State for deep research workflows with web search and content analysis."""
+
+    # Research parameters
+    research_topic: str  # Main research topic or symbol
+    research_depth: str  # basic, standard, comprehensive, exhaustive
+    focus_areas: list[str]  # Specific focus areas for research
+    timeframe: str  # Time range for research (7d, 30d, 90d, 1y)
+
+    # Search and query management
+    search_queries: list[str]  # Generated search queries
+    search_results: list[dict[str, Any]]  # Raw search results from providers
+    search_providers_used: list[str]  # Which providers were used
+    search_metadata: dict[str, Any]  # Search execution metadata
+
+    # Content analysis
+    analyzed_content: list[dict[str, Any]]  # Content with AI analysis
+    content_summaries: list[str]  # Summaries of analyzed content
+    key_themes: list[str]  # Extracted themes from content
+    content_quality_scores: dict[str, float]  # Quality scores for content
+
+    # Source management and validation
+    validated_sources: list[dict[str, Any]]  # Sources that passed validation
+    rejected_sources: list[dict[str, Any]]  # Sources that failed validation
+    source_credibility_scores: dict[str, float]  # Credibility score per source URL
+    source_diversity_score: float  # Diversity metric for sources
+    duplicate_sources_removed: int  # Count of duplicates removed
+
+    # Research findings and analysis
+    research_findings: list[dict[str, Any]]  # Core research findings
+    sentiment_analysis: dict[str, Any]  # Overall sentiment analysis
+    risk_assessment: dict[str, Any]  # Risk factors and assessment
+    opportunity_analysis: dict[str, Any]  # Investment opportunities identified
+    competitive_landscape: dict[str, Any]  # Competitive analysis if applicable
+
+    # Citations and references
+    citations: list[dict[str, Any]]  # Properly formatted citations
+    reference_urls: list[str]  # All referenced URLs
+    source_attribution: dict[str, str]  # Finding -> source mapping
+
+    # Research workflow status
+    research_status: Annotated[
+        str, take_latest_status
+    ]  # planning, searching, analyzing, validating, synthesizing, completed
+    research_confidence: float  # Overall confidence in research (0-1)
+    validation_checks_passed: int  # Number of validation checks passed
+    fact_validation_results: list[dict[str, Any]]  # Results from fact-checking
+
+    # Performance and metrics
+    search_execution_time_ms: float  # Time spent on searches
+    analysis_execution_time_ms: float  # Time spent on content analysis
+    validation_execution_time_ms: float  # Time spent on validation
+    synthesis_execution_time_ms: float  # Time spent on synthesis
+    total_sources_processed: int  # Total number of sources processed
+    api_rate_limits_hit: int  # Number of rate limit encounters
+
+    # Research quality indicators
+    source_age_distribution: dict[str, int]  # Age distribution of sources
+    geographic_coverage: list[str]  # Geographic regions covered
+    publication_types: dict[str, int]  # Types of publications analyzed
+    author_expertise_scores: dict[str, float]  # Author expertise assessments
+
+    # Specialized research areas
+    fundamental_analysis_data: dict[str, Any]  # Fundamental analysis results
+    technical_context: dict[str, Any]  # Technical analysis context if relevant
+    macro_economic_factors: list[str]  # Macro factors identified
+    regulatory_considerations: list[str]  # Regulatory issues identified
+
+    # Research iteration and refinement
+    research_iterations: int  # Number of research iterations performed
+    query_refinements: list[dict[str, Any]]  # Query refinement history
+    research_gaps_identified: list[str]  # Areas needing more research
+    follow_up_research_suggestions: list[str]  # Suggestions for additional research
+
+    # Parallel execution tracking
+    parallel_tasks: dict[str, dict[str, Any]]  # task_id -> task info
+    parallel_results: dict[str, dict[str, Any]]  # task_id -> results
+    parallel_execution_enabled: bool  # Whether parallel execution is enabled
+    concurrent_agents_count: int  # Number of agents running concurrently
+    parallel_efficiency_score: float  # Parallel vs sequential execution efficiency
+    task_distribution_strategy: str  # How tasks were distributed
+
+    # Subagent specialization results
+    fundamental_research_results: dict[
+        str, Any
+    ]  # Results from fundamental analysis agent
+    technical_research_results: dict[str, Any]  # Results from technical analysis agent
+    sentiment_research_results: dict[str, Any]  # Results from sentiment analysis agent
+    competitive_research_results: dict[
+        str, Any
+    ]  # Results from competitive analysis agent
+
+    # Cross-agent synthesis
+    consensus_findings: list[dict[str, Any]]  # Findings agreed upon by multiple agents
+    conflicting_findings: list[dict[str, Any]]  # Findings where agents disagree
+    confidence_weighted_analysis: dict[
+        str, Any
+    ]  # Analysis weighted by agent confidence
+    multi_agent_synthesis_quality: float  # Quality score for multi-agent synthesis

@@ -438,7 +438,7 @@ def circuit_breaker(
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
         # Create config with overrides
-        cb_name = name or f"{func.__module__}.{func.__name__}"
+        cb_name = name or f"{func.__module__}.{getattr(func, '__name__', 'unknown')}"
         config = CircuitBreakerConfig(
             name=cb_name,
             failure_threshold=failure_threshold

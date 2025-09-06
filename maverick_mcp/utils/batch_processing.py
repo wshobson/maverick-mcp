@@ -53,7 +53,7 @@ class BatchProcessor:
         self,
         symbols: list[str],
         processor_func: Callable[[str], T],
-        error_default: T = None,
+        error_default: T | None = None,
     ) -> dict[str, T]:
         """
         Process multiple symbols concurrently using ThreadPoolExecutor.
@@ -90,7 +90,7 @@ class BatchProcessor:
         self,
         symbols: list[str],
         async_processor_func: Callable[[str], Any],
-        max_concurrent: int = None,
+        max_concurrent: int | None = None,
     ) -> dict[str, Any]:
         """
         Process multiple symbols asynchronously with concurrency limit.
@@ -164,7 +164,7 @@ class BatchProcessor:
 class StockDataBatchProcessor:
     """Specialized batch processor for stock data operations."""
 
-    def __init__(self, provider: EnhancedStockDataProvider = None):
+    def __init__(self, provider: EnhancedStockDataProvider | None = None):
         """Initialize with optional stock data provider."""
         self.provider = provider or EnhancedStockDataProvider()
 

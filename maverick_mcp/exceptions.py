@@ -44,16 +44,72 @@ class MaverickException(Exception):
             result["context"] = self.context
         return result
 
+    def __repr__(self) -> str:
+        """String representation of the exception."""
+        return f"{self.__class__.__name__}('{self.message}', code='{self.error_code}')"
+
 
 # Validation exceptions
 class ValidationError(MaverickException):
     """Raised when input validation fails."""
 
-    error_code = "VALIDATION_ERROR"
-    status_code = 422
 
-    def __init__(self, message: str, field: str | None = None, **kwargs):
-        super().__init__(message, field=field, **kwargs)
+# Research and agent exceptions
+class ResearchError(MaverickException):
+    """Raised when research operations fail."""
+
+    error_code = "RESEARCH_ERROR"
+    status_code = 500
+
+    def __init__(
+        self,
+        message: str,
+        research_type: str | None = None,
+        provider: str | None = None,
+        error_code: str | None = None,
+        status_code: int | None = None,
+        field: str | None = None,
+        context: dict[str, Any] | None = None,
+        recoverable: bool = True,
+    ):
+        super().__init__(
+            message=message,
+            error_code=error_code,
+            status_code=status_code,
+            field=field,
+            context=context,
+            recoverable=recoverable,
+        )
+        self.research_type = research_type
+        self.provider = provider
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert exception to dictionary for API responses."""
+        result = super().to_dict()
+        if self.research_type:
+            result["research_type"] = self.research_type
+        if self.provider:
+            result["provider"] = self.provider
+        return result
+
+
+class WebSearchError(ResearchError):
+    """Raised when web search operations fail."""
+
+    error_code = "WEB_SEARCH_ERROR"
+
+
+class ContentAnalysisError(ResearchError):
+    """Raised when content analysis fails."""
+
+    error_code = "CONTENT_ANALYSIS_ERROR"
+
+
+class AgentExecutionError(MaverickException):
+    """Raised when agent execution fails."""
+
+    error_code = "AGENT_EXECUTION_ERROR"
+    status_code = 500
 
 
 # Authentication/Authorization exceptions

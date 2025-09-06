@@ -6,7 +6,7 @@ to ensure consistency across the application.
 """
 
 from datetime import UTC, datetime
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -25,13 +25,13 @@ class BaseResponse(BaseModel):
     request_id: str | None = Field(None, description="Request tracking ID")
 
 
-class DataResponse(BaseResponse, Generic[T]):
+class DataResponse[T](BaseResponse):
     """Response model with data payload."""
 
     data: T = Field(..., description="Response data")
 
 
-class ListResponse(BaseResponse, Generic[T]):
+class ListResponse[T](BaseResponse):
     """Response model for paginated lists."""
 
     data: list[T] = Field(..., description="List of items")

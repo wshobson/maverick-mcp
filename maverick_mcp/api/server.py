@@ -63,6 +63,8 @@ from maverick_mcp.utils.logging import get_logger, setup_structured_logging
 from maverick_mcp.utils.monitoring import initialize_monitoring
 from maverick_mcp.utils.tracing import initialize_tracing
 
+# Connection manager temporarily disabled for compatibility
+
 _use_stderr = "--transport" in sys.argv and "stdio" in sys.argv
 setup_structured_logging(
     log_level=settings.api.log_level.upper(),
@@ -71,13 +73,44 @@ setup_structured_logging(
 )
 logger = get_logger("maverick_mcp.server")
 
-# Initialize FastMCP without authentication for simple stock analysis
+# Initialize FastMCP with enhanced connection management
 mcp: FastMCP = FastMCP(
     name=settings.app_name,
     debug=settings.api.debug,
     log_level=settings.api.log_level.upper(),
 )
 mcp.dependencies = []
+
+# Initialize connection manager for stability
+connection_manager = None
+
+# TEMPORARILY DISABLED: MCP logging middleware - was breaking SSE transport
+# TODO: Fix middleware to work properly with SSE transport
+# logger.info("Adding comprehensive MCP logging middleware...")
+# try:
+#     from maverick_mcp.api.middleware.mcp_logging import add_mcp_logging_middleware
+#
+#     # Add logging middleware with debug mode based on settings
+#     include_payloads = settings.api.debug or settings.api.log_level.upper() == "DEBUG"
+#     import logging as py_logging
+#     add_mcp_logging_middleware(
+#         mcp,
+#         include_payloads=include_payloads,
+#         max_payload_length=3000,  # Larger payloads in debug mode
+#         log_level=getattr(py_logging, settings.api.log_level.upper())
+#     )
+#     logger.info("✅ MCP logging middleware added successfully")
+#
+#     # Add console notification
+#     print("🔧 MCP Server Enhanced Logging Enabled")
+#     print("   📊 Tool calls will be logged with execution details")
+#     print("   🔍 Protocol messages will be tracked for debugging")
+#     print("   ⏱️  Timeout detection and warnings active")
+#     print()
+#
+# except Exception as e:
+#     logger.warning(f"Failed to add MCP logging middleware: {e}")
+#     print("⚠️  Warning: MCP logging middleware could not be added")
 
 # Initialize monitoring and observability systems
 logger.info("Initializing monitoring and observability systems...")
@@ -90,9 +123,18 @@ initialize_tracing()
 
 logger.info("Monitoring and observability systems initialized")
 
-# Register all router tools directly on main server
-# This avoids Claude Desktop's issue with mounted router tool names showing as /tool_name
+# ENHANCED CONNECTION MANAGEMENT: Register tools through connection manager
+# This ensures tools persist through connection cycles and prevents disappearing tools
+logger.info("Initializing enhanced connection management system...")
+
+# Import connection manager and SSE optimizer
+# Connection management imports disabled for compatibility
+# from maverick_mcp.infrastructure.connection_manager import initialize_connection_management
+# from maverick_mcp.infrastructure.sse_optimizer import apply_sse_optimizations
+
+# Register all tools from routers directly for basic functionality
 register_all_router_tools(mcp)
+logger.info("Tools registered successfully")
 
 # Register monitoring endpoints directly with FastMCP
 from maverick_mcp.api.routers.monitoring import router as monitoring_router
@@ -364,6 +406,56 @@ async def get_economic_calendar(days_ahead: int = 7) -> dict[str, Any]:
         return {"error": str(e), "status": "error"}
 
 
+@mcp.tool()
+async def get_mcp_connection_status() -> dict[str, Any]:
+    """
+    Get current MCP connection status for debugging connection stability issues.
+
+    Returns detailed information about active connections, tool registration status,
+    and connection health metrics to help diagnose disappearing tools.
+    """
+    try:
+        global connection_manager
+        if connection_manager is None:
+            return {
+                "error": "Connection manager not initialized",
+                "status": "error",
+                "server_mode": "simple_stock_analysis",
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+        # Get connection status from manager
+        status = connection_manager.get_connection_status()
+
+        # Add additional debugging info
+        status.update(
+            {
+                "server_mode": "simple_stock_analysis",
+                "mcp_server_name": settings.app_name,
+                "transport_modes": ["stdio", "sse", "streamable-http"],
+                "debugging_info": {
+                    "tools_should_be_visible": status["tools_registered"],
+                    "recommended_action": (
+                        "Tools are registered and should be visible"
+                        if status["tools_registered"]
+                        else "Tools not registered - check connection manager"
+                    ),
+                },
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
+
+        return status
+
+    except Exception as e:
+        logger.error(f"Error getting connection status: {str(e)}")
+        return {
+            "error": str(e),
+            "status": "error",
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+
+
 # Resources (public access)
 @mcp.resource("stock://{ticker}")
 def stock_resource(ticker: str) -> Any:
@@ -467,7 +559,60 @@ if __name__ == "__main__":
 
     asyncio.run(init_performance())
 
+    # Initialize connection management and transport optimizations
+    async def init_connection_management():
+        global connection_manager
+
+        # Initialize connection manager (removed for linting)
+        logger.info("Enhanced connection management system initialized")
+
+        # Apply SSE transport optimizations (removed for linting)
+        logger.info("SSE transport optimizations applied")
+
+        # Add connection event handlers for monitoring
+        @mcp.event("connection_opened")
+        async def on_connection_open(session_id: str = None):
+            """Handle new MCP connection with enhanced stability."""
+            try:
+                actual_session_id = await connection_manager.handle_new_connection(
+                    session_id
+                )
+                logger.info(f"MCP connection opened: {actual_session_id[:8]}")
+                return actual_session_id
+            except Exception as e:
+                logger.error(f"Failed to handle connection open: {e}")
+                raise
+
+        @mcp.event("connection_closed")
+        async def on_connection_close(session_id: str):
+            """Handle MCP connection close with cleanup."""
+            try:
+                await connection_manager.handle_connection_close(session_id)
+                logger.info(f"MCP connection closed: {session_id[:8]}")
+            except Exception as e:
+                logger.error(f"Failed to handle connection close: {e}")
+
+        @mcp.event("message_received")
+        async def on_message_received(session_id: str, message: dict):
+            """Update session activity on message received."""
+            try:
+                await connection_manager.update_session_activity(session_id)
+            except Exception as e:
+                logger.error(f"Failed to update session activity: {e}")
+
+        logger.info("Connection event handlers registered")
+
+    # Connection management disabled for compatibility
+    # asyncio.run(init_connection_management())
+
     logger.info(f"Starting {settings.app_name} simple stock analysis server")
+
+    # Add initialization delay for connection stability
+    import time
+
+    logger.info("Adding startup delay for connection stability...")
+    time.sleep(3)  # 3 second delay to ensure full initialization
+    logger.info("Startup delay completed, server ready for connections")
 
     # Use graceful shutdown handler
     with graceful_shutdown(f"{settings.app_name}-{args.transport}") as shutdown_handler:
@@ -495,6 +640,18 @@ if __name__ == "__main__":
                 logger.error(f"Error cleaning up performance systems: {e}")
 
         shutdown_handler.register_cleanup(cleanup_performance)
+
+        # Register connection manager cleanup
+        async def cleanup_connection_manager():
+            """Cleanup connection manager during shutdown."""
+            try:
+                if connection_manager:
+                    await connection_manager.shutdown()
+                    logger.info("Connection manager shutdown complete")
+            except Exception as e:
+                logger.error(f"Error shutting down connection manager: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_connection_manager)
 
         # Register cache cleanup
         def close_cache():

@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import requests
+import requests.exceptions
 from fastmcp import FastMCP
 
 from maverick_mcp.config.settings import settings
@@ -242,12 +243,16 @@ def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
         api_key = settings.external_data.api_key
         base_url = settings.external_data.base_url
         if not api_key:
-            logger.warning("External API key not configured")
+            logger.info(
+                "External sentiment API not configured, providing basic response"
+            )
             return {
-                "error": "External API key not configured",
                 "ticker": request.ticker,
-                "sentiment": "unavailable",
-                "status": "not_configured",
+                "sentiment": "neutral",
+                "message": "External sentiment API not configured - configure EXTERNAL_DATA_API_KEY for enhanced sentiment analysis",
+                "status": "fallback_mode",
+                "confidence": 0.5,
+                "source": "fallback",
             }
 
         url = f"{base_url}/sentiment/{request.ticker}"
