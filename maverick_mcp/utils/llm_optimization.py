@@ -100,22 +100,22 @@ class AdaptiveModelSelector:
         self, task_type: TaskType, content_size: int
     ) -> ModelConfiguration:
         """Ultra-fast models for time-critical situations."""
-        # Prioritize speed over everything else - use fastest available models
+        # OPTIMIZATION: Prioritize speed with increased batch sizes
         if content_size > 20000:  # Large content needs fast + capable models
             return ModelConfiguration(
                 model_id="google/gemini-2.5-flash",  # 199 tokens/sec - fastest available
                 max_tokens=min(800, content_size // 25),  # Adaptive token limit
-                temperature=0.1,  # Lower temp for faster, more focused response
-                timeout_seconds=8,
-                parallel_batch_size=4,  # Increased for faster model
+                temperature=0.05,  # OPTIMIZATION: Minimal temp for deterministic fast response
+                timeout_seconds=5,  # OPTIMIZATION: Reduced from 8s
+                parallel_batch_size=8,  # OPTIMIZATION: Doubled for faster processing
             )
         else:
             return ModelConfiguration(
                 model_id="openai/gpt-4o-mini",  # 126 tokens/sec - excellent speed/cost balance
                 max_tokens=min(500, content_size // 20),
-                temperature=0.05,  # Minimal temperature for fastest response
-                timeout_seconds=6,
-                parallel_batch_size=5,  # Increased for faster processing
+                temperature=0.03,  # OPTIMIZATION: Near-zero for fastest response
+                timeout_seconds=4,  # OPTIMIZATION: Reduced from 6s
+                parallel_batch_size=10,  # OPTIMIZATION: Doubled for maximum parallelism
             )
 
     def _select_fast_quality_model(
@@ -127,18 +127,18 @@ class AdaptiveModelSelector:
             return ModelConfiguration(
                 model_id="openai/gpt-4o-mini",  # 126 tokens/sec + good quality
                 max_tokens=1200,
-                temperature=0.2,
-                timeout_seconds=18,  # Reduced timeout for speed
-                parallel_batch_size=3,  # Increased for faster model
+                temperature=0.1,  # OPTIMIZATION: Reduced for faster response
+                timeout_seconds=10,  # OPTIMIZATION: Reduced from 18s
+                parallel_batch_size=6,  # OPTIMIZATION: Doubled for better parallelism
             )
         else:
             # Simple tasks - use the fastest model available
             return ModelConfiguration(
                 model_id="google/gemini-2.5-flash",  # 199 tokens/sec - fastest
                 max_tokens=1000,
-                temperature=0.2,
-                timeout_seconds=12,  # Reduced timeout for fastest model
-                parallel_batch_size=4,  # Increased for faster processing
+                temperature=0.1,  # OPTIMIZATION: Reduced for faster response
+                timeout_seconds=8,  # OPTIMIZATION: Reduced from 12s
+                parallel_batch_size=8,  # OPTIMIZATION: Doubled for maximum speed
             )
 
     def _select_balanced_model(
@@ -197,7 +197,7 @@ class AdaptiveModelSelector:
         )
 
     def calculate_task_complexity(
-        self, content: str, task_type: TaskType, focus_areas: list[str] = None
+        self, content: str, task_type: TaskType, focus_areas: list[str] | None = None
     ) -> float:
         """Calculate complexity score based on content and task requirements."""
         if not content:
@@ -366,6 +366,46 @@ class ProgressiveTokenBudgeter:
             timeout_seconds=max(adjusted_timeout, 5),  # Minimum 5 seconds
         )
 
+    def get_next_allocation(
+        self,
+        sources_remaining: int,
+        current_confidence: float,
+        time_elapsed_seconds: float,
+    ) -> dict[str, Any]:
+        """Get the next token allocation for processing sources."""
+        time_remaining = max(0, self.total_time_budget - time_elapsed_seconds)
+
+        # Determine priority based on confidence and time pressure
+        if current_confidence < 0.4 and time_remaining > 30:
+            priority = "high"
+        elif current_confidence < 0.6 and time_remaining > 15:
+            priority = "medium"
+        else:
+            priority = "low"
+
+        # Calculate time budget per remaining source
+        if sources_remaining > 0:
+            time_per_source = time_remaining / sources_remaining
+        else:
+            time_per_source = 0
+
+        # Calculate token budget
+        base_tokens = self.phase_budgets.get(ResearchPhase.CONTENT_ANALYSIS, 2000)
+
+        if priority == "high":
+            max_tokens = min(int(base_tokens * 1.2), 4000)
+        elif priority == "medium":
+            max_tokens = base_tokens
+        else:
+            max_tokens = int(base_tokens * 0.8)
+
+        return {
+            "time_budget": min(time_per_source, 30.0),  # Cap at 30 seconds
+            "max_tokens": max_tokens,
+            "priority": priority,
+            "sources_remaining": sources_remaining,
+        }
+
     def _calculate_time_multiplier(self, time_remaining: float) -> float:
         """Scale token budget based on time pressure."""
         if time_remaining < 5:
@@ -384,13 +424,20 @@ class ParallelLLMProcessor:
     """Handles parallel LLM operations with intelligent load balancing."""
 
     def __init__(
-        self, openrouter_provider: OpenRouterProvider, max_concurrent: int = 3
+        self,
+        openrouter_provider: OpenRouterProvider,
+        max_concurrent: int = 5,  # OPTIMIZATION: Increased from 3
     ):
         self.provider = openrouter_provider
         self.max_concurrent = max_concurrent
-        self.semaphore = asyncio.Semaphore(max_concurrent)
+        self.semaphore = asyncio.BoundedSemaphore(
+            max_concurrent
+        )  # OPTIMIZATION: Use BoundedSemaphore
         self.model_selector = AdaptiveModelSelector(openrouter_provider)
         self.orchestration_logger = get_orchestration_logger("ParallelLLMProcessor")
+        # OPTIMIZATION: Track active requests for better coordination
+        self._active_requests = 0
+        self._request_lock = asyncio.Lock()
 
     @log_method_call(component="ParallelLLMProcessor", include_timing=True)
     async def parallel_content_analysis(
@@ -443,29 +490,43 @@ class ParallelLLMProcessor:
             "🔄 PARALLEL_ANALYSIS_START",
             total_sources=len(sources),
             batch_count=len(batches),
-            model_id=model_config.model_id,
-            parallel_batch_size=model_config.parallel_batch_size,
         )
 
-        # Process batches in parallel
-        tasks = []
+        # OPTIMIZATION: Process batches using create_task for immediate parallelism
+        running_tasks = []
         for i, batch in enumerate(batches):
-            task = self._analyze_source_batch(
-                batch=batch,
-                batch_id=i,
-                analysis_type=analysis_type,
-                persona=persona,
-                model_config=model_config,
-                overall_complexity=overall_complexity,
+            # Create task immediately without awaiting
+            task_future = asyncio.create_task(
+                self._analyze_source_batch(
+                    batch=batch,
+                    batch_id=i,
+                    analysis_type=analysis_type,
+                    persona=persona,
+                    model_config=model_config,
+                    overall_complexity=overall_complexity,
+                )
             )
-            tasks.append(task)
+            running_tasks.append((i, task_future))  # Track batch ID with future
 
-        # Execute with timeout
+            # OPTIMIZATION: Minimal stagger to prevent API overload
+            if i < len(batches) - 1:  # Don't delay after last batch
+                await asyncio.sleep(0.01)  # 10ms micro-delay
+
+        # OPTIMIZATION: Use as_completed for progressive result handling
+        batch_results = [None] * len(batches)  # Pre-allocate results list
+        timeout_at = time.time() + (time_budget_seconds * 0.9)
+
         try:
-            batch_results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=time_budget_seconds * 0.9,
-            )
+            for batch_id, task_future in running_tasks:
+                remaining_time = timeout_at - time.time()
+                if remaining_time <= 0:
+                    raise TimeoutError()
+
+                try:
+                    result = await asyncio.wait_for(task_future, timeout=remaining_time)
+                    batch_results[batch_id] = result
+                except Exception as e:
+                    batch_results[batch_id] = e
         except TimeoutError:
             self.orchestration_logger.warning(
                 "⏰ PARALLEL_ANALYSIS_TIMEOUT", timeout=time_budget_seconds
@@ -489,7 +550,6 @@ class ParallelLLMProcessor:
         self.orchestration_logger.info(
             "✅ PARALLEL_ANALYSIS_COMPLETE",
             successful_batches=successful_batches,
-            total_batches=len(batches),
             results_count=len(final_results),
         )
 
@@ -518,9 +578,15 @@ class ParallelLLMProcessor:
         model_config: ModelConfiguration,
         overall_complexity: float,
     ) -> list[dict]:
-        """Analyze a batch of sources with a single LLM call."""
+        """Analyze a batch of sources with optimized LLM call."""
 
-        async with self.semaphore:
+        # OPTIMIZATION: Track active requests for better coordination
+        async with self._request_lock:
+            self._active_requests += 1
+
+        try:
+            # OPTIMIZATION: Acquire semaphore without blocking other task creation
+            await self.semaphore.acquire()
             try:
                 # Create batch analysis prompt
                 batch_prompt = self._create_batch_analysis_prompt(
@@ -558,9 +624,7 @@ class ParallelLLMProcessor:
                 self.orchestration_logger.debug(
                     "✨ BATCH_SUCCESS",
                     batch_id=batch_id,
-                    execution_time=f"{execution_time:.2f}s",
-                    sources_processed=len(batch),
-                    model=model_config.model_id,
+                    duration=f"{execution_time:.2f}s",
                 )
 
                 return parsed_results
@@ -577,6 +641,13 @@ class ParallelLLMProcessor:
                     "💥 BATCH_ERROR", batch_id=batch_id, error=str(e)
                 )
                 return self._create_fallback_results(batch)
+            finally:
+                # OPTIMIZATION: Always release semaphore
+                self.semaphore.release()
+        finally:
+            # OPTIMIZATION: Track active requests
+            async with self._request_lock:
+                self._active_requests -= 1
 
     def _create_batch_analysis_prompt(
         self, batch: list[dict], analysis_type: str, persona: str, max_tokens: int
@@ -655,7 +726,7 @@ Maintain {persona} investor perspective throughout.""",
 
         if len(source_sections) >= len(batch):
             # Structured parsing successful
-            for i, (source, section) in enumerate(
+            for _i, (source, section) in enumerate(
                 zip(batch, source_sections[1 : len(batch) + 1], strict=False)
             ):
                 parsed = self._parse_source_analysis(section, source)
@@ -991,6 +1062,7 @@ Tailor specifically for {persona} investment characteristics.""",
             "persona": persona,
             "source_count": len(sources),
             "insights": "; ".join(insights[:8]),  # Top 8 insights
+            "key_points": "; ".join(insights[:8]),  # For backward compatibility
             "time_horizon": "short-term" if time_remaining < 30 else "medium-term",
         }
 
@@ -1014,15 +1086,26 @@ class ConfidenceTracker:
         self.confidence_history = []
         self.evidence_history = []
         self.source_count = 0
+        self.sources_analyzed = 0  # For backward compatibility
         self.last_significant_improvement = 0
         self.sentiment_votes = {"bullish": 0, "bearish": 0, "neutral": 0}
 
     def update_confidence(
-        self, new_evidence: dict, source_credibility: float
+        self,
+        new_evidence: dict,
+        source_credibility: float | None = None,
+        credibility_score: float | None = None,
     ) -> dict[str, Any]:
         """Update confidence based on new evidence and return continuation decision."""
 
+        # Handle both parameter names for backward compatibility
+        if source_credibility is None and credibility_score is not None:
+            source_credibility = credibility_score
+        elif source_credibility is None and credibility_score is None:
+            source_credibility = 0.5  # Default value
+
         self.source_count += 1
+        self.sources_analyzed += 1  # Keep both for compatibility
 
         # Store evidence
         self.evidence_history.append(
@@ -1064,6 +1147,7 @@ class ConfidenceTracker:
             "current_confidence": current_confidence,
             "should_continue": should_continue,
             "sources_processed": self.source_count,
+            "sources_analyzed": self.source_count,  # For backward compatibility
             "confidence_trend": self._calculate_confidence_trend(),
             "early_termination_reason": None
             if should_continue
@@ -1497,7 +1581,7 @@ class IntelligentContentFilter:
                 domain = url.split("//")[1].split("/")[0]
                 return domain.replace("www.", "")
             return url
-        except:
+        except Exception:
             return url
 
     def _preprocess_content(
@@ -1557,7 +1641,7 @@ class IntelligentContentFilter:
 
         # Build filtered content
         filtered_content = ""
-        for score, sentence in scored_sentences:
+        for _score, sentence in scored_sentences:
             if len(filtered_content) + len(sentence) > max_length:
                 break
             filtered_content += sentence + ". "

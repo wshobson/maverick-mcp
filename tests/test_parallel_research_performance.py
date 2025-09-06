@@ -475,9 +475,7 @@ class TestParallelResearchPerformance:
 
                 # Run sequential baseline
                 sequential_start = time.time()
-                sequential_result = await performance_tester.run_sequential_baseline(
-                    tasks, executor
-                )
+                await performance_tester.run_sequential_baseline(tasks, executor)
                 sequential_time = time.time() - sequential_start
 
                 monitor.sample_cpu()
@@ -488,9 +486,7 @@ class TestParallelResearchPerformance:
 
                 # Run parallel test
                 parallel_start = time.time()
-                parallel_result = await performance_tester.run_parallel_test(
-                    tasks, config, executor
-                )
+                await performance_tester.run_parallel_test(tasks, config, executor)
                 parallel_time = time.time() - parallel_start
 
                 monitor.sample_cpu()

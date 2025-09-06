@@ -61,6 +61,37 @@ class ResearchError(MaverickException):
     error_code = "RESEARCH_ERROR"
     status_code = 500
 
+    def __init__(
+        self,
+        message: str,
+        research_type: str | None = None,
+        provider: str | None = None,
+        error_code: str | None = None,
+        status_code: int | None = None,
+        field: str | None = None,
+        context: dict[str, Any] | None = None,
+        recoverable: bool = True,
+    ):
+        super().__init__(
+            message=message,
+            error_code=error_code,
+            status_code=status_code,
+            field=field,
+            context=context,
+            recoverable=recoverable,
+        )
+        self.research_type = research_type
+        self.provider = provider
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert exception to dictionary for API responses."""
+        result = super().to_dict()
+        if self.research_type:
+            result["research_type"] = self.research_type
+        if self.provider:
+            result["provider"] = self.provider
+        return result
+
 
 class WebSearchError(ResearchError):
     """Raised when web search operations fail."""

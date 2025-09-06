@@ -28,7 +28,11 @@ try:
 except ImportError:
     # Fallback for older FastMCP versions
     MIDDLEWARE_AVAILABLE = False
-    Middleware = object
+
+    class Middleware:  # type: ignore
+        """Fallback Middleware class for older FastMCP versions."""
+        pass
+
     MiddlewareContext = Any
 
 from maverick_mcp.utils.logging import (
@@ -262,7 +266,7 @@ class ToolExecutionLogger:
         self.start_time = time.time()
         self.step_times = {}
 
-    def step(self, step_name: str, message: str = None):
+    def step(self, step_name: str, message: str | None = None):
         """Log a step in tool execution."""
         current_time = time.time()
         step_duration = current_time - self.start_time
@@ -284,7 +288,7 @@ class ToolExecutionLogger:
         # Console progress indicator
         print(f"  📊 {self.tool_name} -> {step_name} ({step_duration:.2f}s)")
 
-    def error(self, step_name: str, error: Exception, message: str = None):
+    def error(self, step_name: str, error: Exception, message: str | None = None):
         """Log an error in tool execution."""
         current_time = time.time()
         step_duration = current_time - self.start_time
@@ -310,7 +314,7 @@ class ToolExecutionLogger:
             f"  ❌ {self.tool_name} -> {step_name} ERROR: {type(error).__name__}: {str(error)}"
         )
 
-    def complete(self, result_summary: str = None):
+    def complete(self, result_summary: str | None = None):
         """Log completion of tool execution."""
         total_duration = time.time() - self.start_time
 

@@ -433,12 +433,6 @@ class OpenRouterProvider:
             Fastest available model profile
         """
         # Emergency model priority (by actual tokens per second)
-        emergency_models = [
-            "google/gemini-2.5-flash",  # 199 tokens/sec - FASTEST
-            "openai/gpt-5-nano",  # 180 tokens/sec - Very fast + cheap
-            "openai/gpt-4o-mini",  # 126 tokens/sec - Best speed/quality balance
-            "anthropic/claude-3.5-haiku",  # 65.6 tokens/sec - Fallback
-        ]
 
         # For ultra-tight budgets (< 15s), use only the absolute fastest
         if timeout_budget < 15:

@@ -39,9 +39,8 @@ from maverick_mcp.utils.orchestration_logging import (
     log_method_call,
     log_performance_metrics,
 )
-from maverick_mcp.utils.parallel_research import (
-    ParallelResearchConfig,
-)
+
+# Import moved to avoid circular dependency
 
 logger = logging.getLogger(__name__)
 
@@ -269,15 +268,16 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
         checkpointer: MemorySaver | None = None,
         ttl_hours: int = 24,
         exa_api_key: str | None = None,
-        tavily_api_key: str | None = None,
         default_depth: str = "standard",
         max_sources: int | None = None,
         research_depth: str | None = None,
         enable_parallel_execution: bool = True,
-        parallel_config: ParallelResearchConfig | None = None,
+        parallel_config=None,  # Type: ParallelResearchConfig | None
         optimization_enabled: bool = True,
     ):
         """Initialize optimized deep research agent."""
+
+        # Import here to avoid circular dependency
 
         self.openrouter_provider = openrouter_provider
         self.optimization_enabled = optimization_enabled
@@ -303,7 +303,6 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
             checkpointer=checkpointer,
             ttl_hours=ttl_hours,
             exa_api_key=exa_api_key,
-            tavily_api_key=tavily_api_key,
             default_depth=default_depth,
             max_sources=max_sources,
             research_depth=research_depth,
@@ -311,9 +310,7 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
             parallel_config=parallel_config,
         )
 
-        logger.info(
-            f"OptimizedDeepResearchAgent initialized with optimization_enabled={optimization_enabled}"
-        )
+        logger.info("OptimizedDeepResearchAgent initialized")
 
     @log_method_call(component="OptimizedDeepResearchAgent", include_timing=True)
     async def research_comprehensive(
@@ -385,15 +382,6 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
             "🚀 OPTIMIZED_RESEARCH_START",
             depth=depth,
             focus_areas=focus_areas,
-            timeframe=timeframe,
-            optimization_features=[
-                "adaptive_model_selection",
-                "progressive_token_budgeting",
-                "parallel_processing",
-                "optimized_prompts",
-                "early_termination",
-                "content_filtering",
-            ],
         )
 
         try:
@@ -409,23 +397,20 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
 
             orchestration_logger.info(
                 "✅ PHASE_1_COMPLETE",
-                raw_sources=len(search_results.get("raw_results", [])),
-                filtered_sources=len(search_results.get("filtered_sources", [])),
+                sources_found=len(search_results.get("filtered_sources", [])),
             )
 
             # Phase 2: Content Analysis with Parallel Processing
             remaining_time = time_budget_seconds - (time.time() - start_time)
             if remaining_time < 10:
                 orchestration_logger.warning(
-                    "⚠️ TIME_CONSTRAINT_CRITICAL", remaining=remaining_time
+                    "⚠️ TIME_CONSTRAINT_CRITICAL", remaining=f"{remaining_time:.1f}s"
                 )
                 return self._create_emergency_response(
                     topic, search_results, start_time
                 )
 
-            orchestration_logger.info(
-                "🔬 PHASE_2_ANALYSIS_START", remaining_time=remaining_time
-            )
+            orchestration_logger.info("🔬 PHASE_2_ANALYSIS_START")
             analysis_time_budget = remaining_time * 0.7  # 70% of remaining time
 
             analysis_results = await self._optimized_analysis_phase(
@@ -438,8 +423,7 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
             orchestration_logger.info(
                 "✅ PHASE_2_COMPLETE",
                 sources_analyzed=len(analysis_results["analyzed_sources"]),
-                final_confidence=analysis_results["final_confidence"],
-                early_terminated=analysis_results.get("early_terminated", False),
+                confidence=f"{analysis_results['final_confidence']:.2f}",
             )
 
             # Phase 3: Synthesis with Remaining Time
@@ -450,9 +434,7 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
                     "synthesis": "Time constraints prevented full synthesis"
                 }
             else:
-                orchestration_logger.info(
-                    "🧠 PHASE_3_SYNTHESIS_START", remaining_time=remaining_time
-                )
+                orchestration_logger.info("🧠 PHASE_3_SYNTHESIS_START")
                 synthesis_results = await self._optimized_synthesis_phase(
                     analysis_results["analyzed_sources"], topic, remaining_time
                 )
@@ -487,9 +469,8 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
 
             orchestration_logger.info(
                 "🎉 OPTIMIZED_RESEARCH_COMPLETE",
-                execution_time=f"{execution_time:.2f}s",
-                budget_utilized=f"{(execution_time / time_budget_seconds) * 100:.1f}%",
-                final_confidence=analysis_results["final_confidence"],
+                duration=f"{execution_time:.2f}s",
+                confidence=f"{analysis_results['final_confidence']:.2f}",
             )
 
             return final_results
@@ -603,9 +584,6 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
         # Use batch processing if time allows
         if len(sources_to_process) > 3 and time_per_source < 8:
             # Use parallel batch processing
-            logger.info(
-                f"Using parallel batch processing for {len(sources_to_process)} sources"
-            )
 
             analyzed_sources = await self.optimized_analyzer.batch_analyze_content(
                 sources=sources_to_process,
@@ -638,9 +616,6 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
 
         else:
             # Use sequential processing with early termination
-            logger.info(
-                f"Using sequential processing with early termination for {len(sources_to_process)} sources"
-            )
 
             for _, source in enumerate(sources_to_process):
                 remaining_time = time_budget_seconds - (
@@ -678,8 +653,7 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
                 # Check for early termination
                 if not confidence_update["should_continue"]:
                     logger.info(
-                        f"Early termination triggered after {len(analyzed_sources)} sources. "
-                        f"Reason: {confidence_update['early_termination_reason']}"
+                        f"Early termination after {len(analyzed_sources)} sources: {confidence_update['early_termination_reason']}"
                     )
                     return {
                         "analyzed_sources": analyzed_sources,

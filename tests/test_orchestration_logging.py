@@ -380,7 +380,7 @@ class TestLogMethodCallDecorator:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
-            result = asyncio.run(instance.method_with_result_info())
+            asyncio.run(instance.method_with_result_info())
 
             success_call = mock_logger.info.call_args_list[1][0][0]
             assert "mode: parallel" in success_call

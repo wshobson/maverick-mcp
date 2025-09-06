@@ -1273,6 +1273,7 @@ dependencies = [
     { name = "tiktoken" },
     { name = "ty" },
     { name = "uvicorn" },
+    { name = "vcrpy" },
     { name = "watchdog" },
     { name = "yfinance" },
 ]
@@ -1294,6 +1295,11 @@ dev = [
     { name = "types-pytz" },
     { name = "types-requests" },
     { name = "vcrpy" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "testcontainers" },
 ]
 
 [package.metadata]
@@ -1363,11 +1369,15 @@ requires-dist = [
     { name = "types-pytz", marker = "extra == 'dev'", specifier = ">=2024.1.0" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.31.0" },
     { name = "uvicorn", specifier = ">=0.34.2" },
+    { name = "vcrpy", specifier = ">=7.0.0" },
     { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=6.0.1" },
     { name = "watchdog", specifier = ">=6.0.0" },
     { name = "yfinance", specifier = ">=0.2.63" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "testcontainers", extras = ["postgres"], specifier = ">=4.10.0" }]
 
 [[package]]
 name = "mcp"

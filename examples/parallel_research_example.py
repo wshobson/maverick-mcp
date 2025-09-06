@@ -12,8 +12,15 @@ This example shows how to:
 import asyncio
 import logging
 from datetime import datetime
+from typing import Any
 
-from langchain_core.language_models.fake import FakeListLLM
+from langchain_core.callbacks.manager import (
+    AsyncCallbackManagerForLLMRun,
+    CallbackManagerForLLMRun,
+)
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.utils.parallel_research import ParallelResearchConfig
@@ -24,11 +31,45 @@ logging.basicConfig(
 )
 
 
+class MockChatModel(BaseChatModel):
+    """Mock chat model for testing that extends BaseChatModel properly."""
+
+    def __init__(self, responses: list[str]):
+        super().__init__()
+        self.responses = responses
+        self._call_count = 0
+
+    @property
+    def _llm_type(self) -> str:
+        return "mock"
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        response = self.responses[self._call_count % len(self.responses)]
+        self._call_count += 1
+        message = AIMessage(content=response)
+        return ChatResult(generations=[ChatGeneration(message=message)])
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        return self._generate(messages, stop, **kwargs)
+
+
 async def main():
     """Demonstrate parallel research capabilities."""
 
     # Create a mock LLM for testing (in real usage, use Claude/GPT)
-    llm = FakeListLLM(
+    llm = MockChatModel(
         responses=[
             '{"KEY_INSIGHTS": ["Strong earnings growth", "Market expansion"], "SENTIMENT": {"direction": "bullish", "confidence": 0.8}, "RISK_FACTORS": ["Market volatility"], "OPPORTUNITIES": ["AI adoption"], "CREDIBILITY": 0.7, "RELEVANCE": 0.9, "SUMMARY": "Positive outlook for tech company"}',
             "Comprehensive research synthesis shows positive trends across multiple analysis areas with strong fundamentals and technical indicators supporting continued growth.",

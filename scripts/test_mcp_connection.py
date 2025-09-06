@@ -199,7 +199,7 @@ async def main():
     # Check if server is running
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"http://{host}:{port}/health")
+            await client.get(f"http://{host}:{port}/health")
             print(f"✅ Server is running on {host}:{port}")
     except Exception:
         print(f"❌ Server not running on {host}:{port}")

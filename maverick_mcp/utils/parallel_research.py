@@ -8,7 +8,7 @@ subagents for comprehensive financial analysis.
 import asyncio
 import logging
 import time
-from collections.abc import Callable, Coroutine
+from collections.abc import Callable
 from typing import Any
 
 from ..agents.circuit_breaker import circuit_breaker
@@ -31,15 +31,19 @@ class ParallelResearchConfig:
 
     def __init__(
         self,
-        max_concurrent_agents: int = 4,
-        timeout_per_agent: int = 180,  # 3 minutes per agent for thorough research
+        max_concurrent_agents: int = 6,  # OPTIMIZATION: Increased from 4 for better parallelism
+        timeout_per_agent: int = 60,  # OPTIMIZATION: Reduced from 180s to prevent blocking
         enable_fallbacks: bool = False,  # Disabled by default for speed
-        rate_limit_delay: float = 0.5,  # Reduced delay for faster parallelization
+        rate_limit_delay: float = 0.05,  # OPTIMIZATION: Minimal delay (50ms) for API rate limits only
+        batch_size: int = 3,  # OPTIMIZATION: Batch size for task grouping
+        use_worker_pool: bool = True,  # OPTIMIZATION: Enable worker pool pattern
     ):
         self.max_concurrent_agents = max_concurrent_agents
         self.timeout_per_agent = timeout_per_agent
         self.enable_fallbacks = enable_fallbacks
         self.rate_limit_delay = rate_limit_delay
+        self.batch_size = batch_size
+        self.use_worker_pool = use_worker_pool
 
 
 class ResearchTask:
@@ -85,15 +89,17 @@ class ParallelResearchOrchestrator:
     def __init__(self, config: ParallelResearchConfig | None = None):
         self.config = config or ParallelResearchConfig()
         self.active_tasks: dict[str, ResearchTask] = {}
-        self._semaphore = asyncio.Semaphore(self.config.max_concurrent_agents)
+        # OPTIMIZATION: Use bounded semaphore for better control
+        self._semaphore = asyncio.BoundedSemaphore(self.config.max_concurrent_agents)
         self.orchestration_logger = get_orchestration_logger("ParallelOrchestrator")
+        # Track active workers for better coordination
+        self._active_workers = 0
+        self._worker_lock = asyncio.Lock()
 
         # Log initialization
         self.orchestration_logger.info(
             "🎛️ ORCHESTRATOR_INIT",
             max_agents=self.config.max_concurrent_agents,
-            timeout_per_agent=self.config.timeout_per_agent,
-            fallbacks_enabled=self.config.enable_fallbacks,
         )
 
     @log_method_call(component="ParallelOrchestrator", include_timing=True)
@@ -120,11 +126,9 @@ class ParallelResearchOrchestrator:
         )
 
         # Log task overview
-        task_types = [task.task_type for task in tasks]
         self.orchestration_logger.info(
             "📋 TASK_OVERVIEW",
             task_count=len(tasks),
-            task_types=task_types,
             max_concurrent=self.config.max_concurrent_agents,
         )
 
@@ -138,39 +142,44 @@ class ParallelResearchOrchestrator:
         ) as exec_logger:
             try:
                 # Prepare tasks for execution
-                exec_logger.info("🔧 TASK_PREPARATION", total_tasks=len(tasks))
                 prepared_tasks = await self._prepare_tasks(tasks)
                 exec_logger.info(
-                    "✅ TASKS_PREPARED", prepared_count=len(prepared_tasks)
+                    "🔧 TASKS_PREPARED", prepared_count=len(prepared_tasks)
                 )
 
-                # Execute tasks in parallel with concurrency control
-                task_coroutines = [
-                    self._execute_single_task(task, research_executor)
-                    for task in prepared_tasks
-                ]
+                # OPTIMIZATION: Use create_task for true parallel execution
+                # This allows tasks to start immediately without waiting
+                exec_logger.info("🚀 PARALLEL_EXECUTION_START")
 
-                # Add rate limiting between task starts
-                if self.config.rate_limit_delay > 0:
-                    exec_logger.info(
-                        "⏱️ APPLYING_RATE_LIMITING", delay=self.config.rate_limit_delay
+                # Create all tasks immediately for maximum parallelism
+                running_tasks = []
+                for task in prepared_tasks:
+                    # Create task immediately without awaiting
+                    task_future = asyncio.create_task(
+                        self._execute_single_task(task, research_executor)
                     )
-                    await self._stagger_task_starts(task_coroutines)
+                    running_tasks.append(task_future)
 
-                # Log parallel execution start
-                exec_logger.info(
-                    "🚀 PARALLEL_EXECUTION_START", concurrent_tasks=len(task_coroutines)
-                )
+                    # OPTIMIZATION: Minimal delay only if absolutely needed for API rate limits
+                    # Reduced from progressive delays to fixed minimal delay
+                    if self.config.rate_limit_delay > 0 and len(running_tasks) < len(
+                        prepared_tasks
+                    ):
+                        await asyncio.sleep(
+                            self.config.rate_limit_delay * 0.1
+                        )  # 10% of original delay
 
-                # Wait for all tasks to complete
-                completed_tasks = await asyncio.gather(
-                    *task_coroutines, return_exceptions=True
-                )
+                # Wait for all tasks to complete using asyncio.as_completed for better responsiveness
+                completed_tasks = []
+                for task_future in asyncio.as_completed(running_tasks):
+                    try:
+                        result_task = await task_future
+                        completed_tasks.append(result_task)
+                    except Exception as e:
+                        # Handle exceptions without blocking other tasks
+                        completed_tasks.append(e)
 
-                exec_logger.info(
-                    "🏁 PARALLEL_EXECUTION_COMPLETE",
-                    completed_count=len(completed_tasks),
-                )
+                exec_logger.info("🏁 PARALLEL_EXECUTION_COMPLETE")
 
                 # Process results
                 result = await self._process_task_results(
@@ -191,25 +200,19 @@ class ParallelResearchOrchestrator:
 
                 # Synthesize results if callback provided
                 if synthesis_callback and result.successful_tasks > 0:
-                    exec_logger.info(
-                        "🧠 SYNTHESIS_START", successful_tasks=result.successful_tasks
-                    )
+                    exec_logger.info("🧠 SYNTHESIS_START")
                     try:
                         synthesis_start = time.time()
                         result.synthesis = await synthesis_callback(result.task_results)
-                        synthesis_duration = time.time() - synthesis_start
-                        exec_logger.info(
-                            "✅ SYNTHESIS_SUCCESS",
-                            duration=f"{synthesis_duration:.3f}s",
-                        )
+                        _ = (
+                            time.time() - synthesis_start
+                        )  # Track duration but not used currently
+                        exec_logger.info("✅ SYNTHESIS_SUCCESS")
                     except Exception as e:
                         exec_logger.error("❌ SYNTHESIS_FAILED", error=str(e))
                         result.synthesis = {"error": f"Synthesis failed: {str(e)}"}
                 else:
-                    exec_logger.info(
-                        "⏭️ SYNTHESIS_SKIPPED",
-                        reason="no_callback_or_no_successful_tasks",
-                    )
+                    exec_logger.info("⏭️ SYNTHESIS_SKIPPED")
 
                 return result
 
@@ -238,10 +241,23 @@ class ParallelResearchOrchestrator:
     async def _execute_single_task(
         self, task: ResearchTask, research_executor
     ) -> ResearchTask:
-        """Execute a single research task with error handling."""
-        async with self._semaphore:  # Concurrency control
+        """Execute a single research task with optimized error handling."""
+        # OPTIMIZATION: Acquire semaphore with try_acquire pattern for non-blocking
+        acquired = False
+        try:
+            # Try to acquire immediately, if not available, task is already created and will wait
+            acquired = not self._semaphore.locked()
+            if not acquired:
+                # Wait for semaphore but don't block other task creation
+                await self._semaphore.acquire()
+                acquired = True
+
             task.start_time = time.time()
             task.status = "running"
+
+            # Track active worker count
+            async with self._worker_lock:
+                self._active_workers += 1
 
             with log_agent_execution(
                 task.task_type, task.task_id, task.focus_areas
@@ -251,24 +267,22 @@ class ParallelResearchOrchestrator:
                         "🎯 TASK_EXECUTION_START",
                         timeout=task.timeout,
                         priority=task.priority,
-                        focus_areas=task.focus_areas,
                     )
 
-                    # Execute the research with timeout
-                    result = await asyncio.wait_for(
-                        research_executor(task), timeout=task.timeout
+                    # OPTIMIZATION: Use shield to prevent cancellation during critical work
+                    result = await asyncio.shield(
+                        asyncio.wait_for(research_executor(task), timeout=task.timeout)
                     )
 
                     task.result = result
                     task.status = "completed"
                     task.end_time = time.time()
 
-                    # Log successful completion with metrics
+                    # Log successful completion
                     execution_time = task.end_time - task.start_time
                     agent_logger.info(
                         "✨ TASK_EXECUTION_SUCCESS",
-                        execution_time=f"{execution_time:.3f}s",
-                        result_size=len(str(result)) if result else 0,
+                        duration=f"{execution_time:.3f}s",
                     )
 
                     # Log resource usage if available
@@ -284,34 +298,24 @@ class ParallelResearchOrchestrator:
                 except TimeoutError:
                     task.error = f"Task timeout after {task.timeout}s"
                     task.status = "failed"
-                    agent_logger.error(
-                        "⏰ TASK_TIMEOUT",
-                        timeout=task.timeout,
-                        elapsed_time=f"{time.time() - task.start_time:.3f}s",
-                    )
+                    agent_logger.error("⏰ TASK_TIMEOUT", timeout=task.timeout)
 
                 except Exception as e:
                     task.error = str(e)
                     task.status = "failed"
-                    agent_logger.error(
-                        "💥 TASK_EXECUTION_FAILED",
-                        error_type=type(e).__name__,
-                        error_message=str(e),
-                    )
+                    agent_logger.error("💥 TASK_EXECUTION_FAILED", error=str(e))
 
                 finally:
                     task.end_time = time.time()
+                    # Track active worker count
+                    async with self._worker_lock:
+                        self._active_workers -= 1
 
                 return task
-
-    async def _stagger_task_starts(self, coroutines: list[Coroutine]):
-        """Add delays between task starts to avoid overwhelming APIs."""
-        if len(coroutines) <= 1:
-            return
-
-        # Add progressive delays to task starts
-        for i in range(1, len(coroutines)):
-            await asyncio.sleep(self.config.rate_limit_delay * i)
+        finally:
+            # Always release semaphore if acquired
+            if acquired:
+                self._semaphore.release()
 
     async def _process_task_results(
         self, tasks: list[ResearchTask], completed_tasks: list[Any], start_time: float
@@ -422,8 +426,6 @@ class TaskDistributionEngine:
 
         distribution_logger.info(
             "🎯 TASK_DISTRIBUTION_START",
-            topic=topic[:100],
-            focus_areas=focus_areas,
             session_id=session_id,
         )
 
@@ -434,13 +436,7 @@ class TaskDistributionEngine:
         relevant_types = self._analyze_topic_relevance(topic_lower, focus_areas)
 
         # Log relevance analysis results
-        distribution_logger.info(
-            "🧠 RELEVANCE_ANALYSIS",
-            **{
-                f"{task_type}_score": f"{score:.2f}"
-                for task_type, score in relevant_types.items()
-            },
-        )
+        distribution_logger.info("🧠 RELEVANCE_ANALYSIS")
 
         # Create tasks for relevant types
         created_tasks = []
@@ -468,7 +464,6 @@ class TaskDistributionEngine:
             distribution_logger.info(
                 "✅ TASKS_CREATED",
                 task_count=len(created_tasks),
-                task_details=created_tasks,
             )
 
         # Ensure at least one task (fallback to fundamental analysis)

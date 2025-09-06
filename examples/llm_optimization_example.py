@@ -412,13 +412,18 @@ class OptimizationExamples:
             )
             gemini_time = time.time() - start_time
 
+            # Safely handle content that could be string or list
+            content_text = (
+                response.content if isinstance(response.content, str)
+                else str(response.content) if response.content else ""
+            )
             speed_test_results["gemini_2_5_flash"] = {
                 "execution_time": gemini_time,
-                "tokens_per_second": len(response.content.split()) / gemini_time
+                "tokens_per_second": len(content_text.split()) / gemini_time
                 if gemini_time > 0
                 else 0,
                 "success": True,
-                "response_quality": "high" if len(response.content) > 50 else "low",
+                "response_quality": "high" if len(content_text) > 50 else "low",
             }
         except Exception as e:
             speed_test_results["gemini_2_5_flash"] = {
@@ -448,13 +453,18 @@ class OptimizationExamples:
             )
             gpt_time = time.time() - start_time
 
+            # Safely handle content that could be string or list
+            content_text = (
+                response.content if isinstance(response.content, str)
+                else str(response.content) if response.content else ""
+            )
             speed_test_results["gpt_4o_mini"] = {
                 "execution_time": gpt_time,
-                "tokens_per_second": len(response.content.split()) / gpt_time
+                "tokens_per_second": len(content_text.split()) / gpt_time
                 if gpt_time > 0
                 else 0,
                 "success": True,
-                "response_quality": "high" if len(response.content) > 50 else "low",
+                "response_quality": "high" if len(content_text) > 50 else "low",
             }
         except Exception as e:
             speed_test_results["gpt_4o_mini"] = {
@@ -484,13 +494,18 @@ class OptimizationExamples:
             )
             claude_time = time.time() - start_time
 
+            # Safely handle content that could be string or list
+            content_text = (
+                response.content if isinstance(response.content, str)
+                else str(response.content) if response.content else ""
+            )
             speed_test_results["claude_3_5_haiku"] = {
                 "execution_time": claude_time,
-                "tokens_per_second": len(response.content.split()) / claude_time
+                "tokens_per_second": len(content_text.split()) / claude_time
                 if claude_time > 0
                 else 0,
                 "success": True,
-                "response_quality": "high" if len(response.content) > 50 else "low",
+                "response_quality": "high" if len(content_text) > 50 else "low",
             }
         except Exception as e:
             speed_test_results["claude_3_5_haiku"] = {

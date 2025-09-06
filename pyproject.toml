@@ -68,6 +68,7 @@ dependencies = [
     "pytest>=8.4.0",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",
+    "vcrpy>=7.0.0",
 ]
 
 [project.optional-dependencies]
@@ -152,4 +153,9 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "testcontainers[postgres]>=4.10.0",
+]
 

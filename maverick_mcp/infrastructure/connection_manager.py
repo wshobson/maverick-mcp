@@ -138,7 +138,7 @@ class MCPConnectionManager:
         while True:
             try:
                 await asyncio.sleep(60)  # Check every minute
-                current_time = time.time()
+                time.time()
                 expired_sessions = [
                     sid
                     for sid, session in self.active_sessions.items()

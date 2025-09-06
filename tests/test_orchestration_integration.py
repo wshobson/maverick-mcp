@@ -5,13 +5,55 @@ Tests the end-to-end functionality of SupervisorAgent and DeepResearchAgent
 to verify the orchestration system works correctly.
 """
 
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from langchain_core.callbacks.manager import (
+    AsyncCallbackManagerForLLMRun,
+    CallbackManagerForLLMRun,
+)
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 
 from maverick_mcp.agents.base import INVESTOR_PERSONAS, PersonaAwareAgent
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.agents.supervisor import ROUTING_MATRIX, SupervisorAgent
+
+
+class MockChatModel(BaseChatModel):
+    """Mock chat model for testing that extends BaseChatModel properly."""
+
+    def __init__(self, responses: list[str]):
+        super().__init__()
+        self.responses = responses
+        self._call_count = 0
+
+    @property
+    def _llm_type(self) -> str:
+        return "mock"
+
+    def _generate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: CallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        response = self.responses[self._call_count % len(self.responses)]
+        self._call_count += 1
+        message = AIMessage(content=response)
+        return ChatResult(generations=[ChatGeneration(message=message)])
+
+    async def _agenerate(
+        self,
+        messages: list[BaseMessage],
+        stop: list[str] | None = None,
+        run_manager: AsyncCallbackManagerForLLMRun | None = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        return self._generate(messages, stop, **kwargs)
 
 
 class TestOrchestrationSystemIntegration:
@@ -96,7 +138,6 @@ class TestOrchestrationSystemIntegration:
             persona="moderate",
             ttl_hours=1,
             exa_api_key=None,
-            tavily_api_key=None,
         )
 
         assert research_agent is not None
@@ -111,7 +152,6 @@ class TestOrchestrationSystemIntegration:
             persona="aggressive",
             ttl_hours=2,
             exa_api_key="test-exa-key",
-            tavily_api_key="test-tavily-key",
         )
 
         assert research_agent is not None
@@ -266,10 +306,8 @@ class TestOrchestrationWorkflow:
     @pytest.mark.asyncio
     async def test_end_to_end_mock_workflow(self):
         """Test a complete mock workflow from query to response."""
-        from langchain_core.language_models import FakeListLLM
-
-        # Create fake LLM for testing
-        fake_llm = FakeListLLM(
+        # Create mock LLM for testing
+        fake_llm = MockChatModel(
             responses=[
                 "Mock analysis complete",
                 "Mock research findings",

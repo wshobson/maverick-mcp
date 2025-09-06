@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 import requests
+import requests.exceptions
 from fastmcp import FastMCP
 
 from maverick_mcp.config.settings import settings

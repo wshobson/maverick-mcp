@@ -446,7 +446,7 @@ class TestParallelResearchEndToEnd:
         assert execution_time < 30
 
         # Verify each result has proper session isolation
-        for i, result in enumerate(successful_results):
+        for _i, result in enumerate(successful_results):
             if "findings" in result:
                 # Each should have distinct research content
                 assert result["research_topic"] in topics
@@ -665,7 +665,7 @@ class TestParallelResearchLoggingIntegration:
 
             # Verify different types of log messages occurred
             all_log_calls = [call[0][0] for call in mock_logger.info.call_args_list]
-            log_content = " ".join(all_log_calls)
+            " ".join(all_log_calls)
 
             # Should contain various logging elements
             assert any("RESEARCH_START" in call for call in all_log_calls)
@@ -724,7 +724,7 @@ class TestParallelResearchLoggingIntegration:
 
             # Verify metrics content
             perf_call = mock_perf_log.call_args_list[0]
-            component_name = perf_call[0][0]
+            perf_call[0][0]
             metrics = perf_call[0][1]
 
             assert isinstance(metrics, dict)
@@ -922,7 +922,7 @@ class TestParallelResearchDataFlow:
             ]
             for stat in required_stats:
                 assert stat in stats
-                assert isinstance(stats[stat], (int, float))
+                assert isinstance(stats[stat], int | float)
 
     @pytest.mark.asyncio
     async def test_citation_aggregation_across_tasks(self):

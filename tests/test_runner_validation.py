@@ -103,7 +103,6 @@ class TestSuiteValidator:
             if isinstance(node, ast.AsyncFunctionDef):
                 # Check if async test functions are properly marked
                 if node.name.startswith("test_"):
-                    has_asyncio_mark = False
                     for decorator in node.decorator_list:
                         if isinstance(decorator, ast.Attribute):
                             if (
@@ -111,7 +110,7 @@ class TestSuiteValidator:
                                 and decorator.value.attr == "mark"
                                 and decorator.attr == "asyncio"
                             ):
-                                has_asyncio_mark = True
+                                pass
                         elif isinstance(decorator, ast.Call):
                             if (
                                 isinstance(decorator.func, ast.Attribute)
@@ -119,7 +118,7 @@ class TestSuiteValidator:
                                 and decorator.func.value.attr == "mark"
                                 and decorator.func.attr == "asyncio"
                             ):
-                                has_asyncio_mark = True
+                                pass
 
                     # Not all test environments require explicit asyncio marking
                     # Modern pytest-asyncio auto-detects async tests

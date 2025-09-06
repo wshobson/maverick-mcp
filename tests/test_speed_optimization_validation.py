@@ -24,7 +24,7 @@ import time
 from datetime import datetime
 from enum import Enum
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 try:
     import pytest
@@ -34,13 +34,11 @@ except ImportError:
 
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.agents.optimized_research import OptimizedDeepResearchAgent
-from maverick_mcp.providers.openrouter_provider import OpenRouterProvider, TaskType
+from maverick_mcp.providers.openrouter_provider import TaskType
 from maverick_mcp.utils.llm_optimization import (
     AdaptiveModelSelector,
     ConfidenceTracker,
     IntelligentContentFilter,
-    ModelConfiguration,
-    OptimizedPromptEngine,
     ParallelLLMProcessor,
     ProgressiveTokenBudgeter,
 )
@@ -535,7 +533,7 @@ if pytest:
             }
 
             # Process minimum sources first
-            for i in range(2):
+            for _i in range(2):
                 result = tracker.update_confidence(high_confidence_evidence, 0.9)
                 if not result["should_continue"]:
                     break
@@ -714,7 +712,7 @@ if pytest:
         # Validate minimum 2x speedup achieved
         if speedup_results:
             avg_speedup = statistics.mean(speedup_results)
-            min_speedup = min(speedup_results)
+            min(speedup_results)
 
             assert avg_speedup >= SPEED_THRESHOLDS["minimum_speedup_factor"], (
                 f"Average speedup {avg_speedup:.2f}x below 2x minimum threshold"

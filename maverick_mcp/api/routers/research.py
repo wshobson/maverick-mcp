@@ -143,12 +143,14 @@ def _get_timeout_for_research_scope(research_scope: str) -> float:
     """
     timeout_mapping = {
         "basic": 120.0,  # 2 minutes - generous for basic research
-        "standard": 240.0,  # 4 minutes - standard research with detailed analysis  
+        "standard": 240.0,  # 4 minutes - standard research with detailed analysis
         "comprehensive": 360.0,  # 6 minutes - comprehensive research with thorough analysis
         "exhaustive": 600.0,  # 10 minutes - exhaustive research with validation
     }
 
-    return timeout_mapping.get(research_scope.lower(), 240.0)  # Default to standard (4 minutes)
+    return timeout_mapping.get(
+        research_scope.lower(), 240.0
+    )  # Default to standard (4 minutes)
 
 
 def _optimize_sources_for_timeout(
@@ -279,13 +281,19 @@ def _get_adaptive_llm_for_research(
     # Time pressure factor (lower means more pressure) - Updated for generous timeouts
     time_pressure = 1.0
     if timeout_budget < 120:
-        time_pressure = 0.2  # Emergency mode - need fastest models (below basic timeout)
+        time_pressure = (
+            0.2  # Emergency mode - need fastest models (below basic timeout)
+        )
     elif timeout_budget < 240:
         time_pressure = 0.5  # High pressure - prefer fast models (basic to standard)
     elif timeout_budget < 360:
-        time_pressure = 0.7  # Moderate pressure - balanced selection (standard to comprehensive)
+        time_pressure = (
+            0.7  # Moderate pressure - balanced selection (standard to comprehensive)
+        )
     else:
-        time_pressure = 1.0  # Low pressure - can use premium models (comprehensive and above)
+        time_pressure = (
+            1.0  # Low pressure - can use premium models (comprehensive and above)
+        )
 
     # Model selection strategy with timeout budget consideration
     if time_pressure <= 0.3 or timeout_budget < 120:
@@ -967,8 +975,10 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             Comprehensive research results with insights, sentiment, and recommendations
         """
         # CRITICAL DEBUG: Log immediately when tool is called
-        logger.error(f"🚨 TOOL CALLED: research_comprehensive_research with query: {request.query[:50]}")
-        
+        logger.error(
+            f"🚨 TOOL CALLED: research_comprehensive_research with query: {request.query[:50]}"
+        )
+
         # Log tool invocation
         log_tool_invocation(
             "research_comprehensive_research",

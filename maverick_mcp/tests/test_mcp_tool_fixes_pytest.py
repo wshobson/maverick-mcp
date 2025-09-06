@@ -54,14 +54,14 @@ def test_portfolio_risk_analysis_fix():
     assert "analysis" in result, "Should include analysis"
 
     # Verify data types and ranges
-    assert isinstance(result["current_price"], (int, float)), (
+    assert isinstance(result["current_price"], int | float), (
         "Current price should be numeric"
     )
     assert result["current_price"] > 0, "Current price should be positive"
     assert result["risk_level"] == 75.0, "Risk level should match input"
 
     position_size = result["position_sizing"]["suggested_position_size"]
-    assert isinstance(position_size, (int, float)), "Position size should be numeric"
+    assert isinstance(position_size, int | float), "Position size should be numeric"
     assert position_size > 0, "Position size should be positive"
 
 
@@ -95,7 +95,7 @@ def test_stock_info_external_api_graceful_fallback():
     market_data = result.get("market_data", {})
     current_price = market_data.get("current_price")
     if current_price:
-        assert isinstance(current_price, (int, float)), "Price should be numeric"
+        assert isinstance(current_price, int | float), "Price should be numeric"
         assert current_price > 0, "Price should be positive"
 
 

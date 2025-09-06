@@ -257,7 +257,9 @@ def register_research_tools(mcp: FastMCP) -> None:
 
         # Enhanced sentiment analysis (imported above)
         @mcp.tool(name="research_analyze_market_sentiment")
-        async def analyze_market_sentiment_tool(request: SentimentAnalysisRequest) -> dict:
+        async def analyze_market_sentiment_tool(
+            request: SentimentAnalysisRequest,
+        ) -> dict:
             """
             Analyze market sentiment for stocks, sectors, or market trends.
 
@@ -336,51 +338,51 @@ def register_research_tools(mcp: FastMCP) -> None:
 def register_all_router_tools(mcp: FastMCP) -> None:
     """Register all router tools directly on the main server"""
     logger.info("Starting tool registration process...")
-    
+
     try:
         register_technical_tools(mcp)
         logger.info("✓ Technical tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register technical tools: {e}")
-    
+
     try:
         register_screening_tools(mcp)
         logger.info("✓ Screening tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register screening tools: {e}")
-    
+
     try:
         register_portfolio_tools(mcp)
         logger.info("✓ Portfolio tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register portfolio tools: {e}")
-    
+
     try:
         register_data_tools(mcp)
         logger.info("✓ Data tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register data tools: {e}")
-    
+
     try:
         register_performance_tools(mcp)
         logger.info("✓ Performance tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register performance tools: {e}")
-    
+
     try:
         register_agent_tools(mcp)
         logger.info("✓ Agent tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register agent tools: {e}")
-    
+
     try:
         # Import and register research tools on the main MCP instance
         from maverick_mcp.api.routers.research import create_research_router
-        
+
         # Pass the main MCP instance to register tools directly on it
         create_research_router(mcp)
         logger.info("✓ Research tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register research tools: {e}")
-    
+
     logger.info("Tool registration process completed")

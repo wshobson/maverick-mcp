@@ -19,6 +19,7 @@ import pytest
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import MemorySaver
+from pydantic import ConfigDict
 
 from maverick_mcp.agents.deep_research import (
     BaseSubagent,
@@ -38,9 +39,13 @@ from maverick_mcp.utils.parallel_research import (
 class MockLLM(BaseChatModel):
     """Mock LLM for testing."""
 
-    def __init__(self, response_content: str = "Mock response"):
-        super().__init__()
-        self.response_content = response_content
+    # Allow extra fields to be set on this Pydantic model
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+    def __init__(self, **kwargs):
+        # Extract our custom fields before calling super()
+        self._response_content = kwargs.pop("response_content", "Mock response")
+        super().__init__(**kwargs)
 
     def _generate(self, messages, stop=None, **kwargs):
         # This method should not be called in async tests
@@ -49,7 +54,7 @@ class MockLLM(BaseChatModel):
     async def ainvoke(self, messages, config=None, **kwargs):
         """Mock async invocation."""
         await asyncio.sleep(0.01)  # Simulate processing time
-        return AIMessage(content=self.response_content)
+        return AIMessage(content=self._response_content)
 
     @property
     def _llm_type(self) -> str:
@@ -63,7 +68,7 @@ class TestDeepResearchAgentParallelExecution:
     def mock_llm(self):
         """Create mock LLM."""
         return MockLLM(
-            '{"KEY_INSIGHTS": ["Test insight"], "SENTIMENT": {"direction": "bullish", "confidence": 0.8}, "CREDIBILITY": 0.9}'
+            response_content='{"KEY_INSIGHTS": ["Test insight"], "SENTIMENT": {"direction": "bullish", "confidence": 0.8}, "CREDIBILITY": 0.9}'
         )
 
     @pytest.fixture
@@ -114,11 +119,22 @@ class TestDeepResearchAgentParallelExecution:
     @pytest.mark.asyncio
     async def test_parallel_execution_mode_selection(self, deep_research_agent):
         """Test parallel execution mode selection."""
+        # Mock search providers to be available
+        mock_provider = AsyncMock()
+        deep_research_agent.search_providers = [mock_provider]
+
         with (
             patch.object(
-                deep_research_agent, "_execute_parallel_research"
+                deep_research_agent,
+                "_execute_parallel_research",
+                new_callable=AsyncMock,
             ) as mock_parallel,
             patch.object(deep_research_agent.graph, "ainvoke") as mock_sequential,
+            patch.object(
+                deep_research_agent,
+                "_ensure_search_providers_loaded",
+                return_value=None,
+            ),
         ):
             mock_parallel.return_value = {
                 "status": "success",
@@ -139,11 +155,18 @@ class TestDeepResearchAgentParallelExecution:
     @pytest.mark.asyncio
     async def test_sequential_execution_mode_selection(self, sequential_agent):
         """Test sequential execution mode selection."""
+        # Mock search providers to be available
+        mock_provider = AsyncMock()
+        sequential_agent.search_providers = [mock_provider]
+
         with (
             patch.object(
                 sequential_agent, "_execute_parallel_research"
             ) as mock_parallel,
             patch.object(sequential_agent.graph, "ainvoke") as mock_sequential,
+            patch.object(
+                sequential_agent, "_ensure_search_providers_loaded", return_value=None
+            ),
         ):
             mock_sequential.return_value = {
                 "status": "success",
@@ -152,7 +175,7 @@ class TestDeepResearchAgentParallelExecution:
             }
 
             # Test with parallel execution disabled
-            result = await sequential_agent.research_comprehensive(
+            await sequential_agent.research_comprehensive(
                 topic="AAPL analysis", session_id="test_123"
             )
 
@@ -163,16 +186,25 @@ class TestDeepResearchAgentParallelExecution:
     @pytest.mark.asyncio
     async def test_parallel_execution_override(self, deep_research_agent):
         """Test overriding parallel execution at runtime."""
+        # Mock search providers to be available
+        mock_provider = AsyncMock()
+        deep_research_agent.search_providers = [mock_provider]
+
         with (
             patch.object(
                 deep_research_agent, "_execute_parallel_research"
             ) as mock_parallel,
             patch.object(deep_research_agent.graph, "ainvoke") as mock_sequential,
+            patch.object(
+                deep_research_agent,
+                "_ensure_search_providers_loaded",
+                return_value=None,
+            ),
         ):
             mock_sequential.return_value = {"status": "success", "persona": "moderate"}
 
             # Override parallel execution to false
-            result = await deep_research_agent.research_comprehensive(
+            await deep_research_agent.research_comprehensive(
                 topic="AAPL analysis",
                 session_id="test_123",
                 use_parallel_execution=False,
@@ -185,11 +217,22 @@ class TestDeepResearchAgentParallelExecution:
     @pytest.mark.asyncio
     async def test_parallel_execution_fallback(self, deep_research_agent):
         """Test fallback to sequential when parallel execution fails."""
+        # Mock search providers to be available
+        mock_provider = AsyncMock()
+        deep_research_agent.search_providers = [mock_provider]
+
         with (
             patch.object(
-                deep_research_agent, "_execute_parallel_research"
+                deep_research_agent,
+                "_execute_parallel_research",
+                new_callable=AsyncMock,
             ) as mock_parallel,
             patch.object(deep_research_agent.graph, "ainvoke") as mock_sequential,
+            patch.object(
+                deep_research_agent,
+                "_ensure_search_providers_loaded",
+                return_value=None,
+            ),
         ):
             # Parallel execution fails
             mock_parallel.side_effect = RuntimeError("Parallel execution failed")
@@ -218,7 +261,9 @@ class TestDeepResearchAgentParallelExecution:
                 deep_research_agent.task_distributor, "distribute_research_tasks"
             ) as mock_distribute,
             patch.object(
-                deep_research_agent.parallel_orchestrator, "execute_parallel_research"
+                deep_research_agent.parallel_orchestrator,
+                "execute_parallel_research",
+                new_callable=AsyncMock,
             ) as mock_execute,
         ):
             # Mock task distribution
@@ -237,11 +282,19 @@ class TestDeepResearchAgentParallelExecution:
             mock_result.synthesis = {"confidence_score": 0.85}
             mock_execute.return_value = mock_result
 
-            result = await deep_research_agent._execute_parallel_research(
+            initial_state = {
+                "persona": "moderate",
+                "research_topic": "AAPL analysis",
+                "session_id": "test_123",
+                "focus_areas": ["earnings", "sentiment"],
+            }
+            await deep_research_agent._execute_parallel_research(
                 topic="AAPL analysis",
                 session_id="test_123",
                 depth="standard",
                 focus_areas=["earnings", "sentiment"],
+                start_time=datetime.now(),
+                initial_state=initial_state,
             )
 
             # Verify task distribution was called correctly
@@ -264,8 +317,8 @@ class TestDeepResearchAgentParallelExecution:
             "test_fundamental", "fundamental", "AAPL", ["earnings"]
         )
 
-        with patch.object(
-            deep_research_agent, "FundamentalResearchAgent"
+        with patch(
+            "maverick_mcp.agents.deep_research.FundamentalResearchAgent"
         ) as mock_fundamental:
             mock_subagent = AsyncMock()
             mock_subagent.execute_research.return_value = {
@@ -275,13 +328,7 @@ class TestDeepResearchAgentParallelExecution:
 
             # This would normally be called by the orchestrator
             # We're testing the routing logic directly
-            with patch(
-                "maverick_mcp.agents.deep_research.FundamentalResearchAgent",
-                mock_fundamental,
-            ):
-                result = await deep_research_agent._execute_subagent_task(
-                    fundamental_task
-                )
+            await deep_research_agent._execute_subagent_task(fundamental_task)
 
             mock_fundamental.assert_called_once_with(deep_research_agent)
             mock_subagent.execute_research.assert_called_once_with(fundamental_task)
@@ -300,7 +347,7 @@ class TestDeepResearchAgentParallelExecution:
             }
             mock_fundamental.return_value = mock_subagent
 
-            result = await deep_research_agent._execute_subagent_task(unknown_task)
+            await deep_research_agent._execute_subagent_task(unknown_task)
 
             # Should fall back to fundamental analysis
             mock_fundamental.assert_called_once_with(deep_research_agent)
@@ -334,7 +381,7 @@ class TestDeepResearchAgentParallelExecution:
         }
 
         # Mock LLM synthesis response
-        mock_llm.response_content = "Synthesized analysis showing strong bullish outlook based on fundamental and sentiment analysis"
+        mock_llm._response_content = "Synthesized analysis showing strong bullish outlook based on fundamental and sentiment analysis"
 
         result = await deep_research_agent._synthesize_parallel_results(task_results)
 
@@ -891,7 +938,7 @@ class TestDeepResearchParallelIntegration:
             parallel_result = await integration_agent.research_comprehensive(
                 topic=topic, session_id=session_id, use_parallel_execution=True
             )
-            parallel_time = time.time() - start_parallel
+            time.time() - start_parallel
 
             # Test sequential execution
             start_sequential = time.time()
@@ -900,7 +947,7 @@ class TestDeepResearchParallelIntegration:
                 session_id=f"{session_id}_seq",
                 use_parallel_execution=False,
             )
-            sequential_time = time.time() - start_sequential
+            time.time() - start_sequential
 
             # Verify both succeeded
             assert parallel_result["status"] == "success"
