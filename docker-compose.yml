@@ -2,14 +2,24 @@ services:
   backend:
     build: .
     ports:
-      - "8000:8000"
+      - "8003:8003"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/maverick_mcp
       - REDIS_HOST=redis
+      # Required API Keys
       - TIINGO_API_KEY=${TIINGO_API_KEY}
+      # Optional API Keys for Enhanced Features
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - EXA_API_KEY=${EXA_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
       - FRED_API_KEY=${FRED_API_KEY}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Server Configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=8003
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
     volumes:
       - ./maverick_mcp:/app/maverick_mcp
       - ./alembic:/app/alembic

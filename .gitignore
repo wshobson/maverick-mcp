@@ -71,3 +71,5 @@ Thumbs.db
 
 # database
 *.db
+# Docker local overrides
+docker-compose.override.yml
