@@ -335,6 +335,21 @@ def register_research_tools(mcp: FastMCP) -> None:
         # Don't raise - allow server to continue without research tools
 
 
+def register_backtesting_tools(mcp: FastMCP) -> None:
+    """Register VectorBT backtesting tools directly on main server"""
+    try:
+        from maverick_mcp.api.routers.backtesting import setup_backtesting_tools
+
+        setup_backtesting_tools(mcp)
+        logger.info("✓ Backtesting tools registered successfully")
+    except ImportError:
+        logger.warning(
+            "Backtesting module not available - VectorBT may not be installed"
+        )
+    except Exception as e:
+        logger.error(f"✗ Failed to register backtesting tools: {e}")
+
+
 def register_all_router_tools(mcp: FastMCP) -> None:
     """Register all router tools directly on the main server"""
     logger.info("Starting tool registration process...")
@@ -384,5 +399,8 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         logger.info("✓ Research tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register research tools: {e}")
+
+    # Register backtesting tools
+    register_backtesting_tools(mcp)
 
     logger.info("Tool registration process completed")

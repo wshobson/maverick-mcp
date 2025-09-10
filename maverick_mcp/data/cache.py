@@ -73,48 +73,85 @@ def _cleanup_expired_memory_cache():
         )
 
 
+# Global Redis connection pool - created once and reused
+_redis_pool: redis.ConnectionPool | None = None
+
+
+def _get_or_create_redis_pool() -> redis.ConnectionPool | None:
+    """Create or return existing Redis connection pool."""
+    global _redis_pool
+    
+    if _redis_pool is not None:
+        return _redis_pool
+        
+    try:
+        # Build connection pool parameters
+        pool_params = {
+            'host': REDIS_HOST,
+            'port': REDIS_PORT,
+            'db': REDIS_DB,
+            'max_connections': settings.db.redis_max_connections,
+            'retry_on_timeout': settings.db.redis_retry_on_timeout,
+            'socket_timeout': settings.db.redis_socket_timeout,
+            'socket_connect_timeout': settings.db.redis_socket_connect_timeout,
+            'health_check_interval': 30,  # Check connection health every 30 seconds
+        }
+        
+        # Only add password if provided
+        if REDIS_PASSWORD:
+            pool_params['password'] = REDIS_PASSWORD
+            
+        # Only add SSL params if SSL is enabled
+        if REDIS_SSL:
+            pool_params['ssl'] = True
+            pool_params['ssl_check_hostname'] = False
+            
+        _redis_pool = redis.ConnectionPool(**pool_params)
+        logger.debug(f"Created Redis connection pool with {settings.db.redis_max_connections} max connections")
+        return _redis_pool
+    except Exception as e:
+        logger.warning(f"Failed to create Redis connection pool: {e}")
+        return None
+
+
 def get_redis_client() -> redis.Redis | None:
     """
     Get a Redis client using the centralized connection pool.
-
-    This function now uses the performance-optimized Redis connection manager
-    instead of creating new connections each time.
+    
+    This function uses a singleton connection pool to avoid pool exhaustion
+    and provides robust error handling with graceful fallback.
     """
     if not CACHE_ENABLED:
         return None
 
     try:
-        # Use the centralized Redis manager (sync version for compatibility)
-        # This will eventually be migrated to async
-
-        # For now, create a client using the old method but with connection pooling
-        # TODO: Migrate to async Redis client from redis_manager
+        # Get or create the connection pool
+        pool = _get_or_create_redis_pool()
+        if pool is None:
+            return None
+            
+        # Create client using the shared pool
         client = redis.Redis(
-            host=REDIS_HOST,
-            port=REDIS_PORT,
-            db=REDIS_DB,
-            password=REDIS_PASSWORD or None,
-            ssl=REDIS_SSL,
-            socket_timeout=settings.db.redis_socket_timeout,
-            socket_connect_timeout=settings.db.redis_socket_connect_timeout,
+            connection_pool=pool,
             decode_responses=False,
-            # Add connection pooling configuration
-            connection_pool=redis.ConnectionPool(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                db=REDIS_DB,
-                password=REDIS_PASSWORD or None,
-                ssl=REDIS_SSL,
-                max_connections=settings.db.redis_max_connections,
-                retry_on_timeout=settings.db.redis_retry_on_timeout,
-                socket_timeout=settings.db.redis_socket_timeout,
-                socket_connect_timeout=settings.db.redis_socket_connect_timeout,
-            ),
         )
-        client.ping()  # Test connection
+        
+        # Test connection with a timeout to avoid hanging
+        client.ping()
         return client  # type: ignore[no-any-return]
-    except (redis.ConnectionError, redis.TimeoutError) as e:
+        
+    except redis.ConnectionError as e:
         logger.warning(f"Redis connection failed: {e}. Using in-memory cache.")
+        return None
+    except redis.TimeoutError as e:
+        logger.warning(f"Redis connection timeout: {e}. Using in-memory cache.")
+        return None
+    except Exception as e:
+        # Handle the IndexError: pop from empty list and other unexpected errors
+        logger.warning(f"Redis client error: {e}. Using in-memory cache.")
+        # Reset the pool if we encounter unexpected errors
+        global _redis_pool
+        _redis_pool = None
         return None
 
 
@@ -198,6 +235,19 @@ def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
     return True
 
 
+def cleanup_redis_pool() -> None:
+    """Cleanup Redis connection pool."""
+    global _redis_pool
+    if _redis_pool:
+        try:
+            _redis_pool.disconnect()
+            logger.debug("Redis connection pool disconnected")
+        except Exception as e:
+            logger.warning(f"Error disconnecting Redis pool: {e}")
+        finally:
+            _redis_pool = None
+
+
 def clear_cache(pattern: str | None = None) -> int:
     """
     Clear cache entries matching the pattern.
@@ -262,12 +312,8 @@ class CacheManager:
     def _ensure_client(self) -> redis.Redis | None:
         """Ensure Redis client is initialized with connection pooling."""
         if not self._initialized:
-            if self._use_performance_redis:
-                # Use the new connection pooling approach
-                self._redis_client = get_redis_client()
-            else:
-                # Fallback to old method
-                self._redis_client = get_redis_client()
+            # Always use the new robust connection pooling approach
+            self._redis_client = get_redis_client()
             self._initialized = True
         return self._redis_client
 

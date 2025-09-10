@@ -103,7 +103,7 @@ class GetNewsRequest(StrictBaseModel):
         ge=1,
         le=100,
         description="Maximum number of news articles to return",
-        json_schema_extra={"examples": [10, 20, 50]}
+        json_schema_extra={"examples": [10, 20, 50]},
     )
 
     @field_validator("ticker")

@@ -39,6 +39,67 @@ warnings.filterwarnings(
     module="starlette.*",
 )
 
+# Suppress Plotly/Kaleido deprecation warnings from library internals
+# These warnings come from the libraries themselves and can't be fixed at user level
+# Comprehensive suppression patterns for all known kaleido warnings
+kaleido_patterns = [
+    r".*plotly\.io\.kaleido\.scope\..*is deprecated.*",
+    r".*Use of plotly\.io\.kaleido\.scope\..*is deprecated.*",
+    r".*default_format.*deprecated.*",
+    r".*default_width.*deprecated.*",
+    r".*default_height.*deprecated.*",
+    r".*default_scale.*deprecated.*",
+    r".*mathjax.*deprecated.*",
+    r".*plotlyjs.*deprecated.*",
+]
+
+for pattern in kaleido_patterns:
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message=pattern,
+    )
+
+# Also suppress by module to catch any we missed
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r".*kaleido.*",
+)
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r"plotly\.io\._kaleido",
+)
+
+# Suppress websockets deprecation warnings from uvicorn internals
+# These warnings come from uvicorn's use of deprecated websockets APIs and cannot be fixed at our level
+warnings.filterwarnings(
+    "ignore",
+    message=".*websockets.legacy is deprecated.*",
+    category=DeprecationWarning,
+)
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*websockets.server.WebSocketServerProtocol is deprecated.*",
+    category=DeprecationWarning,
+)
+
+# Broad suppression for all websockets deprecation warnings from third-party libs
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="websockets.*",
+)
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="uvicorn.protocols.websockets.*",
+)
+
 # ruff: noqa: E402 - Imports after warnings config for proper deprecation warning suppression
 import argparse
 import json
@@ -76,8 +137,6 @@ logger = get_logger("maverick_mcp.server")
 # Initialize FastMCP with enhanced connection management
 mcp: FastMCP = FastMCP(
     name=settings.app_name,
-    debug=settings.api.debug,
-    log_level=settings.api.log_level.upper(),
 )
 mcp.dependencies = []
 
@@ -672,14 +731,26 @@ if __name__ == "__main__":
         # Run with the appropriate transport
         if args.transport == "stdio":
             logger.info(f"Starting {settings.app_name} server with stdio transport")
-            mcp.run(transport="stdio")
+            mcp.run(
+                transport="stdio",
+                debug=settings.api.debug,
+                log_level=settings.api.log_level.upper(),
+            )
         elif args.transport == "streamable-http":
             logger.info(
                 f"Starting {settings.app_name} server with streamable-http transport on http://{args.host}:{args.port}"
             )
-            mcp.run(transport="streamable-http", port=args.port, host=args.host)
+            mcp.run(
+                transport="streamable-http",
+                port=args.port,
+                host=args.host,
+            )
         else:  # sse
             logger.info(
                 f"Starting {settings.app_name} server with SSE transport on http://{args.host}:{args.port}"
             )
-            mcp.run(transport="sse", port=args.port, host=args.host)
+            mcp.run(
+                transport="sse",
+                port=args.port,
+                host=args.host,
+            )
