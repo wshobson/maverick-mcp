@@ -2,12 +2,14 @@
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import vectorbt as vbt
 from pandas import DataFrame, Series
 
 from maverick_mcp.data.cache import CacheManager
 from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
+from maverick_mcp.utils.cache_warmer import CacheWarmer
 
 
 class VectorBTEngine:
@@ -26,9 +28,11 @@ class VectorBTEngine:
         """
         self.data_provider = data_provider or EnhancedStockDataProvider()
         self.cache = cache_service or CacheManager()
+        self.cache_warmer = CacheWarmer(data_provider=self.data_provider, cache_manager=self.cache)
 
         # Configure VectorBT settings for optimal performance
         vbt.settings.array_wrapper["freq"] = "D"
+        # Note: VectorBT caching settings should be left as default
 
     async def get_historical_data(
         self, symbol: str, start_date: str, end_date: str, interval: str = "1d"
@@ -46,15 +50,23 @@ class VectorBTEngine:
         """
         cache_key = f"backtest_data:{symbol}:{start_date}:{end_date}:{interval}"
 
-        # Try cache first
+        # Try cache first with optimized deserialization
         cached_data = await self.cache.get(cache_key)
         if cached_data is not None:
-            # Restore DataFrame from cached data
-            df = pd.DataFrame.from_dict(cached_data, orient='index')
-            # Convert index back to datetime
-            df.index = pd.to_datetime(df.index)
-            # Normalize column names to lowercase (in case they weren't normalized when cached)
+            if isinstance(cached_data, pd.DataFrame):
+                # Already a DataFrame (from pickle cache)
+                df = cached_data
+            else:
+                # Restore DataFrame from dict (JSON cache)
+                df = pd.DataFrame.from_dict(cached_data, orient='index')
+                # Convert index back to datetime
+                df.index = pd.to_datetime(df.index)
+
+            # Ensure column names are lowercase
             df.columns = [col.lower() for col in df.columns]
+
+            # Ensure timezone-naive index for consistency
+            df.index = df.index.tz_localize(None)
             return df
 
         # Fetch from provider (sync method, no await needed)
@@ -68,12 +80,12 @@ class VectorBTEngine:
         # Normalize column names to lowercase for consistency
         data.columns = [col.lower() for col in data.columns]
 
-        # Cache for future use (1 hour TTL)
-        # Convert to dict with string index for JSON serialization
-        data_copy = data.copy()
-        data_copy.index = data_copy.index.astype(str)
-        cache_data = data_copy.to_dict('index')
-        await self.cache.set(cache_key, cache_data, ttl=3600)
+        # Ensure timezone-naive index
+        data.index = data.index.tz_localize(None)
+
+        # Cache for future use - let the cache manager decide serialization
+        # For DataFrames, it will use pickle with compression
+        await self.cache.set(cache_key, data, ttl=3600)
 
         return data
 
@@ -109,15 +121,22 @@ class VectorBTEngine:
         # Generate signals based on strategy
         entries, exits = self._generate_signals(data, strategy_type, parameters)
 
-        # Run VectorBT portfolio simulation
+        # Optimize memory usage - use float32 for large arrays
+        close_prices = data["close"].astype(np.float32)
+        entries = entries.astype(bool)
+        exits = exits.astype(bool)
+
+        # Run VectorBT portfolio simulation with optimizations
         portfolio = vbt.Portfolio.from_signals(
-            close=data["close"],
+            close=close_prices,
             entries=entries,
             exits=exits,
             init_cash=initial_capital,
             fees=fees,
             slippage=slippage,
             freq="D",
+            cash_sharing=False,  # Disable cash sharing for single asset
+            call_seq="auto",  # Optimize call sequence
         )
 
         # Extract comprehensive metrics
@@ -126,9 +145,13 @@ class VectorBTEngine:
         # Get trade records
         trades = self._extract_trades(portfolio)
 
-        # Get equity curve
-        equity_curve = portfolio.value().to_dict()
-        drawdown_series = portfolio.drawdown().to_dict()
+        # Get equity curve - convert to list for smaller cache size
+        equity_curve = {
+            str(k): float(v) for k, v in portfolio.value().to_dict().items()
+        }
+        drawdown_series = {
+            str(k): float(v) for k, v in portfolio.drawdown().to_dict().items()
+        }
 
         return {
             "symbol": symbol,
@@ -172,6 +195,14 @@ class VectorBTEngine:
             return self._bollinger_bands_signals(close, parameters)
         elif strategy_type == "momentum":
             return self._momentum_signals(close, parameters)
+        elif strategy_type == "ema_cross":
+            return self._ema_crossover_signals(close, parameters)
+        elif strategy_type == "mean_reversion":
+            return self._mean_reversion_signals(close, parameters)
+        elif strategy_type == "breakout":
+            return self._breakout_signals(close, parameters)
+        elif strategy_type == "volume_momentum":
+            return self._volume_momentum_signals(data, parameters)
         else:
             raise ValueError(f"Unknown strategy type: {strategy_type}")
 
@@ -262,18 +293,109 @@ class VectorBTEngine:
 
         return entries, exits
 
+    def _ema_crossover_signals(
+        self, close: Series, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Generate EMA crossover signals."""
+        fast_period = params.get("fast_period", 12)
+        slow_period = params.get("slow_period", 26)
+
+        fast_ema = vbt.MA.run(close, fast_period, ewm=True).ma.squeeze()
+        slow_ema = vbt.MA.run(close, slow_period, ewm=True).ma.squeeze()
+
+        entries = (fast_ema > slow_ema) & (fast_ema.shift(1) <= slow_ema.shift(1))
+        exits = (fast_ema < slow_ema) & (fast_ema.shift(1) >= slow_ema.shift(1))
+
+        return entries, exits
+
+    def _mean_reversion_signals(
+        self, close: Series, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Generate mean reversion signals."""
+        ma_period = params.get("ma_period", 20)
+        entry_threshold = params.get("entry_threshold", 0.02)
+        exit_threshold = params.get("exit_threshold", 0.01)
+
+        ma = vbt.MA.run(close, ma_period).ma.squeeze()
+
+        # Avoid division by zero in deviation calculation
+        with np.errstate(divide='ignore', invalid='ignore'):
+            deviation = np.where(ma != 0, (close - ma) / ma, 0)
+
+        entries = deviation < -entry_threshold
+        exits = deviation > exit_threshold
+
+        return entries, exits
+
+    def _breakout_signals(
+        self, close: Series, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Generate channel breakout signals."""
+        lookback = params.get("lookback", 20)
+        exit_lookback = params.get("exit_lookback", 10)
+
+        upper_channel = close.rolling(lookback).max()
+        lower_channel = close.rolling(exit_lookback).min()
+
+        entries = close > upper_channel.shift(1)
+        exits = close < lower_channel.shift(1)
+
+        return entries, exits
+
+    def _volume_momentum_signals(
+        self, data: DataFrame, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Generate volume-weighted momentum signals."""
+        momentum_period = params.get("momentum_period", 20)
+        volume_period = params.get("volume_period", 20)
+        momentum_threshold = params.get("momentum_threshold", 0.05)
+        volume_multiplier = params.get("volume_multiplier", 1.5)
+
+        close = data["close"]
+        volume = data.get("volume")
+
+        if volume is None:
+            # Fallback to pure momentum if no volume data
+            returns = close.pct_change(momentum_period)
+            entries = returns > momentum_threshold
+            exits = returns < -momentum_threshold
+            return entries, exits
+
+        returns = close.pct_change(momentum_period)
+        avg_volume = volume.rolling(volume_period).mean()
+        volume_surge = volume > (avg_volume * volume_multiplier)
+
+        # Entry: positive momentum with volume surge
+        entries = (returns > momentum_threshold) & volume_surge
+
+        # Exit: negative momentum or volume dry up
+        exits = (returns < -momentum_threshold) | (volume < avg_volume * 0.8)
+
+        return entries, exits
+
     def _extract_metrics(self, portfolio: vbt.Portfolio) -> dict[str, Any]:
         """Extract comprehensive metrics from portfolio."""
+
+        def safe_float_metric(metric_func, default=0.0):
+            """Safely extract float metrics, handling None and NaN values."""
+            try:
+                value = metric_func()
+                if value is None or np.isnan(value) or np.isinf(value):
+                    return default
+                return float(value)
+            except (ZeroDivisionError, ValueError, TypeError):
+                return default
+
         return {
-            "total_return": float(portfolio.total_return()),
-            "annual_return": float(portfolio.annualized_return()),
-            "sharpe_ratio": float(portfolio.sharpe_ratio() or 0),
-            "sortino_ratio": float(portfolio.sortino_ratio() or 0),
-            "calmar_ratio": float(portfolio.calmar_ratio() or 0),
-            "max_drawdown": float(portfolio.max_drawdown()),
-            "win_rate": float(portfolio.trades.win_rate() or 0),
-            "profit_factor": float(portfolio.trades.profit_factor() or 0),
-            "expectancy": float(portfolio.trades.expectancy() or 0),
+            "total_return": safe_float_metric(portfolio.total_return),
+            "annual_return": safe_float_metric(portfolio.annualized_return),
+            "sharpe_ratio": safe_float_metric(portfolio.sharpe_ratio),
+            "sortino_ratio": safe_float_metric(portfolio.sortino_ratio),
+            "calmar_ratio": safe_float_metric(portfolio.calmar_ratio),
+            "max_drawdown": safe_float_metric(portfolio.max_drawdown),
+            "win_rate": safe_float_metric(lambda: portfolio.trades.win_rate()),
+            "profit_factor": safe_float_metric(lambda: portfolio.trades.profit_factor()),
+            "expectancy": safe_float_metric(lambda: portfolio.trades.expectancy()),
             "total_trades": int(portfolio.trades.count()),
             "winning_trades": int(portfolio.trades.winning.count())
             if hasattr(portfolio.trades, "winning")
@@ -281,21 +403,29 @@ class VectorBTEngine:
             "losing_trades": int(portfolio.trades.losing.count())
             if hasattr(portfolio.trades, "losing")
             else 0,
-            "avg_win": float(portfolio.trades.winning.pnl.mean() or 0)
-            if hasattr(portfolio.trades, "winning")
-            and portfolio.trades.winning.count() > 0
-            else 0,
-            "avg_loss": float(portfolio.trades.losing.pnl.mean() or 0)
-            if hasattr(portfolio.trades, "losing")
-            and portfolio.trades.losing.count() > 0
-            else 0,
-            "best_trade": float(portfolio.trades.pnl.max() or 0)
-            if portfolio.trades.count() > 0
-            else 0,
-            "worst_trade": float(portfolio.trades.pnl.min() or 0)
-            if portfolio.trades.count() > 0
-            else 0,
-            "avg_duration": float(portfolio.trades.duration.mean() or 0),
+            "avg_win": safe_float_metric(
+                lambda: portfolio.trades.winning.pnl.mean()
+                if hasattr(portfolio.trades, "winning")
+                and portfolio.trades.winning.count() > 0
+                else None
+            ),
+            "avg_loss": safe_float_metric(
+                lambda: portfolio.trades.losing.pnl.mean()
+                if hasattr(portfolio.trades, "losing")
+                and portfolio.trades.losing.count() > 0
+                else None
+            ),
+            "best_trade": safe_float_metric(
+                lambda: portfolio.trades.pnl.max()
+                if portfolio.trades.count() > 0
+                else None
+            ),
+            "worst_trade": safe_float_metric(
+                lambda: portfolio.trades.pnl.min()
+                if portfolio.trades.count() > 0
+                else None
+            ),
+            "avg_duration": safe_float_metric(lambda: portfolio.trades.duration.mean()),
             "kelly_criterion": self._calculate_kelly(portfolio),
             "recovery_factor": self._calculate_recovery_factor(portfolio),
             "risk_reward_ratio": self._calculate_risk_reward(portfolio),
@@ -308,20 +438,20 @@ class VectorBTEngine:
 
         trades = portfolio.trades.records_readable
 
-        trade_list = []
-        for _, trade in trades.iterrows():
-            trade_list.append(
-                {
-                    "entry_date": str(trade.get("Entry Timestamp", "")),
-                    "exit_date": str(trade.get("Exit Timestamp", "")),
-                    "entry_price": float(trade.get("Avg Entry Price", 0)),
-                    "exit_price": float(trade.get("Avg Exit Price", 0)),
-                    "size": float(trade.get("Size", 0)),
-                    "pnl": float(trade.get("PnL", 0)),
-                    "return": float(trade.get("Return", 0)),
-                    "duration": str(trade.get("Duration", "")),
-                }
-            )
+        # Vectorized operation for better performance
+        trade_list = [
+            {
+                "entry_date": str(trade.get("Entry Timestamp", "")),
+                "exit_date": str(trade.get("Exit Timestamp", "")),
+                "entry_price": float(trade.get("Avg Entry Price", 0)),
+                "exit_price": float(trade.get("Avg Exit Price", 0)),
+                "size": float(trade.get("Size", 0)),
+                "pnl": float(trade.get("PnL", 0)),
+                "return": float(trade.get("Return", 0)),
+                "duration": str(trade.get("Duration", "")),
+            }
+            for _, trade in trades.iterrows()
+        ]
 
         return trade_list
 
@@ -330,55 +460,102 @@ class VectorBTEngine:
         if portfolio.trades.count() == 0:
             return 0.0
 
-        win_rate = portfolio.trades.win_rate()
-        avg_win = (
-            abs(portfolio.trades.winning.returns.mean() or 0)
-            if hasattr(portfolio.trades, "winning")
-            and portfolio.trades.winning.count() > 0
-            else 0
-        )
-        avg_loss = (
-            abs(portfolio.trades.losing.returns.mean() or 0)
-            if hasattr(portfolio.trades, "losing")
-            and portfolio.trades.losing.count() > 0
-            else 0
-        )
+        try:
+            win_rate = portfolio.trades.win_rate()
+            if win_rate is None or np.isnan(win_rate):
+                return 0.0
 
-        if avg_loss == 0:
+            avg_win = (
+                abs(portfolio.trades.winning.returns.mean() or 0)
+                if hasattr(portfolio.trades, "winning")
+                and portfolio.trades.winning.count() > 0
+                else 0
+            )
+            avg_loss = (
+                abs(portfolio.trades.losing.returns.mean() or 0)
+                if hasattr(portfolio.trades, "losing")
+                and portfolio.trades.losing.count() > 0
+                else 0
+            )
+
+            # Check for division by zero and invalid values
+            if avg_loss == 0 or avg_win == 0 or np.isnan(avg_win) or np.isnan(avg_loss):
+                return 0.0
+
+            # Calculate Kelly with safe division
+            with np.errstate(divide='ignore', invalid='ignore'):
+                kelly = (win_rate * avg_win - (1 - win_rate) * avg_loss) / avg_win
+
+            # Check if result is valid
+            if np.isnan(kelly) or np.isinf(kelly):
+                return 0.0
+
+            return float(min(max(kelly, -1.0), 0.25))  # Cap between -100% and 25% for safety
+
+        except (ZeroDivisionError, ValueError, TypeError):
             return 0.0
-
-        kelly = (win_rate * avg_win - (1 - win_rate) * avg_loss) / avg_win
-        return float(min(kelly, 0.25))  # Cap at 25% for safety
 
     def _calculate_recovery_factor(self, portfolio: vbt.Portfolio) -> float:
         """Calculate recovery factor (total return / max drawdown)."""
-        max_dd = portfolio.max_drawdown()
-        if max_dd == 0:
+        try:
+            max_dd = portfolio.max_drawdown()
+            total_return = portfolio.total_return()
+
+            # Check for invalid values
+            if (max_dd is None or np.isnan(max_dd) or max_dd == 0 or
+                total_return is None or np.isnan(total_return)):
+                return 0.0
+
+            # Calculate with safe division
+            with np.errstate(divide='ignore', invalid='ignore'):
+                recovery_factor = total_return / abs(max_dd)
+
+            # Check if result is valid
+            if np.isnan(recovery_factor) or np.isinf(recovery_factor):
+                return 0.0
+
+            return float(recovery_factor)
+
+        except (ZeroDivisionError, ValueError, TypeError):
             return 0.0
-        return float(portfolio.total_return() / max_dd)
 
     def _calculate_risk_reward(self, portfolio: vbt.Portfolio) -> float:
         """Calculate risk-reward ratio."""
         if portfolio.trades.count() == 0:
             return 0.0
 
-        avg_win = (
-            abs(portfolio.trades.winning.pnl.mean() or 0)
-            if hasattr(portfolio.trades, "winning")
-            and portfolio.trades.winning.count() > 0
-            else 0
-        )
-        avg_loss = (
-            abs(portfolio.trades.losing.pnl.mean() or 0)
-            if hasattr(portfolio.trades, "losing")
-            and portfolio.trades.losing.count() > 0
-            else 0
-        )
+        try:
+            avg_win = (
+                abs(portfolio.trades.winning.pnl.mean() or 0)
+                if hasattr(portfolio.trades, "winning")
+                and portfolio.trades.winning.count() > 0
+                else 0
+            )
+            avg_loss = (
+                abs(portfolio.trades.losing.pnl.mean() or 0)
+                if hasattr(portfolio.trades, "losing")
+                and portfolio.trades.losing.count() > 0
+                else 0
+            )
 
-        if avg_loss == 0:
+            # Check for division by zero and invalid values
+            if (avg_loss == 0 or avg_win == 0 or
+                np.isnan(avg_win) or np.isnan(avg_loss) or
+                np.isinf(avg_win) or np.isinf(avg_loss)):
+                return 0.0
+
+            # Calculate with safe division
+            with np.errstate(divide='ignore', invalid='ignore'):
+                risk_reward = avg_win / avg_loss
+
+            # Check if result is valid
+            if np.isnan(risk_reward) or np.isinf(risk_reward):
+                return 0.0
+
+            return float(risk_reward)
+
+        except (ZeroDivisionError, ValueError, TypeError):
             return 0.0
-
-        return float(avg_win / avg_loss)
 
     async def optimize_parameters(
         self,
@@ -412,20 +589,29 @@ class VectorBTEngine:
         # Create parameter combinations
         param_combos = vbt.utils.params.create_param_combs(param_grid)
 
+        # Pre-convert data for optimization
+        close_prices = data["close"].astype(np.float32)
+
         results = []
         for params in param_combos:
             try:
                 # Generate signals for this parameter set
                 entries, exits = self._generate_signals(data, strategy_type, params)
 
-                # Run backtest
+                # Convert to boolean arrays for memory efficiency
+                entries = entries.astype(bool)
+                exits = exits.astype(bool)
+
+                # Run backtest with optimizations
                 portfolio = vbt.Portfolio.from_signals(
-                    close=data["close"],
+                    close=close_prices,
                     entries=entries,
                     exits=exits,
                     init_cash=initial_capital,
                     fees=0.001,
                     freq="D",
+                    cash_sharing=False,
+                    call_seq="auto",
                 )
 
                 # Get optimization metric
@@ -478,5 +664,14 @@ class VectorBTEngine:
         if metric_name not in metric_map:
             raise ValueError(f"Unknown metric: {metric_name}")
 
-        value = metric_map[metric_name]()
-        return float(value) if value is not None else 0.0
+        try:
+            value = metric_map[metric_name]()
+
+            # Check for invalid values
+            if value is None or np.isnan(value) or np.isinf(value):
+                return 0.0
+
+            return float(value)
+
+        except (ZeroDivisionError, ValueError, TypeError):
+            return 0.0

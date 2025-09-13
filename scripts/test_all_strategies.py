@@ -384,16 +384,16 @@ class StrategyValidator:
     def _validate_backtest_results(self, results: dict, warnings: list[str]) -> tuple[bool, str | None]:
         """Validate backtest results for correctness."""
         try:
-            # Check required fields
-            required_fields = ["portfolio_stats", "trades"]
+            # Check required fields (VectorBT engine returns 'metrics' not 'portfolio_stats')
+            required_fields = ["metrics", "trades"]
             for field in required_fields:
                 if field not in results:
                     return False, f"Missing required field: {field}"
 
-            # Validate portfolio stats
-            stats = results["portfolio_stats"]
+            # Validate metrics
+            stats = results["metrics"]
             if stats is None:
-                return False, "Portfolio stats is None"
+                return False, "Metrics is None"
 
             # Check for reasonable metrics
             metrics_to_check = ["total_return", "sharpe_ratio", "max_drawdown"]
@@ -424,13 +424,19 @@ class StrategyValidator:
         """Extract key performance metrics from results."""
         metrics = {}
 
-        # From portfolio stats
-        if "portfolio_stats" in results and results["portfolio_stats"]:
-            stats = results["portfolio_stats"]
-            key_stats = ["total_return", "sharpe_ratio", "max_drawdown", "win_rate", "num_trades"]
+        # From metrics (VectorBT engine structure)
+        if "metrics" in results and results["metrics"]:
+            stats = results["metrics"]
+            # Map VectorBT metrics to expected names (note: VectorBT uses 'total_trades' not 'num_trades')
+            key_stats = ["total_return", "sharpe_ratio", "max_drawdown", "win_rate", "total_trades"]
             for stat in key_stats:
                 if stat in stats:
-                    metrics[stat] = stats[stat]
+                    # Map total_trades to num_trades for compatibility
+                    if stat == "total_trades":
+                        metrics["num_trades"] = stats[stat]
+                        metrics[stat] = stats[stat]
+                    else:
+                        metrics[stat] = stats[stat]
 
         # From analysis
         if analysis:

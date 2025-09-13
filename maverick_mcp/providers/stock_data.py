@@ -17,6 +17,8 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
+
 from maverick_mcp.data.models import (
     MaverickBearStocks,
     MaverickStocks,
@@ -61,6 +63,8 @@ class EnhancedStockDataProvider:
         # Initialize NYSE calendar for US stock market
         self.market_calendar = mcal.get_calendar("NYSE")
         self._db_session = db_session
+        # Initialize yfinance connection pool
+        self._yf_pool = get_yfinance_pool()
         if db_session:
             # Test the provided session
             self._test_db_connection_with_session(db_session)
@@ -125,17 +129,17 @@ class EnhancedStockDataProvider:
                 session, symbol, start_date, end_date
             )
 
-            # Convert dates for comparison
-            start_dt = pd.to_datetime(start_date)
-            end_dt = pd.to_datetime(end_date)
+            # Convert dates for comparison - ensure timezone-naive for consistency
+            start_dt = pd.to_datetime(start_date).tz_localize(None)
+            end_dt = pd.to_datetime(end_date).tz_localize(None)
 
             # Step 2: Determine what data we need
             if cached_df is not None and not cached_df.empty:
                 logger.info(f"Found {len(cached_df)} cached records for {symbol}")
 
-                # Check if we have all the data we need
-                cached_start = pd.to_datetime(cached_df.index.min())
-                cached_end = pd.to_datetime(cached_df.index.max())
+                # Check if we have all the data we need - ensure timezone-naive for comparison
+                cached_start = pd.to_datetime(cached_df.index.min()).tz_localize(None)
+                cached_end = pd.to_datetime(cached_df.index.max()).tz_localize(None)
 
                 # Identify missing ranges
                 missing_ranges = []
@@ -176,7 +180,8 @@ class EnhancedStockDataProvider:
                     logger.info(
                         f"Cache hit! Returning {len(cached_df)} cached records for {symbol}"
                     )
-                    # Filter to requested range
+                    # Filter to requested range - ensure index is timezone-naive
+                    cached_df.index = pd.to_datetime(cached_df.index).tz_localize(None)
                     mask = (cached_df.index >= start_dt) & (cached_df.index <= end_dt)
                     return cached_df.loc[mask]
 
@@ -201,7 +206,8 @@ class EnhancedStockDataProvider:
                 # Remove any duplicates (keep first)
                 combined_df = combined_df[~combined_df.index.duplicated(keep="first")]
 
-                # Filter to requested range
+                # Filter to requested range - ensure index is timezone-naive
+                combined_df.index = pd.to_datetime(combined_df.index).tz_localize(None)
                 mask = (combined_df.index >= start_dt) & (combined_df.index <= end_dt)
                 return combined_df.loc[mask]
 
@@ -303,6 +309,9 @@ class EnhancedStockDataProvider:
                     .astype("int64")
                 )
 
+            # Ensure index is timezone-naive for consistency
+            df.index = pd.to_datetime(df.index).tz_localize(None)
+
             return df
 
         except Exception as e:
@@ -341,19 +350,24 @@ class EnhancedStockDataProvider:
             end_date: End date (can be string or datetime)
 
         Returns:
-            DatetimeIndex of trading days
+            DatetimeIndex of trading days (timezone-naive)
         """
-        # Ensure dates are datetime objects
+        # Ensure dates are datetime objects (timezone-naive)
         if isinstance(start_date, str):
-            start_date = pd.to_datetime(start_date)
+            start_date = pd.to_datetime(start_date).tz_localize(None)
+        else:
+            start_date = pd.to_datetime(start_date).tz_localize(None)
         if isinstance(end_date, str):
-            end_date = pd.to_datetime(end_date)
+            end_date = pd.to_datetime(end_date).tz_localize(None)
+        else:
+            end_date = pd.to_datetime(end_date).tz_localize(None)
 
         # Get valid trading days from market calendar
         schedule = self.market_calendar.schedule(
             start_date=start_date, end_date=end_date
         )
-        return schedule.index
+        # Return timezone-naive index
+        return schedule.index.tz_localize(None)
 
     def _get_last_trading_day(self, date) -> pd.Timestamp:
         """
@@ -434,8 +448,8 @@ class EnhancedStockDataProvider:
         company_name = getattr(stock, "company_name", None)
         if company_name is None or company_name == "":
             try:
-                ticker = yf.Ticker(symbol)
-                info = ticker.info
+                # Use connection pool for info retrieval
+                info = self._yf_pool.get_info(symbol)
 
                 stock.company_name = info.get("longName", info.get("shortName"))
                 stock.sector = info.get("sector")
@@ -606,19 +620,17 @@ class EnhancedStockDataProvider:
         logger.info(
             f"Fetching data from yfinance for {symbol} - Start: {start_date}, End: {end_date}, Period: {period}, Interval: {interval}"
         )
-        # Single attempt since circuit breaker handles retries
-        ticker = yf.Ticker(symbol)
+        # Use connection pool for better performance
+        # The pool handles session management and retries internally
 
-        if period:
-            df = ticker.history(period=period, interval=interval)
-        else:
-            if start_date is None:
-                start_date = (datetime.now(UTC) - timedelta(days=365)).strftime(
-                    "%Y-%m-%d"
-                )
-            if end_date is None:
-                end_date = datetime.now(UTC).strftime("%Y-%m-%d")
-            df = ticker.history(start=start_date, end=end_date, interval=interval)
+        # Use the optimized connection pool
+        df = self._yf_pool.get_history(
+            symbol=symbol,
+            start=start_date,
+            end=end_date,
+            period=period,
+            interval=interval
+        )
 
         # Check if dataframe is empty or if required columns are missing
         if df.empty:
@@ -990,14 +1002,14 @@ class EnhancedStockDataProvider:
     @with_stock_data_circuit_breaker(use_fallback=False)
     def get_stock_info(self, symbol: str) -> dict:
         """Get detailed stock information from yfinance with circuit breaker protection."""
-        ticker = yf.Ticker(symbol)
-        return ticker.info
+        # Use connection pool for better performance
+        return self._yf_pool.get_info(symbol)
 
     def get_realtime_data(self, symbol):
         """Get the latest real-time data for a symbol using yfinance."""
         try:
-            ticker = yf.Ticker(symbol)
-            data = ticker.history(period="1d")
+            # Use connection pool for real-time data
+            data = self._yf_pool.get_history(symbol, period="1d")
 
             if data.empty:
                 return None
@@ -1005,10 +1017,11 @@ class EnhancedStockDataProvider:
             latest = data.iloc[-1]
 
             # Get previous close for change calculation
-            prev_close = ticker.info.get("previousClose", None)
+            info = self._yf_pool.get_info(symbol)
+            prev_close = info.get("previousClose", None)
             if prev_close is None:
                 # Try to get from 2-day history
-                data_2d = ticker.history(period="2d")
+                data_2d = self._yf_pool.get_history(symbol, period="2d")
                 if len(data_2d) > 1:
                     prev_close = data_2d.iloc[0]["Close"]
                 else:

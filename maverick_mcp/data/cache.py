@@ -8,9 +8,12 @@ import asyncio
 import json
 import logging
 import os
+import pickle
 import time
+import zlib
 from typing import Any
 
+import pandas as pd
 import redis
 from dotenv import load_dotenv
 
@@ -155,6 +158,30 @@ def get_redis_client() -> redis.Redis | None:
         return None
 
 
+def _deserialize_cached_data(data: bytes, key: str) -> Any:
+    """Deserialize cached data with multiple format support."""
+    try:
+        # Try compressed pickle first (for DataFrames and complex objects)
+        if data[:2] == b'\x78\x9c':  # zlib magic bytes
+            decompressed = zlib.decompress(data)
+            return pickle.loads(decompressed)
+    except Exception:
+        pass
+
+    try:
+        # Try regular pickle
+        return pickle.loads(data)
+    except Exception:
+        pass
+
+    try:
+        # Fall back to JSON
+        return json.loads(data)
+    except Exception:
+        logger.warning(f"Failed to deserialize cache data for key {key}")
+        return None
+
+
 def get_from_cache(key: str) -> Any | None:
     """
     Get data from the cache.
@@ -175,7 +202,7 @@ def get_from_cache(key: str) -> Any | None:
             data = redis_client.get(key)
             if data:
                 logger.debug(f"Cache hit for {key} (Redis)")
-                return json.loads(data)  # type: ignore[arg-type]
+                return _deserialize_cached_data(data, key)  # type: ignore[arg-type]
         except Exception as e:
             logger.warning(f"Error reading from Redis cache: {e}")
 
@@ -191,6 +218,33 @@ def get_from_cache(key: str) -> Any | None:
 
     logger.debug(f"Cache miss for {key}")
     return None
+
+
+def _serialize_data(data: Any, key: str) -> bytes:
+    """Serialize data efficiently based on type."""
+    try:
+        # Special handling for DataFrames - use compressed pickle
+        if isinstance(data, pd.DataFrame):
+            pickled = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+            compressed = zlib.compress(pickled, level=1)  # Fast compression
+            return compressed
+
+        # For dictionaries with DataFrames (like backtest results)
+        if isinstance(data, dict) and any(isinstance(v, pd.DataFrame) for v in data.values()):
+            pickled = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+            compressed = zlib.compress(pickled, level=1)
+            return compressed
+
+        # For simple data types, use JSON (faster for small data)
+        if isinstance(data, (dict, list, str, int, float, bool, type(None))):
+            return json.dumps(data).encode('utf-8')
+
+        # Default to pickle for other complex objects
+        return pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception as e:
+        logger.warning(f"Failed to serialize data for key {key}: {e}")
+        # Fall back to JSON
+        return json.dumps(data).encode('utf-8')
 
 
 def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
@@ -211,14 +265,14 @@ def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
     if ttl is None:
         ttl = CACHE_TTL_SECONDS
 
-    # Convert data to JSON
-    json_data = json.dumps(data)
+    # Serialize data efficiently
+    serialized_data = _serialize_data(data, key)
 
     # Try Redis first
     redis_client = get_redis_client()
     if redis_client:
         try:
-            redis_client.setex(key, ttl, json_data)
+            redis_client.setex(key, ttl, serialized_data)
             logger.debug(f"Saved to Redis cache: {key}")
             return True
         except Exception as e:
