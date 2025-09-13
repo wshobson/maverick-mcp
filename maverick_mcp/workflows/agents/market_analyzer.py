@@ -149,7 +149,7 @@ class MarketAnalyzerAgent:
 
             if data is not None and not data.empty:
                 # Cache for 30 minutes
-                await self.cache.set(cache_key, data.to_dict(), expire=1800)
+                await self.cache.set(cache_key, data.to_dict(), ttl=1800)
                 return data
 
             return None

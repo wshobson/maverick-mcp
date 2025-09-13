@@ -59,7 +59,7 @@ exits = (rsi > {overbought}) & (rsi.shift(1) <= {overbought})
         },
         "code": """
 # MACD Signal Strategy
-macd = vbt.MACD.run(close, 
+macd = vbt.MACD.run(close,
     fast_window={fast_period},
     slow_window={slow_period},
     signal_window={signal_period}

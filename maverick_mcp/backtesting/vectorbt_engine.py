@@ -63,7 +63,11 @@ class VectorBTEngine:
         data.columns = [col.lower() for col in data.columns]
 
         # Cache for future use (1 hour TTL)
-        await self.cache.set(cache_key, data.to_dict(), expire=3600)
+        # Convert to dict with string index for JSON serialization
+        data_copy = data.copy()
+        data_copy.index = data_copy.index.astype(str)
+        cache_data = data_copy.to_dict('index')
+        await self.cache.set(cache_key, cache_data, ttl=3600)
 
         return data
 

@@ -222,18 +222,18 @@ class StrategyParser:
             input_variables=["description", "available_strategies"],
             template="""
             Convert this trading strategy description into a structured format.
-            
+
             Description: {description}
-            
+
             Available strategy types:
             {available_strategies}
-            
+
             Return a JSON object with:
             - strategy_type: one of the available types
             - parameters: dictionary of parameters for that strategy
             - entry_logic: description of entry conditions
             - exit_logic: description of exit conditions
-            
+
             Example response:
             {{
                 "strategy_type": "sma_cross",

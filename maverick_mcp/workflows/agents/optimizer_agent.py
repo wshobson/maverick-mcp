@@ -338,7 +338,7 @@ class OptimizerAgent:
 
         # Generate basic variations around default values
         for param_name, default_value in default_params.items():
-            if isinstance(default_value, (int, float)):
+            if isinstance(default_value, int | float):
                 if grid_size == "coarse":
                     variations = [
                         default_value * 0.8,
