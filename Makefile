@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
+.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -22,6 +22,7 @@ help:
 	@echo "  make test-speed-quick - Quick speed validation for CI"
 	@echo "  make test-speed-emergency - Emergency mode speed tests"
 	@echo "  make test-speed-comparison - Before/after performance comparison"
+	@echo "  make test-strategies - Validate ALL backtesting strategies"
 	@echo ""
 	@echo "  make lint         - Run code quality checks"
 	@echo "  make format       - Auto-format code"
@@ -116,6 +117,10 @@ test-speed-emergency:
 test-speed-comparison:
 	@echo "Running before/after performance comparison..."
 	@uv run python scripts/speed_benchmark.py --mode comparison
+
+test-strategies:
+	@echo "Validating ALL backtesting strategies with real market data..."
+	@uv run python scripts/test_all_strategies.py
 
 # Code quality commands
 lint:

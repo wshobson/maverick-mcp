@@ -49,7 +49,13 @@ class VectorBTEngine:
         # Try cache first
         cached_data = await self.cache.get(cache_key)
         if cached_data is not None:
-            return pd.DataFrame(cached_data)
+            # Restore DataFrame from cached data
+            df = pd.DataFrame.from_dict(cached_data, orient='index')
+            # Convert index back to datetime
+            df.index = pd.to_datetime(df.index)
+            # Normalize column names to lowercase (in case they weren't normalized when cached)
+            df.columns = [col.lower() for col in df.columns]
+            return df
 
         # Fetch from provider (sync method, no await needed)
         data = self.data_provider.get_stock_data(
@@ -152,11 +158,11 @@ class VectorBTEngine:
         """
         # Ensure we have the required price data
         if "close" not in data.columns:
-            raise ValueError("Missing 'close' column in price data")
+            raise ValueError(f"Missing 'close' column in price data. Available columns: {list(data.columns)}")
 
         close = data["close"]
 
-        if strategy_type == "sma_cross":
+        if strategy_type in ["sma_cross", "sma_crossover"]:
             return self._sma_crossover_signals(close, parameters)
         elif strategy_type == "rsi":
             return self._rsi_signals(close, parameters)
@@ -173,8 +179,9 @@ class VectorBTEngine:
         self, close: Series, params: dict[str, Any]
     ) -> tuple[Series, Series]:
         """Generate SMA crossover signals."""
-        fast_period = params.get("fast_period", 10)
-        slow_period = params.get("slow_period", 20)
+        # Support both parameter naming conventions
+        fast_period = params.get("fast_period", params.get("fast_window", 10))
+        slow_period = params.get("slow_period", params.get("slow_window", 20))
 
         fast_sma = vbt.MA.run(close, fast_period, short_name="fast").ma.squeeze()
         slow_sma = vbt.MA.run(close, slow_period, short_name="slow").ma.squeeze()

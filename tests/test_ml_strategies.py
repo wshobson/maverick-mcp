@@ -318,6 +318,42 @@ class TestOnlineLearningStrategy:
             confidence_threshold=0.6,
         )
 
+    @pytest.fixture
+    def online_learning_strategy(self, online_strategy):
+        """Alias for online_strategy fixture for backward compatibility."""
+        return online_strategy
+
+    @pytest.fixture
+    def sample_market_data(self):
+        """Create sample market data for testing."""
+        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
+
+        # Generate realistic price data with trends
+        returns = np.random.normal(0.0005, 0.02, len(dates))
+        # Add some trending periods
+        returns[100:150] += 0.003  # Bull period
+        returns[200:250] -= 0.002  # Bear period
+
+        prices = 100 * np.cumprod(1 + returns)
+        volumes = np.random.randint(1000000, 5000000, len(dates))
+
+        data = pd.DataFrame(
+            {
+                "open": prices * np.random.uniform(0.98, 1.02, len(dates)),
+                "high": prices * np.random.uniform(1.00, 1.05, len(dates)),
+                "low": prices * np.random.uniform(0.95, 1.00, len(dates)),
+                "close": prices,
+                "volume": volumes,
+            },
+            index=dates,
+        )
+
+        # Ensure high >= close, open and low <= close, open
+        data["high"] = np.maximum(data["high"], np.maximum(data["open"], data["close"]))
+        data["low"] = np.minimum(data["low"], np.minimum(data["open"], data["close"]))
+
+        return data
+
     def test_online_learning_initialization(self, online_strategy):
         """Test online learning strategy initialization."""
         assert online_strategy.model_type == "sgd"
@@ -448,6 +484,42 @@ class TestHybridAdaptiveStrategy:
     """Test suite for HybridAdaptiveStrategy class."""
 
     @pytest.fixture
+    def mock_base_strategy(self):
+        """Create a mock base strategy."""
+        return MockBaseStrategy({"window": 20, "threshold": 0.02})
+
+    @pytest.fixture
+    def sample_market_data(self):
+        """Create sample market data for testing."""
+        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
+
+        # Generate realistic price data with trends
+        returns = np.random.normal(0.0005, 0.02, len(dates))
+        # Add some trending periods
+        returns[100:150] += 0.003  # Bull period
+        returns[200:250] -= 0.002  # Bear period
+
+        prices = 100 * np.cumprod(1 + returns)
+        volumes = np.random.randint(1000000, 5000000, len(dates))
+
+        data = pd.DataFrame(
+            {
+                "open": prices * np.random.uniform(0.98, 1.02, len(dates)),
+                "high": prices * np.random.uniform(1.00, 1.05, len(dates)),
+                "low": prices * np.random.uniform(0.95, 1.00, len(dates)),
+                "close": prices,
+                "volume": volumes,
+            },
+            index=dates,
+        )
+
+        # Ensure high >= close, open and low <= close, open
+        data["high"] = np.maximum(data["high"], np.maximum(data["open"], data["close"]))
+        data["low"] = np.minimum(data["low"], np.minimum(data["open"], data["close"]))
+
+        return data
+
+    @pytest.fixture
     def hybrid_strategy(self, mock_base_strategy):
         """Create a hybrid adaptive strategy."""
         return HybridAdaptiveStrategy(
@@ -547,6 +619,37 @@ class TestHybridAdaptiveStrategy:
 
 class TestMLStrategiesPerformance:
     """Performance and benchmark tests for ML strategies."""
+
+    @pytest.fixture
+    def sample_market_data(self):
+        """Create sample market data for testing."""
+        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
+
+        # Generate realistic price data with trends
+        returns = np.random.normal(0.0005, 0.02, len(dates))
+        # Add some trending periods
+        returns[100:150] += 0.003  # Bull period
+        returns[200:250] -= 0.002  # Bear period
+
+        prices = 100 * np.cumprod(1 + returns)
+        volumes = np.random.randint(1000000, 5000000, len(dates))
+
+        data = pd.DataFrame(
+            {
+                "open": prices * np.random.uniform(0.98, 1.02, len(dates)),
+                "high": prices * np.random.uniform(1.00, 1.05, len(dates)),
+                "low": prices * np.random.uniform(0.95, 1.00, len(dates)),
+                "close": prices,
+                "volume": volumes,
+            },
+            index=dates,
+        )
+
+        # Ensure high >= close, open and low <= close, open
+        data["high"] = np.maximum(data["high"], np.maximum(data["open"], data["close"]))
+        data["low"] = np.minimum(data["low"], np.minimum(data["open"], data["close"]))
+
+        return data
 
     def test_strategy_computational_efficiency(
         self, sample_market_data, benchmark_timer
@@ -674,6 +777,42 @@ class TestMLStrategiesPerformance:
 
 class TestMLStrategiesErrorHandling:
     """Error handling and edge case tests for ML strategies."""
+
+    @pytest.fixture
+    def sample_market_data(self):
+        """Create sample market data for testing."""
+        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
+
+        # Generate realistic price data with trends
+        returns = np.random.normal(0.0005, 0.02, len(dates))
+        # Add some trending periods
+        returns[100:150] += 0.003  # Bull period
+        returns[200:250] -= 0.002  # Bear period
+
+        prices = 100 * np.cumprod(1 + returns)
+        volumes = np.random.randint(1000000, 5000000, len(dates))
+
+        data = pd.DataFrame(
+            {
+                "open": prices * np.random.uniform(0.98, 1.02, len(dates)),
+                "high": prices * np.random.uniform(1.00, 1.05, len(dates)),
+                "low": prices * np.random.uniform(0.95, 1.00, len(dates)),
+                "close": prices,
+                "volume": volumes,
+            },
+            index=dates,
+        )
+
+        # Ensure high >= close, open and low <= close, open
+        data["high"] = np.maximum(data["high"], np.maximum(data["open"], data["close"]))
+        data["low"] = np.minimum(data["low"], np.minimum(data["open"], data["close"]))
+
+        return data
+
+    @pytest.fixture
+    def mock_base_strategy(self):
+        """Create a mock base strategy."""
+        return MockBaseStrategy({"window": 20, "threshold": 0.02})
 
     def test_adaptive_strategy_with_failing_base(self, sample_market_data):
         """Test adaptive strategy when base strategy fails."""

@@ -266,9 +266,12 @@ class TestFullBacktestWorkflowIntegration:
 
         assert isinstance(data, pd.DataFrame)
         assert len(data) > 0
-        assert all(
-            col in data.columns.str.lower() for col in ["open", "high", "low", "close"]
-        )
+        # Check if required columns exist (data should already have lowercase columns)
+        required_cols = ["open", "high", "low", "close"]
+        actual_cols = list(data.columns)
+        missing_cols = [col for col in required_cols if col not in actual_cols]
+
+        assert all(col in actual_cols for col in required_cols), f"Missing columns: {missing_cols}"
 
         # Test backtest execution
         backtest_result = await vectorbt_engine.run_backtest(
