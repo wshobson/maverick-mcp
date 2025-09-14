@@ -1,0 +1,142 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.wshobson/maverick-mcp",
+  "description": "Stock analysis MCP server with S&P 500 data, technical indicators, and AI research tools.",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/wshobson/maverick-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "remotes": [
+    {
+      "name": "sse",
+      "description": "SSE transport for web-based clients and remote connections",
+      "transport": {
+        "type": "sse",
+        "url": "http://localhost:8003/sse/"
+      },
+      "setup_instructions": [
+        "Clone repository: git clone https://github.com/wshobson/maverick-mcp.git",
+        "Install dependencies: uv sync (or pip install -e .)",
+        "Copy .env.example to .env and add your TIINGO_API_KEY",
+        "Start server: make dev (or uv run python -m maverick_mcp.api.server --transport sse --port 8003)"
+      ],
+      "environment_variables": [
+        {
+          "name": "TIINGO_API_KEY",
+          "description": "Required API key for Tiingo stock data provider. Get free key at https://tiingo.com (500 requests/day free tier)",
+          "is_required": true,
+          "is_secret": true
+        },
+        {
+          "name": "OPENROUTER_API_KEY",
+          "description": "Optional API key for OpenRouter (400+ AI models with intelligent cost optimization). Get at https://openrouter.ai",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "EXA_API_KEY",
+          "description": "Optional API key for Exa web search (advanced research features). Get at https://exa.ai",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "TAVILY_API_KEY",
+          "description": "Optional API key for Tavily web search (research features). Get at https://tavily.com",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "FRED_API_KEY",
+          "description": "Optional API key for Federal Reserve Economic Data (macroeconomic indicators). Get at https://fred.stlouisfed.org/docs/api/",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "DATABASE_URL",
+          "description": "Optional database URL. Defaults to SQLite (sqlite:///maverick_mcp.db) if not provided. PostgreSQL supported for better performance.",
+          "is_required": false,
+          "is_secret": false
+        },
+        {
+          "name": "REDIS_HOST",
+          "description": "Optional Redis host for enhanced caching performance. Defaults to in-memory caching if not provided.",
+          "is_required": false,
+          "is_secret": false
+        },
+        {
+          "name": "REDIS_PORT",
+          "description": "Optional Redis port (default: 6379)",
+          "is_required": false,
+          "is_secret": false
+        }
+      ]
+    },
+    {
+      "name": "streamable-http",
+      "description": "Streamable HTTP transport for remote access via mcp-remote bridge",
+      "transport": {
+        "type": "streamable-http",
+        "url": "http://localhost:8003/mcp/"
+      },
+      "setup_instructions": [
+        "Clone repository: git clone https://github.com/wshobson/maverick-mcp.git",
+        "Install dependencies: uv sync (or pip install -e .)",
+        "Copy .env.example to .env and add your TIINGO_API_KEY",
+        "Start server: make dev (or uv run python -m maverick_mcp.api.server --transport streamable-http --port 8003)",
+        "Connect via mcp-remote: npx mcp-remote http://localhost:8003/mcp/"
+      ],
+      "environment_variables": [
+        {
+          "name": "TIINGO_API_KEY",
+          "description": "Required API key for Tiingo stock data provider. Get free key at https://tiingo.com (500 requests/day free tier)",
+          "is_required": true,
+          "is_secret": true
+        },
+        {
+          "name": "OPENROUTER_API_KEY",
+          "description": "Optional API key for OpenRouter (400+ AI models with intelligent cost optimization). Get at https://openrouter.ai",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "EXA_API_KEY",
+          "description": "Optional API key for Exa web search (advanced research features). Get at https://exa.ai",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "TAVILY_API_KEY",
+          "description": "Optional API key for Tavily web search (research features). Get at https://tavily.com",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "FRED_API_KEY",
+          "description": "Optional API key for Federal Reserve Economic Data (macroeconomic indicators). Get at https://fred.stlouisfed.org/docs/api/",
+          "is_required": false,
+          "is_secret": true
+        },
+        {
+          "name": "DATABASE_URL",
+          "description": "Optional database URL. Defaults to SQLite (sqlite:///maverick_mcp.db) if not provided. PostgreSQL supported for better performance.",
+          "is_required": false,
+          "is_secret": false
+        },
+        {
+          "name": "REDIS_HOST",
+          "description": "Optional Redis host for enhanced caching performance. Defaults to in-memory caching if not provided.",
+          "is_required": false,
+          "is_secret": false
+        },
+        {
+          "name": "REDIS_PORT",
+          "description": "Optional Redis port (default: 6379)",
+          "is_required": false,
+          "is_secret": false
+        }
+      ]
+    }
+  ]
+}
