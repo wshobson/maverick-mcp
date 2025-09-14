@@ -600,6 +600,52 @@ class EnhancedStockDataProvider:
                 symbol, start_date, end_date, period, interval
             )
 
+    async def get_stock_data_async(
+        self,
+        symbol: str,
+        start_date: str | None = None,
+        end_date: str | None = None,
+        period: str | None = None,
+        interval: str = "1d",
+        use_cache: bool = True,
+    ) -> pd.DataFrame:
+        """
+        Async version of get_stock_data for parallel processing.
+
+        This method wraps the synchronous get_stock_data method to provide
+        an async interface for use in parallel backtesting operations.
+
+        Args:
+            symbol: Stock ticker symbol
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            period: Alternative to start/end dates (e.g., '1d', '5d', '1mo', '3mo', '1y', etc.)
+            interval: Data interval ('1d', '1wk', '1mo', '1m', '5m', etc.)
+            use_cache: Whether to use cached data if available
+
+        Returns:
+            DataFrame with stock data
+        """
+        import asyncio
+        import functools
+
+        # Run the synchronous method in a thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+
+        # Use functools.partial to create a callable with all arguments
+        sync_method = functools.partial(
+            self.get_stock_data,
+            symbol=symbol,
+            start_date=start_date,
+            end_date=end_date,
+            period=period,
+            interval=interval,
+            use_cache=use_cache
+        )
+
+        # Execute in thread pool to avoid blocking the event loop
+        return await loop.run_in_executor(None, sync_method)
+
     @with_stock_data_circuit_breaker(
         use_fallback=False
     )  # Fallback handled at higher level

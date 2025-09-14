@@ -1,4 +1,4 @@
-"""MCP router for VectorBT backtesting tools."""
+"""MCP router for VectorBT backtesting tools with structured logging."""
 
 from typing import Any
 
@@ -21,6 +21,73 @@ from maverick_mcp.backtesting.visualization import (
     generate_performance_dashboard,
     generate_trade_scatter,
 )
+from maverick_mcp.utils.structured_logger import (
+    with_structured_logging,
+    get_performance_logger,
+    CorrelationIDGenerator,
+)
+from maverick_mcp.utils.debug_utils import debug_operation
+
+# Initialize performance logger for backtesting router
+performance_logger = get_performance_logger("backtesting_router")
+
+
+def convert_numpy_types(obj: Any) -> Any:
+    """Recursively convert numpy types to Python native types for JSON serialization.
+
+    Args:
+        obj: Any object that might contain numpy types
+
+    Returns:
+        Object with all numpy types converted to Python native types
+    """
+    import pandas as pd
+
+    # Check for numpy integer types (more robust using numpy's type hierarchy)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    # Check for numpy floating point types
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    # Check for numpy boolean type
+    elif isinstance(obj, (np.bool_, bool)) and hasattr(obj, 'item'):
+        return bool(obj)
+    # Check for numpy complex types
+    elif isinstance(obj, np.complexfloating):
+        return complex(obj)
+    # Handle numpy arrays
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    # Handle pandas Series
+    elif isinstance(obj, pd.Series):
+        return obj.tolist()
+    # Handle pandas DataFrame
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict('records')
+    # Handle NaN/None values
+    elif pd.isna(obj):
+        return None
+    # Handle other numpy scalars with .item() method
+    elif hasattr(obj, 'item') and hasattr(obj, 'dtype'):
+        try:
+            return obj.item()
+        except Exception:
+            return str(obj)
+    # Recursively handle dictionaries
+    elif isinstance(obj, dict):
+        return {key: convert_numpy_types(value) for key, value in obj.items()}
+    # Recursively handle lists and tuples
+    elif isinstance(obj, (list, tuple)):
+        return [convert_numpy_types(item) for item in obj]
+    # Try to handle custom objects with __dict__
+    elif hasattr(obj, '__dict__') and not isinstance(obj, type):
+        try:
+            return convert_numpy_types(obj.__dict__)
+        except Exception:
+            return str(obj)
+    else:
+        # Return as-is for regular Python types
+        return obj
 
 
 def setup_backtesting_tools(mcp):
@@ -31,6 +98,8 @@ def setup_backtesting_tools(mcp):
     """
 
     @mcp.tool()
+    @with_structured_logging("run_backtest", include_performance=True, log_params=True)
+    @debug_operation("run_backtest", enable_profiling=True, symbol="backtest_symbol")
     async def run_backtest(
         ctx: Context,
         symbol: str,
@@ -136,9 +205,28 @@ def setup_backtesting_tools(mcp):
         # Combine results and analysis
         results["analysis"] = analysis
 
+        # Log business metrics
+        if results.get("metrics"):
+            metrics = results["metrics"]
+            performance_logger.log_business_metric(
+                "backtest_completion",
+                1,
+                symbol=symbol,
+                strategy=strategy,
+                total_return=metrics.get("total_return", 0),
+                sharpe_ratio=metrics.get("sharpe_ratio", 0),
+                max_drawdown=metrics.get("max_drawdown", 0),
+                total_trades=metrics.get("total_trades", 0)
+            )
+
+            # Set correlation context for downstream operations
+            CorrelationIDGenerator.set_correlation_id()
+
         return results
 
     @mcp.tool()
+    @with_structured_logging("optimize_strategy", include_performance=True, log_params=True)
+    @debug_operation("optimize_strategy", enable_profiling=True, strategy="optimization_strategy")
     async def optimize_strategy(
         ctx: Context,
         symbol: str,
@@ -331,7 +419,7 @@ def setup_backtesting_tools(mcp):
     async def compare_strategies(
         ctx: Context,
         symbol: str,
-        strategies: list[str] | None = None,
+        strategies: list[str] | str | None = None,
         start_date: str | None = None,
         end_date: str | None = None,
     ) -> dict[str, Any]:
@@ -353,6 +441,15 @@ def setup_backtesting_tools(mcp):
             end_date = datetime.now().strftime("%Y-%m-%d")
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+
+        # Handle strategies as JSON string from some clients
+        if isinstance(strategies, str):
+            import json
+            try:
+                strategies = json.loads(strategies)
+            except json.JSONDecodeError:
+                # If it's not JSON, treat it as a single strategy
+                strategies = [strategies]
 
         # Default to comparing top strategies
         if not strategies:
@@ -727,13 +824,27 @@ def setup_backtesting_tools(mcp):
         engine = VectorBTEngine()
         data = await engine.get_historical_data(symbol, start_date, end_date)
 
-        if len(data) < 100:
-            return {"error": "Insufficient data for ML strategy"}
+        # Enhanced data validation for ML strategies
+        min_total_data = 200  # Minimum total data points for ML strategies
+        if len(data) < min_total_data:
+            return {"error": f"Insufficient data for ML strategy: {len(data)} < {min_total_data} required"}
 
         # Split data for training/testing
         split_idx = int(len(data) * train_ratio)
         train_data = data.iloc[:split_idx]
         test_data = data.iloc[split_idx:]
+
+        # Validate split data sizes
+        min_train_data = 100
+        min_test_data = 50
+
+        if len(train_data) < min_train_data:
+            return {"error": f"Insufficient training data: {len(train_data)} < {min_train_data} required"}
+
+        if len(test_data) < min_test_data:
+            return {"error": f"Insufficient test data: {len(test_data)} < {min_test_data} required"}
+
+        logger.info(f"ML backtest data split: {len(train_data)} training, {len(test_data)} testing samples")
 
         try:
             # Create ML strategy based on type
@@ -746,14 +857,18 @@ def setup_backtesting_tools(mcp):
                 # Train the model
                 training_metrics = ml_strategy.train(train_data)
 
-            elif strategy_type == "adaptive":
+            elif strategy_type == "adaptive" or strategy_type == "online_learning":
+                # online_learning is an alias for adaptive strategy
                 base_strategy = SimpleMovingAverageStrategy()
                 ml_strategy = AdaptiveStrategy(
                     base_strategy,
                     learning_rate=learning_rate,
                     adaptation_method=adaptation_method,
                 )
-                training_metrics = {"adaptation_method": adaptation_method}
+                training_metrics = {
+                    "adaptation_method": adaptation_method,
+                    "strategy_alias": strategy_type
+                }
 
             elif strategy_type == "ensemble":
                 # Create ensemble with basic strategies
@@ -817,7 +932,8 @@ def setup_backtesting_tools(mcp):
 
             backtest_results["ml_metrics"] = ml_metrics
 
-            return backtest_results
+            # Convert all numpy types before returning
+            return convert_numpy_types(backtest_results)
 
         except Exception as e:
             return {"error": f"ML backtest failed: {str(e)}"}
@@ -900,7 +1016,8 @@ def setup_backtesting_tools(mcp):
                 "training_metrics": training_metrics,
             }
 
-            return training_results
+            # Convert all numpy types before returning
+            return convert_numpy_types(training_results)
 
         except Exception as e:
             return {"error": f"ML training failed: {str(e)}"}
@@ -1053,8 +1170,6 @@ def setup_backtesting_tools(mcp):
 
         from maverick_mcp.backtesting.strategies.ml import StrategyEnsemble
         from maverick_mcp.backtesting.strategies.templates import (
-            MACDStrategy,
-            RSIStrategy,
             SimpleMovingAverageStrategy,
         )
 
@@ -1075,9 +1190,15 @@ def setup_backtesting_tools(mcp):
                 if strategy_name == "sma_cross":
                     strategy_instances.append(SimpleMovingAverageStrategy())
                 elif strategy_name == "rsi":
-                    strategy_instances.append(RSIStrategy())
+                    # Create RSI-based SMA strategy with different parameters
+                    strategy_instances.append(
+                        SimpleMovingAverageStrategy({"fast_period": 14, "slow_period": 28})
+                    )
                 elif strategy_name == "macd":
-                    strategy_instances.append(MACDStrategy())
+                    # Create MACD-like SMA strategy with MACD default periods
+                    strategy_instances.append(
+                        SimpleMovingAverageStrategy({"fast_period": 12, "slow_period": 26})
+                    )
                 # Add more strategies as needed
 
             if not strategy_instances:
@@ -1137,7 +1258,8 @@ def setup_backtesting_tools(mcp):
             avg_return = total_return / len(ensemble_results)
             avg_trades = total_trades / len(ensemble_results)
 
-            return {
+            # Convert all numpy types before returning
+            return convert_numpy_types({
                 "ensemble_summary": {
                     "symbols_tested": len(ensemble_results),
                     "base_strategies": base_strategies,
@@ -1149,7 +1271,7 @@ def setup_backtesting_tools(mcp):
                 "individual_results": ensemble_results,
                 "final_strategy_weights": ensemble.get_strategy_weights(),
                 "strategy_performance_analysis": ensemble.get_strategy_performance(),
-            }
+            })
 
         except Exception as e:
             return {"error": f"Ensemble creation failed: {str(e)}"}

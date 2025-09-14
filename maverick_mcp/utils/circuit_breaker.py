@@ -1,6 +1,15 @@
 """
-Enhanced Circuit Breaker implementation with failure rate tracking, timeouts, and metrics.
-Provides production-ready circuit breakers for external API calls.
+Comprehensive circuit breaker implementation for all external API calls.
+
+This module provides circuit breakers for:
+- yfinance (Yahoo Finance)
+- Tiingo API
+- FRED API
+- OpenRouter AI API
+- Exa Search API
+- Any other external services
+
+Circuit breakers help prevent cascade failures and provide graceful degradation.
 """
 
 import asyncio
@@ -140,6 +149,65 @@ class CircuitBreakerMetrics:
                 "max_duration": max(durations) if durations else 0.0,
             }
 
+    def get_total_calls(self) -> int:
+        """Get total number of calls in the window."""
+        with self._lock:
+            now = time.time()
+            self._cleanup_old_data(now)
+            return len(self.calls)
+
+    def get_success_rate(self) -> float:
+        """Get success rate in the window."""
+        stats = self.get_stats()
+        return stats["success_rate"]
+
+    def get_failure_rate(self) -> float:
+        """Get failure rate in the window."""
+        stats = self.get_stats()
+        return stats["failure_rate"]
+
+    def get_average_response_time(self) -> float:
+        """Get average response time in the window."""
+        stats = self.get_stats()
+        return stats["avg_duration"]
+
+    def get_last_failure_time(self) -> float | None:
+        """Get timestamp of last failure."""
+        with self._lock:
+            for timestamp, success, _ in reversed(self.calls):
+                if not success:
+                    return timestamp
+            return None
+
+    def get_uptime_percentage(self) -> float:
+        """Get uptime percentage based on state changes."""
+        with self._lock:
+            if not self.state_changes:
+                return 100.0
+
+            now = time.time()
+            window_start = now - self.window_size
+            uptime = 0.0
+            last_time = window_start
+            last_state = CircuitState.CLOSED
+
+            for timestamp, state in self.state_changes:
+                if timestamp < window_start:
+                    last_state = state
+                    continue
+
+                if last_state == CircuitState.CLOSED:
+                    uptime += timestamp - last_time
+
+                last_time = timestamp
+                last_state = state
+
+            if last_state == CircuitState.CLOSED:
+                uptime += now - last_time
+
+            total_time = now - window_start
+            return (uptime / total_time * 100) if total_time > 0 else 100.0
+
     def _cleanup_old_data(self, now: float):
         """Remove data outside the window."""
         cutoff = now - self.window_size
@@ -180,6 +248,12 @@ class EnhancedCircuitBreaker:
             return self._state
 
     @property
+    def consecutive_failures(self) -> int:
+        """Get consecutive failures count."""
+        with self._lock:
+            return self._consecutive_failures
+
+    @property
     def is_open(self) -> bool:
         """Check if circuit is open."""
         return self.state == CircuitState.OPEN
@@ -188,6 +262,21 @@ class EnhancedCircuitBreaker:
     def is_closed(self) -> bool:
         """Check if circuit is closed."""
         return self.state == CircuitState.CLOSED
+
+    def get_metrics(self) -> CircuitBreakerMetrics:
+        """Get circuit breaker metrics."""
+        return self._metrics
+
+    def time_until_retry(self) -> float | None:
+        """Get time until next retry attempt."""
+        with self._lock:
+            if self._state == CircuitState.OPEN and self._last_failure_time:
+                return max(
+                    0,
+                    self.config.recovery_timeout
+                    - (time.time() - self._last_failure_time),
+                )
+            return None
 
     def _should_open(self) -> bool:
         """Determine if circuit should open based on detection strategy."""
@@ -263,6 +352,10 @@ class EnhancedCircuitBreaker:
                 self._half_open_successes = 0
             elif self._state == CircuitState.CLOSED and self._should_open():
                 self._transition_state(CircuitState.OPEN)
+
+    def call(self, func: Callable[..., Any], *args, **kwargs) -> Any:
+        """Call function through circuit breaker (sync version)."""
+        return self.call_sync(func, *args, **kwargs)
 
     async def call_async(self, func: Callable[..., Any], *args, **kwargs) -> Any:
         """
@@ -416,6 +509,47 @@ class EnhancedCircuitBreaker:
             }
 
 
+# Global registry of circuit breakers
+_breakers: dict[str, EnhancedCircuitBreaker] = {}
+_breakers_lock = threading.Lock()
+
+
+def _get_or_create_breaker(config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
+    """Get or create a circuit breaker."""
+    with _breakers_lock:
+        if config.name not in _breakers:
+            _breakers[config.name] = EnhancedCircuitBreaker(config)
+        return _breakers[config.name]
+
+
+def register_circuit_breaker(name: str, breaker: EnhancedCircuitBreaker):
+    """Register a circuit breaker in the global registry."""
+    with _breakers_lock:
+        _breakers[name] = breaker
+        logger.debug(f"Registered circuit breaker: {name}")
+
+
+def get_circuit_breaker(name: str) -> EnhancedCircuitBreaker | None:
+    """Get a circuit breaker by name."""
+    return _breakers.get(name)
+
+
+def get_all_circuit_breakers() -> dict[str, EnhancedCircuitBreaker]:
+    """Get all circuit breakers."""
+    return _breakers.copy()
+
+
+def reset_all_circuit_breakers():
+    """Reset all circuit breakers."""
+    for breaker in _breakers.values():
+        breaker.reset()
+
+
+def get_circuit_breaker_status() -> dict[str, dict[str, Any]]:
+    """Get status of all circuit breakers."""
+    return {name: breaker.get_status() for name, breaker in _breakers.items()}
+
+
 def circuit_breaker(
     name: str | None = None,
     failure_threshold: int | None = None,
@@ -471,35 +605,331 @@ def circuit_breaker(
     return decorator
 
 
-# Global registry of circuit breakers
-_breakers: dict[str, EnhancedCircuitBreaker] = {}
-_breakers_lock = threading.Lock()
+# Circuit breaker configurations for different services
+CIRCUIT_BREAKER_CONFIGS = {
+    "yfinance": CircuitBreakerConfig(
+        name="yfinance",
+        failure_threshold=3,
+        failure_rate_threshold=0.6,
+        timeout_threshold=30.0,
+        recovery_timeout=120,
+        success_threshold=2,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "tiingo": CircuitBreakerConfig(
+        name="tiingo",
+        failure_threshold=5,
+        failure_rate_threshold=0.7,
+        timeout_threshold=15.0,
+        recovery_timeout=60,
+        success_threshold=3,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "fred_api": CircuitBreakerConfig(
+        name="fred_api",
+        failure_threshold=3,
+        failure_rate_threshold=0.5,
+        timeout_threshold=20.0,
+        recovery_timeout=180,
+        success_threshold=2,
+        window_size=600,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "openrouter": CircuitBreakerConfig(
+        name="openrouter",
+        failure_threshold=5,
+        failure_rate_threshold=0.6,
+        timeout_threshold=60.0,  # AI APIs can be slower
+        recovery_timeout=120,
+        success_threshold=2,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "exa": CircuitBreakerConfig(
+        name="exa",
+        failure_threshold=4,
+        failure_rate_threshold=0.6,
+        timeout_threshold=30.0,
+        recovery_timeout=90,
+        success_threshold=2,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "news_api": CircuitBreakerConfig(
+        name="news_api",
+        failure_threshold=3,
+        failure_rate_threshold=0.5,
+        timeout_threshold=25.0,
+        recovery_timeout=120,
+        success_threshold=2,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "finviz": CircuitBreakerConfig(
+        name="finviz",
+        failure_threshold=3,
+        failure_rate_threshold=0.6,
+        timeout_threshold=20.0,
+        recovery_timeout=150,
+        success_threshold=2,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+    "external_api": CircuitBreakerConfig(
+        name="external_api",
+        failure_threshold=4,
+        failure_rate_threshold=0.6,
+        timeout_threshold=25.0,
+        recovery_timeout=120,
+        success_threshold=2,
+        window_size=300,
+        detection_strategy=FailureDetectionStrategy.COMBINED,
+        expected_exceptions=(Exception,),
+    ),
+}
 
 
-def _get_or_create_breaker(config: CircuitBreakerConfig) -> EnhancedCircuitBreaker:
-    """Get or create a circuit breaker."""
-    with _breakers_lock:
-        if config.name not in _breakers:
-            _breakers[config.name] = EnhancedCircuitBreaker(config)
-        return _breakers[config.name]
+def initialize_circuit_breakers() -> dict[str, EnhancedCircuitBreaker]:
+    """Initialize all circuit breakers for external services."""
+    circuit_breakers = {}
+
+    for service_name, config in CIRCUIT_BREAKER_CONFIGS.items():
+        try:
+            breaker = EnhancedCircuitBreaker(config)
+            register_circuit_breaker(service_name, breaker)
+            circuit_breakers[service_name] = breaker
+            logger.info(f"Initialized circuit breaker for {service_name}")
+        except Exception as e:
+            logger.error(f"Failed to initialize circuit breaker for {service_name}: {e}")
+
+    logger.info(f"Initialized {len(circuit_breakers)} circuit breakers")
+    return circuit_breakers
 
 
-def get_circuit_breaker(name: str) -> EnhancedCircuitBreaker | None:
-    """Get a circuit breaker by name."""
-    return _breakers.get(name)
+def with_circuit_breaker(service_name: str):
+    """Decorator to wrap functions with a circuit breaker.
+
+    Args:
+        service_name: Name of the service/circuit breaker to use
+
+    Usage:
+        @with_circuit_breaker("yfinance")
+        def fetch_stock_data(symbol: str):
+            # API call code here
+            pass
+    """
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            breaker = get_circuit_breaker(service_name)
+            if not breaker:
+                logger.warning(f"Circuit breaker '{service_name}' not found, executing without protection")
+                return func(*args, **kwargs)
+
+            return breaker.call(func, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
-def get_all_circuit_breakers() -> dict[str, EnhancedCircuitBreaker]:
-    """Get all circuit breakers."""
-    return _breakers.copy()
+def with_async_circuit_breaker(service_name: str):
+    """Decorator to wrap async functions with a circuit breaker.
+
+    Args:
+        service_name: Name of the service/circuit breaker to use
+
+    Usage:
+        @with_async_circuit_breaker("tiingo")
+        async def fetch_real_time_data(symbol: str):
+            # Async API call code here
+            pass
+    """
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs) -> T:
+            breaker = get_circuit_breaker(service_name)
+            if not breaker:
+                logger.warning(f"Circuit breaker '{service_name}' not found, executing without protection")
+                return await func(*args, **kwargs)
+
+            return await breaker.call_async(func, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
-def reset_all_circuit_breakers():
-    """Reset all circuit breakers."""
-    for breaker in _breakers.values():
-        breaker.reset()
+class CircuitBreakerManager:
+    """Manager for all circuit breakers in the application."""
+
+    def __init__(self):
+        self._breakers = {}
+        self._initialized = False
+
+    def initialize(self) -> bool:
+        """Initialize all circuit breakers."""
+        if self._initialized:
+            return True
+
+        try:
+            self._breakers = initialize_circuit_breakers()
+            self._initialized = True
+            logger.info("Circuit breaker manager initialized successfully")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize circuit breaker manager: {e}")
+            return False
+
+    def get_breaker(self, service_name: str) -> EnhancedCircuitBreaker | None:
+        """Get a circuit breaker by service name."""
+        if not self._initialized:
+            self.initialize()
+
+        return self._breakers.get(service_name)
+
+    def get_all_breakers(self) -> dict[str, EnhancedCircuitBreaker]:
+        """Get all circuit breakers."""
+        if not self._initialized:
+            self.initialize()
+
+        return self._breakers.copy()
+
+    def reset_breaker(self, service_name: str) -> bool:
+        """Reset a specific circuit breaker."""
+        breaker = self.get_breaker(service_name)
+        if breaker:
+            breaker.reset()
+            logger.info(f"Reset circuit breaker for {service_name}")
+            return True
+        return False
+
+    def reset_all_breakers(self) -> int:
+        """Reset all circuit breakers."""
+        reset_count = 0
+        for service_name, breaker in self._breakers.items():
+            try:
+                breaker.reset()
+                reset_count += 1
+                logger.info(f"Reset circuit breaker for {service_name}")
+            except Exception as e:
+                logger.error(f"Failed to reset circuit breaker for {service_name}: {e}")
+
+        logger.info(f"Reset {reset_count} circuit breakers")
+        return reset_count
+
+    def get_health_status(self) -> dict[str, dict[str, Any]]:
+        """Get health status of all circuit breakers."""
+        if not self._initialized:
+            self.initialize()
+
+        status = {}
+        for service_name, breaker in self._breakers.items():
+            try:
+                metrics = breaker.get_metrics()
+                status[service_name] = {
+                    "name": service_name,
+                    "state": breaker.state.value,
+                    "consecutive_failures": breaker.consecutive_failures,
+                    "time_until_retry": breaker.time_until_retry(),
+                    "metrics": {
+                        "total_calls": metrics.get_total_calls(),
+                        "success_rate": metrics.get_success_rate(),
+                        "failure_rate": metrics.get_failure_rate(),
+                        "avg_response_time": metrics.get_average_response_time(),
+                        "last_failure_time": metrics.get_last_failure_time(),
+                        "uptime_percentage": metrics.get_uptime_percentage(),
+                    },
+                }
+            except Exception as e:
+                status[service_name] = {
+                    "name": service_name,
+                    "state": "error",
+                    "error": str(e),
+                }
+
+        return status
 
 
-def get_circuit_breaker_status() -> dict[str, dict[str, Any]]:
-    """Get status of all circuit breakers."""
-    return {name: breaker.get_status() for name, breaker in _breakers.items()}
+# Global circuit breaker manager instance
+_circuit_breaker_manager = CircuitBreakerManager()
+
+
+def get_circuit_breaker_manager() -> CircuitBreakerManager:
+    """Get the global circuit breaker manager."""
+    return _circuit_breaker_manager
+
+
+def initialize_all_circuit_breakers() -> bool:
+    """Initialize all circuit breakers (convenience function)."""
+    return _circuit_breaker_manager.initialize()
+
+
+def get_all_circuit_breaker_status() -> dict[str, dict[str, Any]]:
+    """Get status of all circuit breakers (convenience function)."""
+    return _circuit_breaker_manager.get_health_status()
+
+
+# Specific circuit breaker decorators for common services
+
+def with_yfinance_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator for yfinance API calls."""
+    return with_circuit_breaker("yfinance")(func)
+
+
+def with_tiingo_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator for Tiingo API calls."""
+    return with_circuit_breaker("tiingo")(func)
+
+
+def with_fred_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator for FRED API calls."""
+    return with_circuit_breaker("fred_api")(func)
+
+
+def with_openrouter_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator for OpenRouter API calls."""
+    return with_circuit_breaker("openrouter")(func)
+
+
+def with_exa_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Decorator for Exa API calls."""
+    return with_circuit_breaker("exa")(func)
+
+
+# Async versions
+
+def with_async_yfinance_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Async decorator for yfinance API calls."""
+    return with_async_circuit_breaker("yfinance")(func)
+
+
+def with_async_tiingo_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Async decorator for Tiingo API calls."""
+    return with_async_circuit_breaker("tiingo")(func)
+
+
+def with_async_fred_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Async decorator for FRED API calls."""
+    return with_async_circuit_breaker("fred_api")(func)
+
+
+def with_async_openrouter_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Async decorator for OpenRouter API calls."""
+    return with_async_circuit_breaker("openrouter")(func)
+
+
+def with_async_exa_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+    """Async decorator for Exa API calls."""
+    return with_async_circuit_breaker("exa")(func)

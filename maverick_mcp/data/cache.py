@@ -2,17 +2,22 @@
 Cache utilities for Maverick-MCP.
 Implements Redis-based caching with fallback to in-memory caching.
 Now uses centralized Redis connection pooling for improved performance.
+Includes timezone handling, smart invalidation, and performance monitoring.
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
 import pickle
 import time
 import zlib
+from collections import defaultdict
+from datetime import UTC, datetime
 from typing import Any
 
+import msgpack
 import pandas as pd
 import redis
 from dotenv import load_dotenv
@@ -42,15 +47,163 @@ REDIS_SSL = os.getenv("REDIS_SSL", "False").lower() == "true"
 # Cache configuration
 CACHE_ENABLED = os.getenv("CACHE_ENABLED", "True").lower() == "true"
 CACHE_TTL_SECONDS = settings.performance.cache_ttl_seconds
+CACHE_VERSION = os.getenv("CACHE_VERSION", "v1")
 
-# In-memory cache as fallback
+# Serialization format priorities
+SERIALIZATION_FORMATS = {
+    "msgpack_zlib": {"priority": 1, "compression": True},
+    "pickle_zlib": {"priority": 2, "compression": True},
+    "msgpack": {"priority": 3, "compression": False},
+    "pickle": {"priority": 4, "compression": False},
+    "json": {"priority": 5, "compression": False},
+}
+
+# Cache statistics
+_cache_stats = defaultdict(int)
+_cache_stats["hits"] = 0
+_cache_stats["misses"] = 0
+_cache_stats["sets"] = 0
+_cache_stats["errors"] = 0
+_cache_stats["serialization_time"] = 0
+_cache_stats["deserialization_time"] = 0
+
+# In-memory cache as fallback with memory management
 _memory_cache: dict[str, dict[str, Any]] = {}
 _memory_cache_max_size = 1000  # Will be updated to use config
 
+# Cache metadata for version tracking
+_cache_metadata: dict[str, dict[str, Any]] = {}
+
+# Memory monitoring
+_cache_memory_stats = {
+    "memory_cache_bytes": 0,
+    "redis_connection_count": 0,
+    "large_object_count": 0,
+    "compression_savings_bytes": 0,
+}
+
+
+def normalize_timezone(dt_index: pd.Index | pd.DatetimeIndex) -> pd.DatetimeIndex:
+    """Normalize timezone-aware datetime index to timezone-naive UTC.
+
+    Args:
+        dt_index: Pandas datetime index that may be timezone-aware
+
+    Returns:
+        Timezone-naive datetime index in UTC
+    """
+    if hasattr(dt_index, "tz") and dt_index.tz is not None:
+        # Convert to UTC then remove timezone info
+        return dt_index.tz_convert("UTC").tz_localize(None)
+    return dt_index
+
+
+def ensure_timezone_naive(df: pd.DataFrame) -> pd.DataFrame:
+    """Ensure DataFrame has timezone-naive datetime index.
+
+    Args:
+        df: DataFrame with potentially timezone-aware index
+
+    Returns:
+        DataFrame with timezone-naive index
+    """
+    if isinstance(df.index, pd.DatetimeIndex):
+        df = df.copy()
+        df.index = normalize_timezone(df.index)
+    return df
+
+
+def get_cache_stats() -> dict[str, Any]:
+    """Get current cache statistics with memory information.
+
+    Returns:
+        Dictionary containing cache performance metrics
+    """
+    stats = dict(_cache_stats)
+
+    # Calculate hit rate
+    total_requests = stats["hits"] + stats["misses"]
+    hit_rate = (stats["hits"] / total_requests * 100) if total_requests > 0 else 0
+
+    stats["hit_rate_percent"] = round(hit_rate, 2)
+    stats["total_requests"] = total_requests
+
+    # Memory cache stats
+    stats["memory_cache_size"] = len(_memory_cache)
+    stats["memory_cache_max_size"] = _memory_cache_max_size
+
+    # Add memory statistics
+    stats.update(_cache_memory_stats)
+
+    # Calculate memory cache size in bytes
+    memory_size_bytes = 0
+    for entry in _memory_cache.values():
+        if "data" in entry:
+            try:
+                if hasattr(entry["data"], "__sizeof__"):
+                    memory_size_bytes += entry["data"].__sizeof__()
+                elif isinstance(entry["data"], (str, bytes)):
+                    memory_size_bytes += len(entry["data"])
+                elif isinstance(entry["data"], pd.DataFrame):
+                    memory_size_bytes += entry["data"].memory_usage(deep=True).sum()
+            except Exception:
+                pass  # Skip if size calculation fails
+
+    stats["memory_cache_bytes"] = memory_size_bytes
+    stats["memory_cache_mb"] = memory_size_bytes / (1024**2)
+
+    return stats
+
+
+def reset_cache_stats() -> None:
+    """Reset cache statistics."""
+    global _cache_stats
+    _cache_stats.clear()
+    _cache_stats.update(
+        {
+            "hits": 0,
+            "misses": 0,
+            "sets": 0,
+            "errors": 0,
+            "serialization_time": 0,
+            "deserialization_time": 0,
+        }
+    )
+
+
+def generate_cache_key(base_key: str, **kwargs) -> str:
+    """Generate versioned cache key with consistent hashing.
+
+    Args:
+        base_key: Base cache key
+        **kwargs: Additional parameters to include in key
+
+    Returns:
+        Versioned and hashed cache key
+    """
+    # Include cache version and sorted parameters
+    key_parts = [CACHE_VERSION, base_key]
+
+    # Sort kwargs for consistent key generation
+    if kwargs:
+        sorted_params = sorted(kwargs.items())
+        param_str = ":".join(f"{k}={v}" for k, v in sorted_params)
+        key_parts.append(param_str)
+
+    full_key = ":".join(str(part) for part in key_parts)
+
+    # Hash long keys to prevent Redis key length limits
+    if len(full_key) > 250:
+        key_hash = hashlib.md5(full_key.encode()).hexdigest()
+        return f"{CACHE_VERSION}:hashed:{key_hash}"
+
+    return full_key
+
 
 def _cleanup_expired_memory_cache():
-    """Clean up expired entries from memory cache and enforce size limit."""
+    """Clean up expired entries from memory cache and enforce size limit with memory tracking."""
     current_time = time.time()
+    bytes_freed = 0
 
     # Remove expired entries
     expired_keys = [
@@ -59,21 +212,61 @@ def _cleanup_expired_memory_cache():
         if "expiry" in v and v["expiry"] < current_time
     ]
     for k in expired_keys:
+        entry = _memory_cache[k]
+        if "data" in entry and isinstance(entry["data"], pd.DataFrame):
+            bytes_freed += entry["data"].memory_usage(deep=True).sum()
         del _memory_cache[k]
 
+    # Calculate current memory usage
+    current_memory_bytes = 0
+    for entry in _memory_cache.values():
+        if "data" in entry and isinstance(entry["data"], pd.DataFrame):
+            current_memory_bytes += entry["data"].memory_usage(deep=True).sum()
+
+    # Enforce memory-based size limit (100MB default)
+    memory_limit_bytes = 100 * 1024 * 1024  # 100MB
+
     # Enforce size limit - remove oldest entries if over limit
-    if len(_memory_cache) > _memory_cache_max_size:
+    if (
+        len(_memory_cache) > _memory_cache_max_size
+        or current_memory_bytes > memory_limit_bytes
+    ):
         # Sort by expiry time (oldest first)
         sorted_items = sorted(
             _memory_cache.items(), key=lambda x: x[1].get("expiry", float("inf"))
         )
-        # Remove oldest entries
-        num_to_remove = len(_memory_cache) - _memory_cache_max_size
-        for k, _ in sorted_items[:num_to_remove]:
-            del _memory_cache[k]
-        logger.debug(
-            f"Removed {num_to_remove} entries from memory cache to enforce size limit"
-        )
+
+        # Calculate how many to remove
+        num_to_remove = max(len(_memory_cache) - _memory_cache_max_size, 0)
+
+        # Remove by memory if over memory limit
+        if current_memory_bytes > memory_limit_bytes:
+            removed_memory = 0
+            for k, v in sorted_items:
+                if "data" in v and isinstance(v["data"], pd.DataFrame):
+                    entry_size = v["data"].memory_usage(deep=True).sum()
+                    removed_memory += entry_size
+                    bytes_freed += entry_size
+                del _memory_cache[k]
+                num_to_remove = max(num_to_remove, 1)
+
+                if removed_memory >= (current_memory_bytes - memory_limit_bytes):
+                    break
+        else:
+            # Remove by count
+            for k, v in sorted_items[:num_to_remove]:
+                if "data" in v and isinstance(v["data"], pd.DataFrame):
+                    bytes_freed += v["data"].memory_usage(deep=True).sum()
+                del _memory_cache[k]
+
+        if num_to_remove > 0:
+            logger.debug(
+                f"Removed {num_to_remove} entries from memory cache "
+                f"(freed {bytes_freed / (1024**2):.2f}MB)"
+            )
+
+    # Update memory stats
+    _cache_memory_stats["memory_cache_bytes"] = current_memory_bytes - bytes_freed
 
 
 # Global Redis connection pool - created once and reused
@@ -83,34 +276,36 @@ _redis_pool: redis.ConnectionPool | None = None
 def _get_or_create_redis_pool() -> redis.ConnectionPool | None:
     """Create or return existing Redis connection pool."""
     global _redis_pool
-    
+
     if _redis_pool is not None:
         return _redis_pool
-        
+
     try:
         # Build connection pool parameters
         pool_params = {
-            'host': REDIS_HOST,
-            'port': REDIS_PORT,
-            'db': REDIS_DB,
-            'max_connections': settings.db.redis_max_connections,
-            'retry_on_timeout': settings.db.redis_retry_on_timeout,
-            'socket_timeout': settings.db.redis_socket_timeout,
-            'socket_connect_timeout': settings.db.redis_socket_connect_timeout,
-            'health_check_interval': 30,  # Check connection health every 30 seconds
+            "host": REDIS_HOST,
+            "port": REDIS_PORT,
+            "db": REDIS_DB,
+            "max_connections": settings.db.redis_max_connections,
+            "retry_on_timeout": settings.db.redis_retry_on_timeout,
+            "socket_timeout": settings.db.redis_socket_timeout,
+            "socket_connect_timeout": settings.db.redis_socket_connect_timeout,
+            "health_check_interval": 30,  # Check connection health every 30 seconds
         }
-        
+
         # Only add password if provided
         if REDIS_PASSWORD:
-            pool_params['password'] = REDIS_PASSWORD
-            
+            pool_params["password"] = REDIS_PASSWORD
+
         # Only add SSL params if SSL is enabled
         if REDIS_SSL:
-            pool_params['ssl'] = True
-            pool_params['ssl_check_hostname'] = False
-            
+            pool_params["ssl"] = True
+            pool_params["ssl_check_hostname"] = False
+
         _redis_pool = redis.ConnectionPool(**pool_params)
-        logger.debug(f"Created Redis connection pool with {settings.db.redis_max_connections} max connections")
+        logger.debug(
+            f"Created Redis connection pool with {settings.db.redis_max_connections} max connections"
+        )
         return _redis_pool
     except Exception as e:
         logger.warning(f"Failed to create Redis connection pool: {e}")
@@ -120,7 +315,7 @@ def _get_or_create_redis_pool() -> redis.ConnectionPool | None:
 def get_redis_client() -> redis.Redis | None:
     """
     Get a Redis client using the centralized connection pool.
-    
+
     This function uses a singleton connection pool to avoid pool exhaustion
     and provides robust error handling with graceful fallback.
     """
@@ -132,17 +327,17 @@ def get_redis_client() -> redis.Redis | None:
         pool = _get_or_create_redis_pool()
         if pool is None:
             return None
-            
+
         # Create client using the shared pool
         client = redis.Redis(
             connection_pool=pool,
             decode_responses=False,
         )
-        
+
         # Test connection with a timeout to avoid hanging
         client.ping()
         return client  # type: ignore[no-any-return]
-        
+
     except redis.ConnectionError as e:
         logger.warning(f"Redis connection failed: {e}. Using in-memory cache.")
         return None
@@ -159,27 +354,104 @@ def get_redis_client() -> redis.Redis | None:
 
 
 def _deserialize_cached_data(data: bytes, key: str) -> Any:
-    """Deserialize cached data with multiple format support."""
-    try:
-        # Try compressed pickle first (for DataFrames and complex objects)
-        if data[:2] == b'\x78\x9c':  # zlib magic bytes
-            decompressed = zlib.decompress(data)
-            return pickle.loads(decompressed)
-    except Exception:
-        pass
+    """Deserialize cached data with multiple format support and timezone handling."""
+    start_time = time.time()
 
     try:
+        # Try msgpack with zlib compression first (most efficient for DataFrames)
+        if data[:2] == b"\x78\x9c":  # zlib magic bytes
+            try:
+                decompressed = zlib.decompress(data)
+                # Try msgpack first
+                try:
+                    result = msgpack.loads(decompressed, raw=False)
+                    # Handle DataFrame reconstruction with timezone normalization
+                    if isinstance(result, dict) and result.get("_type") == "dataframe":
+                        df = pd.DataFrame.from_dict(result["data"], orient="index")
+
+                        # Restore proper index
+                        if result.get("index_data"):
+                            if result.get("index_type") == "datetime":
+                                df.index = pd.to_datetime(result["index_data"])
+                                df.index = normalize_timezone(df.index)
+                            else:
+                                df.index = result["index_data"]
+                        elif result.get("index_type") == "datetime":
+                            df.index = pd.to_datetime(df.index)
+                            df.index = normalize_timezone(df.index)
+
+                        # Restore column order
+                        if result.get("columns"):
+                            df = df[result["columns"]]
+
+                        return df
+                    return result
+                except Exception as e:
+                    logger.debug(f"Msgpack decompressed failed for {key}: {e}")
+                    # Fall back to pickle for compressed data
+                    try:
+                        result = pickle.loads(decompressed)
+                        # Fix timezone issues for pandas objects
+                        if isinstance(result, pd.DataFrame):
+                            result = ensure_timezone_naive(result)
+                        return result
+                    except Exception as e2:
+                        logger.debug(f"Pickle decompressed failed for {key}: {e2}")
+                        pass
+            except Exception:
+                pass
+
+        # Try msgpack uncompressed
+        try:
+            result = msgpack.loads(data, raw=False)
+            if isinstance(result, dict) and result.get("_type") == "dataframe":
+                df = pd.DataFrame.from_dict(result["data"], orient="index")
+
+                # Restore proper index
+                if result.get("index_data"):
+                    if result.get("index_type") == "datetime":
+                        df.index = pd.to_datetime(result["index_data"])
+                        df.index = normalize_timezone(df.index)
+                    else:
+                        df.index = result["index_data"]
+                elif result.get("index_type") == "datetime":
+                    df.index = pd.to_datetime(df.index)
+                    df.index = normalize_timezone(df.index)
+
+                # Restore column order
+                if result.get("columns"):
+                    df = df[result["columns"]]
+
+                return df
+            return result
+        except Exception:
+            pass
+
         # Try regular pickle
-        return pickle.loads(data)
-    except Exception:
-        pass
+        try:
+            result = pickle.loads(data)
+            if isinstance(result, pd.DataFrame):
+                result = ensure_timezone_naive(result)
+            return result
+        except Exception:
+            pass
 
-    try:
         # Fall back to JSON
-        return json.loads(data)
-    except Exception:
-        logger.warning(f"Failed to deserialize cache data for key {key}")
+        try:
+            return json.loads(data.decode() if isinstance(data, bytes) else data)
+        except Exception:
+            pass
+
+    except Exception as e:
+        _cache_stats["errors"] += 1
+        logger.warning(f"Failed to deserialize cache data for key {key}: {e}")
         return None
+    finally:
+        _cache_stats["deserialization_time"] += time.time() - start_time
+
+    _cache_stats["errors"] += 1
+    logger.warning(f"Failed to deserialize cache data for key {key} - no format worked")
+    return None
 
 
 def get_from_cache(key: str) -> Any | None:
@@ -201,50 +473,147 @@ def get_from_cache(key: str) -> Any | None:
         try:
             data = redis_client.get(key)
             if data:
+                _cache_stats["hits"] += 1
                 logger.debug(f"Cache hit for {key} (Redis)")
-                return _deserialize_cached_data(data, key)  # type: ignore[arg-type]
+                result = _deserialize_cached_data(data, key)  # type: ignore[arg-type]
+                return result
         except Exception as e:
+            _cache_stats["errors"] += 1
             logger.warning(f"Error reading from Redis cache: {e}")
 
     # Fall back to in-memory cache
     if key in _memory_cache:
         entry = _memory_cache[key]
         if "expiry" not in entry or entry["expiry"] > time.time():
+            _cache_stats["hits"] += 1
             logger.debug(f"Cache hit for {key} (memory)")
             return entry["data"]
         else:
             # Clean up expired entry
             del _memory_cache[key]
 
+    _cache_stats["misses"] += 1
     logger.debug(f"Cache miss for {key}")
     return None
 
 
 def _serialize_data(data: Any, key: str) -> bytes:
-    """Serialize data efficiently based on type."""
+    """Serialize data efficiently based on type with optimized formats and memory tracking."""
+    start_time = time.time()
+    original_size = 0
+    compressed_size = 0
+
     try:
-        # Special handling for DataFrames - use compressed pickle
+        # Special handling for DataFrames - use msgpack with timezone normalization
         if isinstance(data, pd.DataFrame):
-            pickled = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
-            compressed = zlib.compress(pickled, level=1)  # Fast compression
-            return compressed
+            original_size = data.memory_usage(deep=True).sum()
+
+            # Track large objects
+            if original_size > 10 * 1024 * 1024:  # 10MB threshold
+                _cache_memory_stats["large_object_count"] += 1
+                logger.debug(
+                    f"Serializing large DataFrame for {key}: {original_size / (1024**2):.2f}MB"
+                )
+
+            # Ensure timezone-naive DataFrame
+            df = ensure_timezone_naive(data)
+
+            # Try msgpack first (most efficient for DataFrames)
+            try:
+                # Convert to msgpack-serializable format with proper index handling
+                df_dict = {
+                    "_type": "dataframe",
+                    "data": df.to_dict("index"),
+                    "index_type": "datetime"
+                    if isinstance(df.index, pd.DatetimeIndex)
+                    else "other",
+                    "columns": list(df.columns),
+                    "index_data": [
+                        str(idx) for idx in df.index
+                    ],  # Convert all index values to string
+                }
+                msgpack_data = msgpack.packb(df_dict)
+                compressed = zlib.compress(msgpack_data, level=1)
+                compressed_size = len(compressed)
+
+                # Track compression savings
+                if original_size > compressed_size:
+                    _cache_memory_stats["compression_savings_bytes"] += (
+                        original_size - compressed_size
+                    )
+
+                return compressed
+            except Exception as e:
+                logger.debug(f"Msgpack DataFrame serialization failed for {key}: {e}")
+                # Fall back to pickle for DataFrames
+                pickled = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
+                compressed = zlib.compress(pickled, level=1)
+                compressed_size = len(compressed)
+
+                if original_size > compressed_size:
+                    _cache_memory_stats["compression_savings_bytes"] += (
+                        original_size - compressed_size
+                    )
+
+                return compressed
 
         # For dictionaries with DataFrames (like backtest results)
-        if isinstance(data, dict) and any(isinstance(v, pd.DataFrame) for v in data.values()):
-            pickled = pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
-            compressed = zlib.compress(pickled, level=1)
-            return compressed
+        if isinstance(data, dict) and any(
+            isinstance(v, pd.DataFrame) for v in data.values()
+        ):
+            # Ensure all DataFrames are timezone-naive
+            processed_data = {}
+            for k, v in data.items():
+                if isinstance(v, pd.DataFrame):
+                    processed_data[k] = ensure_timezone_naive(v)
+                else:
+                    processed_data[k] = v
 
-        # For simple data types, use JSON (faster for small data)
+            try:
+                # Try msgpack for mixed dict with DataFrames
+                serializable_data = {}
+                for k, v in processed_data.items():
+                    if isinstance(v, pd.DataFrame):
+                        serializable_data[k] = {
+                            "_type": "dataframe",
+                            "data": v.to_dict("index"),
+                            "index_type": "datetime"
+                            if isinstance(v.index, pd.DatetimeIndex)
+                            else "other",
+                        }
+                    else:
+                        serializable_data[k] = v
+
+                msgpack_data = msgpack.packb(serializable_data)
+                compressed = zlib.compress(msgpack_data, level=1)
+                return compressed
+            except Exception:
+                # Fall back to pickle
+                pickled = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
+                compressed = zlib.compress(pickled, level=1)
+                return compressed
+
+        # For simple data types, try msgpack first (more efficient than JSON)
         if isinstance(data, (dict, list, str, int, float, bool, type(None))):
-            return json.dumps(data).encode('utf-8')
+            try:
+                return msgpack.packb(data)
+            except Exception:
+                # Fall back to JSON
+                return json.dumps(data).encode("utf-8")
 
         # Default to pickle for other complex objects
         return pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+
     except Exception as e:
+        _cache_stats["errors"] += 1
         logger.warning(f"Failed to serialize data for key {key}: {e}")
-        # Fall back to JSON
-        return json.dumps(data).encode('utf-8')
+        # Fall back to JSON string representation
+        try:
+            return json.dumps(str(data)).encode("utf-8")
+        except Exception:
+            return b"null"
+    finally:
+        _cache_stats["serialization_time"] += time.time() - start_time
 
 
 def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
@@ -268,25 +637,41 @@ def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
     # Serialize data efficiently
     serialized_data = _serialize_data(data, key)
 
+    # Store cache metadata
+    _cache_metadata[key] = {
+        "created_at": datetime.now(UTC).isoformat(),
+        "ttl": ttl,
+        "size_bytes": len(serialized_data),
+        "version": CACHE_VERSION,
+    }
+
+    success = False
+
     # Try Redis first
     redis_client = get_redis_client()
     if redis_client:
         try:
             redis_client.setex(key, ttl, serialized_data)
             logger.debug(f"Saved to Redis cache: {key}")
-            return True
+            success = True
         except Exception as e:
+            _cache_stats["errors"] += 1
             logger.warning(f"Error saving to Redis cache: {e}")
 
-    # Fall back to in-memory cache
-    _memory_cache[key] = {"data": data, "expiry": time.time() + ttl}
-    logger.debug(f"Saved to memory cache: {key}")
+    if not success:
+        # Fall back to in-memory cache
+        _memory_cache[key] = {"data": data, "expiry": time.time() + ttl}
+        logger.debug(f"Saved to memory cache: {key}")
+        success = True
 
-    # Clean up memory cache if needed
-    if len(_memory_cache) > _memory_cache_max_size:
-        _cleanup_expired_memory_cache()
+        # Clean up memory cache if needed
+        if len(_memory_cache) > _memory_cache_max_size:
+            _cleanup_expired_memory_cache()
 
-    return True
+    if success:
+        _cache_stats["sets"] += 1
+
+    return success
 
 
 def cleanup_redis_pool() -> None:

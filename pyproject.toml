@@ -37,6 +37,7 @@ dependencies = [
     "greenlet>=3.0.0",
     "redis>=6.2.0",
     "hiredis>=3.2.1",
+    "msgpack>=1.0.7",
     "certifi>=2024.2.2",
     # Financial data and analysis (core)
     "numpy>=1.26.4",
@@ -56,6 +57,8 @@ dependencies = [
     # System monitoring (basic)
     "psutil>=6.0.0",
     "sentry-sdk[fastapi]>=2.22.0",
+    # Prometheus metrics
+    "prometheus-client>=0.21.1",
     # Trading
     "fredapi>=0.5.2",
     "pandas-datareader>=0.10.0",

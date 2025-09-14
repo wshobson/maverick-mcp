@@ -1,6 +1,67 @@
 """Pre-built strategy templates for VectorBT."""
 
-from typing import Any
+from typing import Any, Dict, Optional
+import pandas as pd
+import numpy as np
+
+
+class SimpleMovingAverageStrategy:
+    """Simple Moving Average crossover strategy for ML integration."""
+
+    def __init__(self, parameters: dict = None, fast_period: int = 10, slow_period: int = 20):
+        """
+        Initialize SMA strategy.
+
+        Args:
+            parameters: Optional dict with fast_period and slow_period
+            fast_period: Period for fast moving average
+            slow_period: Period for slow moving average
+        """
+        if parameters:
+            self.fast_period = parameters.get("fast_period", fast_period)
+            self.slow_period = parameters.get("slow_period", slow_period)
+        else:
+            self.fast_period = fast_period
+            self.slow_period = slow_period
+        self.name = "SMA Crossover"
+        self.parameters = {
+            "fast_period": self.fast_period,
+            "slow_period": self.slow_period
+        }
+
+    def generate_signals(self, data: pd.DataFrame) -> tuple:
+        """
+        Generate buy/sell signals based on SMA crossover.
+
+        Args:
+            data: DataFrame with at least 'close' column
+
+        Returns:
+            Tuple of (entries, exits) as boolean Series
+        """
+        close = data['close'] if 'close' in data.columns else data['Close']
+
+        # Calculate SMAs
+        fast_sma = close.rolling(window=self.fast_period).mean()
+        slow_sma = close.rolling(window=self.slow_period).mean()
+
+        # Generate signals
+        entries = (fast_sma > slow_sma) & (fast_sma.shift(1) <= slow_sma.shift(1))
+        exits = (fast_sma < slow_sma) & (fast_sma.shift(1) >= slow_sma.shift(1))
+
+        # Handle NaN values
+        entries = entries.fillna(False)
+        exits = exits.fillna(False)
+
+        return entries, exits
+
+    def get_parameters(self) -> Dict[str, Any]:
+        """Get strategy parameters."""
+        return {
+            "fast_period": self.fast_period,
+            "slow_period": self.slow_period
+        }
+
 
 STRATEGY_TEMPLATES = {
     "sma_cross": {
@@ -201,6 +262,64 @@ entries = (returns > {momentum_threshold}) & volume_surge
 
 # Exit: negative momentum or volume dry up
 exits = (returns < -{momentum_threshold}) | (volume < avg_volume * 0.8)
+""",
+    },
+    "online_learning": {
+        "name": "Online Learning Strategy",
+        "description": "Adaptive strategy using online learning to predict price movements",
+        "parameters": {
+            "lookback": 20,
+            "learning_rate": 0.01,
+            "update_frequency": 5,
+        },
+        "optimization_ranges": {
+            "lookback": [10, 20, 30, 50],
+            "learning_rate": [0.001, 0.01, 0.1],
+            "update_frequency": [1, 5, 10, 20],
+        },
+        "code": """
+# Online Learning Strategy (ML-based)
+# Uses streaming updates to adapt to market conditions
+# Implements SGD classifier with technical features
+""",
+    },
+    "regime_aware": {
+        "name": "Regime-Aware Strategy",
+        "description": "Adapts strategy based on detected market regime (trending/ranging)",
+        "parameters": {
+            "regime_window": 50,
+            "threshold": 0.02,
+            "trend_strategy": "momentum",
+            "range_strategy": "mean_reversion",
+        },
+        "optimization_ranges": {
+            "regime_window": [20, 50, 100],
+            "threshold": [0.01, 0.02, 0.05],
+        },
+        "code": """
+# Regime-Aware Strategy
+# Detects market regime and switches between strategies
+# Uses volatility and trend strength indicators
+""",
+    },
+    "ensemble": {
+        "name": "Ensemble Strategy",
+        "description": "Combines multiple strategies with weighted voting",
+        "parameters": {
+            "fast_period": 10,
+            "slow_period": 20,
+            "rsi_period": 14,
+            "weight_method": "equal",
+        },
+        "optimization_ranges": {
+            "fast_period": [5, 10, 15],
+            "slow_period": [20, 30, 50],
+            "rsi_period": [7, 14, 21],
+        },
+        "code": """
+# Ensemble Strategy
+# Combines SMA, RSI, and MACD signals
+# Uses voting or weighted average for final signal
 """,
     },
 }

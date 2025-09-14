@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from maverick_mcp.exceptions import CircuitBreakerError, ExternalServiceError
-from maverick_mcp.utils.circuit_breaker_enhanced import (
+from maverick_mcp.utils.circuit_breaker import (
     CircuitBreakerConfig,
     CircuitBreakerMetrics,
     CircuitState,
@@ -353,7 +353,7 @@ class TestCircuitBreakerRegistry:
     def test_get_all_circuit_breakers(self):
         """Test getting all circuit breakers."""
         # Clear existing (from other tests)
-        from maverick_mcp.utils.circuit_breaker_enhanced import _breakers
+        from maverick_mcp.utils.circuit_breaker import _breakers
 
         _breakers.clear()
 

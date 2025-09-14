@@ -350,6 +350,30 @@ def register_backtesting_tools(mcp: FastMCP) -> None:
         logger.error(f"✗ Failed to register backtesting tools: {e}")
 
 
+def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
+    """Register MCP prompts and resources for better client introspection"""
+    try:
+        from maverick_mcp.api.routers.mcp_prompts import register_mcp_prompts
+
+        register_mcp_prompts(mcp)
+        logger.info("✓ MCP prompts registered successfully")
+    except ImportError:
+        logger.warning("MCP prompts module not available")
+    except Exception as e:
+        logger.error(f"✗ Failed to register MCP prompts: {e}")
+
+    # Register introspection tools
+    try:
+        from maverick_mcp.api.routers.introspection import register_introspection_tools
+
+        register_introspection_tools(mcp)
+        logger.info("✓ Introspection tools registered successfully")
+    except ImportError:
+        logger.warning("Introspection module not available")
+    except Exception as e:
+        logger.error(f"✗ Failed to register introspection tools: {e}")
+
+
 def register_all_router_tools(mcp: FastMCP) -> None:
     """Register all router tools directly on the main server"""
     logger.info("Starting tool registration process...")
@@ -400,7 +424,31 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     except Exception as e:
         logger.error(f"✗ Failed to register research tools: {e}")
 
+    try:
+        # Import and register health monitoring tools
+        from maverick_mcp.api.routers.health_tools import register_health_tools
+
+        register_health_tools(mcp)
+        logger.info("✓ Health monitoring tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register health monitoring tools: {e}")
+
     # Register backtesting tools
     register_backtesting_tools(mcp)
 
+    # Register MCP prompts and resources for introspection
+    register_mcp_prompts_and_resources(mcp)
+
     logger.info("Tool registration process completed")
+    logger.info("📋 All tools registered:")
+    logger.info("   • Technical analysis tools")
+    logger.info("   • Stock screening tools")
+    logger.info("   • Portfolio analysis tools")
+    logger.info("   • Data retrieval tools")
+    logger.info("   • Performance monitoring tools")
+    logger.info("   • Agent orchestration tools")
+    logger.info("   • Research and analysis tools")
+    logger.info("   • Health monitoring tools")
+    logger.info("   • Backtesting system tools")
+    logger.info("   • MCP prompts for introspection")
+    logger.info("   • Introspection and discovery tools")

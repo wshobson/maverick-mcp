@@ -7,9 +7,9 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from maverick_mcp.data.cache import CacheManager
+from maverick_mcp.data.cache import CacheManager, generate_cache_key, ensure_timezone_naive, get_cache_stats
 from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
 from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
 
@@ -97,8 +97,14 @@ class CacheWarmer:
             end_date = datetime.now().strftime("%Y-%m-%d")
             start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 
-            # Generate cache key
-            cache_key = f"backtest_data:{symbol}:{start_date}:{end_date}:1d"
+            # Generate versioned cache key
+            cache_key = generate_cache_key(
+                "backtest_data",
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                interval="1d"
+            )
 
             # Check if already cached
             if await self.cache.exists(cache_key):
@@ -117,19 +123,15 @@ class CacheWarmer:
             )
 
             if data is not None and not data.empty:
-                # Normalize column names
+                # Normalize column names and ensure timezone-naive
                 data.columns = [col.lower() for col in data.columns]
+                data = ensure_timezone_naive(data)
 
-                # Convert to cacheable format
-                data_copy = data.copy()
-                data_copy.index = data_copy.index.astype(str)
-                cache_data = data_copy.to_dict('index')
+                # Cache with adaptive TTL based on data age
+                ttl = 86400 if days > 7 else 3600  # 24h for older data, 1h for recent
+                await self.cache.set(cache_key, data, ttl=ttl)
 
-                # Cache with appropriate TTL
-                ttl = 3600 if days <= 5 else 7200  # 1 hour for recent, 2 hours for older
-                await self.cache.set(cache_key, cache_data, ttl=ttl)
-
-                logger.debug(f"Warmed cache for {symbol} ({period})")
+                logger.debug(f"Warmed cache for {symbol} ({period}) - {len(data)} rows")
 
         except Exception as e:
             logger.warning(f"Failed to warm cache for {symbol} ({period}): {e}")
@@ -222,19 +224,43 @@ class CacheWarmer:
         except Exception as e:
             logger.warning(f"Failed to warm technicals for {symbol}: {e}")
 
-    async def run_full_warmup(self):
+    async def run_full_warmup(self, report_stats: bool = True):
         """Run complete cache warming routine."""
         logger.info("Starting full cache warmup")
 
+        # Get initial cache stats
+        initial_stats = get_cache_stats() if report_stats else None
+
+        start_time = asyncio.get_event_loop().time()
+
         # Run all warming tasks
-        await asyncio.gather(
+        results = await asyncio.gather(
             self.warm_popular_stocks(),
             self.warm_screening_data(),
             self.warm_technical_indicators(),
             return_exceptions=True
         )
 
-        logger.info("Full cache warmup completed")
+        end_time = asyncio.get_event_loop().time()
+
+        # Report results and performance
+        successful_tasks = sum(1 for r in results if not isinstance(r, Exception))
+        failed_tasks = len(results) - successful_tasks
+
+        logger.info(
+            f"Full cache warmup completed in {end_time - start_time:.2f}s - "
+            f"{successful_tasks} successful, {failed_tasks} failed"
+        )
+
+        if report_stats and initial_stats:
+            final_stats = get_cache_stats()
+            new_items = final_stats["sets"] - initial_stats["sets"]
+            hit_rate_change = final_stats["hit_rate_percent"] - initial_stats["hit_rate_percent"]
+
+            logger.info(
+                f"Cache warmup results: +{new_items} items cached, "
+                f"hit rate change: {hit_rate_change:+.1f}%"
+            )
 
     async def schedule_periodic_warmup(self, interval_minutes: int = 30):
         """Schedule periodic cache warming.
@@ -252,6 +278,71 @@ class CacheWarmer:
 
             # Wait for next cycle
             await asyncio.sleep(interval_minutes * 60)
+
+    async def benchmark_cache_performance(self, symbols: Optional[List[str]] = None) -> dict[str, Any]:
+        """Benchmark cache performance for analysis.
+
+        Args:
+            symbols: List of symbols to test (uses top 5 if None)
+
+        Returns:
+            Dictionary with benchmark results
+        """
+        symbols = symbols or self.popular_symbols[:5]
+        logger.info(f"Benchmarking cache performance with {len(symbols)} symbols")
+
+        # Test data retrieval performance
+        import time
+        start_time = time.time()
+        cache_hits = 0
+        cache_misses = 0
+
+        for symbol in symbols:
+            for period_name, days in self.common_periods:
+                end_date = datetime.now().strftime("%Y-%m-%d")
+                start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+
+                cache_key = generate_cache_key(
+                    "backtest_data",
+                    symbol=symbol,
+                    start_date=start_date,
+                    end_date=end_date,
+                    interval="1d"
+                )
+
+                cached_data = await self.cache.get(cache_key)
+                if cached_data is not None:
+                    cache_hits += 1
+                else:
+                    cache_misses += 1
+
+        end_time = time.time()
+
+        # Calculate metrics
+        total_requests = cache_hits + cache_misses
+        hit_rate = (cache_hits / total_requests * 100) if total_requests > 0 else 0
+        avg_request_time = (end_time - start_time) / total_requests if total_requests > 0 else 0
+
+        # Get current cache stats
+        cache_stats = get_cache_stats()
+
+        benchmark_results = {
+            "symbols_tested": len(symbols),
+            "total_requests": total_requests,
+            "cache_hits": cache_hits,
+            "cache_misses": cache_misses,
+            "hit_rate_percent": round(hit_rate, 2),
+            "avg_request_time_ms": round(avg_request_time * 1000, 2),
+            "total_time_seconds": round(end_time - start_time, 2),
+            "cache_stats": cache_stats,
+        }
+
+        logger.info(
+            f"Benchmark completed: {hit_rate:.1f}% hit rate, "
+            f"{avg_request_time*1000:.1f}ms avg request time"
+        )
+
+        return benchmark_results
 
     def shutdown(self):
         """Clean up resources."""

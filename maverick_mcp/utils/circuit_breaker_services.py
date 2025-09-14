@@ -10,7 +10,7 @@ import requests
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 
 from maverick_mcp.config.settings import get_settings
-from maverick_mcp.utils.circuit_breaker_enhanced import (
+from maverick_mcp.utils.circuit_breaker import (
     CircuitBreakerConfig,
     EnhancedCircuitBreaker,
     FailureDetectionStrategy,
