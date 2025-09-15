@@ -29,6 +29,7 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 ## Features
 
 - **Pre-seeded Database**: 520 S&P 500 stocks with comprehensive screening recommendations
+- **Advanced Backtesting**: VectorBT-powered engine with 15+ built-in strategies and ML algorithms
 - **Fast Development**: Comprehensive Makefile, smart error handling, hot reload, and parallel processing
 - **Stock Data Access**: Historical and real-time stock data with intelligent caching
 - **Technical Analysis**: 20+ indicators including SMA, EMA, RSI, MACD, Bollinger Bands, and more
@@ -344,6 +345,44 @@ Configure MaverickMCP via `.env` file or environment variables:
 - `CACHE_ENABLED=true` - Enable Redis caching
 - `CACHE_TTL_SECONDS=3600` - Cache duration
 
+## Usage Examples
+
+### Backtesting Example
+
+Once connected to Claude Desktop, you can use natural language to run backtests:
+
+```
+"Run a backtest on AAPL using the momentum strategy for the last 6 months"
+
+"Compare the performance of mean reversion vs trend following strategies on SPY"
+
+"Optimize the RSI strategy parameters for TSLA with walk-forward analysis"
+
+"Show me the Sharpe ratio and maximum drawdown for a portfolio of tech stocks using the adaptive ML strategy"
+
+"Generate a detailed backtest report for the ensemble strategy on the S&P 500 sectors"
+```
+
+### Technical Analysis Example
+
+```
+"Show me the RSI and MACD analysis for NVDA"
+
+"Identify support and resistance levels for MSFT"
+
+"Get full technical analysis for the top 5 momentum stocks"
+```
+
+### Portfolio Optimization Example
+
+```
+"Optimize a portfolio of AAPL, GOOGL, MSFT, and AMZN for maximum Sharpe ratio"
+
+"Calculate the correlation matrix for my tech portfolio"
+
+"Analyze the risk-adjusted returns for energy sector stocks"
+```
+
 ## Tools
 
 MaverickMCP provides 35+ financial analysis tools organized by category, including advanced AI-powered research agents:
@@ -392,6 +431,24 @@ MaverickMCP provides 35+ financial analysis tools organized by category, includi
 - **Early Termination**: Confidence-based early stopping to save time and costs
 - **Content Filtering**: High-credibility source prioritization
 - **Error Recovery**: Circuit breakers and comprehensive error handling
+
+### Backtesting Tools (NEW) - Production-Ready Strategy Testing
+
+- `run_backtest` - Execute backtests with VectorBT engine for any strategy
+- `compare_strategies` - A/B testing framework for strategy comparison
+- `optimize_strategy` - Walk-forward optimization with parameter tuning
+- `analyze_backtest_results` - Comprehensive performance metrics and risk analysis
+- `get_backtest_report` - Generate detailed HTML reports with visualizations
+
+**Backtesting Features:**
+- **15+ Built-in Strategies**: Including ML-powered adaptive, ensemble, and regime-aware algorithms
+- **VectorBT Integration**: High-performance vectorized backtesting engine
+- **Parallel Processing**: 7-256x speedup for multi-strategy evaluation
+- **Advanced Metrics**: Sharpe, Sortino, Calmar ratios, maximum drawdown, win rate
+- **Walk-Forward Optimization**: Out-of-sample testing and validation
+- **Monte Carlo Simulations**: Robustness testing with confidence intervals
+- **Multi-Timeframe Support**: From 1-minute to monthly data
+- **Custom Strategy Development**: Easy-to-use templates for custom strategies
 
 ### Market Data Tools
 
@@ -623,7 +680,18 @@ For issues or questions:
 
 ## Recent Updates
 
-### Advanced Research Agents (NEW)
+### Production-Ready Backtesting Framework (NEW)
+
+- **VectorBT Integration**: High-performance vectorized backtesting engine for institutional-grade performance
+- **15+ Built-in Strategies**: Including ML-powered adaptive, ensemble, and regime-aware algorithms
+- **Parallel Processing**: 7-256x speedup for multi-strategy evaluation and optimization
+- **Advanced Analytics**: Comprehensive metrics including Sharpe, Sortino, Calmar ratios, and drawdown analysis
+- **Walk-Forward Optimization**: Out-of-sample testing with automatic parameter tuning
+- **Monte Carlo Simulations**: Robustness testing with confidence intervals
+- **LangGraph Workflow**: Multi-agent orchestration for intelligent strategy selection and validation
+- **Production Features**: Database persistence, batch processing, and HTML reporting
+
+### Advanced Research Agents
 
 - **Parallel Research Execution**: Achieved 7-256x speedup (exceeded 2x target) with intelligent agent orchestration
 - **Adaptive Timeout Protection**: Dynamic timeouts (120s-600s) based on research depth and complexity
