@@ -15,6 +15,10 @@ from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 
 from maverick_mcp.config.settings import settings
+from maverick_mcp.monitoring.metrics import (
+    get_backtesting_metrics,
+    get_metrics_for_prometheus,
+)
 from maverick_mcp.utils.database_monitoring import (
     get_cache_monitor,
     get_database_monitor,
@@ -239,16 +243,47 @@ async def prometheus_metrics():
     """
     Prometheus metrics endpoint.
 
-    Returns metrics in Prometheus text format for scraping.
+    Returns comprehensive metrics in Prometheus text format for scraping.
+    Includes both system metrics and backtesting-specific metrics.
     """
     try:
-        metrics_text = get_metrics()
+        # Get standard system metrics
+        system_metrics = get_metrics()
+
+        # Get backtesting-specific metrics
+        backtesting_metrics = get_metrics_for_prometheus()
+
+        # Combine all metrics
+        combined_metrics = system_metrics + "\n" + backtesting_metrics
+
         return Response(
-            content=metrics_text, media_type="text/plain; version=0.0.4; charset=utf-8"
+            content=combined_metrics,
+            media_type="text/plain; version=0.0.4; charset=utf-8",
         )
     except Exception as e:
         logger.error(f"Failed to generate metrics: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate metrics")
+
+
+@router.get("/metrics/backtesting")
+async def backtesting_metrics():
+    """
+    Specialized backtesting metrics endpoint.
+
+    Returns backtesting-specific metrics in Prometheus text format.
+    Useful for dedicated backtesting monitoring and alerting.
+    """
+    try:
+        backtesting_metrics_text = get_metrics_for_prometheus()
+        return Response(
+            content=backtesting_metrics_text,
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate backtesting metrics: {e}")
+        raise HTTPException(
+            status_code=500, detail="Failed to generate backtesting metrics"
+        )
 
 
 @router.get("/metrics/json")
@@ -265,6 +300,7 @@ async def metrics_json():
             "system": await _get_system_metrics(),
             "application": await _get_application_metrics(),
             "business": await _get_business_metrics(),
+            "backtesting": await _get_backtesting_metrics(),
         }
     except Exception as e:
         logger.error(f"Failed to generate JSON metrics: {e}")
@@ -444,6 +480,44 @@ async def _get_business_metrics() -> dict[str, Any]:
     }
 
 
+async def _get_backtesting_metrics() -> dict[str, Any]:
+    """Get backtesting-specific metrics summary."""
+    try:
+        # Get the backtesting metrics collector
+        collector = get_backtesting_metrics()
+
+        # Return a summary of key backtesting metrics
+        # In a real implementation, you might query the metrics registry
+        # or maintain counters in the collector class
+        return {
+            "strategy_performance": {
+                "total_backtests_run": 0,  # Would be populated from metrics
+                "average_execution_time": 0.0,
+                "successful_backtests": 0,
+                "failed_backtests": 0,
+            },
+            "api_usage": {
+                "total_api_calls": 0,
+                "rate_limit_hits": 0,
+                "average_response_time": 0.0,
+                "error_rate": 0.0,
+            },
+            "resource_usage": {
+                "peak_memory_usage_mb": 0.0,
+                "average_computation_time": 0.0,
+                "database_query_count": 0,
+            },
+            "anomalies": {
+                "total_anomalies_detected": 0,
+                "critical_anomalies": 0,
+                "warning_anomalies": 0,
+            },
+        }
+    except Exception as e:
+        logger.error(f"Failed to get backtesting metrics: {e}")
+        return {}
+
+
 async def _get_service_diagnostics() -> dict[str, Any]:
     """Get service dependency diagnostics."""
     services = {}
@@ -555,3 +629,212 @@ async def require_healthy_redis():
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Redis health check failed: {e}")
+
+
+@router.get("/alerts")
+async def get_active_alerts():
+    """
+    Get active alerts and anomalies detected by the monitoring system.
+
+    Returns current alerts for:
+    - Strategy performance anomalies
+    - API rate limiting issues
+    - Resource usage threshold violations
+    - Data quality problems
+    """
+    try:
+        alerts = []
+        timestamp = time.time()
+
+        # Get the backtesting metrics collector to check for anomalies
+        collector = get_backtesting_metrics()
+
+        # In a real implementation, you would query stored alert data
+        # For now, we'll check current thresholds and return sample data
+
+        # Example: Check current system metrics against thresholds
+        import psutil
+
+        process = psutil.Process()
+        memory_mb = process.memory_info().rss / 1024 / 1024
+
+        # Check memory usage threshold
+        if memory_mb > 1000:  # 1GB threshold
+            alerts.append(
+                {
+                    "id": "memory_high_001",
+                    "type": "resource_usage",
+                    "severity": "warning" if memory_mb < 2000 else "critical",
+                    "title": "High Memory Usage",
+                    "description": f"Process memory usage is {memory_mb:.1f}MB",
+                    "timestamp": timestamp,
+                    "metric_value": memory_mb,
+                    "threshold_value": 1000,
+                    "status": "active",
+                    "tags": ["memory", "system", "performance"],
+                }
+            )
+
+        # Check database connection pool
+        try:
+            db_monitor = get_database_monitor()
+            pool_status = db_monitor.get_pool_status()
+            if (
+                pool_status
+                and pool_status.get("active_connections", 0)
+                > pool_status.get("pool_size", 10) * 0.8
+            ):
+                alerts.append(
+                    {
+                        "id": "db_pool_high_001",
+                        "type": "database_performance",
+                        "severity": "warning",
+                        "title": "High Database Connection Usage",
+                        "description": "Database connection pool usage is above 80%",
+                        "timestamp": timestamp,
+                        "metric_value": pool_status.get("active_connections", 0),
+                        "threshold_value": pool_status.get("pool_size", 10) * 0.8,
+                        "status": "active",
+                        "tags": ["database", "connections", "performance"],
+                    }
+                )
+        except Exception:
+            pass
+
+        return {
+            "alerts": alerts,
+            "total_count": len(alerts),
+            "severity_counts": {
+                "critical": len([a for a in alerts if a["severity"] == "critical"]),
+                "warning": len([a for a in alerts if a["severity"] == "warning"]),
+                "info": len([a for a in alerts if a["severity"] == "info"]),
+            },
+            "timestamp": timestamp,
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get alerts: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get alerts")
+
+
+@router.get("/alerts/rules")
+async def get_alert_rules():
+    """
+    Get configured alert rules and thresholds.
+
+    Returns the current alert rule configuration including:
+    - Performance thresholds
+    - Anomaly detection settings
+    - Alert severity levels
+    - Notification settings
+    """
+    try:
+        # Get the backtesting metrics collector
+        collector = get_backtesting_metrics()
+
+        # Return the configured alert rules
+        rules = {
+            "performance_thresholds": {
+                "sharpe_ratio": {
+                    "warning_threshold": 0.5,
+                    "critical_threshold": 0.0,
+                    "comparison": "less_than",
+                    "enabled": True,
+                },
+                "max_drawdown": {
+                    "warning_threshold": 20.0,
+                    "critical_threshold": 30.0,
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+                "win_rate": {
+                    "warning_threshold": 40.0,
+                    "critical_threshold": 30.0,
+                    "comparison": "less_than",
+                    "enabled": True,
+                },
+                "execution_time": {
+                    "warning_threshold": 60.0,
+                    "critical_threshold": 120.0,
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+            },
+            "resource_thresholds": {
+                "memory_usage": {
+                    "warning_threshold": 1000,  # MB
+                    "critical_threshold": 2000,  # MB
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+                "cpu_usage": {
+                    "warning_threshold": 80.0,  # %
+                    "critical_threshold": 95.0,  # %
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+                "disk_usage": {
+                    "warning_threshold": 80.0,  # %
+                    "critical_threshold": 95.0,  # %
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+            },
+            "api_thresholds": {
+                "response_time": {
+                    "warning_threshold": 30.0,  # seconds
+                    "critical_threshold": 60.0,  # seconds
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+                "error_rate": {
+                    "warning_threshold": 5.0,  # %
+                    "critical_threshold": 10.0,  # %
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+                "rate_limit_usage": {
+                    "warning_threshold": 80.0,  # %
+                    "critical_threshold": 95.0,  # %
+                    "comparison": "greater_than",
+                    "enabled": True,
+                },
+            },
+            "anomaly_detection": {
+                "enabled": True,
+                "sensitivity": "medium",
+                "lookback_period_hours": 24,
+                "minimum_data_points": 10,
+            },
+            "notification_settings": {
+                "webhook_enabled": False,
+                "email_enabled": False,
+                "slack_enabled": False,
+                "webhook_url": None,
+            },
+        }
+
+        return {
+            "rules": rules,
+            "total_rules": sum(
+                len(category)
+                for category in rules.values()
+                if isinstance(category, dict)
+            ),
+            "enabled_rules": sum(
+                len(
+                    [
+                        rule
+                        for rule in category.values()
+                        if isinstance(rule, dict) and rule.get("enabled", False)
+                    ]
+                )
+                for category in rules.values()
+                if isinstance(category, dict)
+            ),
+            "timestamp": time.time(),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get alert rules: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get alert rules")

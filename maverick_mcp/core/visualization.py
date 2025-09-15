@@ -15,11 +15,16 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.subplots as sp
 
+from maverick_mcp.config.plotly_config import setup_plotly
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("maverick_mcp.visualization")
+
+# Configure Plotly to use modern defaults and suppress warnings
+setup_plotly()
 
 
 def plotly_fig_to_base64(fig: go.Figure, format: str = "png") -> str:

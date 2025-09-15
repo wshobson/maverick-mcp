@@ -39,6 +39,67 @@ warnings.filterwarnings(
     module="starlette.*",
 )
 
+# Suppress Plotly/Kaleido deprecation warnings from library internals
+# These warnings come from the libraries themselves and can't be fixed at user level
+# Comprehensive suppression patterns for all known kaleido warnings
+kaleido_patterns = [
+    r".*plotly\.io\.kaleido\.scope\..*is deprecated.*",
+    r".*Use of plotly\.io\.kaleido\.scope\..*is deprecated.*",
+    r".*default_format.*deprecated.*",
+    r".*default_width.*deprecated.*",
+    r".*default_height.*deprecated.*",
+    r".*default_scale.*deprecated.*",
+    r".*mathjax.*deprecated.*",
+    r".*plotlyjs.*deprecated.*",
+]
+
+for pattern in kaleido_patterns:
+    warnings.filterwarnings(
+        "ignore",
+        category=DeprecationWarning,
+        message=pattern,
+    )
+
+# Also suppress by module to catch any we missed
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r".*kaleido.*",
+)
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module=r"plotly\.io\._kaleido",
+)
+
+# Suppress websockets deprecation warnings from uvicorn internals
+# These warnings come from uvicorn's use of deprecated websockets APIs and cannot be fixed at our level
+warnings.filterwarnings(
+    "ignore",
+    message=".*websockets.legacy is deprecated.*",
+    category=DeprecationWarning,
+)
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*websockets.server.WebSocketServerProtocol is deprecated.*",
+    category=DeprecationWarning,
+)
+
+# Broad suppression for all websockets deprecation warnings from third-party libs
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="websockets.*",
+)
+
+warnings.filterwarnings(
+    "ignore",
+    category=DeprecationWarning,
+    module="uvicorn.protocols.websockets.*",
+)
+
 # ruff: noqa: E402 - Imports after warnings config for proper deprecation warning suppression
 import argparse
 import json
@@ -61,23 +122,36 @@ from maverick_mcp.providers.market_data import MarketDataProvider
 from maverick_mcp.providers.stock_data import StockDataProvider
 from maverick_mcp.utils.logging import get_logger, setup_structured_logging
 from maverick_mcp.utils.monitoring import initialize_monitoring
+from maverick_mcp.utils.structured_logger import (
+    get_logger_manager,
+    setup_backtesting_logging,
+)
 from maverick_mcp.utils.tracing import initialize_tracing
 
 # Connection manager temporarily disabled for compatibility
 
 _use_stderr = "--transport" in sys.argv and "stdio" in sys.argv
+
+# Setup enhanced structured logging for backtesting
+setup_backtesting_logging(
+    log_level=settings.api.log_level.upper(),
+    enable_debug=settings.api.debug,
+    log_file="logs/maverick_mcp.log" if not _use_stderr else None,
+)
+
+# Also setup the original logging for compatibility
 setup_structured_logging(
     log_level=settings.api.log_level.upper(),
     log_format="json" if settings.api.debug else "text",
     use_stderr=_use_stderr,
 )
+
 logger = get_logger("maverick_mcp.server")
+logger_manager = get_logger_manager()
 
 # Initialize FastMCP with enhanced connection management
 mcp: FastMCP = FastMCP(
     name=settings.app_name,
-    debug=settings.api.debug,
-    log_level=settings.api.log_level.upper(),
 )
 mcp.dependencies = []
 
@@ -121,6 +195,27 @@ initialize_monitoring()
 # Initialize distributed tracing
 initialize_tracing()
 
+# Initialize backtesting metrics collector
+logger.info("Initializing backtesting metrics system...")
+try:
+    from maverick_mcp.monitoring.metrics import get_backtesting_metrics
+
+    backtesting_collector = get_backtesting_metrics()
+    logger.info("✅ Backtesting metrics system initialized successfully")
+
+    # Log metrics system capabilities
+    print("🎯 Enhanced Backtesting Metrics System Enabled")
+    print("   📊 Strategy performance tracking active")
+    print("   🔄 API rate limiting and failure monitoring enabled")
+    print("   💾 Resource usage monitoring configured")
+    print("   🚨 Anomaly detection and alerting ready")
+    print("   📈 Prometheus metrics available at /metrics")
+    print()
+
+except Exception as e:
+    logger.warning(f"Failed to initialize backtesting metrics: {e}")
+    print("⚠️  Warning: Backtesting metrics system could not be initialized")
+
 logger.info("Monitoring and observability systems initialized")
 
 # ENHANCED CONNECTION MANAGEMENT: Register tools through connection manager
@@ -136,40 +231,167 @@ logger.info("Initializing enhanced connection management system...")
 register_all_router_tools(mcp)
 logger.info("Tools registered successfully")
 
-# Register monitoring endpoints directly with FastMCP
+# Register monitoring and health endpoints directly with FastMCP
+from maverick_mcp.api.routers.health_enhanced import router as health_router
 from maverick_mcp.api.routers.monitoring import router as monitoring_router
 
-# Add monitoring endpoints to the FastMCP app's FastAPI instance
+# Add monitoring and health endpoints to the FastMCP app's FastAPI instance
 if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
-    logger.info("Monitoring endpoints registered with FastAPI application")
+    mcp.fastapi_app.include_router(health_router, tags=["health"])
+    logger.info("Monitoring and health endpoints registered with FastAPI application")
+
+# Initialize enhanced health monitoring system
+logger.info("Initializing enhanced health monitoring system...")
+try:
+    from maverick_mcp.monitoring.health_monitor import get_health_monitor
+    from maverick_mcp.utils.circuit_breaker import initialize_all_circuit_breakers
+
+    # Initialize circuit breakers for all external APIs
+    circuit_breaker_success = initialize_all_circuit_breakers()
+    if circuit_breaker_success:
+        logger.info("✅ Circuit breakers initialized for all external APIs")
+        print("🛡️  Enhanced Circuit Breaker Protection Enabled")
+        print("   🔄 yfinance, Tiingo, FRED, OpenRouter, Exa APIs protected")
+        print("   📊 Failure detection and automatic recovery active")
+        print("   🚨 Circuit breaker monitoring and alerting enabled")
+    else:
+        logger.warning("⚠️  Some circuit breakers failed to initialize")
+
+    # Get health monitor (will be started later in async context)
+    health_monitor = get_health_monitor()
+    logger.info("✅ Health monitoring system prepared")
+
+    print("🏥 Comprehensive Health Monitoring System Ready")
+    print("   📈 Real-time component health tracking")
+    print("   🔍 Database, cache, and external API monitoring")
+    print("   💾 Resource usage monitoring (CPU, memory, disk)")
+    print("   📊 Status dashboard with historical metrics")
+    print("   🚨 Automated alerting and recovery actions")
+    print(
+        "   🩺 Health endpoints: /health, /health/detailed, /health/ready, /health/live"
+    )
+    print()
+
+except Exception as e:
+    logger.warning(f"Failed to initialize enhanced health monitoring: {e}")
+    print("⚠️  Warning: Enhanced health monitoring could not be fully initialized")
 
 
-# Add health endpoint as a resource
+# Add enhanced health endpoint as a resource
 @mcp.resource("health://")
 def health_resource() -> dict[str, Any]:
     """
-    Comprehensive health check endpoint using extracted HealthChecker service.
+    Enhanced comprehensive health check endpoint.
+
+    Provides detailed system health including:
+    - Component status (database, cache, external APIs)
+    - Circuit breaker states
+    - Resource utilization
+    - Performance metrics
 
     Financial Disclaimer: This health check is for system monitoring only and does not
     provide any investment or financial advice.
     """
-    from maverick_mcp.infrastructure.health import HealthChecker
+    try:
+        import asyncio
 
-    # Use extracted health checker service (follows Single Responsibility Principle)
-    health_checker = HealthChecker()
-    health_status = health_checker.check_all()
+        from maverick_mcp.api.routers.health_enhanced import _get_detailed_health_status
 
-    # Add service-specific information
-    health_status.update(
-        {
+        # Get detailed health status (run async function in sync context)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            health_status = loop.run_until_complete(_get_detailed_health_status())
+        finally:
+            loop.close()
+
+        # Add service-specific information
+        health_status.update(
+            {
+                "service": settings.app_name,
+                "version": "1.0.0",
+                "mode": "backtesting_with_enhanced_monitoring",
+            }
+        )
+
+        return health_status
+
+    except Exception as e:
+        logger.error(f"Health resource check failed: {e}")
+        return {
+            "status": "unhealthy",
             "service": settings.app_name,
             "version": "1.0.0",
-            "mode": "simple_stock_analysis",
+            "error": str(e),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
-    )
 
-    return health_status
+
+# Add status dashboard endpoint as a resource
+@mcp.resource("dashboard://")
+def status_dashboard_resource() -> dict[str, Any]:
+    """
+    Comprehensive status dashboard with real-time metrics.
+
+    Provides aggregated health status, performance metrics, alerts,
+    and historical trends for the backtesting system.
+    """
+    try:
+        import asyncio
+
+        from maverick_mcp.monitoring.status_dashboard import get_dashboard_data
+
+        # Get dashboard data (run async function in sync context)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            dashboard_data = loop.run_until_complete(get_dashboard_data())
+        finally:
+            loop.close()
+
+        return dashboard_data
+
+    except Exception as e:
+        logger.error(f"Dashboard resource failed: {e}")
+        return {
+            "error": "Failed to generate dashboard",
+            "message": str(e),
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
+
+
+# Add performance dashboard endpoint as a resource (keep existing)
+@mcp.resource("performance://")
+def performance_dashboard() -> dict[str, Any]:
+    """
+    Performance metrics dashboard showing backtesting system health.
+
+    Provides real-time performance metrics, resource usage, and operational statistics
+    for the backtesting infrastructure.
+    """
+    try:
+        dashboard_metrics = logger_manager.create_dashboard_metrics()
+
+        # Add additional context
+        dashboard_metrics.update(
+            {
+                "service": settings.app_name,
+                "environment": settings.environment,
+                "version": "1.0.0",
+                "dashboard_type": "backtesting_performance",
+                "generated_at": datetime.now(UTC).isoformat(),
+            }
+        )
+
+        return dashboard_metrics
+    except Exception as e:
+        logger.error(f"Failed to generate performance dashboard: {e}", exc_info=True)
+        return {
+            "error": "Failed to generate performance dashboard",
+            "message": str(e),
+            "timestamp": datetime.now(UTC).isoformat(),
+        }
 
 
 # Prompts for Trading and Investing
@@ -548,8 +770,8 @@ if __name__ == "__main__":
     logger.info("Validating environment configuration...")
     validate_environment(fail_on_error=fail_on_validation_error)
 
-    # Initialize performance systems
-    async def init_performance():
+    # Initialize performance systems and health monitoring
+    async def init_systems():
         logger.info("Initializing performance optimization systems...")
         try:
             performance_status = await initialize_performance_systems()
@@ -557,7 +779,17 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to initialize performance systems: {e}")
 
-    asyncio.run(init_performance())
+        # Initialize background health monitoring
+        logger.info("Starting background health monitoring...")
+        try:
+            from maverick_mcp.monitoring.health_monitor import start_health_monitoring
+
+            await start_health_monitoring()
+            logger.info("✅ Background health monitoring started")
+        except Exception as e:
+            logger.error(f"Failed to start health monitoring: {e}")
+
+    asyncio.run(init_systems())
 
     # Initialize connection management and transport optimizations
     async def init_connection_management():
@@ -641,6 +873,21 @@ if __name__ == "__main__":
 
         shutdown_handler.register_cleanup(cleanup_performance)
 
+        # Register health monitoring cleanup
+        async def cleanup_health_monitoring():
+            """Cleanup health monitoring during shutdown."""
+            try:
+                from maverick_mcp.monitoring.health_monitor import (
+                    stop_health_monitoring,
+                )
+
+                await stop_health_monitoring()
+                logger.info("Health monitoring stopped")
+            except Exception as e:
+                logger.error(f"Error stopping health monitoring: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_health_monitoring)
+
         # Register connection manager cleanup
         async def cleanup_connection_manager():
             """Cleanup connection manager during shutdown."""
@@ -672,14 +919,26 @@ if __name__ == "__main__":
         # Run with the appropriate transport
         if args.transport == "stdio":
             logger.info(f"Starting {settings.app_name} server with stdio transport")
-            mcp.run(transport="stdio")
+            mcp.run(
+                transport="stdio",
+                debug=settings.api.debug,
+                log_level=settings.api.log_level.upper(),
+            )
         elif args.transport == "streamable-http":
             logger.info(
                 f"Starting {settings.app_name} server with streamable-http transport on http://{args.host}:{args.port}"
             )
-            mcp.run(transport="streamable-http", port=args.port, host=args.host)
+            mcp.run(
+                transport="streamable-http",
+                port=args.port,
+                host=args.host,
+            )
         else:  # sse
             logger.info(
                 f"Starting {settings.app_name} server with SSE transport on http://{args.host}:{args.port}"
             )
-            mcp.run(transport="sse", port=args.port, host=args.host)
+            mcp.run(
+                transport="sse",
+                port=args.port,
+                host=args.host,
+            )

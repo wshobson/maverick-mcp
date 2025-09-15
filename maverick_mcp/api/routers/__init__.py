@@ -7,6 +7,7 @@ Personal-use stock analysis MCP server.
 """
 
 from .data import data_router
+from .health_enhanced import router as health_enhanced_router
 from .performance import get_performance_router
 from .portfolio import portfolio_router
 from .screening import screening_router
@@ -26,6 +27,7 @@ except ImportError:
 
 __all__ = [
     "data_router",
+    "health_enhanced_router",
     "performance_router",
     "portfolio_router",
     "screening_router",
@@ -34,3 +36,6 @@ __all__ = [
 
 if has_agents:
     __all__.append("agents_router")
+
+# Export health router as both names for compatibility
+health_router = health_enhanced_router

@@ -84,6 +84,8 @@ echo -e "${YELLOW}Transport: ${TRANSPORT} (recommended for Claude Desktop stabil
 
 # Run backend with FastMCP in development mode (show real-time output)
 echo -e "${YELLOW}Starting server with real-time output...${NC}"
+# Set PYTHONWARNINGS to suppress websockets deprecation warnings from uvicorn
+PYTHONWARNINGS="ignore::DeprecationWarning:websockets.*,ignore::DeprecationWarning:uvicorn.*" \
 uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host 0.0.0.0 --port 8003 2>&1 | tee backend.log &
 BACKEND_PID=$!
 echo -e "${YELLOW}Backend PID: $BACKEND_PID${NC}"

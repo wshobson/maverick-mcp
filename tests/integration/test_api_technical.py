@@ -5,7 +5,7 @@ Integration tests for technical analysis API endpoints.
 import pytest
 import vcr
 
-from tests.integration.base import APIIntegrationTest
+from tests.integration.base import BaseIntegrationTest as APIIntegrationTest
 
 
 @pytest.mark.integration

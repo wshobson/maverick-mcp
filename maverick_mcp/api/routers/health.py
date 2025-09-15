@@ -1,15 +1,26 @@
 """
-Health check router with circuit breaker status.
+Comprehensive health check router for backtesting system.
+
+Provides detailed health monitoring including:
+- Component status (database, cache, external APIs)
+- Circuit breaker monitoring
+- Resource utilization
+- Readiness and liveness probes
+- Performance metrics
 """
 
+import asyncio
 import logging
+import psutil
+import time
 from datetime import UTC, datetime
+from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from maverick_mcp.config.settings import get_settings
-from maverick_mcp.utils.circuit_breaker_enhanced import get_circuit_breaker_status
+from maverick_mcp.utils.circuit_breaker import get_circuit_breaker_status
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -127,7 +138,7 @@ async def reset_circuit_breaker(name: str) -> dict:
     Returns:
         Success response
     """
-    from maverick_mcp.utils.circuit_breaker_enhanced import get_circuit_breaker
+    from maverick_mcp.utils.circuit_breaker import get_circuit_breaker
 
     breaker = get_circuit_breaker(name)
     if not breaker:
@@ -147,7 +158,7 @@ async def reset_all_circuit_breakers() -> dict:
     Returns:
         Success response
     """
-    from maverick_mcp.utils.circuit_breaker_enhanced import reset_all_circuit_breakers
+    from maverick_mcp.utils.circuit_breaker import reset_all_circuit_breakers
 
     reset_all_circuit_breakers()
     logger.info("All circuit breakers reset via API")

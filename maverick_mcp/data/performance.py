@@ -241,7 +241,13 @@ class RedisConnectionManager:
     async def close(self):
         """Close connection pool gracefully."""
         if self._client:
-            await self._client.close()
+            # Use aclose() instead of close() to avoid deprecation warning
+            # aclose() is the new async close method in redis-py 5.0+
+            if hasattr(self._client, "aclose"):
+                await self._client.aclose()
+            else:
+                # Fallback for older versions
+                await self._client.close()
             self._metrics["connections_closed"] += 1
 
         if self._pool:

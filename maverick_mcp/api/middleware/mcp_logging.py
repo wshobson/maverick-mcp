@@ -31,6 +31,7 @@ except ImportError:
 
     class Middleware:  # type: ignore
         """Fallback Middleware class for older FastMCP versions."""
+
         pass
 
     MiddlewareContext = Any

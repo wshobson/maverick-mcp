@@ -414,8 +414,11 @@ class OptimizationExamples:
 
             # Safely handle content that could be string or list
             content_text = (
-                response.content if isinstance(response.content, str)
-                else str(response.content) if response.content else ""
+                response.content
+                if isinstance(response.content, str)
+                else str(response.content)
+                if response.content
+                else ""
             )
             speed_test_results["gemini_2_5_flash"] = {
                 "execution_time": gemini_time,
@@ -455,8 +458,11 @@ class OptimizationExamples:
 
             # Safely handle content that could be string or list
             content_text = (
-                response.content if isinstance(response.content, str)
-                else str(response.content) if response.content else ""
+                response.content
+                if isinstance(response.content, str)
+                else str(response.content)
+                if response.content
+                else ""
             )
             speed_test_results["gpt_4o_mini"] = {
                 "execution_time": gpt_time,
@@ -496,8 +502,11 @@ class OptimizationExamples:
 
             # Safely handle content that could be string or list
             content_text = (
-                response.content if isinstance(response.content, str)
-                else str(response.content) if response.content else ""
+                response.content
+                if isinstance(response.content, str)
+                else str(response.content)
+                if response.content
+                else ""
             )
             speed_test_results["claude_3_5_haiku"] = {
                 "execution_time": claude_time,
