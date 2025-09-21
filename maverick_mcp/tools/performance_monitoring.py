@@ -13,11 +13,14 @@ from typing import Any
 
 from sqlalchemy import text
 
-from maverick_mcp.data.models import get_db
 from maverick_mcp.data.performance import (
     query_optimizer,
     redis_manager,
     request_cache,
+)
+from maverick_mcp.data.session_management import (
+    get_async_connection_pool_status,
+    get_async_db_session,
 )
 from maverick_mcp.providers.optimized_stock_data import optimized_stock_provider
 
@@ -144,32 +147,20 @@ async def get_query_performance_metrics() -> dict[str, Any]:
         query_stats = query_optimizer.get_query_stats()
 
         # Get database connection pool stats
-        session = next(get_db())
         try:
-            # Check connection pool status
-            pool_status = {}
-            if session.bind and hasattr(session.bind, "pool") and session.bind.pool:
-                pool = session.bind.pool
-                pool_status = {
-                    "pool_size": getattr(pool, "size", lambda: 0)(),
-                    "checked_in": getattr(pool, "checkedin", lambda: 0)(),
-                    "checked_out": getattr(pool, "checkedout", lambda: 0)(),
-                    "overflow": getattr(pool, "overflow", lambda: 0)(),
-                    "invalidated": getattr(pool, "invalidated", lambda: 0)(),
+            async with get_async_db_session() as session:
+                pool_status = await get_async_connection_pool_status()
+
+                start_time = time.time()
+                result = await session.execute(text("SELECT 1 as test"))
+                result.fetchone()
+                db_latency = time.time() - start_time
+
+                db_health = {
+                    "status": "healthy",
+                    "latency_ms": round(db_latency * 1000, 2),
+                    "pool_status": pool_status,
                 }
-
-            # Test basic database operations
-            start_time = time.time()
-            result = session.execute(text("SELECT 1 as test"))
-            result.fetchone()
-            db_latency = time.time() - start_time
-
-            db_health = {
-                "status": "healthy",
-                "latency_ms": round(db_latency * 1000, 2),
-                "pool_status": pool_status,
-            }
-
         except Exception as e:
             db_health = {
                 "status": "unhealthy",
@@ -177,8 +168,6 @@ async def get_query_performance_metrics() -> dict[str, Any]:
                 "latency_ms": None,
                 "pool_status": {},
             }
-        finally:
-            session.close()
 
         return {
             "query_performance": query_stats,
@@ -202,12 +191,12 @@ async def analyze_database_indexes() -> dict[str, Any]:
         Dictionary with index analysis and recommendations
     """
     try:
-        session = next(get_db())
-        try:
+        async with get_async_db_session() as session:
             recommendations = await query_optimizer.analyze_missing_indexes(session)
 
             # Get index usage statistics
-            index_usage_query = text("""
+            index_usage_query = text(
+                """
                 SELECT
                     schemaname,
                     tablename,
@@ -219,13 +208,15 @@ async def analyze_database_indexes() -> dict[str, Any]:
                 WHERE schemaname = 'public'
                 AND tablename LIKE 'stocks_%'
                 ORDER BY idx_scan DESC
-            """)
+            """
+            )
 
-            result = session.execute(index_usage_query)
+            result = await session.execute(index_usage_query)
             index_usage = [dict(row._mapping) for row in result.fetchall()]  # type: ignore[attr-defined]
 
             # Get table scan statistics
-            table_scan_query = text("""
+            table_scan_query = text(
+                """
                 SELECT
                     schemaname,
                     tablename,
@@ -241,9 +232,10 @@ async def analyze_database_indexes() -> dict[str, Any]:
                 WHERE schemaname = 'public'
                 AND tablename LIKE 'stocks_%'
                 ORDER BY seq_tup_read DESC
-            """)
+            """
+            )
 
-            result = session.execute(table_scan_query)
+            result = await session.execute(table_scan_query)
             table_stats = [dict(row._mapping) for row in result.fetchall()]  # type: ignore[attr-defined]
 
             # Identify tables with poor index usage
@@ -260,9 +252,6 @@ async def analyze_database_indexes() -> dict[str, Any]:
                 "poor_index_usage": poor_index_usage,
                 "analysis_timestamp": datetime.now().isoformat(),
             }
-
-        finally:
-            session.close()
 
     except Exception as e:
         logger.error(f"Error analyzing database indexes: {e}")

@@ -12,14 +12,14 @@ import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
 from functools import wraps
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 import redis.asyncio as redis
 from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from maverick_mcp.config.settings import get_settings
-from maverick_mcp.data.models import get_db
+from maverick_mcp.data.session_management import get_async_db_session
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -89,8 +89,13 @@ class RedisConnectionManager:
             # Create Redis client
             self._client = redis.Redis(connection_pool=self._pool)
 
+            client = self._client
+            if client is None:  # Defensive guard for static type checking
+                msg = "Redis client initialization failed"
+                raise RuntimeError(msg)
+
             # Test connection
-            await self._client.ping()
+            await client.ping()
 
             self._healthy = True
             self._initialized = True
@@ -309,7 +314,9 @@ class RequestCache:
 
         key_hash = hashlib.sha256(
             json.dumps(key_data, sort_keys=True, default=str).encode()
-        ).hexdigest()[:16]  # Use first 16 chars for brevity
+        ).hexdigest()[
+            :16
+        ]  # Use first 16 chars for brevity
 
         return f"cache:{prefix}:{key_hash}"
 
@@ -492,8 +499,9 @@ def cached(
                 for pattern in invalidate_patterns:
                     await request_cache.delete_pattern(pattern)
 
-        wrapper.invalidate_cache = invalidate_cache
-        return wrapper
+        typed_wrapper = cast(F, wrapper)
+        setattr(typed_wrapper, "invalidate_cache", invalidate_cache)
+        return typed_wrapper
 
     return decorator
 
@@ -576,7 +584,7 @@ class QueryOptimizer:
                     )
                     raise
 
-            return wrapper
+            return cast(F, wrapper)
 
         return decorator
 
@@ -588,7 +596,9 @@ class QueryOptimizer:
             "slow_query_threshold": self._slow_query_threshold,
         }
 
-    async def analyze_missing_indexes(self, session: Session) -> list[dict[str, Any]]:
+    async def analyze_missing_indexes(
+        self, session: AsyncSession
+    ) -> list[dict[str, Any]]:
         """
         Analyze database for missing indexes.
 
@@ -640,7 +650,7 @@ class QueryOptimizer:
 
             for query_info in queries:
                 try:
-                    result = session.execute(text(query_info["query"]))
+                    result = await session.execute(text(query_info["query"]))
                     rows = result.fetchall()
 
                     if rows:
@@ -674,7 +684,7 @@ class QueryOptimizer:
                 ORDER BY seq_tup_read DESC
             """
 
-            result = session.execute(text(missing_indexes_query))
+            result = await session.execute(text(missing_indexes_query))
             scan_stats = result.fetchall()
 
             for row in scan_stats:
@@ -745,38 +755,39 @@ async def monitored_db_session(query_name: str = "unknown"):
 
     Example:
         async with monitored_db_session("get_stock_data") as session:
-            stock = session.query(Stock).filter_by(ticker_symbol="AAPL").first()
+            result = await session.execute(
+                text("SELECT * FROM stocks_stock WHERE ticker_symbol = :symbol"),
+                {"symbol": "AAPL"},
+            )
+            stock = result.first()
     """
-    session = next(get_db())
-    start_time = time.time()
+    async with get_async_db_session() as session:
+        start_time = time.time()
 
-    try:
-        yield session
+        try:
+            yield session
 
-        # Record successful query
-        execution_time = time.time() - start_time
-        if query_name not in query_optimizer._query_stats:
-            query_optimizer._query_stats[query_name] = {
-                "count": 0,
-                "total_time": 0,
-                "avg_time": 0,
-                "max_time": 0,
-                "min_time": float("inf"),
-            }
+            # Record successful query
+            execution_time = time.time() - start_time
+            if query_name not in query_optimizer._query_stats:
+                query_optimizer._query_stats[query_name] = {
+                    "count": 0,
+                    "total_time": 0,
+                    "avg_time": 0,
+                    "max_time": 0,
+                    "min_time": float("inf"),
+                }
 
-        stats = query_optimizer._query_stats[query_name]
-        stats["count"] += 1
-        stats["total_time"] += execution_time
-        stats["avg_time"] = stats["total_time"] / stats["count"]
-        stats["max_time"] = max(stats["max_time"], execution_time)
-        stats["min_time"] = min(stats["min_time"], execution_time)
+            stats = query_optimizer._query_stats[query_name]
+            stats["count"] += 1
+            stats["total_time"] += execution_time
+            stats["avg_time"] = stats["total_time"] / stats["count"]
+            stats["max_time"] = max(stats["max_time"], execution_time)
+            stats["min_time"] = min(stats["min_time"], execution_time)
 
-    except Exception as e:
-        execution_time = time.time() - start_time
-        logger.error(
-            f"Database query '{query_name}' failed after {execution_time:.2f}s: {e}"
-        )
-        raise
-
-    finally:
-        session.close()
+        except Exception as e:
+            execution_time = time.time() - start_time
+            logger.error(
+                f"Database query '{query_name}' failed after {execution_time:.2f}s: {e}"
+            )
+            raise

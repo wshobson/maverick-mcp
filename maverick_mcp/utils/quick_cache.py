@@ -191,7 +191,13 @@ def quick_cache(
         def sync_wrapper(*args: Any, **kwargs: Any) -> T:
             # For sync functions, we need to run the async cache operations
             # in a thread to avoid blocking
-            loop = asyncio.new_event_loop()
+            loop_policy = asyncio.get_event_loop_policy()
+            try:
+                previous_loop = loop_policy.get_event_loop()
+            except RuntimeError:
+                previous_loop = None
+
+            loop = loop_policy.new_event_loop()
             asyncio.set_event_loop(loop)
             try:
                 cache_key = _cache.make_key(
@@ -223,6 +229,10 @@ def quick_cache(
                 return result
             finally:
                 loop.close()
+                if previous_loop is not None:
+                    asyncio.set_event_loop(previous_loop)
+                else:
+                    asyncio.set_event_loop(None)
 
         # Return appropriate wrapper based on function type
         if asyncio.iscoroutinefunction(func):

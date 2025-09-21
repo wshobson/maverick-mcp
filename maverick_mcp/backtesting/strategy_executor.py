@@ -269,7 +269,13 @@ class StrategyExecutor:
         This method runs in a separate thread to avoid blocking the event loop.
         """
         # Use synchronous approach since we're in a thread
-        loop = asyncio.new_event_loop()
+        loop_policy = asyncio.get_event_loop_policy()
+        try:
+            previous_loop = loop_policy.get_event_loop()
+        except RuntimeError:
+            previous_loop = None
+
+        loop = loop_policy.new_event_loop()
         asyncio.set_event_loop(loop)
 
         try:
@@ -288,6 +294,10 @@ class StrategyExecutor:
             return result
         finally:
             loop.close()
+            if previous_loop is not None:
+                asyncio.set_event_loop(previous_loop)
+            else:
+                asyncio.set_event_loop(None)
 
     async def _prefetch_data_batch(self, contexts: list[ExecutionContext]):
         """
