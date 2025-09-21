@@ -9,11 +9,13 @@ This module provides enhanced stock data access with:
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import text
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from maverick_mcp.data.models import (
@@ -60,11 +62,10 @@ class OptimizedStockDataProvider:
             Stock information dictionary or None if not found
         """
         async with monitored_db_session("get_stock_basic_info") as session:
-            stock = (
-                session.query(Stock)
-                .filter(Stock.ticker_symbol == symbol.upper())
-                .first()
-            )
+            async_session: AsyncSession = session
+            stmt = select(Stock).where(Stock.ticker_symbol == symbol.upper())
+            result = await async_session.execute(stmt)
+            stock = result.scalars().first()
 
             if stock:
                 return {
@@ -104,9 +105,11 @@ class OptimizedStockDataProvider:
             end_date = datetime.now().strftime("%Y-%m-%d")
 
         async with monitored_db_session("get_stock_price_data") as session:
+            async_session: AsyncSession = session
             if use_optimized_query:
                 # Optimized query using the composite index (stock_id, date)
-                query = text("""
+                query = text(
+                    """
                     SELECT
                         pc.date,
                         pc.open_price as "open",
@@ -120,9 +123,10 @@ class OptimizedStockDataProvider:
                     AND pc.date >= :start_date::date
                     AND pc.date <= :end_date::date
                     ORDER BY pc.date
-                """)
+                """
+                )
 
-                result = session.execute(
+                result = await async_session.execute(
                     query,
                     {
                         "symbol": symbol.upper(),
@@ -135,8 +139,8 @@ class OptimizedStockDataProvider:
                 df = pd.DataFrame(result.fetchall(), columns=result.keys())
             else:
                 # Traditional SQLAlchemy query (for comparison)
-                query = (
-                    session.query(
+                stmt = (
+                    select(
                         PriceCache.date,
                         PriceCache.open_price.label("open"),
                         PriceCache.high_price.label("high"),
@@ -145,7 +149,7 @@ class OptimizedStockDataProvider:
                         PriceCache.volume,
                     )
                     .join(Stock)
-                    .filter(
+                    .where(
                         Stock.ticker_symbol == symbol.upper(),
                         PriceCache.date >= pd.to_datetime(start_date).date(),
                         PriceCache.date <= pd.to_datetime(end_date).date(),
@@ -153,7 +157,8 @@ class OptimizedStockDataProvider:
                     .order_by(PriceCache.date)
                 )
 
-                df = pd.DataFrame(query.all())
+                result = await async_session.execute(stmt)
+                df = pd.DataFrame(result.fetchall(), columns=result.keys())
 
             if not df.empty:
                 df["date"] = pd.to_datetime(df["date"])
@@ -187,16 +192,18 @@ class OptimizedStockDataProvider:
             List of recommendation dictionaries
         """
         async with monitored_db_session("get_maverick_recommendations") as session:
+            async_session: AsyncSession = session
             if use_optimized_query:
                 # Use raw SQL with optimized indexes
                 where_clause = ""
-                params = {"limit": limit}
+                params: dict[str, Any] = {"limit": limit}
 
                 if min_score is not None:
                     where_clause = "WHERE ms.score >= :min_score"
                     params["min_score"] = min_score
 
-                query = text(f"""
+                query = text(
+                    f"""
                     SELECT
                         s.ticker_symbol,
                         s.company_name,
@@ -211,9 +218,10 @@ class OptimizedStockDataProvider:
                     {where_clause}
                     ORDER BY ms.score DESC, ms.rank ASC
                     LIMIT :limit
-                """)
+                """
+                )
 
-                result = session.execute(query, params)
+                result = await async_session.execute(query, params)
                 rows = result.fetchall()
 
                 return [
@@ -224,26 +232,27 @@ class OptimizedStockDataProvider:
                         "industry": row.industry,
                         "score": float(row.score) if row.score else 0,
                         "rank": row.rank,
-                        "date_analyzed": row.date_analyzed.isoformat()
-                        if row.date_analyzed
-                        else None,
+                        "date_analyzed": (
+                            row.date_analyzed.isoformat() if row.date_analyzed else None
+                        ),
                         "analysis_data": row.analysis_data,
                     }
                     for row in rows
                 ]
             else:
                 # Traditional SQLAlchemy query with eager loading
-                query = (
-                    session.query(MaverickStocks)
+                stmt = (
+                    select(MaverickStocks)
                     .options(joinedload(MaverickStocks.stock))
                     .order_by(MaverickStocks.score.desc(), MaverickStocks.rank.asc())
                 )
 
                 if min_score is not None:
-                    query = query.filter(MaverickStocks.score >= min_score)
+                    stmt = stmt.where(MaverickStocks.score >= min_score)
 
-                query = query.limit(limit)
-                recommendations = query.all()
+                stmt = stmt.limit(limit)
+                result = await async_session.execute(stmt)
+                recommendations = result.scalars().all()
 
                 return [
                     {
@@ -253,9 +262,9 @@ class OptimizedStockDataProvider:
                         "industry": rec.stock.industry,
                         "score": float(rec.score) if rec.score else 0,
                         "rank": rec.rank,
-                        "date_analyzed": rec.date_analyzed.isoformat()
-                        if rec.date_analyzed
-                        else None,
+                        "date_analyzed": (
+                            rec.date_analyzed.isoformat() if rec.date_analyzed else None
+                        ),
                         "analysis_data": rec.analysis_data,
                     }
                     for rec in recommendations
@@ -279,15 +288,17 @@ class OptimizedStockDataProvider:
             List of recommendation dictionaries
         """
         async with monitored_db_session("get_trending_recommendations") as session:
+            async_session: AsyncSession = session
             # Use optimized raw SQL query
             where_clause = ""
-            params = {"limit": limit}
+            params: dict[str, Any] = {"limit": limit}
 
             if min_momentum_score is not None:
                 where_clause = "WHERE ms.momentum_score >= :min_momentum_score"
                 params["min_momentum_score"] = min_momentum_score
 
-            query = text(f"""
+            query = text(
+                f"""
                 SELECT
                     s.ticker_symbol,
                     s.company_name,
@@ -302,9 +313,10 @@ class OptimizedStockDataProvider:
                 {where_clause}
                 ORDER BY ms.momentum_score DESC
                 LIMIT :limit
-            """)
+            """
+            )
 
-            result = session.execute(query, params)
+            result = await async_session.execute(query, params)
             rows = result.fetchall()
 
             return [
@@ -313,13 +325,13 @@ class OptimizedStockDataProvider:
                     "name": row.company_name,
                     "sector": row.sector,
                     "industry": row.industry,
-                    "momentum_score": float(row.momentum_score)
-                    if row.momentum_score
-                    else 0,
+                    "momentum_score": (
+                        float(row.momentum_score) if row.momentum_score else 0
+                    ),
                     "stage": row.stage,
-                    "date_analyzed": row.date_analyzed.isoformat()
-                    if row.date_analyzed
-                    else None,
+                    "date_analyzed": (
+                        row.date_analyzed.isoformat() if row.date_analyzed else None
+                    ),
                     "analysis_data": row.analysis_data,
                 }
                 for row in rows
@@ -348,8 +360,10 @@ class OptimizedStockDataProvider:
             date = datetime.now().strftime("%Y-%m-%d")
 
         async with monitored_db_session("get_high_volume_stocks") as session:
+            async_session: AsyncSession = session
             # Use optimized query with volume index
-            query = text("""
+            query = text(
+                """
                 SELECT
                     s.ticker_symbol,
                     s.company_name,
@@ -363,9 +377,10 @@ class OptimizedStockDataProvider:
                 AND pc.volume >= :min_volume
                 ORDER BY pc.volume DESC
                 LIMIT :limit
-            """)
+            """
+            )
 
-            result = session.execute(
+            result = await async_session.execute(
                 query,
                 {
                     "date": date,
@@ -413,8 +428,10 @@ class OptimizedStockDataProvider:
         symbols = [s.upper() for s in symbols]
 
         async with monitored_db_session("bulk_get_stock_data") as session:
+            async_session: AsyncSession = session
             # Use bulk query with IN clause for efficiency
-            query = text("""
+            query = text(
+                """
                 SELECT
                     s.ticker_symbol,
                     pc.date,
@@ -429,9 +446,10 @@ class OptimizedStockDataProvider:
                 AND pc.date >= :start_date::date
                 AND pc.date <= :end_date::date
                 ORDER BY s.ticker_symbol, pc.date
-            """)
+            """
+            )
 
-            result = session.execute(
+            result = await async_session.execute(
                 query,
                 {
                     "symbols": symbols,
@@ -487,8 +505,11 @@ class OptimizedStockDataProvider:
         Args:
             symbol: Stock symbol to invalidate
         """
-        # Invalidate stock basic info
-        await self.get_stock_basic_info.invalidate_cache(symbol)
+        invalidate_basic_info: Callable[[str], Awaitable[None]] | None = getattr(
+            self.get_stock_basic_info, "invalidate_cache", None
+        )
+        if invalidate_basic_info is not None:
+            await invalidate_basic_info(symbol)
 
         # Invalidate stock price data (pattern-based)
         await request_cache.delete_pattern(

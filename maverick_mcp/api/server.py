@@ -104,8 +104,9 @@ warnings.filterwarnings(
 import argparse
 import json
 import sys
+import uuid
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastmcp import FastMCP
 
@@ -129,6 +130,8 @@ from maverick_mcp.utils.structured_logger import (
 from maverick_mcp.utils.tracing import initialize_tracing
 
 # Connection manager temporarily disabled for compatibility
+if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
+    from maverick_mcp.infrastructure.connection_manager import MCPConnectionManager
 
 _use_stderr = "--transport" in sys.argv and "stdio" in sys.argv
 
@@ -156,7 +159,7 @@ mcp: FastMCP = FastMCP(
 mcp.dependencies = []
 
 # Initialize connection manager for stability
-connection_manager = None
+connection_manager: "MCPConnectionManager | None" = None
 
 # TEMPORARILY DISABLED: MCP logging middleware - was breaking SSE transport
 # TODO: Fix middleware to work properly with SSE transport
@@ -298,13 +301,22 @@ def health_resource() -> dict[str, Any]:
 
         from maverick_mcp.api.routers.health_enhanced import _get_detailed_health_status
 
-        # Get detailed health status (run async function in sync context)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        loop_policy = asyncio.get_event_loop_policy()
         try:
+            previous_loop = loop_policy.get_event_loop()
+        except RuntimeError:
+            previous_loop = None
+
+        loop = loop_policy.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
             health_status = loop.run_until_complete(_get_detailed_health_status())
         finally:
             loop.close()
+            if previous_loop is not None:
+                asyncio.set_event_loop(previous_loop)
+            else:
+                asyncio.set_event_loop(None)
 
         # Add service-specific information
         health_status.update(
@@ -342,13 +354,22 @@ def status_dashboard_resource() -> dict[str, Any]:
 
         from maverick_mcp.monitoring.status_dashboard import get_dashboard_data
 
-        # Get dashboard data (run async function in sync context)
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+        loop_policy = asyncio.get_event_loop_policy()
         try:
+            previous_loop = loop_policy.get_event_loop()
+        except RuntimeError:
+            previous_loop = None
+
+        loop = loop_policy.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
             dashboard_data = loop.run_until_complete(get_dashboard_data())
         finally:
             loop.close()
+            if previous_loop is not None:
+                asyncio.set_event_loop(previous_loop)
+            else:
+                asyncio.set_event_loop(None)
 
         return dashboard_data
 
@@ -507,48 +528,54 @@ async def get_watchlist(limit: int = 20) -> dict[str, Any]:
         "DIS",
     ][:limit]
 
-    # Get current data for watchlist
-    db_session = next(get_db())
-    try:
-        provider = StockDataProvider(db_session=db_session)
-        watchlist_data = []
-        for ticker in watchlist_tickers:
-            try:
-                info = provider.get_stock_info(ticker)
-                current_price = info.get("currentPrice", 0)
-                previous_close = info.get("previousClose", current_price)
-                change = current_price - previous_close
-                change_pct = (change / previous_close * 100) if previous_close else 0
+    import asyncio
 
-                ticker_data = {
-                    "ticker": ticker,
-                    "name": info.get("longName", ticker),
-                    "current_price": round(current_price, 2),
-                    "change": round(change, 2),
-                    "change_percent": round(change_pct, 2),
-                    "volume": info.get("volume", 0),
-                    "market_cap": info.get("marketCap", 0),
-                    "bid": info.get("bid", 0),
-                    "ask": info.get("ask", 0),
-                    "bid_size": info.get("bidSize", 0),
-                    "ask_size": info.get("askSize", 0),
-                    "last_trade_time": datetime.now(UTC).isoformat(),
-                }
+    def _build_watchlist() -> dict[str, Any]:
+        db_session = next(get_db())
+        try:
+            provider = StockDataProvider(db_session=db_session)
+            watchlist_data: list[dict[str, Any]] = []
+            for ticker in watchlist_tickers:
+                try:
+                    info = provider.get_stock_info(ticker)
+                    current_price = info.get("currentPrice", 0)
+                    previous_close = info.get("previousClose", current_price)
+                    change = current_price - previous_close
+                    change_pct = (
+                        (change / previous_close * 100) if previous_close else 0
+                    )
 
-                watchlist_data.append(ticker_data)
+                    ticker_data = {
+                        "ticker": ticker,
+                        "name": info.get("longName", ticker),
+                        "current_price": round(current_price, 2),
+                        "change": round(change, 2),
+                        "change_percent": round(change_pct, 2),
+                        "volume": info.get("volume", 0),
+                        "market_cap": info.get("marketCap", 0),
+                        "bid": info.get("bid", 0),
+                        "ask": info.get("ask", 0),
+                        "bid_size": info.get("bidSize", 0),
+                        "ask_size": info.get("askSize", 0),
+                        "last_trade_time": datetime.now(UTC).isoformat(),
+                    }
 
-            except Exception as e:
-                logger.error(f"Error fetching data for {ticker}: {str(e)}")
-                continue
+                    watchlist_data.append(ticker_data)
 
-        return {
-            "watchlist": watchlist_data,
-            "count": len(watchlist_data),
-            "mode": "simple_stock_analysis",
-            "last_updated": datetime.now(UTC).isoformat(),
-        }
-    finally:
-        db_session.close()
+                except Exception as exc:
+                    logger.error(f"Error fetching data for {ticker}: {str(exc)}")
+                    continue
+
+            return {
+                "watchlist": watchlist_data,
+                "count": len(watchlist_data),
+                "mode": "simple_stock_analysis",
+                "last_updated": datetime.now(UTC).isoformat(),
+            }
+        finally:
+            db_session.close()
+
+    return await asyncio.to_thread(_build_watchlist)
 
 
 # Market Overview Tools (full access)
@@ -561,18 +588,16 @@ async def get_market_overview() -> dict[str, Any]:
     """
     try:
         # Create market provider instance
+        import asyncio
+
         provider = MarketDataProvider()
 
-        # Get market indices
-        indices = provider.get_market_summary()
+        indices, sectors, breadth = await asyncio.gather(
+            provider.get_market_summary_async(),
+            provider.get_sector_performance_async(),
+            provider.get_market_overview_async(),
+        )
 
-        # Get sector performance
-        sectors = provider.get_sector_performance()
-
-        # Get market breadth
-        breadth = provider.get_market_overview()
-
-        # Full market overview
         overview = {
             "indices": indices,
             "sectors": sectors,
@@ -581,18 +606,19 @@ async def get_market_overview() -> dict[str, Any]:
             "mode": "simple_stock_analysis",
         }
 
-        # Add VIX and volatility data
-        vix_data = provider.get_market_summary()
+        vix_value = indices.get("current_price", 0)
         overview["volatility"] = {
-            "vix": vix_data.get("current_price", 0),
-            "vix_change": vix_data.get("change_percent", 0),
-            "fear_level": "extreme"
-            if vix_data.get("current_price", 0) > 30
-            else "high"
-            if vix_data.get("current_price", 0) > 20
-            else "moderate"
-            if vix_data.get("current_price", 0) > 15
-            else "low",
+            "vix": vix_value,
+            "vix_change": indices.get("change_percent", 0),
+            "fear_level": (
+                "extreme"
+                if vix_value > 30
+                else (
+                    "high"
+                    if vix_value > 20
+                    else "moderate" if vix_value > 15 else "low"
+                )
+            ),
         }
 
         return overview
@@ -611,9 +637,9 @@ async def get_economic_calendar(days_ahead: int = 7) -> dict[str, Any]:
     """
     try:
         # Get economic calendar events (placeholder implementation)
-        events: list[
-            dict[str, Any]
-        ] = []  # macro_provider doesn't have get_economic_calendar method
+        events: list[dict[str, Any]] = (
+            []
+        )  # macro_provider doesn't have get_economic_calendar method
 
         return {
             "events": events,
@@ -803,8 +829,15 @@ if __name__ == "__main__":
 
         # Add connection event handlers for monitoring
         @mcp.event("connection_opened")
-        async def on_connection_open(session_id: str = None):
+        async def on_connection_open(session_id: str | None = None) -> str:
             """Handle new MCP connection with enhanced stability."""
+            if connection_manager is None:
+                fallback_session_id = session_id or str(uuid.uuid4())
+                logger.info(
+                    "MCP connection opened without manager: %s", fallback_session_id[:8]
+                )
+                return fallback_session_id
+
             try:
                 actual_session_id = await connection_manager.handle_new_connection(
                     session_id
@@ -816,8 +849,14 @@ if __name__ == "__main__":
                 raise
 
         @mcp.event("connection_closed")
-        async def on_connection_close(session_id: str):
+        async def on_connection_close(session_id: str) -> None:
             """Handle MCP connection close with cleanup."""
+            if connection_manager is None:
+                logger.info(
+                    "MCP connection close received without manager: %s", session_id[:8]
+                )
+                return
+
             try:
                 await connection_manager.handle_connection_close(session_id)
                 logger.info(f"MCP connection closed: {session_id[:8]}")
@@ -825,8 +864,14 @@ if __name__ == "__main__":
                 logger.error(f"Failed to handle connection close: {e}")
 
         @mcp.event("message_received")
-        async def on_message_received(session_id: str, message: dict):
+        async def on_message_received(session_id: str, message: dict[str, Any]) -> None:
             """Update session activity on message received."""
+            if connection_manager is None:
+                logger.debug(
+                    "Skipping session activity update; connection manager disabled."
+                )
+                return
+
             try:
                 await connection_manager.update_session_activity(session_id)
             except Exception as e:

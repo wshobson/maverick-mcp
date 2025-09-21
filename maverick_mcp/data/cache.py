@@ -10,12 +10,11 @@ import hashlib
 import json
 import logging
 import os
-import pickle
 import time
 import zlib
 from collections import defaultdict
-from datetime import UTC, datetime
-from typing import Any
+from datetime import UTC, date, datetime
+from typing import Any, DefaultDict, cast
 
 import msgpack
 import pandas as pd
@@ -49,23 +48,15 @@ CACHE_ENABLED = os.getenv("CACHE_ENABLED", "True").lower() == "true"
 CACHE_TTL_SECONDS = settings.performance.cache_ttl_seconds
 CACHE_VERSION = os.getenv("CACHE_VERSION", "v1")
 
-# Serialization format priorities
-SERIALIZATION_FORMATS = {
-    "msgpack_zlib": {"priority": 1, "compression": True},
-    "pickle_zlib": {"priority": 2, "compression": True},
-    "msgpack": {"priority": 3, "compression": False},
-    "pickle": {"priority": 4, "compression": False},
-    "json": {"priority": 5, "compression": False},
-}
-
 # Cache statistics
-_cache_stats = defaultdict(int)
-_cache_stats["hits"] = 0
-_cache_stats["misses"] = 0
-_cache_stats["sets"] = 0
-_cache_stats["errors"] = 0
-_cache_stats["serialization_time"] = 0
-_cache_stats["deserialization_time"] = 0
+CacheStatMap = DefaultDict[str, float]
+_cache_stats: CacheStatMap = defaultdict(float)
+_cache_stats["hits"] = 0.0
+_cache_stats["misses"] = 0.0
+_cache_stats["sets"] = 0.0
+_cache_stats["errors"] = 0.0
+_cache_stats["serialization_time"] = 0.0
+_cache_stats["deserialization_time"] = 0.0
 
 # In-memory cache as fallback with memory management
 _memory_cache: dict[str, dict[str, Any]] = {}
@@ -75,12 +66,76 @@ _memory_cache_max_size = 1000  # Will be updated to use config
 _cache_metadata: dict[str, dict[str, Any]] = {}
 
 # Memory monitoring
-_cache_memory_stats = {
-    "memory_cache_bytes": 0,
-    "redis_connection_count": 0,
-    "large_object_count": 0,
-    "compression_savings_bytes": 0,
+_cache_memory_stats: dict[str, float] = {
+    "memory_cache_bytes": 0.0,
+    "redis_connection_count": 0.0,
+    "large_object_count": 0.0,
+    "compression_savings_bytes": 0.0,
 }
+
+
+def _dataframe_to_payload(df: pd.DataFrame) -> dict[str, Any]:
+    """Convert a DataFrame to a JSON-serializable payload."""
+
+    normalized = ensure_timezone_naive(df)
+    payload = json.loads(
+        normalized.to_json(orient="split", date_format="iso", default_handler=str)
+    )
+    payload["index_type"] = (
+        "datetime" if isinstance(normalized.index, pd.DatetimeIndex) else "other"
+    )
+    payload["index_name"] = normalized.index.name
+    return payload
+
+
+def _payload_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
+    """Reconstruct a DataFrame from a serialized payload."""
+
+    data = payload.get("data", {})
+    columns = data.get("columns", [])
+    frame = pd.DataFrame(data.get("data", []), columns=columns)
+    index_values = data.get("index", [])
+
+    if payload.get("index_type") == "datetime":
+        index_values = pd.to_datetime(index_values)
+        index = normalize_timezone(pd.Index(index_values))
+    else:
+        index = index_values
+
+    frame.index = index
+    frame.index.name = payload.get("index_name")
+    return ensure_timezone_naive(frame)
+
+
+def _json_default(value: Any) -> Any:
+    """JSON serializer for unsupported types."""
+
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, pd.Series):
+        return value.tolist()
+    if isinstance(value, set):
+        return list(value)
+    raise TypeError(f"Unsupported type {type(value)!r} for cache serialization")
+
+
+def _decode_json_payload(raw_data: str) -> Any:
+    """Decode JSON payloads with DataFrame support."""
+
+    payload = json.loads(raw_data)
+    if isinstance(payload, dict) and payload.get("__cache_type__") == "dataframe":
+        return _payload_to_dataframe(payload)
+    if isinstance(payload, dict) and payload.get("__cache_type__") == "dict":
+        result: dict[str, Any] = {}
+        for key, value in payload.get("data", {}).items():
+            if isinstance(value, dict) and value.get("__cache_type__") == "dataframe":
+                result[key] = _payload_to_dataframe(value)
+            else:
+                result[key] = value
+        return result
+    return payload
 
 
 def normalize_timezone(dt_index: pd.Index | pd.DatetimeIndex) -> pd.DatetimeIndex:
@@ -119,7 +174,7 @@ def get_cache_stats() -> dict[str, Any]:
     Returns:
         Dictionary containing cache performance metrics
     """
-    stats = dict(_cache_stats)
+    stats: dict[str, float | int] = cast(dict[str, float | int], dict(_cache_stats))
 
     # Calculate hit rate
     total_requests = stats["hits"] + stats["misses"]
@@ -161,12 +216,12 @@ def reset_cache_stats() -> None:
     _cache_stats.clear()
     _cache_stats.update(
         {
-            "hits": 0,
-            "misses": 0,
-            "sets": 0,
-            "errors": 0,
-            "serialization_time": 0,
-            "deserialization_time": 0,
+            "hits": 0.0,
+            "misses": 0.0,
+            "sets": 0.0,
+            "errors": 0.0,
+            "serialization_time": 0.0,
+            "deserialization_time": 0.0,
         }
     )
 
@@ -388,15 +443,10 @@ def _deserialize_cached_data(data: bytes, key: str) -> Any:
                     return result
                 except Exception as e:
                     logger.debug(f"Msgpack decompressed failed for {key}: {e}")
-                    # Fall back to pickle for compressed data
                     try:
-                        result = pickle.loads(decompressed)
-                        # Fix timezone issues for pandas objects
-                        if isinstance(result, pd.DataFrame):
-                            result = ensure_timezone_naive(result)
-                        return result
+                        return _decode_json_payload(decompressed.decode("utf-8"))
                     except Exception as e2:
-                        logger.debug(f"Pickle decompressed failed for {key}: {e2}")
+                        logger.debug(f"JSON decompressed failed for {key}: {e2}")
                         pass
             except Exception:
                 pass
@@ -427,18 +477,10 @@ def _deserialize_cached_data(data: bytes, key: str) -> Any:
         except Exception:
             pass
 
-        # Try regular pickle
-        try:
-            result = pickle.loads(data)
-            if isinstance(result, pd.DataFrame):
-                result = ensure_timezone_naive(result)
-            return result
-        except Exception:
-            pass
-
         # Fall back to JSON
         try:
-            return json.loads(data.decode() if isinstance(data, bytes) else data)
+            decoded = data.decode() if isinstance(data, bytes) else data
+            return _decode_json_payload(decoded)
         except Exception:
             pass
 
@@ -524,9 +566,11 @@ def _serialize_data(data: Any, key: str) -> bytes:
                 df_dict = {
                     "_type": "dataframe",
                     "data": df.to_dict("index"),
-                    "index_type": "datetime"
-                    if isinstance(df.index, pd.DatetimeIndex)
-                    else "other",
+                    "index_type": (
+                        "datetime"
+                        if isinstance(df.index, pd.DatetimeIndex)
+                        else "other"
+                    ),
                     "columns": list(df.columns),
                     "index_data": [
                         str(idx) for idx in df.index
@@ -545,9 +589,13 @@ def _serialize_data(data: Any, key: str) -> bytes:
                 return compressed
             except Exception as e:
                 logger.debug(f"Msgpack DataFrame serialization failed for {key}: {e}")
-                # Fall back to pickle for DataFrames
-                pickled = pickle.dumps(df, protocol=pickle.HIGHEST_PROTOCOL)
-                compressed = zlib.compress(pickled, level=1)
+                json_payload = {
+                    "__cache_type__": "dataframe",
+                    "data": _dataframe_to_payload(df),
+                }
+                compressed = zlib.compress(
+                    json.dumps(json_payload).encode("utf-8"), level=1
+                )
                 compressed_size = len(compressed)
 
                 if original_size > compressed_size:
@@ -577,9 +625,11 @@ def _serialize_data(data: Any, key: str) -> bytes:
                         serializable_data[k] = {
                             "_type": "dataframe",
                             "data": v.to_dict("index"),
-                            "index_type": "datetime"
-                            if isinstance(v.index, pd.DatetimeIndex)
-                            else "other",
+                            "index_type": (
+                                "datetime"
+                                if isinstance(v.index, pd.DatetimeIndex)
+                                else "other"
+                            ),
                         }
                     else:
                         serializable_data[k] = v
@@ -588,9 +638,24 @@ def _serialize_data(data: Any, key: str) -> bytes:
                 compressed = zlib.compress(msgpack_data, level=1)
                 return compressed
             except Exception:
-                # Fall back to pickle
-                pickled = pickle.dumps(processed_data, protocol=pickle.HIGHEST_PROTOCOL)
-                compressed = zlib.compress(pickled, level=1)
+                payload = {
+                    "__cache_type__": "dict",
+                    "data": {
+                        key: (
+                            {
+                                "__cache_type__": "dataframe",
+                                "data": _dataframe_to_payload(value),
+                            }
+                            if isinstance(value, pd.DataFrame)
+                            else value
+                        )
+                        for key, value in processed_data.items()
+                    },
+                }
+                compressed = zlib.compress(
+                    json.dumps(payload, default=_json_default).encode("utf-8"),
+                    level=1,
+                )
                 return compressed
 
         # For simple data types, try msgpack first (more efficient than JSON)
@@ -599,11 +664,14 @@ def _serialize_data(data: Any, key: str) -> bytes:
                 return msgpack.packb(data)
             except Exception:
                 # Fall back to JSON
-                return json.dumps(data).encode("utf-8")
+                return json.dumps(data, default=_json_default).encode("utf-8")
 
-        # Default to pickle for other complex objects
-        return pickle.dumps(data, protocol=pickle.HIGHEST_PROTOCOL)
+        raise TypeError(f"Unsupported cache data type {type(data)!r} for key {key}")
 
+    except TypeError as exc:
+        _cache_stats["errors"] += 1
+        logger.warning(f"Unsupported data type for cache key {key}: {exc}")
+        raise
     except Exception as e:
         _cache_stats["errors"] += 1
         logger.warning(f"Failed to serialize data for key {key}: {e}")
@@ -631,16 +699,19 @@ def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
     if not CACHE_ENABLED:
         return False
 
-    if ttl is None:
-        ttl = CACHE_TTL_SECONDS
+    resolved_ttl = CACHE_TTL_SECONDS if ttl is None else ttl
 
     # Serialize data efficiently
-    serialized_data = _serialize_data(data, key)
+    try:
+        serialized_data = _serialize_data(data, key)
+    except TypeError as exc:
+        logger.warning(f"Skipping cache for {key}: {exc}")
+        return False
 
     # Store cache metadata
     _cache_metadata[key] = {
         "created_at": datetime.now(UTC).isoformat(),
-        "ttl": ttl,
+        "ttl": resolved_ttl,
         "size_bytes": len(serialized_data),
         "version": CACHE_VERSION,
     }
@@ -651,7 +722,7 @@ def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
     redis_client = get_redis_client()
     if redis_client:
         try:
-            redis_client.setex(key, ttl, serialized_data)
+            redis_client.setex(key, resolved_ttl, serialized_data)
             logger.debug(f"Saved to Redis cache: {key}")
             success = True
         except Exception as e:
@@ -660,7 +731,7 @@ def save_to_cache(key: str, data: Any, ttl: int | None = None) -> bool:
 
     if not success:
         # Fall back to in-memory cache
-        _memory_cache[key] = {"data": data, "expiry": time.time() + ttl}
+        _memory_cache[key] = {"data": data, "expiry": time.time() + resolved_ttl}
         logger.debug(f"Saved to memory cache: {key}")
         success = True
 
@@ -822,15 +893,22 @@ class CacheManager:
 
                 for key, value in zip(keys, values, strict=False):  # type: ignore[arg-type]
                     if value:
-                        try:
-                            # Try to decode JSON if it's stored as JSON
-                            decoded_value = (
-                                value.decode() if isinstance(value, bytes) else value
-                            )
-                            results[key] = json.loads(decoded_value)
-                        except (json.JSONDecodeError, AttributeError):
-                            # If not JSON, store as-is
-                            results[key] = decoded_value
+                        decoded_value: Any
+                        if isinstance(value, bytes):
+                            decoded_value = value.decode()
+                        else:
+                            decoded_value = value
+
+                        if isinstance(decoded_value, str):
+                            try:
+                                # Try to decode JSON if it's stored as JSON
+                                results[key] = json.loads(decoded_value)
+                                continue
+                            except json.JSONDecodeError:
+                                pass
+
+                        # If not JSON or decoding fails, store as-is
+                        results[key] = decoded_value
             except Exception as e:
                 logger.warning(f"Error in batch get: {e}")
 

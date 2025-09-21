@@ -1,0 +1,23 @@
+{
+  "include": [
+    "maverick_mcp/api/server.py",
+    "maverick_mcp/data/cache.py",
+    "maverick_mcp/data/performance.py",
+    "maverick_mcp/providers/optimized_stock_data.py",
+    "maverick_mcp/utils/quick_cache.py",
+    "maverick_mcp/backtesting/strategy_executor.py",
+    "maverick_mcp/tools/performance_monitoring.py"
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "warning",
+  "reportMissingTypeStubs": "warning",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "pythonVersion": "3.12",
+      "extraPaths": ["."]
+    }
+  ]
+}
