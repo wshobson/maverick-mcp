@@ -46,8 +46,52 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 
 - **Python 3.12+**: Core runtime environment
 - **[uv](https://docs.astral.sh/uv/)**: Modern Python package manager (recommended)
+- **TA-Lib**: Technical analysis library for advanced indicators
 - Redis (optional, for enhanced caching)
 - PostgreSQL or SQLite (optional, for data persistence)
+
+#### Installing TA-Lib
+
+TA-Lib is required for technical analysis calculations.
+
+**macOS and Linux (Homebrew):**
+```bash
+brew install ta-lib
+```
+
+**Windows (Multiple Options):**
+
+**Option 1: Conda/Anaconda (Recommended - Easiest)**
+```bash
+conda install -c conda-forge ta-lib
+```
+
+**Option 2: Pre-compiled Wheels**
+1. Download the appropriate wheel for your Python version from:
+   - [cgohlke/talib-build releases](https://github.com/cgohlke/talib-build/releases)
+   - Choose the file matching your Python version (e.g., `TA_Lib-0.4.28-cp312-cp312-win_amd64.whl` for Python 3.12 64-bit)
+2. Install using pip:
+```bash
+pip install path/to/downloaded/TA_Lib-X.X.X-cpXXX-cpXXX-win_amd64.whl
+```
+
+**Option 3: Alternative Pre-compiled Package**
+```bash
+pip install TA-Lib-Precompiled
+```
+
+**Option 4: Build from Source (Advanced)**
+If other methods fail, you can build from source:
+1. Install Microsoft C++ Build Tools
+2. Download and extract ta-lib C library to `C:\ta-lib`
+3. Build using Visual Studio tools
+4. Run `pip install ta-lib`
+
+**Verification:**
+Test your installation:
+```bash
+python -c "import talib; print(talib.__version__)"
+```
 
 #### Installing uv (Recommended)
 
