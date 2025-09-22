@@ -105,9 +105,11 @@ import argparse
 import json
 import sys
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
+from fastapi import FastAPI
 from fastmcp import FastMCP
 
 # Import tool registry for direct registration
@@ -133,6 +135,32 @@ from maverick_mcp.utils.tracing import initialize_tracing
 if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
     from maverick_mcp.infrastructure.connection_manager import MCPConnectionManager
 
+
+class FastMCPProtocol(Protocol):
+    """Protocol describing the FastMCP interface we rely upon."""
+
+    fastapi_app: FastAPI | None
+    dependencies: list[Any]
+
+    def resource(
+        self, uri: str
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]: ...
+
+    def event(
+        self, name: str
+    ) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]: ...
+
+    def prompt(
+        self, name: str | None = None, *, description: str | None = None
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]: ...
+
+    def tool(
+        self, name: str | None = None, *, description: str | None = None
+    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]: ...
+
+    def run(self, *args: Any, **kwargs: Any) -> None: ...
+
+
 _use_stderr = "--transport" in sys.argv and "stdio" in sys.argv
 
 # Setup enhanced structured logging for backtesting
@@ -153,10 +181,11 @@ logger = get_logger("maverick_mcp.server")
 logger_manager = get_logger_manager()
 
 # Initialize FastMCP with enhanced connection management
-mcp: FastMCP = FastMCP(
+_fastmcp_instance = FastMCP(
     name=settings.app_name,
 )
-mcp.dependencies = []
+_fastmcp_instance.dependencies = []
+mcp = cast(FastMCPProtocol, _fastmcp_instance)
 
 # Initialize connection manager for stability
 connection_manager: "MCPConnectionManager | None" = None
@@ -231,7 +260,7 @@ logger.info("Initializing enhanced connection management system...")
 # from maverick_mcp.infrastructure.sse_optimizer import apply_sse_optimizations
 
 # Register all tools from routers directly for basic functionality
-register_all_router_tools(mcp)
+register_all_router_tools(_fastmcp_instance)
 logger.info("Tools registered successfully")
 
 # Register monitoring and health endpoints directly with FastMCP
@@ -712,7 +741,8 @@ def stock_resource(ticker: str) -> Any:
     try:
         provider = StockDataProvider(db_session=db_session)
         df = provider.get_stock_data(ticker)
-        return json.loads(df.to_json(orient="split", date_format="iso"))
+        payload = cast(str, df.to_json(orient="split", date_format="iso"))
+        return json.loads(payload)
     finally:
         db_session.close()
 
@@ -724,7 +754,8 @@ def stock_resource_with_dates(ticker: str, start_date: str, end_date: str) -> An
     try:
         provider = StockDataProvider(db_session=db_session)
         df = provider.get_stock_data(ticker, start_date, end_date)
-        return json.loads(df.to_json(orient="split", date_format="iso"))
+        payload = cast(str, df.to_json(orient="split", date_format="iso"))
+        return json.loads(payload)
     finally:
         db_session.close()
 

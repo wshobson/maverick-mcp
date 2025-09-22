@@ -24,6 +24,7 @@ try:
         Stock,
         SupplyDemandBreakoutStocks,
         bulk_insert_price_data,
+        ensure_database_schema,
         get_db,
         get_latest_maverick_screening,
         init_db,
@@ -37,6 +38,7 @@ try:
         "SessionLocal",
         "get_db",
         "init_db",
+        "ensure_database_schema",
         "bulk_insert_price_data",
         "get_latest_maverick_screening",
     ])
