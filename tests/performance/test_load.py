@@ -13,21 +13,20 @@ This test suite covers:
 
 import asyncio
 import logging
+import os
 import random
 import statistics
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
-from unittest.mock import Mock, patch
+from typing import Any
+from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
-import pytest
 import psutil
-import os
+import pytest
 
-from maverick_mcp.backtesting import VectorBTEngine, BacktestAnalyzer
+from maverick_mcp.backtesting import VectorBTEngine
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
 from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
@@ -62,7 +61,7 @@ class LoadTestRunner:
         self.results = []
         self.active_requests = 0
 
-    async def simulate_user_session(self, user_id: int, session_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def simulate_user_session(self, user_id: int, session_config: dict[str, Any]) -> dict[str, Any]:
         """Simulate a realistic user session with multiple backtests."""
         session_start = time.time()
         user_results = []
@@ -131,7 +130,7 @@ class LoadTestRunner:
             "failure_count": sum(1 for r in user_results if not r["success"]),
         }
 
-    def calculate_percentiles(self, response_times: List[float]) -> Dict[str, float]:
+    def calculate_percentiles(self, response_times: list[float]) -> dict[str, float]:
         """Calculate response time percentiles."""
         if not response_times:
             return {"p50": 0, "p95": 0, "p99": 0}
@@ -145,7 +144,7 @@ class LoadTestRunner:
 
     async def run_load_test(self,
                            concurrent_users: int,
-                           session_config: Dict[str, Any],
+                           session_config: dict[str, Any],
                            duration_seconds: int = 60) -> LoadTestResult:
         """Run load test with specified concurrent users."""
         logger.info(f"Starting load test: {concurrent_users} concurrent users for {duration_seconds}s")
@@ -176,7 +175,7 @@ class LoadTestRunner:
                 asyncio.gather(*user_tasks, return_exceptions=True),
                 timeout=duration_seconds + 30  # Add buffer to test timeout
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"Load test timed out after {duration_seconds + 30}s")
             user_results = []
 
@@ -298,7 +297,7 @@ class TestLoadTesting:
             "think_time": (0.1, 0.5),  # Faster think time for testing
         }
 
-        with benchmark_timer() as timer:
+        with benchmark_timer():
             result = await load_runner.run_load_test(
                 concurrent_users=10,
                 session_config=session_config,
@@ -324,7 +323,7 @@ class TestLoadTesting:
             "think_time": (0.2, 1.0),
         }
 
-        with benchmark_timer() as timer:
+        with benchmark_timer():
             result = await load_runner.run_load_test(
                 concurrent_users=50,
                 session_config=session_config,
@@ -350,7 +349,7 @@ class TestLoadTesting:
             "think_time": (0.5, 1.5),
         }
 
-        with benchmark_timer() as timer:
+        with benchmark_timer():
             result = await load_runner.run_load_test(
                 concurrent_users=100,
                 session_config=session_config,
@@ -469,8 +468,6 @@ class TestLoadTesting:
 
     async def test_database_connection_pooling_under_load(self, optimized_data_provider, db_session):
         """Test database connection pooling under concurrent load."""
-        load_runner = LoadTestRunner(optimized_data_provider)
-
         # Generate backtest results to save to database
         engine = VectorBTEngine(data_provider=optimized_data_provider)
         test_symbols = ["DB_LOAD_1", "DB_LOAD_2", "DB_LOAD_3"]
@@ -488,7 +485,7 @@ class TestLoadTesting:
             backtest_results.append(result)
 
         # Test concurrent database operations
-        async def concurrent_database_operations(operation_id: int) -> Dict[str, Any]:
+        async def concurrent_database_operations(operation_id: int) -> dict[str, Any]:
             """Simulate concurrent database save/retrieve operations."""
             start_time = time.time()
             operations_completed = 0

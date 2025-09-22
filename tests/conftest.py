@@ -116,7 +116,6 @@ def setup_test_env(database_url: str, redis_url: str):
     os.environ["REDIS_URL"] = redis_url
     os.environ["ENVIRONMENT"] = "test"
     os.environ["AUTH_ENABLED"] = "true"
-    os.environ["CREDIT_SYSTEM_ENABLED"] = "true"
     os.environ["LOG_LEVEL"] = "INFO"
     # Use test JWT keys
     os.environ["JWT_PRIVATE_KEY"] = """-----BEGIN PRIVATE KEY-----
@@ -192,7 +191,7 @@ async def client(app) -> AsyncGenerator[AsyncClient, None]:
 # Authentication fixtures (disabled for personal use)
 @pytest.fixture
 async def test_user(db_session: Session):
-    """Create a test user with credits (disabled for personal use)."""
+    """Create a test user for authenticated scenarios (legacy billing disabled)."""
     # Auth disabled for personal use - return None
     # All auth-related imports and functionality removed
     return None

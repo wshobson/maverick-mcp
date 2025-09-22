@@ -142,7 +142,6 @@ async def example_tool_execution(tool_name: str, user_id: str):
             track_tool_usage(
                 tool_name=tool_name,
                 user_id=user_id,
-                credits_spent=5,
                 duration=duration,
                 status="success",
                 complexity="standard",
@@ -234,14 +233,13 @@ async def demonstrate_monitoring():
     # Example 6: Business metrics
     logger.info("=== Example 6: Business Metrics ===")
     from maverick_mcp.utils.monitoring import (
-        track_credit_purchase,
-        track_revenue,
+        track_user_session,
         update_active_users,
     )
 
-    # Simulate business events
-    track_credit_purchase("100_credits", "usd")
-    track_revenue(2500, "credits", "usd", "internal")  # $25.00 recorded internally
+    # Simulate engagement events
+    track_user_session("registered", "api_key", duration=360.0)
+    track_user_session("anonymous", "public", duration=120.0)
     update_active_users(daily_count=42, monthly_count=156)
 
     print("Business metrics tracked")

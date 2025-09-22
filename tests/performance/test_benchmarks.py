@@ -15,19 +15,19 @@ This test suite covers:
 import asyncio
 import gc
 import logging
+import os
 import statistics
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Any, Optional
+from typing import Any
 from unittest.mock import Mock, patch
 
 import numpy as np
 import pandas as pd
-import pytest
 import psutil
-import os
+import pytest
 
-from maverick_mcp.backtesting import VectorBTEngine, BacktestAnalyzer
+from maverick_mcp.backtesting import VectorBTEngine
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
 from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
@@ -43,7 +43,7 @@ class BenchmarkResult:
     unit: str
     passed: bool
     margin: float
-    details: Dict[str, Any]
+    details: dict[str, Any]
 
 
 class BenchmarkTracker:
@@ -59,7 +59,7 @@ class BenchmarkTracker:
                      actual_value: float,
                      unit: str,
                      comparison: str = "<=",
-                     details: Optional[Dict[str, Any]] = None) -> BenchmarkResult:
+                     details: dict[str, Any] | None = None) -> BenchmarkResult:
         """Add a benchmark result."""
         if comparison == "<=":
             passed = actual_value <= target_value
@@ -95,7 +95,7 @@ class BenchmarkTracker:
         """Get current CPU usage percentage."""
         return self.process.cpu_percent()
 
-    def summary(self) -> Dict[str, Any]:
+    def summary(self) -> dict[str, Any]:
         """Generate benchmark summary."""
         total_tests = len(self.results)
         passed_tests = sum(1 for r in self.results if r.passed)
@@ -221,7 +221,7 @@ class TestPerformanceBenchmarks:
 
         test_symbols = ["MEM_TEST_1", "MEM_TEST_2", "MEM_TEST_3", "MEM_TEST_4", "MEM_TEST_5"]
 
-        for i, symbol in enumerate(test_symbols):
+        for _i, symbol in enumerate(test_symbols):
             gc.collect()  # Force garbage collection before measurement
             pre_backtest_memory = benchmark.get_memory_usage()
 
@@ -459,7 +459,7 @@ class TestPerformanceBenchmarks:
         with BacktestPersistenceManager(session=db_session) as persistence:
             for backtest_id, _ in save_times:
                 start_time = time.time()
-                retrieved = persistence.get_backtest_by_id(backtest_id)
+                persistence.get_backtest_by_id(backtest_id)
                 query_time = (time.time() - start_time) * 1000  # Convert to ms
                 query_times.append(query_time)
 

@@ -144,7 +144,7 @@ async def test_financial_relevance_scoring():
         MockResult(
             "https://bloomberg.com/news/apple-stock-analysis",
             "Apple Stock Analysis: Strong Financial Performance",
-            "Apple's financial performance continues to show strong growth with increased market cap and dividend payments.",
+            "Apple's financial performance continues to show strong growth with increased market cap and dividend distributions.",
             "2024-01-10T00:00:00Z",
         ),
         MockResult(

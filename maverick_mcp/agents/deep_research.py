@@ -7,8 +7,9 @@ content analysis, sentiment detection, and source validation.
 
 import asyncio
 import logging
+from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import Any, Iterable
+from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage

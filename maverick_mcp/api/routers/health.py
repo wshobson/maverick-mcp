@@ -9,14 +9,10 @@ Provides detailed health monitoring including:
 - Performance metrics
 """
 
-import asyncio
 import logging
-import psutil
-import time
 from datetime import UTC, datetime
-from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from maverick_mcp.config.settings import get_settings

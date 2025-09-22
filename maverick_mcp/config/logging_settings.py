@@ -7,8 +7,8 @@ including debug mode, log levels, output formats, and performance monitoring.
 
 import os
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
 from pathlib import Path
+from typing import Any
 
 
 @dataclass
@@ -30,7 +30,7 @@ class LoggingSettings:
 
     # Debug mode configuration
     debug_enabled: bool = False
-    verbose_modules: List[str] = None
+    verbose_modules: list[str] = None
     log_request_response: bool = False
     max_payload_length: int = 1000
 
@@ -46,12 +46,12 @@ class LoggingSettings:
 
     # Sensitive data handling
     mask_sensitive_data: bool = True
-    sensitive_field_patterns: List[str] = None
+    sensitive_field_patterns: list[str] = None
 
     # Remote logging (for future log aggregation)
     enable_remote_logging: bool = False
-    remote_endpoint: Optional[str] = None
-    remote_api_key: Optional[str] = None
+    remote_endpoint: str | None = None
+    remote_api_key: str | None = None
 
     # Correlation and tracing
     enable_correlation_tracking: bool = True
@@ -115,7 +115,7 @@ class LoggingSettings:
             enable_request_tracing=os.getenv("MAVERICK_REQUEST_TRACING", "true").lower() == "true",
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert settings to dictionary for serialization."""
         return {
             "log_level": self.log_level,
@@ -152,7 +152,7 @@ class LoggingSettings:
             log_path = Path(self.log_file_path)
             log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    def get_debug_modules(self) -> List[str]:
+    def get_debug_modules(self) -> list[str]:
         """Get list of modules for debug logging."""
         if not self.debug_enabled:
             return []
@@ -174,7 +174,7 @@ class LoggingSettings:
             return False
         return duration_ms >= self.performance_log_threshold_ms
 
-    def get_log_file_config(self) -> Dict[str, Any]:
+    def get_log_file_config(self) -> dict[str, Any]:
         """Get file logging configuration."""
         if not self.enable_file_logging:
             return {}
@@ -193,7 +193,7 @@ class LoggingSettings:
 
         return config
 
-    def get_performance_config(self) -> Dict[str, Any]:
+    def get_performance_config(self) -> dict[str, Any]:
         """Get performance monitoring configuration."""
         return {
             "enabled": self.enable_performance_logging,
@@ -202,7 +202,7 @@ class LoggingSettings:
             "business_metrics": self.enable_business_metrics,
         }
 
-    def get_debug_config(self) -> Dict[str, Any]:
+    def get_debug_config(self) -> dict[str, Any]:
         """Get debug configuration."""
         return {
             "enabled": self.debug_enabled,
@@ -265,7 +265,7 @@ class EnvironmentLogSettings:
 
 
 # Global logging settings instance
-_logging_settings: Optional[LoggingSettings] = None
+_logging_settings: LoggingSettings | None = None
 
 
 def get_logging_settings() -> LoggingSettings:
@@ -315,7 +315,7 @@ def configure_logging_for_environment(environment: str) -> LoggingSettings:
 
 
 # Logging configuration validation
-def validate_logging_settings(settings: LoggingSettings) -> List[str]:
+def validate_logging_settings(settings: LoggingSettings) -> list[str]:
     """Validate logging settings and return list of warnings/errors."""
     warnings = []
 

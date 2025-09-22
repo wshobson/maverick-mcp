@@ -517,7 +517,7 @@ class OnlineLearningStrategy(Strategy):
             self.is_trained = True
             self.training_samples_count = len(X)
 
-            logger.info(f"Initial training completed with {len(X)} samples, classes: {dict(zip(unique_classes, class_counts))}")
+            logger.info(f"Initial training completed with {len(X)} samples, classes: {dict(zip(unique_classes, class_counts, strict=False))}")
             return True
 
         except Exception as e:

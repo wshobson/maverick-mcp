@@ -20,33 +20,33 @@ import logging
 import logging.handlers
 import os
 import sys
+import threading
 import time
 import traceback
 import uuid
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
-from concurrent.futures import ThreadPoolExecutor
-import threading
+from typing import Any
 
 import psutil
-from fastmcp import Context as MCPContext
 
 # Context variables for request tracking across async boundaries
-correlation_id_var: ContextVar[Optional[str]] = ContextVar("correlation_id", default=None)
-request_start_var: ContextVar[Optional[float]] = ContextVar("request_start", default=None)
-user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
-tool_name_var: ContextVar[Optional[str]] = ContextVar("tool_name", default=None)
-operation_context_var: ContextVar[Optional[Dict[str, Any]]] = ContextVar("operation_context", default=None)
+correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", default=None)
+request_start_var: ContextVar[float | None] = ContextVar("request_start", default=None)
+user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
+tool_name_var: ContextVar[str | None] = ContextVar("tool_name", default=None)
+operation_context_var: ContextVar[dict[str, Any] | None] = ContextVar("operation_context", default=None)
 
 # Global logger registry for performance metrics aggregation
-_performance_logger_registry: Dict[str, "PerformanceMetricsLogger"] = {}
-_log_level_counts: Dict[str, int] = {"DEBUG": 0, "INFO": 0, "WARNING": 0, "ERROR": 0, "CRITICAL": 0}
+_performance_logger_registry: dict[str, "PerformanceMetricsLogger"] = {}
+_log_level_counts: dict[str, int] = {"DEBUG": 0, "INFO": 0, "WARNING": 0, "ERROR": 0, "CRITICAL": 0}
 
 # Thread pool for async logging operations
-_async_log_executor: Optional[ThreadPoolExecutor] = None
+_async_log_executor: ThreadPoolExecutor | None = None
 _async_log_lock = threading.Lock()
 
 
@@ -61,7 +61,7 @@ class CorrelationIDGenerator:
         return f"{prefix}-{timestamp}-{random_part}"
 
     @staticmethod
-    def set_correlation_id(correlation_id: Optional[str] = None, prefix: str = "bt") -> str:
+    def set_correlation_id(correlation_id: str | None = None, prefix: str = "bt") -> str:
         """Set correlation ID in context with automatic generation."""
         if not correlation_id:
             correlation_id = CorrelationIDGenerator.generate_correlation_id(prefix)
@@ -69,12 +69,12 @@ class CorrelationIDGenerator:
         return correlation_id
 
     @staticmethod
-    def get_correlation_id() -> Optional[str]:
+    def get_correlation_id() -> str | None:
         """Get current correlation ID from context."""
         return correlation_id_var.get()
 
     @staticmethod
-    def propagate_context(target_context: Dict[str, Any]) -> Dict[str, Any]:
+    def propagate_context(target_context: dict[str, Any]) -> dict[str, Any]:
         """Propagate correlation context to target dict."""
         target_context.update({
             "correlation_id": correlation_id_var.get(),
@@ -98,7 +98,7 @@ class EnhancedStructuredFormatter(logging.Formatter):
         """Format log record with comprehensive structured data."""
         # Base structured log data
         log_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -168,11 +168,11 @@ class EnhancedStructuredFormatter(logging.Formatter):
 
     def _serialize_value(self, value: Any) -> Any:
         """Safely serialize complex values for JSON output."""
-        if isinstance(value, (str, int, float, bool)) or value is None:
+        if isinstance(value, str | int | float | bool) or value is None:
             return value
         elif isinstance(value, dict):
             return {k: self._serialize_value(v) for k, v in value.items()}
-        elif isinstance(value, (list, tuple)):
+        elif isinstance(value, list | tuple):
             return [self._serialize_value(item) for item in value]
         else:
             return str(value)
@@ -185,7 +185,7 @@ class AsyncLogHandler(logging.Handler):
         super().__init__()
         self.target_handler = target_handler
         self.max_queue_size = max_queue_size
-        self._queue: List[logging.LogRecord] = []
+        self._queue: list[logging.LogRecord] = []
         self._queue_lock = threading.Lock()
         self._shutdown = False
 
@@ -239,13 +239,13 @@ class PerformanceMetricsLogger:
 
     def __init__(self, logger_name: str = "maverick_mcp.performance"):
         self.logger = logging.getLogger(logger_name)
-        self.metrics: Dict[str, List[float]] = {
+        self.metrics: dict[str, list[float]] = {
             "execution_times": [],
             "memory_usage": [],
             "cpu_usage": [],
             "operation_counts": []
         }
-        self._start_times: Dict[str, float] = {}
+        self._start_times: dict[str, float] = {}
         self._lock = threading.Lock()
 
         # Register for global aggregation
@@ -312,7 +312,7 @@ class PerformanceMetricsLogger:
             }
         )
 
-    def log_business_metric(self, metric_name: str, value: Union[int, float], **context):
+    def log_business_metric(self, metric_name: str, value: int | float, **context):
         """Log business-specific metrics like strategies processed, success rates."""
         self.logger.info(
             f"Business metric: {metric_name} = {value}",
@@ -324,7 +324,7 @@ class PerformanceMetricsLogger:
             }
         )
 
-    def get_performance_summary(self) -> Dict[str, Any]:
+    def get_performance_summary(self) -> dict[str, Any]:
         """Get aggregated performance metrics summary."""
         with self._lock:
             if not self.metrics["execution_times"]:
@@ -350,7 +350,7 @@ class PerformanceMetricsLogger:
                     "avg_percent": sum(cpu_usage) / len(cpu_usage) if cpu_usage else 0,
                     "peak_percent": max(cpu_usage) if cpu_usage else 0
                 },
-                "timestamp": datetime.now(timezone.utc).isoformat()
+                "timestamp": datetime.now(UTC).isoformat()
             }
 
 
@@ -360,7 +360,7 @@ class DebugModeManager:
     def __init__(self):
         self._debug_enabled = os.getenv("MAVERICK_DEBUG", "false").lower() in ("true", "1", "on")
         self._verbose_modules: set = set()
-        self._debug_filters: Dict[str, Any] = {}
+        self._debug_filters: dict[str, Any] = {}
 
     def is_debug_enabled(self, module_name: str = "") -> bool:
         """Check if debug mode is enabled globally or for specific module."""
@@ -377,7 +377,7 @@ class DebugModeManager:
         """Enable verbose logging for specific module pattern."""
         self._verbose_modules.add(module_pattern)
 
-    def add_debug_filter(self, filter_name: str, filter_config: Dict[str, Any]):
+    def add_debug_filter(self, filter_name: str, filter_config: dict[str, Any]):
         """Add custom debug filter configuration."""
         self._debug_filters[filter_name] = filter_config
 
@@ -387,7 +387,7 @@ class DebugModeManager:
             return False
 
         # Check specific filters
-        for filter_name, config in self._debug_filters.items():
+        for _filter_name, config in self._debug_filters.items():
             if config.get("log_request_response") and operation_name in config.get("operations", []):
                 return True
 
@@ -399,20 +399,20 @@ class StructuredLoggerManager:
 
     def __init__(self):
         self.debug_manager = DebugModeManager()
-        self.performance_loggers: Dict[str, PerformanceMetricsLogger] = {}
+        self.performance_loggers: dict[str, PerformanceMetricsLogger] = {}
         self._configured = False
 
     def setup_structured_logging(
         self,
         log_level: str = "INFO",
         log_format: str = "json",
-        log_file: Optional[str] = None,
+        log_file: str | None = None,
         enable_async: bool = True,
         enable_rotation: bool = True,
         max_log_size: int = 10 * 1024 * 1024,  # 10MB
         backup_count: int = 5,
         console_output: str = "stdout",  # stdout, stderr
-        remote_handler_config: Optional[Dict[str, Any]] = None
+        remote_handler_config: dict[str, Any] | None = None
     ):
         """Setup comprehensive structured logging infrastructure."""
 
@@ -489,7 +489,7 @@ class StructuredLoggerManager:
 
         self._configured = True
 
-    def _create_remote_handler(self, config: Dict[str, Any]) -> Optional[logging.Handler]:
+    def _create_remote_handler(self, config: dict[str, Any]) -> logging.Handler | None:
         """Create remote handler for log aggregation (placeholder for future implementation)."""
         # This would implement remote logging to services like ELK, Splunk, etc.
         # For now, return None as it's not implemented
@@ -513,13 +513,13 @@ class StructuredLoggerManager:
         """Get structured logger with correlation support."""
         return logging.getLogger(name)
 
-    def create_dashboard_metrics(self) -> Dict[str, Any]:
+    def create_dashboard_metrics(self) -> dict[str, Any]:
         """Create comprehensive metrics for performance dashboard."""
         global _log_level_counts
 
         dashboard_data = {
             "system_metrics": {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "log_level_counts": _log_level_counts.copy(),
                 "active_correlation_ids": len([cid for cid in [correlation_id_var.get()] if cid]),
             },
@@ -552,7 +552,7 @@ class StructuredLoggerManager:
 
 
 # Global instance
-_logger_manager: Optional[StructuredLoggerManager] = None
+_logger_manager: StructuredLoggerManager | None = None
 
 
 def get_logger_manager() -> StructuredLoggerManager:
@@ -719,7 +719,7 @@ def get_performance_logger(component: str) -> PerformanceMetricsLogger:
 def setup_backtesting_logging(
     log_level: str = "INFO",
     enable_debug: bool = False,
-    log_file: Optional[str] = None
+    log_file: str | None = None
 ):
     """Setup logging specifically configured for backtesting operations."""
 

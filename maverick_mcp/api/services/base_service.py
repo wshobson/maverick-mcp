@@ -67,10 +67,6 @@ class BaseService(ABC):
         """Check if authentication is enabled."""
         return False  # Auth disabled in personal use version
 
-    def is_credit_enabled(self) -> bool:
-        """Check if credit system is enabled."""
-        return False  # Credit system disabled in personal use version
-
     def is_debug_mode(self) -> bool:
         """Check if debug mode is enabled."""
         return settings.api.debug
@@ -88,7 +84,6 @@ class BaseService(ABC):
             "tool_name": tool_name,
             "user_id": user_id,
             "auth_enabled": self.is_auth_enabled(),
-            "credit_enabled": self.is_credit_enabled(),
             **kwargs,
         }
         self.logger.info(f"Tool usage: {tool_name}", extra=context)

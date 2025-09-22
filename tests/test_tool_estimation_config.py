@@ -409,34 +409,34 @@ class TestModuleFunctions:
 class TestMagicNumberReplacement:
     """Test that configuration correctly replaces magic numbers from server.py."""
 
-    def test_all_credit_tier_tools_have_estimates(self):
+    def test_all_usage_tier_tools_have_estimates(self):
         """Test that all tools referenced in server.py have estimates."""
         config = ToolEstimationConfig()
 
         # These are tools that were using magic numbers in server.py
-        # Based on the TOOL_CREDIT_MAPPING pattern
+        # Based on the TOOL usage tier mapping pattern
         critical_tools = [
-            # Simple tools (1 credit tier)
+            # Simple tools (baseline tier)
             "get_stock_price",
             "get_company_info",
             "get_stock_info",
             "calculate_sma",
             "get_market_hours",
             "get_chart_links",
-            # Standard tools (5 credit tier)
+            # Standard tools (core analysis tier)
             "get_rsi_analysis",
             "get_macd_analysis",
             "get_support_resistance",
             "fetch_stock_data",
             "get_maverick_stocks",
             "get_news_sentiment",
-            # Complex tools (20 credit tier)
+            # Complex tools (advanced analysis tier)
             "get_full_technical_analysis",
             "risk_adjusted_analysis",
             "compare_tickers",
             "portfolio_correlation_analysis",
             "get_market_overview",
-            # Premium tools (50 credit tier)
+            # Premium tools (orchestration tier)
             "analyze_market_with_agent",
             "get_agent_streaming_analysis",
             "compare_personas_analysis",
@@ -451,11 +451,11 @@ class TestMagicNumberReplacement:
             # Should have reasonable confidence
             assert estimate.confidence > 0.5, f"Tool {tool} has low confidence estimate"
 
-    def test_estimates_align_with_credit_tiers(self):
-        """Test that tool estimates align with credit pricing tiers."""
+    def test_estimates_align_with_usage_tiers(self):
+        """Test that tool estimates align with usage complexity tiers."""
         config = ToolEstimationConfig()
 
-        # Tools that should cost 1 credit (simple, no LLM usage)
+        # Simple tools should require minimal resources
         simple_tools = [
             "get_stock_price",
             "get_company_info",
@@ -470,7 +470,7 @@ class TestMagicNumberReplacement:
             assert estimate.complexity == ToolComplexity.SIMPLE
             assert estimate.llm_calls <= 1  # Should require minimal/no LLM calls
 
-        # Tools that should cost 5 credits (standard analysis)
+        # Standard tools perform moderate analysis
         standard_tools = [
             "get_rsi_analysis",
             "get_macd_analysis",
@@ -484,7 +484,7 @@ class TestMagicNumberReplacement:
             assert estimate.complexity == ToolComplexity.STANDARD
             assert 1 <= estimate.llm_calls <= 5  # Moderate LLM usage
 
-        # Tools that should cost 20 credits (complex analysis)
+        # Complex tools orchestrate heavier workloads
         complex_tools = [
             "get_full_technical_analysis",
             "risk_adjusted_analysis",
@@ -497,7 +497,7 @@ class TestMagicNumberReplacement:
             assert estimate.complexity == ToolComplexity.COMPLEX
             assert 4 <= estimate.llm_calls <= 8  # Multiple LLM interactions
 
-        # Tools that should cost 50 credits (premium workflows)
+        # Premium tools coordinate multi-stage workflows
         premium_tools = [
             "analyze_market_with_agent",
             "get_agent_streaming_analysis",

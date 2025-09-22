@@ -114,7 +114,7 @@ async def tool_name(
 @mcp.tool()
 async def public_tool_name(query: str) -> dict[str, Any]:
     """
-    A public tool that doesn't require authentication or credits.
+    A public tool that doesn't require authentication.
 
     Args:
         query: The query to process

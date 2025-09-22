@@ -22,15 +22,12 @@ from maverick_mcp.exceptions import (
     CacheConnectionError,
     CircuitBreakerError,
     ConflictError,
-    CreditError,
     DatabaseConnectionError,
     DataIntegrityError,
     DataNotFoundError,
     ExternalServiceError,
-    InsufficientCreditsError,
     MaverickException,
     NotFoundError,
-    PaymentRequiredError,
     RateLimitError,
     ValidationError,
     WebhookError,
@@ -67,11 +64,6 @@ class ErrorHandler:
                 "status_code": status.HTTP_403_FORBIDDEN,
                 "code": "AUTHORIZATION_ERROR",
                 "log_level": "warning",
-            },
-            InsufficientCreditsError: {
-                "status_code": status.HTTP_402_PAYMENT_REQUIRED,
-                "code": "INSUFFICIENT_CREDITS",
-                "log_level": "info",
             },
             DataNotFoundError: {
                 "status_code": status.HTTP_404_NOT_FOUND,
@@ -119,20 +111,10 @@ class ErrorHandler:
                 "code": "RATE_LIMIT_EXCEEDED",
                 "log_level": "warning",
             },
-            PaymentRequiredError: {
-                "status_code": status.HTTP_402_PAYMENT_REQUIRED,
-                "code": "PAYMENT_REQUIRED",
-                "log_level": "info",
-            },
             ExternalServiceError: {
                 "status_code": status.HTTP_503_SERVICE_UNAVAILABLE,
                 "code": "EXTERNAL_SERVICE_ERROR",
                 "log_level": "error",
-            },
-            CreditError: {
-                "status_code": status.HTTP_402_PAYMENT_REQUIRED,
-                "code": "CREDIT_ERROR",
-                "log_level": "info",
             },
             WebhookError: {
                 "status_code": status.HTTP_400_BAD_REQUEST,

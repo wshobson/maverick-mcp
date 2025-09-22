@@ -233,8 +233,8 @@ class TestEnvironmentSpecificHeaders:
 class TestCSPConfiguration:
     """Test Content Security Policy configuration."""
 
-    def test_csp_avoids_payment_domains(self):
-        """Test CSP excludes third-party payment provider domains."""
+    def test_csp_avoids_checkout_domains(self):
+        """Test CSP excludes third-party checkout provider domains."""
         config = SecurityHeadersConfig()
 
         assert config.csp_script_src == ["'self'", "'unsafe-inline'"]

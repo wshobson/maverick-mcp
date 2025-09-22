@@ -6,20 +6,19 @@ into existing backtesting strategies and data providers.
 """
 
 import asyncio
-import time
-from typing import Dict, Any, List
-import pandas as pd
-import numpy as np
+from typing import Any
 
-from maverick_mcp.monitoring.middleware import (
-    track_api_call,
-    track_strategy_execution,
-    track_resource_usage,
-    track_database_operation,
-    MetricsCircuitBreaker,
-    get_metrics_middleware
-)
+import numpy as np
+import pandas as pd
+
 from maverick_mcp.monitoring.metrics import get_backtesting_metrics
+from maverick_mcp.monitoring.middleware import (
+    MetricsCircuitBreaker,
+    get_metrics_middleware,
+    track_api_call,
+    track_resource_usage,
+    track_strategy_execution,
+)
 from maverick_mcp.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -116,7 +115,7 @@ class MonitoredTradingStrategy:
         symbol: str,
         data: pd.DataFrame = None,
         data_points: int = None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Run backtest with automatic strategy execution tracking.
 
@@ -166,7 +165,7 @@ class MonitoredTradingStrategy:
         self,
         data: pd.DataFrame,
         symbol: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Simulate trading and calculate performance metrics.
 
@@ -175,7 +174,6 @@ class MonitoredTradingStrategy:
         """
         # Simulate trading logic
         signals = data['signal']
-        prices = data['Close']
 
         # Calculate returns (simplified)
         total_return = np.random.uniform(-10, 30)  # Random return between -10% and 30%
@@ -239,7 +237,7 @@ class MonitoredDatabaseRepository:
         self,
         strategy_name: str,
         symbol: str,
-        results: Dict[str, Any]
+        results: dict[str, Any]
     ) -> bool:
         """
         Save backtest results with database operation tracking.
@@ -271,7 +269,7 @@ class MonitoredDatabaseRepository:
         self,
         strategy_name: str,
         days: int = 30
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve historical performance with tracking.
         """

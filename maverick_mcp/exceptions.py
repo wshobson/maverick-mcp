@@ -145,24 +145,6 @@ class AuthorizationError(MaverickException):
             self.context["action"] = action
 
 
-class InsufficientCreditsError(MaverickException):
-    """Raised when user has insufficient credits."""
-
-    error_code = "INSUFFICIENT_CREDITS"
-    status_code = 402
-
-    def __init__(
-        self, required: int, available: int, message: str | None = None, **kwargs
-    ):
-        if not message:
-            message = (
-                f"Insufficient credits: required {required}, available {available}"
-            )
-        super().__init__(message, **kwargs)
-        self.context["required_credits"] = required
-        self.context["available_credits"] = available
-
-
 # Resource exceptions
 class NotFoundError(MaverickException):
     """Raised when a requested resource is not found."""
@@ -206,27 +188,6 @@ class RateLimitError(MaverickException):
         super().__init__(message, **kwargs)
         if retry_after:
             self.context["retry_after"] = retry_after
-
-
-# Payment exceptions
-class PaymentRequiredError(MaverickException):
-    """Raised when payment is required for an action."""
-
-    error_code = "PAYMENT_REQUIRED"
-    status_code = 402
-
-    def __init__(
-        self,
-        message: str = "Payment required",
-        required_credits: int | None = None,
-        current_balance: int | None = None,
-        **kwargs,
-    ):
-        super().__init__(message, **kwargs)
-        if required_credits is not None:
-            self.context["required_credits"] = required_credits
-        if current_balance is not None:
-            self.context["current_balance"] = current_balance
 
 
 # External service exceptions
@@ -381,27 +342,6 @@ class ConfigurationError(MaverickException):
             self.context["config_key"] = config_key
 
 
-# Subscription exceptions
-class SubscriptionError(MaverickException):
-    """Raised when there's a subscription-related issue."""
-
-    error_code = "SUBSCRIPTION_ERROR"
-    status_code = 403
-
-    def __init__(
-        self,
-        message: str,
-        required_plan: str | None = None,
-        current_plan: str | None = None,
-        **kwargs,
-    ):
-        super().__init__(message, **kwargs)
-        if required_plan:
-            self.context["required_plan"] = required_plan
-        if current_plan:
-            self.context["current_plan"] = current_plan
-
-
 # Webhook exceptions
 class WebhookError(MaverickException):
     """Raised when webhook processing fails."""
@@ -421,27 +361,6 @@ class WebhookError(MaverickException):
             self.context["event_type"] = event_type
         if event_id:
             self.context["event_id"] = event_id
-
-
-# Credit exceptions
-class CreditError(MaverickException):
-    """Raised when there's a credit-related issue."""
-
-    error_code = "CREDIT_ERROR"
-    status_code = 402
-
-    def __init__(
-        self,
-        message: str,
-        balance: int | None = None,
-        required: int | None = None,
-        **kwargs,
-    ):
-        super().__init__(message, **kwargs)
-        if balance is not None:
-            self.context["balance"] = balance
-        if required is not None:
-            self.context["required"] = required
 
 
 # Agent-specific exceptions
@@ -526,8 +445,6 @@ ERROR_CODES = {
     "NOT_FOUND": "Resource not found",
     "CONFLICT": "Resource conflict",
     "RATE_LIMIT_EXCEEDED": "Too many requests",
-    "PAYMENT_REQUIRED": "Payment required",
-    "INSUFFICIENT_CREDITS": "Insufficient credits",
     "EXTERNAL_SERVICE_ERROR": "External service unavailable",
     "DATA_PROVIDER_ERROR": "Data provider error",
     "DATA_NOT_FOUND": "Data not found",
@@ -538,9 +455,7 @@ ERROR_CODES = {
     "CACHE_ERROR": "Cache error",
     "CACHE_CONNECTION_ERROR": "Cache connection failed",
     "CONFIGURATION_ERROR": "Configuration error",
-    "SUBSCRIPTION_ERROR": "Subscription issue",
     "WEBHOOK_ERROR": "Webhook processing failed",
-    "CREDIT_ERROR": "Credit balance issue",
     "AGENT_INIT_ERROR": "Agent initialization failed",
     "PERSONA_CONFIG_ERROR": "Invalid persona configuration",
     "TOOL_REGISTRATION_ERROR": "Tool registration failed",

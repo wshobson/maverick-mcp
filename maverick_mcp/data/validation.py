@@ -196,7 +196,6 @@ class DataValidator:
             ValidationError: If validation fails in strict mode
         """
         expected_columns = ["open", "high", "low", "close"]
-        optional_columns = ["volume", "adjClose"]
 
         # Basic data quality check
         quality_results = DataValidator.validate_data_quality(
@@ -466,7 +465,7 @@ class DataValidator:
             },
         }
 
-        for indicator_name, config in indicators.items():
+        for indicator_name, _config in indicators.items():
             if indicator_name not in data.columns:
                 error_msg = f"Missing indicator '{indicator_name}' for {symbol}"
                 validation_results["errors"].append(error_msg)

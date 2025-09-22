@@ -9,23 +9,23 @@ This module provides comprehensive debugging tools including:
 - Debug mode utilities
 """
 
+import inspect
 import json
-import sys
 import time
 import traceback
-import inspect
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from functools import wraps
-from typing import Any, Dict, List, Optional, Callable, Generator
-from datetime import datetime, timezone
+from typing import Any
 
 import psutil
 
 from maverick_mcp.utils.structured_logger import (
-    get_structured_logger,
-    get_performance_logger,
     CorrelationIDGenerator,
-    get_logger_manager
+    get_logger_manager,
+    get_performance_logger,
+    get_structured_logger,
 )
 
 
@@ -35,7 +35,7 @@ class DebugProfiler:
     def __init__(self):
         self.logger = get_structured_logger("maverick_mcp.debug")
         self.performance_logger = get_performance_logger("debug_profiler")
-        self._profiles: Dict[str, Dict[str, Any]] = {}
+        self._profiles: dict[str, dict[str, Any]] = {}
 
     def start_profile(self, profile_name: str, **context):
         """Start a debug profiling session."""
@@ -97,7 +97,7 @@ class DebugProfiler:
             }
         )
 
-    def end_profile(self, profile_id: str, success: bool = True, **final_data) -> Dict[str, Any]:
+    def end_profile(self, profile_id: str, success: bool = True, **final_data) -> dict[str, Any]:
         """End a debug profiling session and return comprehensive results."""
         if profile_id not in self._profiles:
             self.logger.warning(f"Profile {profile_id} not found for ending")
@@ -194,7 +194,7 @@ class RequestResponseLogger:
                 "correlation_id": correlation_id,
                 "request_data": truncated_data,
                 "request_size": len(json.dumps(request_data, default=str)),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -217,7 +217,7 @@ class RequestResponseLogger:
                 "duration_ms": duration_ms,
                 "response_data": truncated_data,
                 "response_size": len(json.dumps(response_data, default=str)),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         )
 
@@ -231,7 +231,7 @@ class RequestResponseLogger:
                 else:
                     sanitized[key] = self._sanitize_data(value)
             return sanitized
-        elif isinstance(data, (list, tuple)):
+        elif isinstance(data, list | tuple):
             return [self._sanitize_data(item) for item in data]
         else:
             return data
@@ -250,13 +250,13 @@ class ErrorTracker:
 
     def __init__(self):
         self.logger = get_structured_logger("maverick_mcp.errors")
-        self._error_stats: Dict[str, Dict[str, Any]] = {}
+        self._error_stats: dict[str, dict[str, Any]] = {}
 
     def track_error(
         self,
         error: Exception,
         operation: str,
-        context: Dict[str, Any],
+        context: dict[str, Any],
         severity: str = "error"
     ):
         """Track error with detailed context and statistics."""
@@ -266,8 +266,8 @@ class ErrorTracker:
         # Update error statistics
         if error_key not in self._error_stats:
             self._error_stats[error_key] = {
-                "first_seen": datetime.now(timezone.utc),
-                "last_seen": datetime.now(timezone.utc),
+                "first_seen": datetime.now(UTC),
+                "last_seen": datetime.now(UTC),
                 "count": 0,
                 "operation": operation,
                 "error_type": error_type,
@@ -275,12 +275,12 @@ class ErrorTracker:
             }
 
         stats = self._error_stats[error_key]
-        stats["last_seen"] = datetime.now(timezone.utc)
+        stats["last_seen"] = datetime.now(UTC)
         stats["count"] += 1
 
         # Keep only recent contexts (last 10)
         stats["contexts"].append({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "context": context,
             "error_message": str(error),
         })
@@ -312,7 +312,7 @@ class ErrorTracker:
         elif severity == "warning":
             self.logger.warning(f"Warning in {operation}: {error}", extra=log_data)
 
-    def get_error_summary(self) -> Dict[str, Any]:
+    def get_error_summary(self) -> dict[str, Any]:
         """Get comprehensive error statistics summary."""
         if not self._error_stats:
             return {"message": "No errors tracked"}
@@ -326,7 +326,7 @@ class ErrorTracker:
         }
 
         # Error breakdown by type
-        for error_key, stats in self._error_stats.items():
+        for _error_key, stats in self._error_stats.items():
             summary["error_breakdown"][stats["error_type"]] = summary["error_breakdown"].get(stats["error_type"], 0) + stats["count"]
 
         # Most common errors
@@ -444,7 +444,7 @@ class DebugContextManager:
 
 # Decorator for automatic debug wrapping
 def debug_operation(
-    operation_name: Optional[str] = None,
+    operation_name: str | None = None,
     enable_profiling: bool = True,
     enable_request_logging: bool = True,
     enable_error_tracking: bool = True,
@@ -466,7 +466,7 @@ def debug_operation(
             # Add non-sensitive parameters to context
             for param_name, param_value in bound_args.arguments.items():
                 if not any(sensitive in param_name.lower() for sensitive in ["password", "token", "key", "secret"]):
-                    if isinstance(param_value, (str, int, float, bool)) or param_value is None:
+                    if isinstance(param_value, str | int | float | bool) or param_value is None:
                         context[param_name] = param_value
 
             with DebugContextManager(
@@ -490,7 +490,7 @@ def debug_operation(
             context = {**default_context}
             for param_name, param_value in bound_args.arguments.items():
                 if not any(sensitive in param_name.lower() for sensitive in ["password", "token", "key", "secret"]):
-                    if isinstance(param_value, (str, int, float, bool)) or param_value is None:
+                    if isinstance(param_value, str | int | float | bool) or param_value is None:
                         context[param_name] = param_value
 
             with DebugContextManager(

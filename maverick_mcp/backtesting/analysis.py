@@ -2,6 +2,7 @@
 
 import logging
 from typing import Any
+
 import numpy as np
 import pandas as pd
 import vectorbt as vbt
@@ -11,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 def convert_to_native(value):
     """Convert numpy types to native Python types for JSON serialization."""
-    if isinstance(value, (np.int64, np.int32, np.int16, np.int8)):
+    if isinstance(value, np.int64 | np.int32 | np.int16 | np.int8):
         return int(value)
-    elif isinstance(value, (np.float64, np.float32, np.float16)):
+    elif isinstance(value, np.float64 | np.float32 | np.float16):
         return float(value)
     elif isinstance(value, np.ndarray):
         return value.tolist()

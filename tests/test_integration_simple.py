@@ -28,7 +28,6 @@ def mock_settings():
         os.environ,
         {
             "AUTH_ENABLED": "true",
-            "CREDIT_SYSTEM_ENABLED": "true",
             "ENVIRONMENT": "test",
             "DATABASE_URL": "sqlite:///:memory:",
             "REDIS_URL": "redis://localhost:6379/15",
@@ -173,12 +172,18 @@ class TestSystemIntegration:
         assert "service" in root_data
         assert "endpoints" in root_data
 
-        # Verify key endpoints are listed
+        # Verify key endpoints are listed and billing endpoints are absent
         endpoints = root_data["endpoints"]
-        expected_endpoints = ["auth", "billing", "users", "health"]
+        if isinstance(endpoints, dict):
+            endpoint_names = set(endpoints.keys())
+        elif isinstance(endpoints, list):
+            endpoint_names = set(endpoints)
+        else:
+            pytest.fail(f"Unexpected endpoints payload type: {type(endpoints)!r}")
 
-        for endpoint in expected_endpoints:
-            assert endpoint in endpoints
+        assert "auth" in endpoint_names
+        assert "health" in endpoint_names
+        assert "billing" not in endpoint_names
 
     def test_authentication_endpoints_available(self, client):
         """Test authentication endpoints are available."""
@@ -191,15 +196,11 @@ class TestSystemIntegration:
         response = client.post("/auth/login", json={})
         assert response.status_code in [400, 422]  # Validation error, not 404
 
-    def test_billing_endpoints_available(self, client):
-        """Test billing endpoints are available."""
+    def test_billing_endpoints_removed(self, client):
+        """Ensure legacy billing endpoints are no longer exposed."""
 
-        # Test balance endpoint exists (won't require auth in test mode)
         response = client.get("/billing/balance")
-        # In test mode with AUTH_ENABLED=false, it will try to execute
-        # but may fail due to mocked dependencies. The important thing
-        # is that it's not a 404
-        assert response.status_code != 404  # Endpoint exists
+        assert response.status_code == 404
 
     def test_error_handling_active(self, client):
         """Test that error handling middleware is active."""

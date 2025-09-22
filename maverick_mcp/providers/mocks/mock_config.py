@@ -34,7 +34,6 @@ class MockConfigurationProvider:
             "CAPITAL_COMPANION_API_KEY": "",
             "TIINGO_API_KEY": "",
             "AUTH_ENABLED": False,
-            "CREDIT_SYSTEM_ENABLED": False,
             "JWT_SECRET_KEY": "test-secret-key",
             "LOG_LEVEL": "DEBUG",
             "ENVIRONMENT": "test",
@@ -104,11 +103,6 @@ class MockConfigurationProvider:
         """Check if mock auth is enabled."""
         self._log_call("is_auth_enabled", {})
         return bool(self._get_value("AUTH_ENABLED"))
-
-    def is_credit_system_enabled(self) -> bool:
-        """Check if mock credit system is enabled."""
-        self._log_call("is_credit_system_enabled", {})
-        return bool(self._get_value("CREDIT_SYSTEM_ENABLED"))
 
     def get_jwt_secret_key(self) -> str:
         """Get mock JWT secret key."""

@@ -7,7 +7,7 @@ import logging
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pandas as pd
 import yfinance as yf
@@ -48,7 +48,7 @@ class YFinancePool:
         )
 
         # Request cache (simple TTL cache)
-        self._request_cache: Dict[str, tuple[Any, float]] = {}
+        self._request_cache: dict[str, tuple[Any, float]] = {}
         self._cache_lock = threading.Lock()
         self._cache_ttl = 60  # 1 minute cache for quotes
 
@@ -111,9 +111,9 @@ class YFinancePool:
     def get_history(
         self,
         symbol: str,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        period: Optional[str] = None,
+        start: str | None = None,
+        end: str | None = None,
+        period: str | None = None,
         interval: str = "1d"
     ) -> pd.DataFrame:
         """Get historical data with connection pooling."""
@@ -166,9 +166,9 @@ class YFinancePool:
     def batch_download(
         self,
         symbols: list[str],
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        period: Optional[str] = None,
+        start: str | None = None,
+        end: str | None = None,
+        period: str | None = None,
         interval: str = "1d",
         group_by: str = "ticker",
         threads: bool = True
@@ -202,7 +202,7 @@ class YFinancePool:
 
         return data
 
-    def _get_from_cache(self, key: str) -> Optional[Any]:
+    def _get_from_cache(self, key: str) -> Any | None:
         """Get item from cache if not expired."""
         with self._cache_lock:
             if key in self._request_cache:
@@ -254,7 +254,7 @@ class YFinancePool:
 
 
 # Global instance
-_yfinance_pool: Optional[YFinancePool] = None
+_yfinance_pool: YFinancePool | None = None
 
 
 def get_yfinance_pool() -> YFinancePool:

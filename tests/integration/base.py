@@ -5,16 +5,16 @@ import asyncio
 import fnmatch
 import time
 from collections import defaultdict
-from typing import Any, Dict
+from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
 
 
 class InMemoryPubSub:
     """Lightweight pub/sub implementation for the in-memory Redis stub."""
 
-    def __init__(self, redis: "InMemoryRedis") -> None:
+    def __init__(self, redis: InMemoryRedis) -> None:
         self._redis = redis
         self._queues: dict[str, asyncio.Queue[dict[str, Any]]] = {}
         self._active = True
@@ -31,7 +31,7 @@ class InMemoryPubSub:
 
     async def close(self) -> None:
         self._active = False
-        for channel, queue in list(self._queues.items()):
+        for channel, _queue in list(self._queues.items()):
             await self.unsubscribe(channel)
 
     async def listen(self):  # pragma: no cover - simple async generator
@@ -230,7 +230,7 @@ class MockCacheManager:
     def __init__(self):
         self.get = AsyncMock(return_value=None)
         self.set = AsyncMock()
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
 
     async def get_cached(self, key: str) -> Any:
         """Get value from mock cache."""

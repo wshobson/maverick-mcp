@@ -17,8 +17,6 @@ from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
-
 from maverick_mcp.data.models import (
     MaverickBearStocks,
     MaverickStocks,
@@ -33,6 +31,7 @@ from maverick_mcp.data.session_management import get_db_session_read_only
 from maverick_mcp.utils.circuit_breaker_decorators import (
     with_stock_data_circuit_breaker,
 )
+from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
 
 # Load environment variables
 load_dotenv()

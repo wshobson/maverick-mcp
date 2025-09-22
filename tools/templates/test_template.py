@@ -167,7 +167,6 @@ def mock_settings():
     """Mock settings for testing."""
     with patch("maverick_mcp.config.settings.settings") as mock:
         mock.auth.enabled = False
-        mock.credit.enabled = False
         mock.api.debug = True
         yield mock
 

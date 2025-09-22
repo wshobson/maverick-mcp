@@ -7,9 +7,14 @@ import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
-from typing import Any, List, Optional
+from typing import Any
 
-from maverick_mcp.data.cache import CacheManager, generate_cache_key, ensure_timezone_naive, get_cache_stats
+from maverick_mcp.data.cache import (
+    CacheManager,
+    ensure_timezone_naive,
+    generate_cache_key,
+    get_cache_stats,
+)
 from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
 from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
 
@@ -21,8 +26,8 @@ class CacheWarmer:
 
     def __init__(
         self,
-        data_provider: Optional[EnhancedStockDataProvider] = None,
-        cache_manager: Optional[CacheManager] = None,
+        data_provider: EnhancedStockDataProvider | None = None,
+        cache_manager: CacheManager | None = None,
         max_workers: int = 5
     ):
         """Initialize cache warmer.
@@ -54,7 +59,7 @@ class CacheWarmer:
             ("1y", 365),  # Last year
         ]
 
-    async def warm_popular_stocks(self, symbols: Optional[List[str]] = None):
+    async def warm_popular_stocks(self, symbols: list[str] | None = None):
         """Pre-load data for popular stocks.
 
         Args:
@@ -71,7 +76,7 @@ class CacheWarmer:
 
         logger.info("Popular stocks cache warming completed")
 
-    async def _warm_batch(self, symbols: List[str]):
+    async def _warm_batch(self, symbols: list[str]):
         """Warm cache for a batch of symbols."""
         tasks = []
         for symbol in symbols:
@@ -88,7 +93,7 @@ class CacheWarmer:
                 asyncio.gather(*tasks, return_exceptions=True),
                 timeout=30
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning(f"Timeout warming batch: {symbols}")
 
     async def _warm_symbol_period(self, symbol: str, period: str, days: int):
@@ -170,7 +175,7 @@ class CacheWarmer:
         except Exception as e:
             logger.error(f"Failed to warm screening cache: {e}")
 
-    async def warm_technical_indicators(self, symbols: Optional[List[str]] = None):
+    async def warm_technical_indicators(self, symbols: list[str] | None = None):
         """Pre-calculate and cache technical indicators for symbols.
 
         Args:
@@ -189,7 +194,7 @@ class CacheWarmer:
                 asyncio.gather(*tasks, return_exceptions=True),
                 timeout=60
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Timeout warming technical indicators")
 
         logger.info("Technical indicators cache warming completed")
@@ -279,7 +284,7 @@ class CacheWarmer:
             # Wait for next cycle
             await asyncio.sleep(interval_minutes * 60)
 
-    async def benchmark_cache_performance(self, symbols: Optional[List[str]] = None) -> dict[str, Any]:
+    async def benchmark_cache_performance(self, symbols: list[str] | None = None) -> dict[str, Any]:
         """Benchmark cache performance for analysis.
 
         Args:
@@ -298,7 +303,7 @@ class CacheWarmer:
         cache_misses = 0
 
         for symbol in symbols:
-            for period_name, days in self.common_periods:
+            for _period_name, days in self.common_periods:
                 end_date = datetime.now().strftime("%Y-%m-%d")
                 start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
 

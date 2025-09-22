@@ -131,12 +131,6 @@ class ResourceService(BaseService):
             "enabled": self.is_auth_enabled(),
         }
 
-        # Check credit system
-        health_status["services"]["credit_system"] = {
-            "status": "healthy" if self.is_credit_enabled() else "disabled",
-            "enabled": self.is_credit_enabled(),
-        }
-
         # Configuration validation
         try:
             validation_status = get_validation_status()

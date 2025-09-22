@@ -5,10 +5,11 @@ import asyncio
 import logging
 import time
 from collections import defaultdict, deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
-from typing import Any, Awaitable, Callable, Deque, Dict, Tuple
+from typing import Any
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -111,8 +112,8 @@ class RateLimiter:
 
     def __init__(self, config: RateLimitConfig) -> None:
         self.config = config
-        self._local_counters: Dict[str, Deque[float]] = defaultdict(deque)
-        self._violations: Dict[str, int] = defaultdict(int)
+        self._local_counters: dict[str, deque[float]] = defaultdict(deque)
+        self._violations: dict[str, int] = defaultdict(int)
 
     async def check_rate_limit(
         self,
@@ -122,7 +123,7 @@ class RateLimiter:
         limit: int,
         window_seconds: int,
         strategy: RateLimitStrategy | None = None,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         strategy = strategy or self.config.default_strategy
         client = await redis_manager.get_client()
         if client is None:
@@ -154,7 +155,7 @@ class RateLimiter:
         key: str,
         limit: int,
         window_seconds: int,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         now = time.time()
         window_start = now - window_seconds
         bucket = self._local_counters[key]
@@ -180,7 +181,7 @@ class RateLimiter:
         tier: RateLimitTier,
         limit: int,
         window_seconds: int,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         redis_key = f"rate_limit:sw:{key}"
         now = time.time()
 
@@ -193,7 +194,7 @@ class RateLimiter:
 
         current_count = int(results[1]) + 1
         remaining = max(limit - current_count, 0)
-        info: Dict[str, Any] = {
+        info: dict[str, Any] = {
             "limit": limit,
             "remaining": remaining,
             "burst_limit": int(limit * self.config.burst_multiplier),
@@ -220,12 +221,12 @@ class RateLimiter:
         tier: RateLimitTier,
         limit: int,
         window_seconds: int,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         redis_key = f"rate_limit:tb:{key}"
         now = time.time()
         state = await client.hgetall(redis_key)
 
-        def _decode_value(mapping: Dict[Any, Any], key: str) -> str | None:
+        def _decode_value(mapping: dict[Any, Any], key: str) -> str | None:
             value = mapping.get(key)
             if value is None:
                 value = mapping.get(key.encode("utf-8"))
@@ -248,7 +249,7 @@ class RateLimiter:
             tokens + elapsed * self.config.token_refill_rate,
         )
 
-        info: Dict[str, Any] = {
+        info: dict[str, Any] = {
             "limit": limit,
             "tokens": tokens,
             "refill_rate": self.config.token_refill_rate,
@@ -277,7 +278,7 @@ class RateLimiter:
         tier: RateLimitTier,
         limit: int,
         window_seconds: int,
-    ) -> Tuple[bool, Dict[str, Any]]:
+    ) -> tuple[bool, dict[str, Any]]:
         redis_key = f"rate_limit:fw:{key}"
         pipeline = client.pipeline()
         pipeline.incr(redis_key)
@@ -311,7 +312,7 @@ class RateLimiter:
         while True:
             cursor, keys = await client.scan(cursor=cursor, match="rate_limit:*", count=200)
             for raw_key in keys:
-                key = raw_key.decode() if isinstance(raw_key, (bytes, bytearray)) else raw_key
+                key = raw_key.decode() if isinstance(raw_key, bytes | bytearray) else raw_key
                 redis_type = await client.type(key)
                 if redis_type == "zset":
                     await client.zremrangebyscore(key, 0, cutoff)

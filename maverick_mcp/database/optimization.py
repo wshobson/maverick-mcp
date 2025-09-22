@@ -5,16 +5,15 @@ Implements query optimization, bulk operations, and performance monitoring.
 
 import logging
 import time
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import contextmanager
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import Index, create_engine, event, text
+from sqlalchemy import Index, event, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from maverick_mcp.data.models import (
-    Base,
     PriceCache,
     SessionLocal,
     Stock,

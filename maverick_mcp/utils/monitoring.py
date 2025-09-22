@@ -122,27 +122,6 @@ tool_errors = Counter(
     ["tool_name", "error_type", "complexity"],
 )
 
-# Credit system metrics
-credit_balance_gauge = Gauge(
-    "maverick_user_credit_balance", "User credit balance", ["user_id", "balance_type"]
-)
-
-credit_spent_counter = Counter(
-    "maverick_credits_spent_total",
-    "Total credits spent",
-    ["tool_name", "user_id", "complexity"],
-)
-
-credit_purchases = Counter(
-    "maverick_credit_purchases_total",
-    "Total credit purchases",
-    ["package_size", "currency"],
-)
-
-credit_refunds = Counter(
-    "maverick_credit_refunds_total", "Total credit refunds", ["reason", "amount_cents"]
-)
-
 # Error metrics
 error_counter = Counter(
     "maverick_errors_total",
@@ -288,18 +267,6 @@ user_session_duration = Histogram(
     buckets=(60, 300, 900, 1800, 3600, 7200, 14400, 28800, 86400, float("inf")),
 )
 
-revenue_total = Counter(
-    "maverick_revenue_total_cents",
-    "Total revenue in cents",
-    ["product", "currency", "payment_method"],
-)
-
-subscription_events = Counter(
-    "maverick_subscription_events_total",
-    "Subscription lifecycle events",
-    ["event_type", "plan"],
-)
-
 # Performance metrics
 memory_usage_bytes = Gauge(
     "maverick_memory_usage_bytes", "Process memory usage in bytes"
@@ -386,7 +353,6 @@ class MonitoringService:
                     "name": settings.app_name,
                     "environment": settings.environment,
                     "auth_enabled": settings.auth.enabled,
-                    "credit_enabled": settings.credit.enabled,
                 },
             )
 
@@ -578,7 +544,6 @@ def track_request(method: str, endpoint: str):
 def track_tool_usage(
     tool_name: str,
     user_id: str,
-    credits_spent: int,
     duration: float,
     status: str = "success",
     complexity: str = "standard",
@@ -588,9 +553,6 @@ def track_tool_usage(
         tool_name=tool_name, user_id=str(user_id), status=status
     ).inc()
     tool_duration.labels(tool_name=tool_name, complexity=complexity).observe(duration)
-    credit_spent_counter.labels(
-        tool_name=tool_name, user_id=str(user_id), complexity=complexity
-    ).inc(credits_spent)
 
 
 def track_tool_error(tool_name: str, error_type: str, complexity: str = "standard"):
@@ -691,40 +653,6 @@ def track_user_session(user_type: str, auth_method: str, duration: float | None 
     user_sessions.labels(user_type=user_type, auth_method=auth_method).inc()
     if duration:
         user_session_duration.labels(user_type=user_type).observe(duration)
-
-
-def update_credit_balance(user_id: str, balance: float, balance_type: str = "total"):
-    """Update user credit balance metric."""
-    credit_balance_gauge.labels(user_id=str(user_id), balance_type=balance_type).set(
-        balance
-    )
-
-
-def track_credit_purchase(package_size: str, currency: str = "usd"):
-    """Track credit purchases."""
-    credit_purchases.labels(package_size=package_size, currency=currency).inc()
-
-
-def track_credit_refund(reason: str, amount_cents: int):
-    """Track credit refunds."""
-    credit_refunds.labels(reason=reason, amount_cents=str(amount_cents)).inc()
-
-
-def track_revenue(
-    amount_cents: int,
-    product: str = "credits",
-    currency: str = "usd",
-    payment_method: str = "internal",
-):
-    """Track revenue metrics."""
-    revenue_total.labels(
-        product=product, currency=currency, payment_method=payment_method
-    ).inc(amount_cents)
-
-
-def track_subscription_event(event_type: str, plan: str):
-    """Track subscription lifecycle events."""
-    subscription_events.labels(event_type=event_type, plan=plan).inc()
 
 
 def update_active_users(daily_count: int, monthly_count: int):

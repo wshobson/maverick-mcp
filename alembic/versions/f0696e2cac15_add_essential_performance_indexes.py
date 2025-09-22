@@ -58,33 +58,7 @@ def upgrade() -> None:
     except Exception as e:
         print(f"Warning: Could not create API keys index: {e}")
 
-    # 4. User credits performance (critical for credit system)
-    try:
-        op.create_index(
-            "idx_mcp_user_credits_user_lookup",
-            "mcp_user_credits",
-            ["user_id"],
-            postgresql_using="hash",
-            if_not_exists=True,
-        )
-        print("✓ Created user credits lookup index")
-    except Exception as e:
-        print(f"Warning: Could not create user credits index: {e}")
-
-    # 5. Credit transactions performance
-    try:
-        op.create_index(
-            "idx_mcp_credit_transactions_user_time",
-            "mcp_credit_transactions",
-            ["user_id", sa.text("created_at DESC")],
-            postgresql_using="btree",
-            if_not_exists=True,
-        )
-        print("✓ Created credit transactions performance index")
-    except Exception as e:
-        print(f"Warning: Could not create credit transactions index: {e}")
-
-    # 6. Requests tracking performance
+    # 4. Requests tracking performance
     try:
         op.create_index(
             "idx_mcp_requests_user_time",
@@ -97,7 +71,7 @@ def upgrade() -> None:
     except Exception as e:
         print(f"Warning: Could not create requests index: {e}")
 
-    # 7. Auth audit log performance
+    # 5. Auth audit log performance
     try:
         op.create_index(
             "idx_mcp_auth_audit_log_user_time",
@@ -110,7 +84,7 @@ def upgrade() -> None:
     except Exception as e:
         print(f"Warning: Could not create auth audit index: {e}")
 
-    # 8. Screening tables performance (if they exist)
+    # 6. Screening tables performance (if they exist)
     try:
         op.create_index(
             "idx_maverick_stocks_combined_score",
@@ -159,8 +133,6 @@ def downgrade() -> None:
     indexes_to_drop = [
         ("idx_stocks_pricecache_stock_date", "stocks_pricecache"),
         ("idx_mcp_api_keys_active_lookup", "mcp_api_keys"),
-        ("idx_mcp_user_credits_user_lookup", "mcp_user_credits"),
-        ("idx_mcp_credit_transactions_user_time", "mcp_credit_transactions"),
         ("idx_mcp_requests_user_time", "mcp_requests"),
         ("idx_mcp_auth_audit_log_user_time", "mcp_auth_audit_log"),
         ("idx_maverick_stocks_combined_score", "maverick_stocks"),

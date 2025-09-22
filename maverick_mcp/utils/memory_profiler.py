@@ -6,17 +6,17 @@ Provides decorators, monitoring, and optimization tools for memory-efficient ope
 import functools
 import gc
 import logging
-import os
-import psutil
 import time
 import tracemalloc
+import warnings
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator
-import warnings
+from typing import Any
 
-import pandas as pd
 import numpy as np
+import pandas as pd
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -302,7 +302,7 @@ def optimize_dataframe(df: pd.DataFrame,
             if unique_ratio < categorical_threshold:
                 try:
                     df_optimized[col] = df_optimized[col].astype('category')
-                except:
+                except Exception:
                     pass
 
         elif 'int' in str(col_type):
@@ -326,7 +326,7 @@ def optimize_dataframe(df: pd.DataFrame,
                     if np.allclose(df_optimized[col].fillna(0), temp.fillna(0),
                                   rtol=1e-6, equal_nan=True):
                         df_optimized[col] = temp
-                except:
+                except Exception:
                     pass
 
     final_memory = df_optimized.memory_usage(deep=True).sum()
@@ -554,7 +554,7 @@ def suggest_memory_optimizations(df: pd.DataFrame) -> list[str]:
                         f"Convert '{col}' from float64 to float32 "
                         f"(potential savings: {savings:.2f}MB)"
                     )
-            except:
+            except Exception:
                 pass
 
     # Check for integer downcasting opportunities

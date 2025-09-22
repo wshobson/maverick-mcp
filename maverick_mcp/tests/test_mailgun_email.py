@@ -19,7 +19,6 @@ from maverick_mcp.config.settings import settings
 from maverick_mcp.utils.email_service import (
     MailgunService,
     send_api_key_email,
-    send_payment_failed_email,
     send_welcome_email,
 )
 
@@ -102,16 +101,6 @@ async def test_email_templates():
     print("\n2. Testing API Key Email...")
     success = await send_api_key_email(test_email, test_name, "test_1234567890")
     print("✅ API key email sent" if success else "❌ API key email failed")
-
-    # Test payment failed email
-    print("\n3. Testing Payment Failed Email...")
-    success = await send_payment_failed_email(
-        test_email, test_name, "Card declined - insufficient funds"
-    )
-    print(
-        "✅ Payment failed email sent" if success else "❌ Payment failed email failed"
-    )
-
 
 async def main():
     """Run all tests."""

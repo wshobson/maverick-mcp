@@ -20,7 +20,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 from enum import Enum
-from typing import Any, TypeVar, cast
+from typing import Any, ParamSpec, TypeVar, cast
 
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.exceptions import CircuitBreakerError, ExternalServiceError
@@ -28,7 +28,9 @@ from maverick_mcp.exceptions import CircuitBreakerError, ExternalServiceError
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+P = ParamSpec("P")
 T = TypeVar("T")
+F = TypeVar("F", bound=Callable[..., Any])
 
 
 class CircuitState(Enum):
@@ -570,7 +572,7 @@ def circuit_breaker(
         expected_exceptions: Exceptions to catch (defaults to Exception)
     """
 
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         # Create config with overrides
         cb_name = name or f"{func.__module__}.{getattr(func, '__name__', 'unknown')}"
         config = CircuitBreakerConfig(
@@ -728,7 +730,7 @@ def with_circuit_breaker(service_name: str):
             pass
     """
 
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> T:
             breaker = get_circuit_breaker(service_name)
@@ -883,53 +885,53 @@ def get_all_circuit_breaker_status() -> dict[str, dict[str, Any]]:
 
 # Specific circuit breaker decorators for common services
 
-def with_yfinance_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_yfinance_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Decorator for yfinance API calls."""
-    return with_circuit_breaker("yfinance")(func)
+    return cast(F, with_circuit_breaker("yfinance")(func))
 
 
-def with_tiingo_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_tiingo_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Decorator for Tiingo API calls."""
-    return with_circuit_breaker("tiingo")(func)
+    return cast(F, with_circuit_breaker("tiingo")(func))
 
 
-def with_fred_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_fred_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Decorator for FRED API calls."""
-    return with_circuit_breaker("fred_api")(func)
+    return cast(F, with_circuit_breaker("fred_api")(func))
 
 
-def with_openrouter_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_openrouter_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Decorator for OpenRouter API calls."""
-    return with_circuit_breaker("openrouter")(func)
+    return cast(F, with_circuit_breaker("openrouter")(func))
 
 
-def with_exa_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_exa_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Decorator for Exa API calls."""
-    return with_circuit_breaker("exa")(func)
+    return cast(F, with_circuit_breaker("exa")(func))
 
 
 # Async versions
 
-def with_async_yfinance_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_async_yfinance_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Async decorator for yfinance API calls."""
-    return with_async_circuit_breaker("yfinance")(func)
+    return cast(F, with_async_circuit_breaker("yfinance")(func))
 
 
-def with_async_tiingo_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_async_tiingo_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Async decorator for Tiingo API calls."""
-    return with_async_circuit_breaker("tiingo")(func)
+    return cast(F, with_async_circuit_breaker("tiingo")(func))
 
 
-def with_async_fred_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_async_fred_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Async decorator for FRED API calls."""
-    return with_async_circuit_breaker("fred_api")(func)
+    return cast(F, with_async_circuit_breaker("fred_api")(func))
 
 
-def with_async_openrouter_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_async_openrouter_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Async decorator for OpenRouter API calls."""
-    return with_async_circuit_breaker("openrouter")(func)
+    return cast(F, with_async_circuit_breaker("openrouter")(func))
 
 
-def with_async_exa_circuit_breaker(func: Callable[..., T]) -> Callable[..., T]:
+def with_async_exa_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Async decorator for Exa API calls."""
-    return with_async_circuit_breaker("exa")(func)
+    return cast(F, with_async_circuit_breaker("exa")(func))

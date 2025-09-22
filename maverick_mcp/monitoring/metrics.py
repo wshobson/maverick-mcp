@@ -9,21 +9,20 @@ This module provides specialized metrics for monitoring:
 - Anomaly detection and alerting
 """
 
-import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-from contextlib import contextmanager
 import threading
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any
 
 from prometheus_client import (
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
     Summary,
-    CollectorRegistry,
     generate_latest,
-    CONTENT_TYPE_LATEST,
 )
 
 from maverick_mcp.utils.logging import get_logger
@@ -336,7 +335,7 @@ class BacktestingMetricsCollector:
 
         self.logger.info("Backtesting metrics collector initialized")
 
-    def _initialize_default_thresholds(self) -> Dict[str, PerformanceThreshold]:
+    def _initialize_default_thresholds(self) -> dict[str, PerformanceThreshold]:
         """Initialize default performance thresholds for anomaly detection."""
         return {
             'sharpe_ratio_low': PerformanceThreshold('sharpe_ratio', 0.5, 0.0, 'less_than'),
@@ -349,7 +348,7 @@ class BacktestingMetricsCollector:
 
     def _setup_performance_thresholds(self):
         """Setup performance threshold gauges."""
-        for threshold_name, threshold in self._anomaly_thresholds.items():
+        for _threshold_name, threshold in self._anomaly_thresholds.items():
             performance_thresholds.labels(
                 metric_name=threshold.metric_name,
                 threshold_type='warning'
@@ -518,9 +517,9 @@ class BacktestingMetricsCollector:
         method: str,
         status_code: int,
         duration: float,
-        error_type: Optional[str] = None,
-        remaining_calls: Optional[int] = None,
-        reset_time: Optional[datetime] = None
+        error_type: str | None = None,
+        remaining_calls: int | None = None,
+        reset_time: datetime | None = None
     ):
         """
         Track API call metrics including rate limiting and failures.
@@ -654,7 +653,7 @@ class BacktestingMetricsCollector:
         self,
         anomaly_type: str,
         severity: str,
-        context: Dict[str, Any]
+        context: dict[str, Any]
     ):
         """Record detected anomaly."""
         strategy_name = context.get('strategy_name', 'unknown')
@@ -676,7 +675,7 @@ class BacktestingMetricsCollector:
         portfolio_value_usd: float,
         daily_pnl_usd: float,
         strategy: str,
-        positions: List[Dict[str, Any]]
+        positions: list[dict[str, Any]]
     ):
         """Update portfolio-related metrics."""
         portfolio_value.labels(
@@ -826,7 +825,7 @@ class BacktestingMetricsCollector:
 # =============================================================================
 
 # Global metrics collector instance
-_metrics_collector: Optional[BacktestingMetricsCollector] = None
+_metrics_collector: BacktestingMetricsCollector | None = None
 _collector_lock = threading.Lock()
 
 
@@ -870,9 +869,9 @@ def track_api_call_metrics(
     method: str,
     status_code: int,
     duration: float,
-    error_type: Optional[str] = None,
-    remaining_calls: Optional[int] = None,
-    reset_time: Optional[datetime] = None
+    error_type: str | None = None,
+    remaining_calls: int | None = None,
+    reset_time: datetime | None = None
 ):
     """Convenience function to track API call metrics."""
     get_backtesting_metrics().track_api_call(
@@ -881,7 +880,7 @@ def track_api_call_metrics(
     )
 
 
-def track_anomaly_detection(anomaly_type: str, severity: str, context: Dict[str, Any]):
+def track_anomaly_detection(anomaly_type: str, severity: str, context: dict[str, Any]):
     """Convenience function to track detected anomalies."""
     get_backtesting_metrics().detect_anomaly(anomaly_type, severity, context)
 

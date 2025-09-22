@@ -3,7 +3,7 @@ MaverickMCP Server Implementation - Simple Stock Analysis MCP Server.
 
 This module implements a simplified FastMCP server focused on stock analysis with:
 - No authentication required
-- No billing/credit system
+- No billing system
 - Core stock data and technical analysis functionality
 - Multi-transport support (stdio, SSE, streamable-http)
 """
@@ -933,7 +933,6 @@ if __name__ == "__main__":
                 "port": args.port,
                 "mode": "simple_stock_analysis",
                 "auth_enabled": False,
-                "credit_system_enabled": False,
                 "debug_mode": settings.api.debug,
                 "environment": settings.environment,
             },

@@ -18,7 +18,6 @@ sys.path.insert(0, str(project_root))
 
 # Set up minimal environment
 os.environ.setdefault("AUTH_ENABLED", "false")
-os.environ.setdefault("CREDIT_SYSTEM_ENABLED", "false")
 os.environ.setdefault("REDIS_HOST", "localhost")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
@@ -78,11 +77,6 @@ async def test_auth_token():
     print(
         "\n⚠️  Auth Token Test - Skipped (Authentication system removed for personal use)"
     )
-
-
-async def test_credit_system():
-    """Quick test for credit system (disabled for personal use)."""
-    print("\n⚠️  Credit System Test - Skipped (Billing system removed for personal use)")
 
 
 async def run_custom_test():
@@ -157,7 +151,7 @@ async def main():
     parser = argparse.ArgumentParser(description="Quick test runner for Maverick-MCP")
     parser.add_argument(
         "--test",
-        choices=["stock", "technical", "auth", "credit", "custom", "parallel", "all"],
+        choices=["stock", "technical", "auth", "custom", "parallel", "all"],
         default="custom",
         help="Which test to run",
     )
@@ -184,7 +178,6 @@ async def main():
         "stock": test_stock_data,
         "technical": test_technical_analysis,
         "auth": test_auth_token,
-        "credit": test_credit_system,
         "custom": run_custom_test,
         "parallel": test_parallel_screening,
     }

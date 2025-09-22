@@ -5,7 +5,6 @@ Tests various rate limiting scenarios including:
 - Different user types (anonymous, authenticated, premium)
 - Different endpoint tiers
 - Multiple rate limiting strategies
-- Credit-aware rate limiting
 - Monitoring and alerting
 """
 
@@ -189,7 +188,7 @@ class TestEndpointClassification:
             == RateLimitTier.ADMINISTRATIVE
         )
         assert (
-            EndpointClassification.classify_endpoint("/api/billing/admin")
+            EndpointClassification.classify_endpoint("/api/admin/system")
             == RateLimitTier.ADMINISTRATIVE
         )
         assert (

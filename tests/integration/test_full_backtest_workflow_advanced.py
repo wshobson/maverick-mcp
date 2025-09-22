@@ -14,19 +14,14 @@ This comprehensive test suite covers:
 import asyncio
 import logging
 import time
-from datetime import datetime, timedelta
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock
 from uuid import UUID
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from maverick_mcp.api.routers.backtesting import setup_backtesting_tools
 from maverick_mcp.backtesting import (
-    BacktestAnalyzer,
-    StrategyOptimizer,
     VectorBTEngine,
 )
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
@@ -35,7 +30,6 @@ from maverick_mcp.backtesting.visualization import (
     generate_equity_curve,
     generate_performance_dashboard,
 )
-from maverick_mcp.workflows.backtesting_workflow import BacktestingWorkflow
 
 logger = logging.getLogger(__name__)
 
@@ -306,7 +300,7 @@ class TestAdvancedBacktestWorkflowIntegration:
         # Third run with different parameters - should not use cache
         modified_parameters = {**parameters, "fast_period": parameters.get("fast_period", 10) + 5}
         start_time = time.time()
-        result3 = await complete_vectorbt_engine.run_backtest(
+        await complete_vectorbt_engine.run_backtest(
             symbol=symbol,
             strategy_type=strategy,
             parameters=modified_parameters,
@@ -399,7 +393,7 @@ class TestAdvancedBacktestWorkflowIntegration:
             rsi_results = persistence.get_backtests_by_strategy("rsi")
             assert len(rsi_results) >= 5  # At least our batch results
 
-        logger.info(f"Database persistence test completed successfully")
+        logger.info("Database persistence test completed successfully")
         return {"batch_ids": batch_ids, "single_id": backtest_id}
 
     async def test_visualization_integration_complete(self, complete_vectorbt_engine):
@@ -529,6 +523,7 @@ class TestAdvancedBacktestWorkflowIntegration:
     async def test_resource_management_comprehensive(self, complete_vectorbt_engine):
         """Test comprehensive resource management across workflow."""
         import os
+
         import psutil
 
         process = psutil.Process(os.getpid())
@@ -536,8 +531,6 @@ class TestAdvancedBacktestWorkflowIntegration:
         # Baseline measurements
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
         initial_threads = process.num_threads()
-        initial_cpu = process.cpu_percent()
-
         resource_snapshots = []
 
         # Run multiple backtests while monitoring resources

@@ -257,7 +257,6 @@ class EnvironmentValidator:
             "warnings": self.warnings,
             "environment": settings.environment,
             "auth_enabled": False,
-            "credit_enabled": False,
         }
 
 

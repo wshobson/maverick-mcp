@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Dict, Tuple
+from typing import Any
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class EstimationBasis(str, Enum):
@@ -17,7 +17,7 @@ class EstimationBasis(str, Enum):
 
 
 class ToolComplexity(str, Enum):
-    """Qualitative complexity buckets used for pricing and monitoring."""
+    """Qualitative complexity buckets used for monitoring and reporting."""
 
     SIMPLE = "simple"
     STANDARD = "standard"
@@ -127,13 +127,13 @@ class ToolEstimationConfig(BaseModel):
             notes="Fallback estimate for unknown tools",
         )
     )
-    tool_estimates: Dict[str, ToolEstimate] = Field(default_factory=dict)
+    tool_estimates: dict[str, ToolEstimate] = Field(default_factory=dict)
 
     def model_post_init(self, _context: Any) -> None:  # noqa: D401
         if not self.tool_estimates:
             self.tool_estimates = _build_default_estimates(self)
         else:
-            normalised: Dict[str, ToolEstimate] = {}
+            normalised: dict[str, ToolEstimate] = {}
             for key, estimate in self.tool_estimates.items():
                 normalised[key.lower()] = estimate
             self.tool_estimates = normalised
@@ -156,13 +156,13 @@ class ToolEstimationConfig(BaseModel):
             [name for name, estimate in self.tool_estimates.items() if estimate.complexity == complexity]
         )
 
-    def get_summary_stats(self) -> Dict[str, Any]:
+    def get_summary_stats(self) -> dict[str, Any]:
         if not self.tool_estimates:
             return {}
 
         total_tools = len(self.tool_estimates)
-        by_complexity: Dict[str, int] = {c.value: 0 for c in ToolComplexity}
-        basis_distribution: Dict[str, int] = {b.value: 0 for b in EstimationBasis}
+        by_complexity: dict[str, int] = {c.value: 0 for c in ToolComplexity}
+        basis_distribution: dict[str, int] = {b.value: 0 for b in EstimationBasis}
         llm_total = 0
         token_total = 0
         confidence_total = 0.0
@@ -183,7 +183,7 @@ class ToolEstimationConfig(BaseModel):
             "basis_distribution": basis_distribution,
         }
 
-    def should_alert(self, tool_name: str, actual_llm_calls: int, actual_tokens: int) -> Tuple[bool, str]:
+    def should_alert(self, tool_name: str, actual_llm_calls: int, actual_tokens: int) -> tuple[bool, str]:
         estimate = self.get_estimate(tool_name)
         thresholds = self.monitoring
         alerts: list[str] = []
@@ -230,8 +230,8 @@ class ToolEstimationConfig(BaseModel):
         return (bool(alerts), message)
 
 
-def _build_default_estimates(config: ToolEstimationConfig) -> Dict[str, ToolEstimate]:
-    data: Dict[str, Dict[str, Any]] = {
+def _build_default_estimates(config: ToolEstimationConfig) -> dict[str, ToolEstimate]:
+    data: dict[str, dict[str, Any]] = {
         "get_stock_price": {
             "llm_calls": 0,
             "total_tokens": 200,
@@ -475,7 +475,7 @@ def get_tool_estimate(tool_name: str) -> ToolEstimate:
     return get_tool_estimation_config().get_estimate(tool_name)
 
 
-def should_alert_for_usage(tool_name: str, llm_calls: int, total_tokens: int) -> Tuple[bool, str]:
+def should_alert_for_usage(tool_name: str, llm_calls: int, total_tokens: int) -> tuple[bool, str]:
     """Check whether actual usage deviates enough to raise an alert."""
 
     return get_tool_estimation_config().should_alert(tool_name, llm_calls, total_tokens)
@@ -502,7 +502,7 @@ class ToolCostEstimator:
         tool_name: str,
         category: str,
         complexity: str = "moderate",
-        additional_params: Dict[str, Any] | None = None,
+        additional_params: dict[str, Any] | None = None,
     ) -> int:
         additional_params = additional_params or {}
         base_cost = cls.BASE_COSTS.get(category, {}).get(complexity, 3)

@@ -449,7 +449,7 @@ class TestSecurityPerformance:
     """Performance tests for security features."""
 
     @pytest.mark.skip(
-        reason="Long-running performance test with 100 iterations - disabled to save GitHub Action credits"
+        reason="Long-running performance test with 100 iterations - disabled to conserve CI resources"
     )
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -484,7 +484,7 @@ class TestSecurityPerformance:
             assert (end_time - start_time) < 5.0
 
     @pytest.mark.skip(
-        reason="Long-running performance test with 100 iterations - disabled to save GitHub Action credits"
+        reason="Long-running performance test with 100 iterations - disabled to conserve CI resources"
     )
     @pytest.mark.asyncio
     @pytest.mark.integration

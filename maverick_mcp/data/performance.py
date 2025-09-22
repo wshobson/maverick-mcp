@@ -501,7 +501,7 @@ def cached(
                     await request_cache.delete_pattern(pattern)
 
         typed_wrapper = cast(F, wrapper)
-        setattr(typed_wrapper, "invalidate_cache", invalidate_cache)
+        cast(Any, typed_wrapper).invalidate_cache = invalidate_cache
         return typed_wrapper
 
     return decorator

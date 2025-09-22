@@ -645,7 +645,6 @@ class TestInformationDisclosure:
         error_test_cases = [
             ("/auth/login", {"invalid": "json_structure"}),
             ("/user/profile", {}),  # Missing authentication
-            ("/billing/balance", {}),  # Missing authentication
         ]
 
         for endpoint, data in error_test_cases:
