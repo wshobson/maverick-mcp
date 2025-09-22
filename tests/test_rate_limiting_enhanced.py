@@ -350,13 +350,18 @@ class TestRateLimiter:
 
     def test_violation_recording(self, rate_limiter):
         """Test violation count recording."""
-        assert rate_limiter.get_violation_count("user1") == 0
+        tier = RateLimitTier.DATA_RETRIEVAL
+        assert rate_limiter.get_violation_count("user1", tier=tier) == 0
 
-        rate_limiter.record_violation("user1")
-        assert rate_limiter.get_violation_count("user1") == 1
+        rate_limiter.record_violation("user1", tier=tier)
+        assert rate_limiter.get_violation_count("user1", tier=tier) == 1
 
-        rate_limiter.record_violation("user1")
-        assert rate_limiter.get_violation_count("user1") == 2
+        rate_limiter.record_violation("user1", tier=tier)
+        assert rate_limiter.get_violation_count("user1", tier=tier) == 2
+
+        # Different tiers maintain independent counters
+        other_tier = RateLimitTier.ANALYSIS
+        assert rate_limiter.get_violation_count("user1", tier=other_tier) == 0
 
 
 class TestEnhancedRateLimitMiddleware:
@@ -530,11 +535,11 @@ class TestMonitoringIntegration:
         """Test violations are recorded for monitoring."""
         # Record multiple violations
         for _i in range(rate_limit_config.alert_threshold + 1):
-            rate_limiter.record_violation("bad_user")
+            rate_limiter.record_violation("bad_user", tier=RateLimitTier.DATA_RETRIEVAL)
 
         # Check violation count
         assert (
-            rate_limiter.get_violation_count("bad_user")
+            rate_limiter.get_violation_count("bad_user", tier=RateLimitTier.DATA_RETRIEVAL)
             > rate_limit_config.alert_threshold
         )
 

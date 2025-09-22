@@ -77,7 +77,7 @@ class RateLimitConfig:
     burst_multiplier: float = 1.5
     window_size_seconds: int = 60
     token_refill_rate: float = 1.0
-    max_tokens: int = 10
+    max_tokens: int | None = None
     log_violations: bool = True
     alert_threshold: int = 5
 
@@ -115,6 +115,18 @@ class RateLimiter:
         self._local_counters: dict[str, deque[float]] = defaultdict(deque)
         self._violations: dict[str, int] = defaultdict(int)
 
+    @staticmethod
+    def _tiered_key(tier: RateLimitTier, identifier: str) -> str:
+        """Compose a namespaced key for tracking tier-specific counters."""
+
+        return f"{tier.value}:{identifier}"
+
+    def _redis_key(self, prefix: str, *, tier: RateLimitTier, identifier: str) -> str:
+        """Build a Redis key for the given strategy prefix and identifier."""
+
+        tiered_identifier = self._tiered_key(tier, identifier)
+        return f"rate_limit:{prefix}:{tiered_identifier}"
+
     async def check_rate_limit(
         self,
         *,
@@ -126,9 +138,10 @@ class RateLimiter:
     ) -> tuple[bool, dict[str, Any]]:
         strategy = strategy or self.config.default_strategy
         client = await redis_manager.get_client()
+        tiered_key = self._tiered_key(tier, key)
         if client is None:
             allowed, info = self._check_local_rate_limit(
-                key=key,
+                key=tiered_key,
                 limit=limit,
                 window_seconds=window_seconds,
             )
@@ -138,16 +151,22 @@ class RateLimiter:
             return allowed, info
 
         if strategy == RateLimitStrategy.SLIDING_WINDOW:
-            return await self._check_sliding_window(client, key, tier, limit, window_seconds)
+            return await self._check_sliding_window(
+                client, key, tier, limit, window_seconds
+            )
         if strategy == RateLimitStrategy.TOKEN_BUCKET:
-            return await self._check_token_bucket(client, key, tier, limit, window_seconds)
+            return await self._check_token_bucket(
+                client, key, tier, limit, window_seconds
+            )
         return await self._check_fixed_window(client, key, tier, limit, window_seconds)
 
-    def record_violation(self, key: str) -> None:
-        self._violations[key] += 1
+    def record_violation(self, key: str, *, tier: RateLimitTier | None = None) -> None:
+        namespaced_key = self._tiered_key(tier, key) if tier else key
+        self._violations[namespaced_key] += 1
 
-    def get_violation_count(self, key: str) -> int:
-        return self._violations.get(key, 0)
+    def get_violation_count(self, key: str, *, tier: RateLimitTier | None = None) -> int:
+        namespaced_key = self._tiered_key(tier, key) if tier else key
+        return self._violations.get(namespaced_key, 0)
 
     def _check_local_rate_limit(
         self,
@@ -182,7 +201,7 @@ class RateLimiter:
         limit: int,
         window_seconds: int,
     ) -> tuple[bool, dict[str, Any]]:
-        redis_key = f"rate_limit:sw:{key}"
+        redis_key = self._redis_key("sw", tier=tier, identifier=key)
         now = time.time()
 
         pipeline = client.pipeline()
@@ -222,7 +241,7 @@ class RateLimiter:
         limit: int,
         window_seconds: int,
     ) -> tuple[bool, dict[str, Any]]:
-        redis_key = f"rate_limit:tb:{key}"
+        redis_key = self._redis_key("tb", tier=tier, identifier=key)
         now = time.time()
         state = await client.hgetall(redis_key)
 
@@ -244,10 +263,10 @@ class RateLimiter:
         tokens = float(tokens_value) if tokens_value is not None else float(limit)
         last_refill = float(last_refill_value) if last_refill_value is not None else now
         elapsed = max(now - last_refill, 0)
-        tokens = min(
-            float(self.config.max_tokens),
-            tokens + elapsed * self.config.token_refill_rate,
-        )
+        capacity = float(limit)
+        if self.config.max_tokens is not None:
+            capacity = min(capacity, float(self.config.max_tokens))
+        tokens = min(capacity, tokens + elapsed * self.config.token_refill_rate)
 
         info: dict[str, Any] = {
             "limit": limit,
@@ -279,7 +298,7 @@ class RateLimiter:
         limit: int,
         window_seconds: int,
     ) -> tuple[bool, dict[str, Any]]:
-        redis_key = f"rate_limit:fw:{key}"
+        redis_key = self._redis_key("fw", tier=tier, identifier=key)
         pipeline = client.pipeline()
         pipeline.incr(redis_key)
         pipeline.expire(redis_key, window_seconds)
@@ -341,7 +360,9 @@ class EnhancedRateLimitMiddleware(BaseHTTPMiddleware):
         user_context = getattr(request.state, "user_context", {}) or {}
         role = user_context.get("role") if isinstance(user_context, dict) else None
         authenticated = bool(user_id)
-        key = str(user_id or request.client.host or "anonymous")
+        client = getattr(request, "client", None)
+        client_host = getattr(client, "host", None) if client else None
+        key = str(user_id or client_host or "anonymous")
 
         limit = self.config.limit_for(tier, authenticated=authenticated, role=role)
         allowed, info = await self.rate_limiter.check_rate_limit(
@@ -353,9 +374,9 @@ class EnhancedRateLimitMiddleware(BaseHTTPMiddleware):
 
         if not allowed:
             retry_after = int(info.get("retry_after", 1))
-            self.rate_limiter.record_violation(key)
+            self.rate_limiter.record_violation(key, tier=tier)
             if self.config.log_violations:
-                logger.warning("Rate limit exceeded for %s", key)
+                logger.warning("Rate limit exceeded for %s (%s)", key, tier.value)
             error = RateLimitError(retry_after=retry_after, context={"info": info})
             headers = {"Retry-After": str(retry_after)}
             body = {"error": error.message}
