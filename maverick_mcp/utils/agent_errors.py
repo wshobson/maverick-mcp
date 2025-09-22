@@ -51,11 +51,6 @@ ERROR_FIXES = {
         "fix": "Set AUTH_ENABLED=false for development or use generate_dev_token tool",
         "example": "AUTH_ENABLED=false python -m maverick_mcp.api.server",
     },
-    "402.*Payment Required": {
-        "error": "Insufficient credits",
-        "fix": "Set CREDIT_SYSTEM_ENABLED=false for development",
-        "example": "CREDIT_SYSTEM_ENABLED=false python -m maverick_mcp.api.server",
-    },
     # Connection errors
     "Redis.*Connection.*refused": {
         "error": "Redis connection failed",

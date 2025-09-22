@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,20 +30,20 @@ class ComponentHealth:
     name: str
     status: HealthStatus
     message: str
-    response_time_ms: Optional[float] = None
-    details: Optional[Dict[str, Any]] = None
-    last_check: Optional[datetime] = None
+    response_time_ms: float | None = None
+    details: dict[str, Any] | None = None
+    last_check: datetime | None = None
 
 
 @dataclass
 class SystemHealth:
     """Overall system health information."""
     status: HealthStatus
-    components: Dict[str, ComponentHealth]
+    components: dict[str, ComponentHealth]
     overall_response_time_ms: float
     timestamp: datetime
-    uptime_seconds: Optional[float] = None
-    version: Optional[str] = None
+    uptime_seconds: float | None = None
+    version: str | None = None
 
 
 class HealthChecker:
@@ -75,7 +75,7 @@ class HealthChecker:
             "system_resources": self._check_system_resources_health,
         }
 
-    async def check_health(self, components: Optional[List[str]] = None) -> SystemHealth:
+    async def check_health(self, components: list[str] | None = None) -> SystemHealth:
         """
         Check health of specified components or all components.
 
@@ -148,7 +148,7 @@ class HealthChecker:
                 self._component_checkers[component_name](),
                 timeout=timeout
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ComponentHealth(
                 name=component_name,
                 status=HealthStatus.UNHEALTHY,
@@ -161,8 +161,9 @@ class HealthChecker:
         start_time = time.time()
 
         try:
-            from maverick_mcp.data.database import get_db_session
             from sqlalchemy import text
+
+            from maverick_mcp.data.database import get_db_session
 
             with get_db_session() as session:
                 # Simple query to test database connectivity
@@ -194,7 +195,7 @@ class HealthChecker:
         start_time = time.time()
 
         try:
-            from maverick_mcp.data.cache import get_redis_client, get_cache_stats
+            from maverick_mcp.data.cache import get_cache_stats, get_redis_client
 
             # Check Redis connection if available
             redis_client = get_redis_client()
@@ -429,7 +430,7 @@ class HealthChecker:
                 last_check=datetime.now(UTC)
             )
 
-    def _calculate_overall_status(self, components: Dict[str, ComponentHealth]) -> HealthStatus:
+    def _calculate_overall_status(self, components: dict[str, ComponentHealth]) -> HealthStatus:
         """
         Calculate overall system health status based on component health.
 
@@ -459,7 +460,7 @@ class HealthChecker:
         # Mixed healthy/unknown status defaults to degraded
         return HealthStatus.DEGRADED
 
-    def _get_application_version(self) -> Optional[str]:
+    def _get_application_version(self) -> str | None:
         """Get application version."""
         try:
             from maverick_mcp import __version__
@@ -486,7 +487,7 @@ class HealthChecker:
 
         return await self._check_component_with_timeout(component_name)
 
-    def get_supported_components(self) -> List[str]:
+    def get_supported_components(self) -> list[str]:
         """
         Get list of supported component names.
 
@@ -495,7 +496,7 @@ class HealthChecker:
         """
         return list(self._component_checkers.keys())
 
-    def get_health_status(self) -> Dict[str, Any]:
+    def get_health_status(self) -> dict[str, Any]:
         """
         Get comprehensive health status (synchronous wrapper).
 
@@ -529,7 +530,7 @@ class HealthChecker:
             result = asyncio.run(self.check_health())
             return self._health_to_dict(result)
 
-    async def check_overall_health(self) -> Dict[str, Any]:
+    async def check_overall_health(self) -> dict[str, Any]:
         """
         Async method to check overall health.
 
@@ -539,7 +540,7 @@ class HealthChecker:
         result = await self.check_health()
         return self._health_to_dict(result)
 
-    def _health_to_dict(self, health: SystemHealth) -> Dict[str, Any]:
+    def _health_to_dict(self, health: SystemHealth) -> dict[str, Any]:
         """
         Convert SystemHealth object to dictionary.
 
@@ -568,7 +569,7 @@ class HealthChecker:
 
 
 # Convenience function for quick health checks
-async def check_system_health(components: Optional[List[str]] = None) -> SystemHealth:
+async def check_system_health(components: list[str] | None = None) -> SystemHealth:
     """
     Convenience function to check system health.
 
@@ -583,7 +584,7 @@ async def check_system_health(components: Optional[List[str]] = None) -> SystemH
 
 
 # Global health checker instance
-_global_health_checker: Optional[HealthChecker] = None
+_global_health_checker: HealthChecker | None = None
 
 
 def get_health_checker() -> HealthChecker:

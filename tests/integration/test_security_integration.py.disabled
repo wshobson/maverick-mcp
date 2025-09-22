@@ -24,8 +24,6 @@ from maverick_mcp.config.security_utils import (
     apply_cors_to_fastapi,
     apply_security_headers_to_fastapi,
 )
-from maverick_mcp.utils.webhook_security import WebhookSecurity
-
 # Skip integration tests if Redis not available
 redis_available = True
 try:
@@ -128,25 +126,6 @@ def security_app():
             raise HTTPException(status_code=403, detail="CSRF token required")
         return {"message": "data created", "csrf_valid": True}
 
-    @app.post("/webhook/stripe")
-    async def stripe_webhook(request: Request):
-        # Simulate webhook signature verification
-        body = await request.body()
-        signature = request.headers.get("Stripe-Signature")
-
-        if not signature:
-            raise HTTPException(status_code=400, detail="Missing signature")
-
-        # Mock webhook verification
-        is_valid, error, parsed = WebhookSecurity.verify_webhook_signature(
-            body, signature, "test_secret"
-        )
-
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=f"Invalid webhook: {error}")
-
-        return {"status": "processed", "timestamp": parsed["t"]}
-
     @app.get("/rate-limited")
     async def rate_limited_endpoint():
         return {"message": "rate limited endpoint", "timestamp": time.time()}
@@ -170,7 +149,9 @@ class TestFullSecurityIntegration:
         # Test that CSP header contains the expected directives
         csp_header = response.headers["Content-Security-Policy"]
         assert "default-src 'self'" in csp_header
-        assert "script-src 'self' 'unsafe-inline' https://js.stripe.com" in csp_header
+        assert "script-src 'self' 'unsafe-inline'" in csp_header
+        assert "connect-src 'self'" in csp_header
+        assert "frame-src 'none'" in csp_header
         assert "object-src 'none'" in csp_header
 
     def test_cors_preflight_with_security_headers(self, security_app):
@@ -264,50 +245,6 @@ class TestFullSecurityIntegration:
 
         assert response.status_code == 200
         assert response.json()["csrf_valid"] is True
-
-    def test_webhook_security_integration(self, security_app):
-        """Test webhook security with proper signature verification."""
-        app, _ = security_app
-        client = TestClient(app)
-
-        # Create valid webhook payload and signature
-        payload = b'{"id":"evt_test","type":"payment_intent.succeeded"}'
-        timestamp = str(int(time.time()))
-        signature = WebhookSecurity.compute_signature(payload, "test_secret", timestamp)
-        sig_header = f"t={timestamp},v1={signature}"
-
-        response = client.post(
-            "/webhook/stripe",
-            content=payload,
-            headers={
-                "Stripe-Signature": sig_header,
-                "Content-Type": "application/json",
-            },
-        )
-
-        assert response.status_code == 200
-        assert response.json()["status"] == "processed"
-        assert response.headers["X-Frame-Options"] == "DENY"
-
-    def test_webhook_invalid_signature_blocked(self, security_app):
-        """Test webhook with invalid signature is blocked."""
-        app, _ = security_app
-        client = TestClient(app)
-
-        payload = b'{"id":"evt_test","type":"payment_intent.succeeded"}'
-        invalid_sig_header = "t=123456789,v1=invalid_signature"
-
-        response = client.post(
-            "/webhook/stripe",
-            content=payload,
-            headers={
-                "Stripe-Signature": invalid_sig_header,
-                "Content-Type": "application/json",
-            },
-        )
-
-        assert response.status_code == 400
-        assert "Invalid webhook" in response.json()["detail"]
 
     def test_unauthorized_request_blocked(self, security_app):
         """Test unauthorized requests are properly blocked."""
@@ -417,34 +354,6 @@ class TestConcurrentSecurityOperations:
         # All should have security headers
         for result in results:
             assert result.headers["X-Frame-Options"] == "DENY"
-
-    def test_concurrent_webhook_verification(self, security_app):
-        """Test webhook verification under concurrent load."""
-        app, _ = security_app
-        client = TestClient(app)
-
-        def make_webhook_request():
-            payload = b'{"id":"evt_test","type":"test"}'
-            timestamp = str(int(time.time()))
-            signature = WebhookSecurity.compute_signature(
-                payload, "test_secret", timestamp
-            )
-            sig_header = f"t={timestamp},v1={signature}"
-
-            return client.post(
-                "/webhook/stripe",
-                content=payload,
-                headers={"Stripe-Signature": sig_header},
-            )
-
-        # Make concurrent webhook requests
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [executor.submit(make_webhook_request) for _ in range(20)]
-            results = [future.result() for future in as_completed(futures)]
-
-        # All valid webhooks should succeed
-        success_count = sum(1 for r in results if r.status_code == 200)
-        assert success_count == 20
 
     def test_concurrent_cors_requests(self, security_app):
         """Test CORS handling under concurrent load."""

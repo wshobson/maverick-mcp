@@ -1,8 +1,8 @@
 """Pre-built strategy templates for VectorBT."""
 
-from typing import Any, Dict, Optional
+from typing import Any
+
 import pandas as pd
-import numpy as np
 
 
 class SimpleMovingAverageStrategy:
@@ -55,7 +55,7 @@ class SimpleMovingAverageStrategy:
 
         return entries, exits
 
-    def get_parameters(self) -> Dict[str, Any]:
+    def get_parameters(self) -> dict[str, Any]:
         """Get strategy parameters."""
         return {
             "fast_period": self.fast_period,

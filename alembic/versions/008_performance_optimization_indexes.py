@@ -198,33 +198,6 @@ def upgrade():
         postgresql_using="btree",
     )
 
-    # Credit system optimizations
-    print("Creating credit system performance indexes...")
-
-    # User credit balance lookups
-    op.create_index(
-        "idx_mcp_user_credits_user_id",
-        "mcp_user_credits",
-        ["user_id"],
-        postgresql_using="hash",
-    )
-
-    # Credit transaction history
-    op.create_index(
-        "idx_mcp_credit_transactions_user_created",
-        "mcp_credit_transactions",
-        ["user_id", sa.text("created_at DESC")],
-        postgresql_using="btree",
-    )
-
-    # Credit transaction type filtering
-    op.create_index(
-        "idx_mcp_credit_transactions_type",
-        "mcp_credit_transactions",
-        ["transaction_type"],
-        postgresql_using="btree",
-    )
-
     # Request tracking for analytics
     op.create_index(
         "idx_mcp_requests_user_timestamp",
@@ -298,13 +271,6 @@ def upgrade():
         "WHERE volume > 1000000"
     )
 
-    # Successful credit transactions only
-    op.execute(
-        "CREATE INDEX IF NOT EXISTS idx_mcp_credit_transactions_successful "
-        "ON mcp_credit_transactions (user_id, created_at DESC) "
-        "WHERE status = 'completed'"
-    )
-
     print("Performance optimization indexes created successfully!")
 
 
@@ -358,11 +324,6 @@ def downgrade():
     op.drop_index("idx_mcp_refresh_tokens_token_hash", "mcp_refresh_tokens")
     op.drop_index("idx_mcp_refresh_tokens_user_active", "mcp_refresh_tokens")
 
-    # Credit system indexes
-    op.drop_index("idx_mcp_user_credits_user_id", "mcp_user_credits")
-    op.drop_index("idx_mcp_credit_transactions_user_created", "mcp_credit_transactions")
-    op.drop_index("idx_mcp_credit_transactions_type", "mcp_credit_transactions")
-
     op.drop_index("idx_mcp_requests_user_timestamp", "mcp_requests")
     op.drop_index("idx_mcp_requests_tool_name", "mcp_requests")
     op.drop_index("idx_mcp_requests_success_timestamp", "mcp_requests")
@@ -376,6 +337,4 @@ def downgrade():
     op.execute("DROP INDEX IF EXISTS idx_mcp_users_active_email")
     op.execute("DROP INDEX IF EXISTS idx_stocks_pricecache_recent")
     op.execute("DROP INDEX IF EXISTS idx_stocks_pricecache_high_volume")
-    op.execute("DROP INDEX IF EXISTS idx_mcp_credit_transactions_successful")
-
     print("Performance optimization indexes removed.")

@@ -153,7 +153,9 @@ class HealthMonitor:
     async def _perform_health_check(self):
         """Perform comprehensive health check."""
         try:
-            from maverick_mcp.api.routers.health_enhanced import _get_detailed_health_status
+            from maverick_mcp.api.routers.health_enhanced import (
+                _get_detailed_health_status,
+            )
 
             health_status = await _get_detailed_health_status()
 
@@ -321,7 +323,6 @@ class HealthMonitor:
 
     async def _handle_alert(self, alert: dict[str, Any]):
         """Handle individual alert."""
-        alert_type = alert.get("type", "unknown")
         severity = alert.get("severity", "info")
 
         # Log alert based on severity

@@ -307,7 +307,6 @@ class MCPToolMonitoringWrapper:
     - Track tool usage metrics
     - Create distributed traces
     - Monitor performance
-    - Track credit usage
     """
 
     def __init__(self, enable_tracing: bool = True):
@@ -370,7 +369,6 @@ class MCPToolMonitoringWrapper:
                     track_tool_usage(
                         tool_name=tool_name,
                         user_id=str(user_id) if user_id else "anonymous",
-                        credits_spent=self._estimate_credits(tool_name, duration),
                         duration=duration,
                         status="success",
                         complexity=self._determine_complexity(tool_name, kwargs),
@@ -428,30 +426,6 @@ class MCPToolMonitoringWrapper:
                     raise
 
         return wrapper
-
-    def _estimate_credits(self, tool_name: str, duration: float) -> int:
-        """Estimate credits used based on tool complexity and duration."""
-        # Simple credit estimation without external mapping
-        # Base credits for most tools
-        base_credits = 1
-
-        # Complex tools get more base credits
-        complex_tools = [
-            "get_portfolio_optimization",
-            "get_market_analysis",
-            "screen_stocks",
-            "get_full_technical_analysis",
-        ]
-        if any(complex_tool in tool_name for complex_tool in complex_tools):
-            base_credits = 3
-
-        # Adjust for long-running operations
-        if duration > 30:
-            return base_credits * 2
-        elif duration > 10:
-            return base_credits + 1
-
-        return base_credits
 
     def _determine_complexity(self, tool_name: str, kwargs: dict[str, Any]) -> str:
         """Determine tool complexity based on parameters."""

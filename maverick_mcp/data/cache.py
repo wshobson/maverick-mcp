@@ -13,8 +13,9 @@ import os
 import time
 import zlib
 from collections import defaultdict
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
-from typing import Any, DefaultDict, cast
+from typing import Any, cast
 
 import msgpack
 import pandas as pd
@@ -49,7 +50,7 @@ CACHE_TTL_SECONDS = settings.performance.cache_ttl_seconds
 CACHE_VERSION = os.getenv("CACHE_VERSION", "v1")
 
 # Cache statistics
-CacheStatMap = DefaultDict[str, float]
+CacheStatMap = defaultdict[str, float]
 _cache_stats: CacheStatMap = defaultdict(float)
 _cache_stats["hits"] = 0.0
 _cache_stats["misses"] = 0.0
@@ -78,9 +79,11 @@ def _dataframe_to_payload(df: pd.DataFrame) -> dict[str, Any]:
     """Convert a DataFrame to a JSON-serializable payload."""
 
     normalized = ensure_timezone_naive(df)
-    payload = json.loads(
-        normalized.to_json(orient="split", date_format="iso", default_handler=str)
+    json_payload = cast(
+        str,
+        normalized.to_json(orient="split", date_format="iso", default_handler=str),
     )
+    payload = json.loads(json_payload)
     payload["index_type"] = (
         "datetime" if isinstance(normalized.index, pd.DatetimeIndex) else "other"
     )
@@ -98,7 +101,7 @@ def _payload_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
 
     if payload.get("index_type") == "datetime":
         index_values = pd.to_datetime(index_values)
-        index = normalize_timezone(pd.Index(index_values))
+        index = normalize_timezone(pd.DatetimeIndex(index_values))
     else:
         index = index_values
 
@@ -110,7 +113,7 @@ def _payload_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
 def _json_default(value: Any) -> Any:
     """JSON serializer for unsupported types."""
 
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime | date):
         return value.isoformat()
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
@@ -138,18 +141,14 @@ def _decode_json_payload(raw_data: str) -> Any:
     return payload
 
 
-def normalize_timezone(dt_index: pd.Index | pd.DatetimeIndex) -> pd.DatetimeIndex:
-    """Normalize timezone-aware datetime index to timezone-naive UTC.
+def normalize_timezone(index: pd.Index | Sequence[Any]) -> pd.DatetimeIndex:
+    """Return a timezone-naive :class:`~pandas.DatetimeIndex` in UTC."""
 
-    Args:
-        dt_index: Pandas datetime index that may be timezone-aware
+    dt_index = index if isinstance(index, pd.DatetimeIndex) else pd.DatetimeIndex(index)
 
-    Returns:
-        Timezone-naive datetime index in UTC
-    """
-    if hasattr(dt_index, "tz") and dt_index.tz is not None:
-        # Convert to UTC then remove timezone info
-        return dt_index.tz_convert("UTC").tz_localize(None)
+    if dt_index.tz is not None:
+        dt_index = dt_index.tz_convert("UTC").tz_localize(None)
+
     return dt_index
 
 
@@ -197,7 +196,7 @@ def get_cache_stats() -> dict[str, Any]:
             try:
                 if hasattr(entry["data"], "__sizeof__"):
                     memory_size_bytes += entry["data"].__sizeof__()
-                elif isinstance(entry["data"], (str, bytes)):
+                elif isinstance(entry["data"], str | bytes):
                     memory_size_bytes += len(entry["data"])
                 elif isinstance(entry["data"], pd.DataFrame):
                     memory_size_bytes += entry["data"].memory_usage(deep=True).sum()
@@ -572,11 +571,9 @@ def _serialize_data(data: Any, key: str) -> bytes:
                         else "other"
                     ),
                     "columns": list(df.columns),
-                    "index_data": [
-                        str(idx) for idx in df.index
-                    ],  # Convert all index values to string
+                    "index_data": [str(idx) for idx in df.index],
                 }
-                msgpack_data = msgpack.packb(df_dict)
+                msgpack_data = cast(bytes, msgpack.packb(df_dict))
                 compressed = zlib.compress(msgpack_data, level=1)
                 compressed_size = len(compressed)
 
@@ -634,7 +631,7 @@ def _serialize_data(data: Any, key: str) -> bytes:
                     else:
                         serializable_data[k] = v
 
-                msgpack_data = msgpack.packb(serializable_data)
+                msgpack_data = cast(bytes, msgpack.packb(serializable_data))
                 compressed = zlib.compress(msgpack_data, level=1)
                 return compressed
             except Exception:
@@ -659,9 +656,9 @@ def _serialize_data(data: Any, key: str) -> bytes:
                 return compressed
 
         # For simple data types, try msgpack first (more efficient than JSON)
-        if isinstance(data, (dict, list, str, int, float, bool, type(None))):
+        if isinstance(data, dict | list | str | int | float | bool | type(None)):
             try:
-                return msgpack.packb(data)
+                return cast(bytes, msgpack.packb(data))
             except Exception:
                 # Fall back to JSON
                 return json.dumps(data, default=_json_default).encode("utf-8")
@@ -776,11 +773,13 @@ def clear_cache(pattern: str | None = None) -> int:
     if redis_client:
         try:
             if pattern:
-                keys = redis_client.keys(pattern)
+                keys = cast(list[bytes], redis_client.keys(pattern))
                 if keys:
-                    count += redis_client.delete(*keys)  # type: ignore[operator,misc]
+                    delete_result = cast(int, redis_client.delete(*keys))
+                    count += delete_result
             else:
-                count += redis_client.flushdb()  # type: ignore[operator]
+                flush_result = cast(int, redis_client.flushdb())
+                count += flush_result
             logger.info(f"Cleared {count} entries from Redis cache")
         except Exception as e:
             logger.warning(f"Error clearing Redis cache: {e}")
@@ -951,9 +950,10 @@ class CacheManager:
         client = self._ensure_client()
         if client:
             try:
-                keys = client.keys(pattern)
+                keys = cast(list[bytes], client.keys(pattern))
                 if keys:
-                    count = client.delete(*keys)  # type: ignore[assignment,misc]
+                    delete_result = cast(int, client.delete(*keys))
+                    count += delete_result
             except Exception as e:
                 logger.warning(f"Error deleting pattern: {e}")
 
@@ -1074,7 +1074,8 @@ class CacheManager:
         if client and keys:
             try:
                 # Use single delete command for multiple keys
-                deleted_count = client.delete(*keys)
+                deleted_result = client.delete(*keys)
+                deleted_count = cast(int, deleted_result)
                 logger.debug(f"Batch deleted {deleted_count} keys from Redis cache")
             except Exception as e:
                 logger.warning(f"Error in batch delete from Redis: {e}")

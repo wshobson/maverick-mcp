@@ -136,7 +136,7 @@ class SecurityHeadersConfig(BaseModel):
     )
 
     csp_script_src: list[str] = Field(
-        default=["'self'", "'unsafe-inline'", "https://js.stripe.com"],
+        default=["'self'", "'unsafe-inline'"],
         description="CSP script-src directive",
     )
 
@@ -149,12 +149,12 @@ class SecurityHeadersConfig(BaseModel):
     )
 
     csp_connect_src: list[str] = Field(
-        default=["'self'", "https://api.stripe.com"],
+        default=["'self'"],
         description="CSP connect-src directive",
     )
 
     csp_frame_src: list[str] = Field(
-        default=["https://js.stripe.com"], description="CSP frame-src directive"
+        default=["'none'"], description="CSP frame-src directive"
     )
 
     csp_object_src: list[str] = Field(

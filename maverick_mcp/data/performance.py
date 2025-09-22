@@ -15,6 +15,7 @@ from functools import wraps
 from typing import Any, TypeVar, cast
 
 import redis.asyncio as redis
+from redis.asyncio.client import Pipeline
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -193,7 +194,7 @@ class RedisConnectionManager:
             self._metrics["last_error"] = str(e)
             return None
 
-    async def pipeline(self) -> redis.client.Pipeline | None:
+    async def pipeline(self) -> Pipeline | None:
         """
         Create Redis pipeline for batch operations.
 
@@ -500,7 +501,7 @@ def cached(
                     await request_cache.delete_pattern(pattern)
 
         typed_wrapper = cast(F, wrapper)
-        setattr(typed_wrapper, "invalidate_cache", invalidate_cache)
+        cast(Any, typed_wrapper).invalidate_cache = invalidate_cache
         return typed_wrapper
 
     return decorator

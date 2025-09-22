@@ -5,17 +5,17 @@ Provides streaming, batching, and generator-based approaches for handling large 
 
 import logging
 import math
-from typing import Any, Callable, Generator, Iterator, Literal
-import warnings
+from collections.abc import Callable, Generator
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 
 from maverick_mcp.utils.memory_profiler import (
-    memory_context,
-    optimize_dataframe,
     force_garbage_collection,
     get_dataframe_memory_usage,
+    memory_context,
+    optimize_dataframe,
 )
 
 logger = logging.getLogger(__name__)
@@ -154,10 +154,7 @@ class DataChunker:
         if date_column:
             if date_column not in df.columns:
                 raise ValueError(f"Date column '{date_column}' not found")
-            date_series = df[date_column]
-        elif isinstance(df.index, pd.DatetimeIndex):
-            date_series = df.index.to_series()
-        else:
+        elif not isinstance(df.index, pd.DatetimeIndex):
             raise ValueError("DataFrame must have datetime index or specify date_column")
 
         # Group by period
@@ -453,7 +450,7 @@ def batch_process_large_dataframe(df: pd.DataFrame,
     if combine_results and results:
         if isinstance(results[0], pd.DataFrame):
             return pd.concat(results, ignore_index=True)
-        elif isinstance(results[0], (int, float)):
+        elif isinstance(results[0], int | float):
             return sum(results)
         elif isinstance(results[0], list):
             return [item for sublist in results for item in sublist]

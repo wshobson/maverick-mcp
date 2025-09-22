@@ -46,7 +46,6 @@ def production_settings():
         {
             "ENVIRONMENT": "production",
             "AUTH_ENABLED": "true",
-            "CREDIT_SYSTEM_ENABLED": "true",
             "SECURITY_ENABLED": "true",
             "JWT_SECRET": "test-jwt-secret-for-production-validation-tests-minimum-32-chars",
             "DATABASE_URL": "postgresql://test:test@localhost/test_prod_db",
@@ -113,9 +112,6 @@ class TestEnvironmentConfiguration:
 
         # Authentication should be enabled
         assert production_settings.auth.enabled is True
-
-        # Credit system should be enabled
-        assert production_settings.credit.enabled is True
 
         # Secure cookies in production
         if production_settings.environment == "production":
@@ -372,8 +368,6 @@ class TestBackupAndRecovery:
                 # Test that we can read critical tables
                 critical_tables = [
                     "mcp_users",
-                    "mcp_user_credits",
-                    "mcp_credit_transactions",
                     "mcp_api_keys",
                     "auth_audit_log",
                 ]
@@ -429,7 +423,7 @@ class TestLoadTesting:
     """Test system under production-like load."""
 
     @pytest.mark.skip(
-        reason="Long-running load test - disabled to save GitHub Action credits"
+        reason="Long-running load test - disabled to conserve CI resources"
     )
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -473,11 +467,6 @@ class TestLoadTesting:
                     )
                     results.append(("profile", profile_response.status_code))
 
-                    balance_response = production_client.get(
-                        "/billing/balance", headers={"X-CSRF-Token": csrf_token}
-                    )
-                    results.append(("balance", balance_response.status_code))
-
             return results
 
         # Run concurrent sessions
@@ -497,7 +486,7 @@ class TestLoadTesting:
         assert success_rate >= 0.8  # At least 80% success rate
 
     @pytest.mark.skip(
-        reason="Long-running performance test - disabled to save GitHub Action credits"
+        reason="Long-running performance test - disabled to conserve CI resources"
     )
     def test_api_endpoint_performance(self, production_client):
         """Test API endpoint performance."""
@@ -534,7 +523,7 @@ class TestLoadTesting:
                 assert max_time < 2.0  # Max response under 2 seconds
 
     @pytest.mark.skip(
-        reason="Long-running memory test - disabled to save GitHub Action credits"
+        reason="Long-running memory test - disabled to conserve CI resources"
     )
     def test_memory_usage_stability(self, production_client):
         """Test memory usage stability under load."""
@@ -598,9 +587,6 @@ class TestProductionReadinessChecklist:
 
         # Authentication enabled
         assert production_settings.auth.enabled is True
-
-        # Credit system enabled
-        assert production_settings.credit.enabled is True
 
         # Proper environment
         assert production_settings.environment in ["production", "staging"]
@@ -684,10 +670,6 @@ class TestProductionReadinessChecklist:
             # 4. Authenticated API access (with cookies)
             profile_response = production_client.get("/user/profile")
             assert profile_response.status_code == 200
-
-            # 5. Credit system access (with cookies)
-            balance_response = production_client.get("/billing/balance")
-            assert balance_response.status_code == 200
         else:
             # Bearer token auth
             headers = {"Authorization": f"Bearer {access_token}"}
@@ -695,12 +677,6 @@ class TestProductionReadinessChecklist:
             # 4. Authenticated API access
             profile_response = production_client.get("/user/profile", headers=headers)
             assert profile_response.status_code == 200
-
-            # 5. Credit system access
-            balance_response = production_client.get(
-                "/billing/balance", headers=headers
-            )
-            assert balance_response.status_code == 200
 
 
 if __name__ == "__main__":

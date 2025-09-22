@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 import uuid
 from collections.abc import AsyncGenerator, Sequence
 from datetime import UTC, date, datetime, timedelta
@@ -31,7 +32,9 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     create_engine,
+    inspect,
 )
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, relationship, sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
@@ -139,7 +142,80 @@ else:
     )
 
 # Create session factory
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+_session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+_schema_lock = threading.Lock()
+_schema_initialized = False
+
+
+def ensure_database_schema(force: bool = False) -> bool:
+    """Ensure the database schema exists for the configured engine.
+
+    Args:
+        force: When ``True`` the schema will be (re)created even if it appears
+            to exist already.
+
+    Returns:
+        ``True`` if the schema creation routine executed, ``False`` otherwise.
+    """
+
+    global _schema_initialized
+
+    # Fast path: skip inspection once the schema has been verified unless the
+    # caller explicitly requests a forced refresh.
+    if not force and _schema_initialized:
+        return False
+
+    with _schema_lock:
+        if not force and _schema_initialized:
+            return False
+
+        try:
+            inspector = inspect(engine)
+            existing_tables = set(inspector.get_table_names())
+        except SQLAlchemyError as exc:  # pragma: no cover - safety net
+            logger.warning(
+                "Unable to inspect database schema; attempting to create tables anyway",
+                exc_info=exc,
+            )
+            existing_tables = set()
+
+        defined_tables = set(Base.metadata.tables.keys())
+        missing_tables = defined_tables - existing_tables
+
+        should_create = force or bool(missing_tables)
+        if should_create:
+            if missing_tables:
+                logger.info(
+                    "Creating missing database tables: %s",
+                    ", ".join(sorted(missing_tables)),
+                )
+            else:
+                logger.info("Ensuring database schema is up to date")
+
+            Base.metadata.create_all(bind=engine)
+            _schema_initialized = True
+            return True
+
+        _schema_initialized = True
+        return False
+
+
+class _SessionFactoryWrapper:
+    """Session factory that ensures the schema exists before creating sessions."""
+
+    def __init__(self, factory: sessionmaker):
+        self._factory = factory
+
+    def __call__(self, *args, **kwargs):
+        ensure_database_schema()
+        return self._factory(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._factory, name)
+
+
+SessionLocal = _SessionFactoryWrapper(_session_factory)
 
 # Create async engine - cached globally for reuse
 _async_engine = None
@@ -217,6 +293,7 @@ def _get_async_session_factory():
 
 def get_db():
     """Get database session."""
+    ensure_database_schema()
     db = SessionLocal()
     try:
         yield db
@@ -251,12 +328,9 @@ async def close_async_db_connections():
 
 
 def init_db():
-    """Initialize database by creating all tables.
+    """Initialize database by creating all tables."""
 
-    Note: This creates all tables for the self-contained MaverickMCP database.
-    Use Alembic migrations for production deployments.
-    """
-    Base.metadata.create_all(bind=engine)
+    ensure_database_schema(force=True)
 
 
 class TimestampMixin:

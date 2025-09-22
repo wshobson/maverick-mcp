@@ -165,7 +165,6 @@ class SelfContainedDatabaseConfig:
             "mcp_users",  # From auth models
             "mcp_api_keys",  # From auth models
             "mcp_refresh_tokens",  # From auth models
-            "mcp_user_credits",  # From billing models
         }
 
         try:

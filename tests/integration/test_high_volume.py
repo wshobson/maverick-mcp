@@ -14,19 +14,18 @@ This test suite covers:
 import asyncio
 import gc
 import logging
+import os
 import random
 import time
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
-import pytest
 import psutil
-import os
+import pytest
 
-from maverick_mcp.backtesting import VectorBTEngine, BacktestAnalyzer
+from maverick_mcp.backtesting import VectorBTEngine
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
 from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
@@ -150,7 +149,7 @@ class TestHighVolumeIntegration:
                 )
 
                 # Process results
-                for j, (symbol, result) in enumerate(zip(batch_symbols, batch_results)):
+                for _j, (symbol, result) in enumerate(zip(batch_symbols, batch_results, strict=False)):
                     if isinstance(result, Exception):
                         failed_symbols.append(symbol)
                         logger.error(f"✗ {symbol} failed: {result}")
@@ -441,8 +440,6 @@ class TestHighVolumeIntegration:
 
         # Calculate database performance metrics
         save_throughput = len(saved_ids) / db_operation_time
-        query_performance = len(strategy_results) / db_operation_time if strategy_results else 0
-
         logger.info(
             f"Database Performance Under Load Results:\n"
             f"  • Backtest Generation: {backtest_generation_time:.1f}s\n"
@@ -481,7 +478,7 @@ class TestHighVolumeIntegration:
                         parameters = STRATEGY_TEMPLATES[strategy]["parameters"]
 
                         # Run backtest
-                        result = await engine.run_backtest(
+                        await engine.run_backtest(
                             symbol=symbol,
                             strategy_type=strategy,
                             parameters=parameters,
@@ -526,7 +523,7 @@ class TestHighVolumeIntegration:
             n = len(iterations)
             sum_x = sum(iterations)
             sum_y = sum(memory_values)
-            sum_xy = sum(x * y for x, y in zip(iterations, memory_values))
+            sum_xy = sum(x * y for x, y in zip(iterations, memory_values, strict=False))
             sum_xx = sum(x * x for x in iterations)
 
             slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x)
@@ -570,8 +567,6 @@ class TestHighVolumeIntegration:
 
         engine = VectorBTEngine(data_provider=high_volume_data_provider)
         parameters = STRATEGY_TEMPLATES[strategy]["parameters"]
-
-        cache_test_results = {}
 
         # First pass - populate cache
         with benchmark_timer() as timer:

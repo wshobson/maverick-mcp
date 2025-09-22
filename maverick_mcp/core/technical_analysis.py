@@ -12,6 +12,7 @@ professionals before making investment decisions.
 """
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
 import numpy as np
@@ -67,9 +68,20 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     # Bollinger Bands
     bbands = ta.bbands(df["close"], length=20, std=2.0)
     if bbands is not None and not bbands.empty:
-        df["sma_20"] = bbands["BBM_20_2.0"]
-        df["bbu_20_2.0"] = bbands["BBU_20_2.0"]
-        df["bbl_20_2.0"] = bbands["BBL_20_2.0"]
+        resolved_columns = _resolve_bollinger_columns(bbands.columns)
+        if resolved_columns:
+            mid_col, upper_col, lower_col = resolved_columns
+            df["sma_20"] = bbands[mid_col]
+            df["bbu_20_2.0"] = bbands[upper_col]
+            df["bbl_20_2.0"] = bbands[lower_col]
+        else:
+            logger.warning(
+                "Bollinger Bands columns missing expected names: %s",
+                list(bbands.columns),
+            )
+            df["sma_20"] = np.nan
+            df["bbu_20_2.0"] = np.nan
+            df["bbl_20_2.0"] = np.nan
     else:
         df["sma_20"] = np.nan
         df["bbu_20_2.0"] = np.nan
@@ -93,6 +105,28 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         df["adx_14"] = np.nan
 
     return df
+
+
+def _resolve_bollinger_columns(columns: Sequence[str]) -> tuple[str, str, str] | None:
+    """Resolve Bollinger Band column names across pandas-ta variants."""
+
+    candidate_sets = [
+        ("BBM_20_2.0", "BBU_20_2.0", "BBL_20_2.0"),
+        ("BBM_20_2", "BBU_20_2", "BBL_20_2"),
+    ]
+
+    for candidate in candidate_sets:
+        if set(candidate).issubset(columns):
+            return candidate
+
+    mid_candidates = [column for column in columns if column.startswith("BBM_")]
+    upper_candidates = [column for column in columns if column.startswith("BBU_")]
+    lower_candidates = [column for column in columns if column.startswith("BBL_")]
+
+    if mid_candidates and upper_candidates and lower_candidates:
+        return mid_candidates[0], upper_candidates[0], lower_candidates[0]
+
+    return None
 
 
 def identify_support_levels(df: pd.DataFrame) -> list[float]:

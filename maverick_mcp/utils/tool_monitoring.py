@@ -12,7 +12,6 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
-# Remove broken import to credit_estimation
 from maverick_mcp.utils.logging import get_logger
 
 logger = get_logger("maverick_mcp.utils.tool_monitoring")

@@ -8,24 +8,24 @@ utilities, and log aggregation.
 
 import logging
 import os
-import sys
-from typing import Optional, Dict, Any
+from typing import Any
 
 from maverick_mcp.config.logging_settings import (
-    get_logging_settings,
+    LoggingSettings,
     configure_logging_for_environment,
+    get_logging_settings,
     validate_logging_settings,
-    LoggingSettings
+)
+from maverick_mcp.utils.debug_utils import (
+    disable_debug_mode,
+    enable_debug_mode,
+)
+from maverick_mcp.utils.debug_utils import (
+    print_debug_summary as debug_print_summary,
 )
 from maverick_mcp.utils.structured_logger import (
     StructuredLoggerManager,
     get_logger_manager,
-    setup_backtesting_logging
-)
-from maverick_mcp.utils.debug_utils import (
-    enable_debug_mode,
-    disable_debug_mode,
-    print_debug_summary
 )
 
 
@@ -34,13 +34,13 @@ class LoggingInitializer:
 
     def __init__(self):
         self._initialized = False
-        self._settings: Optional[LoggingSettings] = None
-        self._manager: Optional[StructuredLoggerManager] = None
+        self._settings: LoggingSettings | None = None
+        self._manager: StructuredLoggerManager | None = None
 
     def initialize_logging_system(
         self,
-        environment: Optional[str] = None,
-        custom_settings: Optional[Dict[str, Any]] = None,
+        environment: str | None = None,
+        custom_settings: dict[str, Any] | None = None,
         force_reinit: bool = False
     ) -> LoggingSettings:
         """
@@ -224,11 +224,11 @@ class LoggingInitializer:
 
         print("\n" + "="*80 + "\n")
 
-    def get_settings(self) -> Optional[LoggingSettings]:
+    def get_settings(self) -> LoggingSettings | None:
         """Get current logging settings."""
         return self._settings
 
-    def get_manager(self) -> Optional[StructuredLoggerManager]:
+    def get_manager(self) -> StructuredLoggerManager | None:
         """Get logging manager instance."""
         return self._manager
 
@@ -250,7 +250,7 @@ class LoggingInitializer:
     def print_debug_summary_if_enabled(self):
         """Print debug summary if debug mode is enabled."""
         if self._settings and self._settings.debug_enabled:
-            print_debug_summary()
+            debug_print_summary()
 
     def reconfigure_log_level(self, new_level: str):
         """Reconfigure log level at runtime."""
@@ -268,7 +268,7 @@ class LoggingInitializer:
 
         print(f"📊 Log level changed to: {new_level.upper()}")
 
-    def get_performance_summary(self) -> Dict[str, Any]:
+    def get_performance_summary(self) -> dict[str, Any]:
         """Get comprehensive performance summary."""
         if not self._manager:
             return {"error": "Logging system not initialized"}
@@ -288,7 +288,7 @@ class LoggingInitializer:
 
 
 # Global initializer instance
-_logging_initializer: Optional[LoggingInitializer] = None
+_logging_initializer: LoggingInitializer | None = None
 
 
 def get_logging_initializer() -> LoggingInitializer:
@@ -321,7 +321,7 @@ def initialize_for_production(**custom_settings) -> LoggingSettings:
 
 
 def initialize_backtesting_logging(
-    environment: Optional[str] = None,
+    environment: str | None = None,
     debug_mode: bool = False,
     **custom_settings
 ) -> LoggingSettings:
@@ -360,7 +360,7 @@ def change_log_level(new_level: str):
     get_logging_initializer().reconfigure_log_level(new_level)
 
 
-def get_performance_summary() -> Dict[str, Any]:
+def get_performance_summary() -> dict[str, Any]:
     """Get comprehensive performance summary."""
     return get_logging_initializer().get_performance_summary()
 

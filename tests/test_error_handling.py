@@ -13,7 +13,6 @@ from maverick_mcp.exceptions import (
     AgentInitializationError,
     APIRateLimitError,
     CircuitBreakerError,
-    InsufficientCreditsError,
     PersonaConfigurationError,
     ValidationError,
 )
@@ -317,20 +316,6 @@ class TestCorrelationIDMiddleware:
             return CorrelationIDMiddleware.get_correlation_id()
 
         assert inner_function() == correlation_id
-
-
-class TestAuthenticationErrors:
-    """Test authentication and authorization error handling."""
-
-    def test_insufficient_credits_error(self):
-        """Test insufficient credits error."""
-        error = InsufficientCreditsError(required=50, available=10)
-
-        assert error.recoverable is True  # Default is True in new implementation
-        assert error.context["required_credits"] == 50
-        assert error.context["available_credits"] == 10
-        # InsufficientCreditsError now has its own message format
-        assert "Insufficient credits: required 50, available 10" in str(error)
 
 
 # Integration test for complete error flow

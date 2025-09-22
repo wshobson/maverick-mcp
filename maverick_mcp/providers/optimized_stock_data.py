@@ -135,8 +135,9 @@ class OptimizedStockDataProvider:
                     },
                 )
 
-                # Convert to DataFrame
-                df = pd.DataFrame(result.fetchall(), columns=result.keys())
+                rows = result.fetchall()
+                column_index = pd.Index([str(key) for key in result.keys()])
+                df = pd.DataFrame(rows, columns=column_index)
             else:
                 # Traditional SQLAlchemy query (for comparison)
                 stmt = (
@@ -158,7 +159,9 @@ class OptimizedStockDataProvider:
                 )
 
                 result = await async_session.execute(stmt)
-                df = pd.DataFrame(result.fetchall(), columns=result.keys())
+                rows = result.fetchall()
+                column_index = pd.Index([str(key) for key in result.keys()])
+                df = pd.DataFrame(rows, columns=column_index)
 
             if not df.empty:
                 df["date"] = pd.to_datetime(df["date"])
@@ -199,7 +202,7 @@ class OptimizedStockDataProvider:
                 params: dict[str, Any] = {"limit": limit}
 
                 if min_score is not None:
-                    where_clause = "WHERE ms.score >= :min_score"
+                    where_clause = "WHERE ms.combined_score >= :min_score"
                     params["min_score"] = min_score
 
                 query = text(
@@ -209,14 +212,14 @@ class OptimizedStockDataProvider:
                         s.company_name,
                         s.sector,
                         s.industry,
-                        ms.score,
-                        ms.rank,
+                        ms.combined_score AS score,
+                        ms.pattern_detected AS rank,
                         ms.date_analyzed,
                         ms.analysis_data
                     FROM stocks_maverickstocks ms
                     INNER JOIN stocks_stock s ON ms.stock_id = s.stock_id
                     {where_clause}
-                    ORDER BY ms.score DESC, ms.rank ASC
+                    ORDER BY ms.combined_score DESC, ms.pattern_detected ASC
                     LIMIT :limit
                 """
                 )
@@ -230,12 +233,12 @@ class OptimizedStockDataProvider:
                         "name": row.company_name,
                         "sector": row.sector,
                         "industry": row.industry,
-                        "score": float(row.score) if row.score else 0,
-                        "rank": row.rank,
+                        "score": float(getattr(row, "score", 0) or 0),
+                        "rank": getattr(row, "rank", None),
                         "date_analyzed": (
                             row.date_analyzed.isoformat() if row.date_analyzed else None
                         ),
-                        "analysis_data": row.analysis_data,
+                        "analysis_data": getattr(row, "analysis_data", None),
                     }
                     for row in rows
                 ]
@@ -244,31 +247,44 @@ class OptimizedStockDataProvider:
                 stmt = (
                     select(MaverickStocks)
                     .options(joinedload(MaverickStocks.stock))
-                    .order_by(MaverickStocks.score.desc(), MaverickStocks.rank.asc())
+                    .order_by(
+                        MaverickStocks.combined_score.desc(),
+                        MaverickStocks.pattern_detected.asc(),
+                    )
+                    .limit(limit)
                 )
 
                 if min_score is not None:
-                    stmt = stmt.where(MaverickStocks.score >= min_score)
+                    stmt = stmt.where(MaverickStocks.combined_score >= min_score)
 
-                stmt = stmt.limit(limit)
                 result = await async_session.execute(stmt)
                 recommendations = result.scalars().all()
 
-                return [
-                    {
-                        "symbol": rec.stock.ticker_symbol,
-                        "name": rec.stock.company_name,
-                        "sector": rec.stock.sector,
-                        "industry": rec.stock.industry,
-                        "score": float(rec.score) if rec.score else 0,
-                        "rank": rec.rank,
-                        "date_analyzed": (
-                            rec.date_analyzed.isoformat() if rec.date_analyzed else None
-                        ),
-                        "analysis_data": rec.analysis_data,
-                    }
-                    for rec in recommendations
-                ]
+                formatted: list[dict[str, Any]] = []
+                for rec in recommendations:
+                    stock = getattr(rec, "stock", None)
+                    analysis_date = getattr(rec, "date_analyzed", None)
+                    isoformatted = (
+                        analysis_date.isoformat()
+                        if analysis_date is not None
+                        and hasattr(analysis_date, "isoformat")
+                        else None
+                    )
+
+                    formatted.append(
+                        {
+                            "symbol": getattr(stock, "ticker_symbol", None),
+                            "name": getattr(stock, "company_name", None),
+                            "sector": getattr(stock, "sector", None),
+                            "industry": getattr(stock, "industry", None),
+                            "score": float(getattr(rec, "combined_score", 0) or 0),
+                            "rank": getattr(rec, "pattern_detected", None),
+                            "date_analyzed": isoformatted,
+                            "analysis_data": getattr(rec, "analysis_data", None),
+                        }
+                    )
+
+                return formatted
 
     @cached(data_type="screening", ttl=7200)
     @query_optimizer.monitor_query("get_trending_recommendations")
@@ -493,12 +509,12 @@ class OptimizedStockDataProvider:
                 else:
                     # Return empty DataFrame for missing symbols
                     result_dfs[symbol] = pd.DataFrame(
-                        columns=["open", "high", "low", "close", "volume"]
+                        columns=pd.Index(["open", "high", "low", "close", "volume"])
                     )
 
             return result_dfs
 
-    async def invalidate_cache_for_symbol(self, symbol: str):
+    async def invalidate_cache_for_symbol(self, symbol: str) -> None:
         """
         Invalidate all cached data for a specific symbol.
 
@@ -518,7 +534,7 @@ class OptimizedStockDataProvider:
 
         logger.info(f"Cache invalidated for symbol: {symbol}")
 
-    async def invalidate_screening_cache(self):
+    async def invalidate_screening_cache(self) -> None:
         """Invalidate all screening-related cache."""
         patterns = [
             "cache:*get_maverick_recommendations*",

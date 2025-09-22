@@ -226,7 +226,6 @@ def make_parallel_safe(func: Callable) -> Callable:
         import os
 
         os.environ["AUTH_ENABLED"] = "false"
-        os.environ["CREDIT_SYSTEM_ENABLED"] = "false"
 
         try:
             result = func(*args, **kwargs)

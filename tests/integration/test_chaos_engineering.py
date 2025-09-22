@@ -15,17 +15,16 @@ This test suite covers:
 import asyncio
 import logging
 import random
-import time
-from contextlib import contextmanager
-from typing import Any, Dict, List
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
 import threading
+import time
+from contextlib import ExitStack, contextmanager
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from maverick_mcp.backtesting import VectorBTEngine, BacktestAnalyzer
+from maverick_mcp.backtesting import VectorBTEngine
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
 from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
@@ -141,7 +140,7 @@ class ChaosInjector:
 
             # Random timeout
             if random.random() < timeout_rate:
-                raise asyncio.TimeoutError("Simulated network timeout")
+                raise TimeoutError("Simulated network timeout")
 
             return await original_func(*args, **kwargs)
 
@@ -182,7 +181,7 @@ class TestChaosEngineering:
                         "Adj Close": prices,
                     }, index=dates)
 
-                except Exception as e:
+                except Exception:
                     if attempt == max_retries - 1:
                         # Final attempt failed, return minimal fallback data
                         logger.warning(f"All retries failed for {symbol}, using fallback data")
@@ -513,13 +512,14 @@ class TestChaosEngineering:
             circuit_breaker_trips = 0
             recovery_attempts = 0
 
-            for i, symbol in enumerate(symbols):
+            for _i, symbol in enumerate(symbols):
                 try:
                     # Simulate circuit breaker behavior
+                    current_symbol = symbol
                     @circuit_breaker_wrapper
-                    async def protected_backtest():
+                    async def protected_backtest(symbol_to_use=current_symbol):
                         return await engine.run_backtest(
-                            symbol=symbol,
+                            symbol=symbol_to_use,
                             strategy_type=strategy,
                             parameters=parameters,
                             start_date="2023-01-01",
@@ -541,10 +541,11 @@ class TestChaosEngineering:
 
                         # Try once more after recovery timeout
                         try:
+                            recovery_symbol = symbol
                             @circuit_breaker_wrapper
-                            async def recovery_backtest():
+                            async def recovery_backtest(symbol_to_use=recovery_symbol):
                                 return await engine.run_backtest(
-                                    symbol=symbol,
+                                    symbol=symbol_to_use,
                                     strategy_type=strategy,
                                     parameters=parameters,
                                     start_date="2023-01-01",
@@ -675,7 +676,7 @@ class TestChaosEngineering:
                         )
                         results.append(result)
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         timeout_errors.append({"symbol": symbol, "error": "CPU overload timeout"})
                         logger.error(f"CPU overload caused timeout for {symbol}")
 
@@ -780,11 +781,6 @@ class TestChaosEngineering:
             "cascading_failures": len(cascading_failures),
             "avg_failures_before_recovery": avg_failures_before_recovery,
         }
-
-
-# Helper for context management
-from contextlib import ExitStack
-
 
 if __name__ == "__main__":
     # Run chaos engineering tests

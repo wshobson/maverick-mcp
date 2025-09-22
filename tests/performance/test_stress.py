@@ -15,21 +15,19 @@ This test suite covers:
 import asyncio
 import gc
 import logging
-import os
-import psutil
 import resource
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple
-from unittest.mock import Mock, patch
+from typing import Any
+from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
+import psutil
 import pytest
 
-from maverick_mcp.backtesting import VectorBTEngine, BacktestAnalyzer
+from maverick_mcp.backtesting import VectorBTEngine
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
 from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
@@ -55,7 +53,7 @@ class ResourceMonitor:
 
     def __init__(self, interval: float = 1.0):
         self.interval = interval
-        self.snapshots: List[ResourceSnapshot] = []
+        self.snapshots: list[ResourceSnapshot] = []
         self.monitoring = False
         self.monitor_thread = None
         self.process = psutil.Process()
@@ -124,7 +122,7 @@ class ResourceMonitor:
         """Get current resource snapshot."""
         return self._take_snapshot()
 
-    def analyze_trends(self) -> Dict[str, Any]:
+    def analyze_trends(self) -> dict[str, Any]:
         """Analyze resource usage trends."""
         if len(self.snapshots) < 2:
             return {"error": "Insufficient data for trend analysis"}
@@ -139,7 +137,7 @@ class ResourceMonitor:
         n = len(timestamps)
         sum_t = sum(timestamps)
         sum_m = sum(memories)
-        sum_tm = sum(t * m for t, m in zip(timestamps, memories))
+        sum_tm = sum(t * m for t, m in zip(timestamps, memories, strict=False))
         sum_tt = sum(t * t for t in timestamps)
 
         memory_slope = (n * sum_tm - sum_t * sum_m) / (n * sum_tt - sum_t * sum_t) if n * sum_tt != sum_t * sum_t else 0
@@ -168,7 +166,7 @@ class StressTestRunner:
         self.data_provider = data_provider
         self.resource_monitor = ResourceMonitor(interval=2.0)
 
-    async def sustained_load_test(self, duration_minutes: int = 60, concurrent_load: int = 10) -> Dict[str, Any]:
+    async def sustained_load_test(self, duration_minutes: int = 60, concurrent_load: int = 10) -> dict[str, Any]:
         """Run sustained load test for extended duration."""
         logger.info(f"Starting sustained load test: {duration_minutes} minutes with {concurrent_load} concurrent operations")
 
@@ -196,7 +194,7 @@ class StressTestRunner:
                     async with semaphore:
                         op_start = time.time()
 
-                        result = await engine.run_backtest(
+                        await engine.run_backtest(
                             symbol=symbol,
                             strategy_type=strategy,
                             parameters=STRATEGY_TEMPLATES[strategy]["parameters"],
@@ -256,7 +254,7 @@ class StressTestRunner:
             "concurrent_load": concurrent_load,
         }
 
-    async def memory_leak_detection_test(self, iterations: int = 1000) -> Dict[str, Any]:
+    async def memory_leak_detection_test(self, iterations: int = 1000) -> dict[str, Any]:
         """Test for memory leaks over many iterations."""
         logger.info(f"Starting memory leak detection test with {iterations} iterations")
 
@@ -271,7 +269,7 @@ class StressTestRunner:
                 # Run backtest operation
                 symbol = f"LEAK_TEST_{i % 10}"
 
-                result = await engine.run_backtest(
+                await engine.run_backtest(
                     symbol=symbol,
                     strategy_type="sma_cross",
                     parameters=STRATEGY_TEMPLATES["sma_cross"]["parameters"],
@@ -308,7 +306,7 @@ class StressTestRunner:
             n = len(iterations_list)
             sum_x = sum(iterations_list)
             sum_y = sum(growth_list)
-            sum_xy = sum(x * y for x, y in zip(iterations_list, growth_list))
+            sum_xy = sum(x * y for x, y in zip(iterations_list, growth_list, strict=False))
             sum_xx = sum(x * x for x in iterations_list)
 
             if n * sum_xx != sum_x * sum_x:
@@ -333,7 +331,7 @@ class StressTestRunner:
             "leak_detected": abs(leak_per_1000_iterations) > 10.0,  # More than 10MB per 1000 iterations
         }
 
-    async def cpu_stress_test(self, duration_minutes: int = 10, cpu_target: float = 0.9) -> Dict[str, Any]:
+    async def cpu_stress_test(self, duration_minutes: int = 10, cpu_target: float = 0.9) -> dict[str, Any]:
         """Test CPU utilization under stress."""
         logger.info(f"Starting CPU stress test: {duration_minutes} minutes at {cpu_target*100}% target")
 
@@ -373,7 +371,7 @@ class StressTestRunner:
                     op_start = time.time()
 
                     symbol = f"CPU_STRESS_{operations_completed % 5}"
-                    result = await asyncio.wait_for(
+                    await asyncio.wait_for(
                         engine.run_backtest(
                             symbol=symbol,
                             strategy_type="rsi",
@@ -388,9 +386,9 @@ class StressTestRunner:
                     response_times.append(response_time)
                     operations_completed += 1
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     cpu_stress_errors += 1
-                    logger.warning(f"Operation timed out under CPU stress")
+                    logger.warning("Operation timed out under CPU stress")
 
                 except Exception as e:
                     cpu_stress_errors += 1
@@ -421,7 +419,7 @@ class StressTestRunner:
             "peak_cpu_utilization": trend_analysis["peak_cpu_percent"],
         }
 
-    async def database_connection_exhaustion_test(self, db_session, max_connections: int = 50) -> Dict[str, Any]:
+    async def database_connection_exhaustion_test(self, db_session, max_connections: int = 50) -> dict[str, Any]:
         """Test database behavior under connection exhaustion."""
         logger.info(f"Starting database connection exhaustion test with {max_connections} connections")
 
@@ -440,7 +438,7 @@ class StressTestRunner:
             test_results.append(result)
 
         # Test connection exhaustion
-        async def database_operation(conn_id: int) -> Dict[str, Any]:
+        async def database_operation(conn_id: int) -> dict[str, Any]:
             """Single database operation holding connection."""
             try:
                 with BacktestPersistenceManager(session=db_session) as persistence:
@@ -457,7 +455,7 @@ class StressTestRunner:
 
                     # Perform queries
                     for backtest_id in saved_ids:
-                        retrieved = persistence.get_backtest_by_id(backtest_id)
+                        persistence.get_backtest_by_id(backtest_id)
 
                     # Hold connection for some time
                     await asyncio.sleep(2.0)
@@ -488,7 +486,7 @@ class StressTestRunner:
                 asyncio.gather(*connection_tasks, return_exceptions=True),
                 timeout=60.0
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("Database connection test timed out")
             results = []
 
@@ -513,7 +511,7 @@ class StressTestRunner:
             "operations_per_second": total_operations / execution_time if execution_time > 0 else 0,
         }
 
-    async def file_descriptor_exhaustion_test(self) -> Dict[str, Any]:
+    async def file_descriptor_exhaustion_test(self) -> dict[str, Any]:
         """Test file descriptor usage patterns."""
         logger.info("Starting file descriptor exhaustion test")
 
@@ -538,7 +536,7 @@ class StressTestRunner:
             max_operations = min(100, soft_limit // 10)  # Conservative approach
 
             for i in range(max_operations):
-                result = await engine.run_backtest(
+                await engine.run_backtest(
                     symbol=f"FD_TEST_{i}",
                     strategy_type="sma_cross",
                     parameters=STRATEGY_TEMPLATES["sma_cross"]["parameters"],
@@ -699,8 +697,6 @@ class TestStressTesting:
 
     async def test_queue_overflow_scenarios(self, stress_data_provider):
         """Test queue management under overflow conditions."""
-        stress_runner = StressTestRunner(stress_data_provider)
-
         # Simulate queue overflow by creating more tasks than can be processed
         max_queue_size = 50
         overflow_tasks = 100

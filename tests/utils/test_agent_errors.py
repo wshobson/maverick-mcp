@@ -66,7 +66,6 @@ class TestFindErrorFix:
             ("KeyError: 'low'", "Use 'Low' with capital L"),
             ("KeyError: 'volume'", "Use 'Volume' with capital V"),
             ("401 Unauthorized", "AUTH_ENABLED=false"),
-            ("402 Payment Required", "CREDIT_SYSTEM_ENABLED=false"),
             ("Redis connection refused", "brew services start redis"),
             ("psycopg2 could not connect to server", "Use SQLite for development"),
             (

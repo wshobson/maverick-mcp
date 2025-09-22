@@ -8,11 +8,12 @@ This module provides middleware components that automatically track:
 - Anomaly detection triggers
 """
 
-import time
-from contextlib import asynccontextmanager
-from typing import Any, Dict, Optional, Callable
 import asyncio
+import time
+from collections.abc import Callable
+from contextlib import asynccontextmanager
 from functools import wraps
+from typing import Any
 
 from maverick_mcp.monitoring.metrics import get_backtesting_metrics
 from maverick_mcp.utils.logging import get_logger
@@ -266,7 +267,7 @@ class MetricsMiddleware:
 
     def _extract_and_track_performance(
         self,
-        result: Dict[str, Any],
+        result: dict[str, Any],
         strategy_name: str,
         symbol: str,
         timeframe: str
@@ -333,7 +334,7 @@ class MetricsMiddleware:
 
 
 # Global middleware instance
-_middleware_instance: Optional[MetricsMiddleware] = None
+_middleware_instance: MetricsMiddleware | None = None
 
 
 def get_metrics_middleware() -> MetricsMiddleware:

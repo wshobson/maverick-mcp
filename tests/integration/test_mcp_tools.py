@@ -11,16 +11,14 @@ This test suite covers:
 """
 
 import asyncio
-import json
 import logging
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
+import numpy as np
 import pytest
 from fastmcp import Context
 
 from maverick_mcp.api.routers.backtesting import setup_backtesting_tools
-from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
 logger = logging.getLogger(__name__)
 
@@ -370,8 +368,8 @@ class TestMCPToolsIntegration:
                         mock_engine.return_value = mock_instance
 
                         # Mock historical data
-                        import pandas as pd
                         import numpy as np
+                        import pandas as pd
                         dates = pd.date_range(start="2022-01-01", end="2023-12-31", freq="D")
                         mock_data = pd.DataFrame({
                             "open": np.random.uniform(100, 200, len(dates)),
@@ -667,7 +665,7 @@ class TestMCPToolsIntegration:
                 # Test valid parameters
                 try:
                     with patch("maverick_mcp.backtesting.VectorBTEngine"):
-                        result = await tool_func(mock_context, **test_case["valid_params"])
+                        await tool_func(mock_context, **test_case["valid_params"])
                         validation_tests.append({
                             "tool": tool_name,
                             "test": "valid_params",
@@ -685,7 +683,7 @@ class TestMCPToolsIntegration:
                 for invalid_params in test_case["invalid_params"]:
                     try:
                         with patch("maverick_mcp.backtesting.VectorBTEngine"):
-                            result = await tool_func(mock_context, **invalid_params)
+                            await tool_func(mock_context, **invalid_params)
                         # If we got here, validation didn't catch the error
                         validation_tests.append({
                             "tool": tool_name,

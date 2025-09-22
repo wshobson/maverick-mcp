@@ -126,6 +126,52 @@ class TestTechnicalIndicators:
         with pytest.raises(KeyError):
             add_technical_indicators(df)
 
+    @pytest.mark.parametrize(
+        "bb_columns",
+        [
+            ("BBM_20_2.0", "BBU_20_2.0", "BBL_20_2.0"),
+            ("BBM_20_2", "BBU_20_2", "BBL_20_2"),
+        ],
+    )
+    def test_add_technical_indicators_supports_bbands_column_aliases(
+        self, monkeypatch, bb_columns
+    ):
+        """Ensure Bollinger Band column name variations are handled."""
+
+        index = pd.date_range("2024-01-01", periods=40, freq="D")
+        base_series = np.linspace(100, 140, len(index))
+        data = {
+            "open": base_series,
+            "high": base_series + 1,
+            "low": base_series - 1,
+            "close": base_series,
+            "volume": np.full(len(index), 1_000_000),
+        }
+        df = pd.DataFrame(data, index=index)
+
+        mid_column, upper_column, lower_column = bb_columns
+
+        def fake_bbands(close, *args, **kwargs):
+            band_values = pd.Series(base_series, index=close.index)
+            return pd.DataFrame(
+                {
+                    mid_column: band_values,
+                    upper_column: band_values + 2,
+                    lower_column: band_values - 2,
+                }
+            )
+
+        monkeypatch.setattr(
+            "maverick_mcp.core.technical_analysis.ta.bbands",
+            fake_bbands,
+        )
+
+        result = add_technical_indicators(df)
+
+        np.testing.assert_allclose(result["sma_20"], base_series)
+        np.testing.assert_allclose(result["bbu_20_2.0"], base_series + 2)
+        np.testing.assert_allclose(result["bbl_20_2.0"], base_series - 2)
+
 
 class TestSupportResistanceLevels:
     """Test support and resistance level identification."""

@@ -368,7 +368,6 @@ async def system_diagnostics():
             "environment": {
                 "name": settings.environment,
                 "auth_enabled": False,  # Disabled for personal use
-                "credit_system_enabled": False,  # Disabled for personal use
                 "debug_mode": settings.api.debug,
             },
             "uptime_seconds": time.time() - _server_start_time,
@@ -473,9 +472,9 @@ async def _get_business_metrics() -> dict[str, Any]:
             "total_executions": 0,
             "average_execution_time": 0,
         },
-        "credits": {
-            "total_spent": 0,
-            "total_purchased": 0,
+        "engagement": {
+            "portfolio_reviews": 0,
+            "watchlists_managed": 0,
         },
     }
 
@@ -484,7 +483,7 @@ async def _get_backtesting_metrics() -> dict[str, Any]:
     """Get backtesting-specific metrics summary."""
     try:
         # Get the backtesting metrics collector
-        collector = get_backtesting_metrics()
+        get_backtesting_metrics()
 
         # Return a summary of key backtesting metrics
         # In a real implementation, you might query the metrics registry
@@ -592,7 +591,6 @@ def _get_configuration_diagnostics() -> dict[str, Any]:
         "environment": settings.environment,
         "features": {
             "auth_enabled": False,  # Disabled for personal use
-            "credit_system_enabled": False,  # Disabled for personal use
             "debug_mode": settings.api.debug,
         },
         "database": {
@@ -647,7 +645,7 @@ async def get_active_alerts():
         timestamp = time.time()
 
         # Get the backtesting metrics collector to check for anomalies
-        collector = get_backtesting_metrics()
+        get_backtesting_metrics()
 
         # In a real implementation, you would query stored alert data
         # For now, we'll check current thresholds and return sample data
@@ -730,7 +728,7 @@ async def get_alert_rules():
     """
     try:
         # Get the backtesting metrics collector
-        collector = get_backtesting_metrics()
+        get_backtesting_metrics()
 
         # Return the configured alert rules
         rules = {

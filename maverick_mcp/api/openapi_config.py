@@ -2,9 +2,8 @@
 Custom OpenAPI configuration for MaverickMCP API.
 
 This module provides enhanced OpenAPI schema generation with:
-- Comprehensive API metadata
+- Comprehensive API metadata tailored for the open-source build
 - Standardized tags and descriptions
-- Security scheme definitions
 - Custom examples and documentation
 - Export functionality for Postman/Insomnia
 """
@@ -29,62 +28,45 @@ def custom_openapi(app: FastAPI) -> dict[str, Any]:
     if app.openapi_schema:
         return app.openapi_schema
 
-    openapi_schema = get_openapi(
-        title="MaverickMCP API",
-        version="1.0.0",
-        description="""
-# MaverickMCP Financial Analysis Platform API
+    description = """
+# MaverickMCP Personal Research API
 
-MaverickMCP is a comprehensive financial data analysis platform built on the Model Context Protocol (MCP).
+MaverickMCP is an open-source Model Context Protocol (MCP) server focused on
+independent research, portfolio experimentation, and desktop analytics. It runs
+entirely without billing, subscription tracking, or usage credits.
 
-## Features
+## Highlights
 
-- 📊 **Real-time and Historical Stock Data**: Access current quotes and historical price data
-- 📈 **Advanced Technical Analysis**: RSI, MACD, Bollinger Bands, and more
-- 💼 **Portfolio Optimization**: Risk analysis and performance metrics
-- 🤖 **AI-Powered Insights**: Intelligent market analysis and recommendations
-- 💳 **Credit-Based Billing**: Pay-as-you-go pricing model
-- 🔐 **Enterprise Security**: JWT authentication with refresh tokens
+- 📊 **Historical & Intraday Market Data** — request equities data across
+  flexible ranges with caching for fast iteration.
+- 📈 **Advanced Technical Analysis** — generate RSI, MACD, Bollinger Bands, and
+  other indicator overlays for deeper insight.
+- 🧪 **Backtesting & Scenario Tools** — evaluate trading ideas with the
+  VectorBT-powered engine and inspect saved results locally.
+- 🧠 **Research Agents & Screeners** — launch summarization and screening tools
+  that operate with zero payment integration.
+- 🛡️ **Secure Defaults** — observability hooks, CSP headers, and rate limiting
+  are enabled without requiring extra configuration.
 
-## Authentication
+## Access Model
 
-Most endpoints require Bearer token authentication. Tokens are provided via secure httpOnly cookies after login.
-
-Include the CSRF token in the `X-CSRF-Token` header for all state-changing requests.
-
-## Rate Limiting
-
-- **Authenticated Users**: 100 requests/minute
-- **Anonymous Users**: 20 requests/minute
-- **Burst Allowance**: 10 requests
-
-## Credit System
-
-Premium features consume credits based on complexity:
-- **Simple** (1 credit): Basic data queries
-- **Standard** (5 credits): Technical analysis
-- **Complex** (20 credits): Portfolio optimization
-- **Premium** (50 credits): AI-powered analysis
-
-## API Versioning
-
-The API uses URL versioning. Current version: v1
-
-Future versions will maintain backwards compatibility where possible.
+- No authentication or API keys are required in this distribution.
+- There is no purchase flow, billing portal, or credit ledger.
+- All stateful data remains on the machine that hosts the server.
 
 ## Error Handling
 
-All errors follow a consistent format:
+Every error response follows this JSON envelope:
+
 ```json
 {
-    "success": false,
-    "error": {
-        "code": "ERROR_CODE",
-        "message": "Human-readable message",
-        "field": "field_name (for validation errors)"
-    },
-    "status_code": 400,
-    "trace_id": "uuid-for-debugging"
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable explanation"
+  },
+  "status_code": 400,
+  "trace_id": "uuid-for-debugging"
 }
 ```
 
@@ -92,189 +74,121 @@ All errors follow a consistent format:
 
 - Documentation: https://github.com/wshobson/maverick-mcp#readme
 - GitHub Issues: https://github.com/wshobson/maverick-mcp/issues
-- GitHub Discussions: https://github.com/wshobson/maverick-mcp/discussions
-        """,
+- Discussions: https://github.com/wshobson/maverick-mcp/discussions
+    """
+
+    tags = [
+        {
+            "name": "Technical Analysis",
+            "description": """
+            Stock technical indicators and analytics for personal research.
+
+            Generate RSI, MACD, Bollinger Bands, and multi-indicator overlays
+            without authentication or billing requirements.
+            """,
+        },
+        {
+            "name": "Market Data",
+            "description": """
+            Historical and intraday market data endpoints.
+
+            Fetch quotes, price history, and metadata with smart caching to keep
+            local research responsive.
+            """,
+        },
+        {
+            "name": "Stock Screening",
+            "description": """
+            Automated screeners and discovery workflows.
+
+            Run Maverick and custom screening strategies to surface candidates
+            for deeper analysis.
+            """,
+        },
+        {
+            "name": "Research Agents",
+            "description": """
+            AI-assisted research personas and orchestration helpers.
+
+            Summarize market structure, compile reports, and investigate trends
+            entirely within your self-hosted environment.
+            """,
+        },
+        {
+            "name": "Backtesting",
+            "description": """
+            Strategy evaluation and performance inspection tools.
+
+            Execute parameterized backtests with VectorBT and review results
+            without uploading data to third-party services.
+            """,
+        },
+        {
+            "name": "Portfolio",
+            "description": """
+            Personal portfolio calculators and scenario planners.
+
+            Model allocations, rebalance strategies, and track watchlists with
+            zero dependency on payment providers.
+            """,
+        },
+        {
+            "name": "Monitoring",
+            "description": """
+            Operational monitoring and diagnostics endpoints.
+
+            Inspect Prometheus metrics, runtime health, and background task
+            status for self-hosted deployments.
+            """,
+        },
+        {
+            "name": "Health",
+            "description": """
+            Lightweight readiness and liveness checks.
+
+            Ideal for Docker, Kubernetes, or local supervisor probes.
+            """,
+        },
+    ]
+
+    servers = [
+        {
+            "url": "http://localhost:8000",
+            "description": "Local HTTP development server",
+        },
+        {
+            "url": "http://0.0.0.0:8003",
+            "description": "Default SSE transport endpoint",
+        },
+    ]
+
+    openapi_schema = get_openapi(
+        title="MaverickMCP API",
+        version="1.0.0",
+        description=description,
         routes=app.routes,
-        tags=[
-            {
-                "name": "Authentication",
-                "description": """
-                User authentication and token management.
-
-                Endpoints for user registration, login, logout, and token refresh.
-                All authentication uses JWT tokens with secure httpOnly cookies.
-                """,
-            },
-            {
-                "name": "Billing & Credits",
-                "description": """
-                Credit management and payment processing.
-
-                Check balances, view usage statistics, purchase credits via Stripe,
-                and configure auto-refill settings.
-                """,
-            },
-            {
-                "name": "User Management",
-                "description": """
-                User profile and account management.
-
-                Update profile information, change passwords, manage preferences,
-                and view account activity.
-                """,
-            },
-            {
-                "name": "API Keys",
-                "description": """
-                API key management for programmatic access.
-
-                Create, list, update, and revoke API keys with configurable scopes
-                and rate limits.
-                """,
-            },
-            {
-                "name": "Technical Analysis",
-                "description": """
-                Stock technical indicators and analysis.
-
-                Calculate RSI, MACD, Bollinger Bands, support/resistance levels,
-                and comprehensive technical reports.
-                """,
-            },
-            {
-                "name": "Market Data",
-                "description": """
-                Real-time and historical market data.
-
-                Get stock quotes, historical prices, market movers, indices,
-                and economic indicators.
-                """,
-            },
-            {
-                "name": "Portfolio Analysis",
-                "description": """
-                Portfolio optimization and risk analysis.
-
-                Analyze portfolio performance, calculate risk metrics, optimize
-                allocations, and generate reports.
-                """,
-            },
-            {
-                "name": "Stock Screening",
-                "description": """
-                Advanced stock screening strategies.
-
-                Find stocks using Maverick, Trending, and custom screening
-                criteria with technical and fundamental filters.
-                """,
-            },
-            {
-                "name": "AI Agents",
-                "description": """
-                AI-powered financial analysis agents.
-
-                Interact with persona-aware trading agents for market analysis,
-                recommendations, and insights.
-                """,
-            },
-            {
-                "name": "Statistics",
-                "description": """
-                Usage statistics and analytics.
-
-                View API usage patterns, credit consumption trends, and
-                performance metrics.
-                """,
-            },
-            {
-                "name": "Webhooks",
-                "description": """
-                Webhook endpoints for integrations.
-
-                Handle Stripe webhooks for payment processing and other
-                third-party integrations.
-                """,
-            },
-        ],
-        servers=[
-            {
-                "url": "https://api.maverickmcp.com",
-                "description": "Production server",
-            },
-            {
-                "url": "https://staging-api.maverickmcp.com",
-                "description": "Staging server",
-            },
-            {
-                "url": "http://localhost:8000",
-                "description": "Development server",
-            },
-        ],
+        tags=tags,
+        servers=servers,
         contact={
-            "name": "MaverickMCP API Support",
-            "url": "https://github.com/wshobson/maverick-mcp/discussions",
+            "name": "MaverickMCP Maintainers",
+            "url": "https://github.com/wshobson/maverick-mcp",
         },
         license_info={
-            "name": "Proprietary",
-            "url": "https://maverickmcp.com/terms",
+            "name": "MIT License",
+            "url": "https://github.com/wshobson/maverick-mcp/blob/main/LICENSE",
         },
-        terms_of_service="https://maverickmcp.com/terms",
     )
 
     # Add external docs
     openapi_schema["externalDocs"] = {
-        "description": "Full API documentation",
-        "url": "https://docs.maverickmcp.com/api",
+        "description": "Project documentation",
+        "url": "https://github.com/wshobson/maverick-mcp#readme",
     }
 
-    # Add security schemes
-    openapi_schema["components"]["securitySchemes"] = {
-        "BearerAuth": {
-            "type": "http",
-            "scheme": "bearer",
-            "bearerFormat": "JWT",
-            "description": """
-            JWT Bearer token authentication.
-
-            Tokens are provided via secure httpOnly cookies after login.
-            Include the token in the Authorization header:
-            ```
-            Authorization: Bearer <token>
-            ```
-            """,
-        },
-        "ApiKeyAuth": {
-            "type": "apiKey",
-            "in": "header",
-            "name": "X-API-Key",
-            "description": """
-            API key authentication for programmatic access.
-
-            Generate API keys from the dashboard and include in requests:
-            ```
-            X-API-Key: <your-api-key>
-            ```
-            """,
-        },
-        "CookieAuth": {
-            "type": "apiKey",
-            "in": "cookie",
-            "name": "access_token",
-            "description": """
-            Cookie-based authentication (default for web clients).
-
-            Tokens are automatically set in secure httpOnly cookies.
-            Include CSRF token in X-CSRF-Token header for state-changing requests.
-            """,
-        },
-    }
-
-    # Add global security (most endpoints require auth)
-    openapi_schema["security"] = [
-        {"BearerAuth": []},
-        {"ApiKeyAuth": []},
-        {"CookieAuth": []},
-    ]
+    # The open-source build intentionally has no authentication schemes.
+    openapi_schema.setdefault("components", {})
+    openapi_schema["components"]["securitySchemes"] = {}
+    openapi_schema["security"] = []
 
     # Add common response schemas
     if "components" not in openapi_schema:
@@ -348,27 +262,6 @@ All errors follow a consistent format:
                             }
                         ],
                         "status_code": 422,
-                    },
-                }
-            },
-        },
-        "PaymentRequiredError": {
-            "description": "Insufficient credits",
-            "content": {
-                "application/json": {
-                    "schema": {"$ref": "#/components/schemas/ErrorResponse"},
-                    "example": {
-                        "success": False,
-                        "error": {
-                            "code": "INSUFFICIENT_CREDITS",
-                            "message": "Need 20 credits, but only 15 available",
-                            "context": {
-                                "required": 20,
-                                "available": 15,
-                                "tool": "portfolio_optimize",
-                            },
-                        },
-                        "status_code": 402,
                     },
                 }
             },

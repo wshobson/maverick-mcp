@@ -57,7 +57,6 @@ def setup_test_env():
     """Minimal test environment setup for domain tests."""
     os.environ["ENVIRONMENT"] = "test"
     os.environ["LOG_LEVEL"] = "INFO"
-    # Domain tests don't need auth or credits
+    # Domain tests run without authentication or usage gating
     os.environ["AUTH_ENABLED"] = "false"
-    os.environ["CREDIT_SYSTEM_ENABLED"] = "false"
     yield

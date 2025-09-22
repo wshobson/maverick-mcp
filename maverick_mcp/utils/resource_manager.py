@@ -4,24 +4,23 @@ Handles memory limits, resource cleanup, and system resource monitoring.
 """
 
 import asyncio
-import gc
 import logging
 import os
 import resource
 import signal
 import threading
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional
-import warnings
+from typing import Any, Optional
 
 import psutil
 
 from maverick_mcp.utils.memory_profiler import (
-    get_memory_stats,
-    force_garbage_collection,
     check_memory_leak,
+    force_garbage_collection,
+    get_memory_stats,
 )
 
 logger = logging.getLogger(__name__)
@@ -446,7 +445,7 @@ def cleanup_on_low_memory(threshold_mb: float = 500.0):
     """
     def decorator(func):
         def wrapper(*args, **kwargs):
-            usage = get_resource_manager().get_current_usage()
+            get_resource_manager().get_current_usage()
             available_mb = (psutil.virtual_memory().available / (1024 ** 2))
 
             if available_mb < threshold_mb:

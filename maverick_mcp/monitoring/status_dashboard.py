@@ -5,7 +5,6 @@ This module provides a comprehensive dashboard that aggregates health status
 from all components and provides real-time metrics visualization data.
 """
 
-import asyncio
 import logging
 import time
 from datetime import UTC, datetime, timedelta
@@ -42,7 +41,9 @@ class StatusDashboard:
     async def get_dashboard_data(self) -> dict[str, Any]:
         """Get comprehensive dashboard data."""
         try:
-            from maverick_mcp.api.routers.health_enhanced import _get_detailed_health_status
+            from maverick_mcp.api.routers.health_enhanced import (
+                _get_detailed_health_status,
+            )
 
             # Get current health status
             health_status = await _get_detailed_health_status()

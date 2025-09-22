@@ -72,9 +72,11 @@ class TestSecurityHeadersConfig:
 
         # Check required directives
         assert "default-src 'self'" in csp_header
-        assert "script-src 'self' 'unsafe-inline' https://js.stripe.com" in csp_header
+        assert "script-src 'self' 'unsafe-inline'" in csp_header
         assert "style-src 'self' 'unsafe-inline'" in csp_header
         assert "object-src 'none'" in csp_header
+        assert "connect-src 'self'" in csp_header
+        assert "frame-src 'none'" in csp_header
         assert "base-uri 'self'" in csp_header
         assert "form-action 'self'" in csp_header
 
@@ -231,13 +233,13 @@ class TestEnvironmentSpecificHeaders:
 class TestCSPConfiguration:
     """Test Content Security Policy configuration."""
 
-    def test_csp_stripe_integration(self):
-        """Test CSP includes Stripe domains for payment integration."""
+    def test_csp_avoids_checkout_domains(self):
+        """Test CSP excludes third-party checkout provider domains."""
         config = SecurityHeadersConfig()
-        csp = config.csp_header_value
 
-        assert "https://js.stripe.com" in csp
-        assert "https://api.stripe.com" in csp
+        assert config.csp_script_src == ["'self'", "'unsafe-inline'"]
+        assert config.csp_connect_src == ["'self'"]
+        assert config.csp_frame_src == ["'none'"]
 
     def test_csp_blocks_inline_scripts_by_default(self):
         """Test CSP configuration for inline scripts."""

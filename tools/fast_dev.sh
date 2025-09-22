@@ -16,7 +16,6 @@ echo -e "${CYAN}⚡ Fast Dev Mode - Skipping all checks for speed${NC}"
 
 # Set ultra-fast environment
 export AUTH_ENABLED=false
-export CREDIT_SYSTEM_ENABLED=false
 export DATABASE_URL="sqlite:///:memory:"
 export REDIS_HOST="none"  # Skip Redis
 export SKIP_VALIDATION=true
@@ -31,7 +30,6 @@ cd "$(dirname "$0")/.."
 if [ ! -f .env ]; then
     cat > .env << EOF
 AUTH_ENABLED=false
-CREDIT_SYSTEM_ENABLED=false
 DATABASE_URL=sqlite:///:memory:
 REDIS_HOST=none
 SKIP_VALIDATION=true
@@ -51,7 +49,6 @@ python -c "
 import os
 os.environ['STARTUP_MODE'] = 'fast'
 os.environ['AUTH_ENABLED'] = 'false'
-os.environ['CREDIT_SYSTEM_ENABLED'] = 'false'
 os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 os.environ['SKIP_VALIDATION'] = 'true'
 

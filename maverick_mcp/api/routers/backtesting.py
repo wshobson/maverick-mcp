@@ -21,15 +21,17 @@ from maverick_mcp.backtesting.visualization import (
     generate_performance_dashboard,
     generate_trade_scatter,
 )
-from maverick_mcp.utils.structured_logger import (
-    with_structured_logging,
-    get_performance_logger,
-    CorrelationIDGenerator,
-)
 from maverick_mcp.utils.debug_utils import debug_operation
+from maverick_mcp.utils.logging import get_logger
+from maverick_mcp.utils.structured_logger import (
+    CorrelationIDGenerator,
+    get_performance_logger,
+    with_structured_logging,
+)
 
 # Initialize performance logger for backtesting router
 performance_logger = get_performance_logger("backtesting_router")
+logger = get_logger(__name__)
 
 
 def convert_numpy_types(obj: Any) -> Any:
@@ -50,7 +52,7 @@ def convert_numpy_types(obj: Any) -> Any:
     elif isinstance(obj, np.floating):
         return float(obj)
     # Check for numpy boolean type
-    elif isinstance(obj, (np.bool_, bool)) and hasattr(obj, 'item'):
+    elif isinstance(obj, np.bool_ | bool) and hasattr(obj, 'item'):
         return bool(obj)
     # Check for numpy complex types
     elif isinstance(obj, np.complexfloating):
@@ -77,7 +79,7 @@ def convert_numpy_types(obj: Any) -> Any:
     elif isinstance(obj, dict):
         return {key: convert_numpy_types(value) for key, value in obj.items()}
     # Recursively handle lists and tuples
-    elif isinstance(obj, (list, tuple)):
+    elif isinstance(obj, list | tuple):
         return [convert_numpy_types(item) for item in obj]
     # Try to handle custom objects with __dict__
     elif hasattr(obj, '__dict__') and not isinstance(obj, type):

@@ -156,7 +156,7 @@ class ErrorLogger:
             "token",
             "api_key",
             "secret",
-            "credit_card",
+            "card_number",
             "ssn",
             "email",
             "phone",

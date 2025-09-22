@@ -9,18 +9,14 @@ from maverick_mcp.exceptions import (
     CircuitBreakerError,
     ConfigurationError,
     ConflictError,
-    CreditError,
     DataIntegrityError,
     DataNotFoundError,
     DataProviderError,
     ExternalServiceError,
-    InsufficientCreditsError,
     MaverickException,
     MaverickMCPError,
     NotFoundError,
-    PaymentRequiredError,
     RateLimitError,
-    SubscriptionError,
     ValidationError,
     WebhookError,
     get_error_message,
@@ -74,21 +70,12 @@ class TestExceptionHierarchy:
 
     def test_authorization_error(self):
         """Test AuthorizationError."""
-        exc = AuthorizationError(resource="credits", action="deduct")
-        assert "Unauthorized access to credits for action 'deduct'" in exc.message
+        exc = AuthorizationError(resource="portfolio", action="rebalance")
+        assert "Unauthorized access to portfolio for action 'rebalance'" in exc.message
         assert exc.error_code == "AUTHORIZATION_ERROR"
         assert exc.status_code == 403
-        assert exc.context["resource"] == "credits"
-        assert exc.context["action"] == "deduct"
-
-    def test_insufficient_credits_error(self):
-        """Test InsufficientCreditsError."""
-        exc = InsufficientCreditsError(required=100, available=50)
-        assert "Insufficient credits: required 100, available 50" in exc.message
-        assert exc.error_code == "INSUFFICIENT_CREDITS"
-        assert exc.status_code == 402
-        assert exc.context["required_credits"] == 100
-        assert exc.context["available_credits"] == 50
+        assert exc.context["resource"] == "portfolio"
+        assert exc.context["action"] == "rebalance"
 
     def test_not_found_error(self):
         """Test NotFoundError."""
@@ -110,12 +97,12 @@ class TestExceptionHierarchy:
     def test_external_service_error(self):
         """Test ExternalServiceError."""
         exc = ExternalServiceError(
-            "Stripe", "Payment processing failed", original_error="Connection timeout"
+            "MarketDataAPI", "Service request failed", original_error="Connection timeout"
         )
-        assert exc.message == "Payment processing failed"
+        assert exc.message == "Service request failed"
         assert exc.error_code == "EXTERNAL_SERVICE_ERROR"
         assert exc.status_code == 503
-        assert exc.context["service"] == "Stripe"
+        assert exc.context["service"] == "MarketDataAPI"
         assert exc.context["original_error"] == "Connection timeout"
 
     def test_data_provider_error(self):
@@ -171,20 +158,16 @@ class TestExceptionHierarchy:
             ValidationError("test"),
             AuthenticationError(),
             AuthorizationError(),
-            InsufficientCreditsError(10, 5),
             NotFoundError("test"),
             ConflictError("test"),
             RateLimitError(),
-            PaymentRequiredError(),
             ExternalServiceError("test", "test"),
             DataProviderError("test", "test"),
             DataNotFoundError("test"),
             DataIntegrityError("test"),
             CacheConnectionError("test", "test"),
             ConfigurationError("test"),
-            SubscriptionError("test"),
             WebhookError("test"),
-            CreditError("test"),
             CircuitBreakerError("test", 5, 10),
         ]
 

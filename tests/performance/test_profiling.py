@@ -12,23 +12,22 @@ This test suite covers:
 - CPU-bound vs I/O-bound analysis
 """
 
-import asyncio
 import cProfile
 import io
 import logging
 import pstats
 import time
 import tracemalloc
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Dict, List, Any, Optional, Callable
-from unittest.mock import Mock, patch
-import sys
+from typing import Any
+from unittest.mock import Mock
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from maverick_mcp.backtesting import VectorBTEngine, BacktestAnalyzer
+from maverick_mcp.backtesting import VectorBTEngine
 from maverick_mcp.backtesting.persistence import BacktestPersistenceManager
 from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
 
@@ -91,7 +90,7 @@ class PerformanceProfiler:
             else:
                 self.profiling_data[operation_name] = {"memory_profile": memory_data}
 
-    def profile_database_query(self, query_name: str, query_func: Callable) -> Dict[str, Any]:
+    def profile_database_query(self, query_name: str, query_func: Callable) -> dict[str, Any]:
         """Profile database query performance."""
         start_time = time.time()
 
@@ -114,7 +113,7 @@ class PerformanceProfiler:
                 "error": str(e),
             }
 
-    def analyze_hotspots(self, operation_name: str) -> Dict[str, Any]:
+    def analyze_hotspots(self, operation_name: str) -> dict[str, Any]:
         """Analyze performance hotspots from profiling data."""
         if operation_name not in self.profiling_data:
             return {"error": f"No profiling data for {operation_name}"}
@@ -160,7 +159,7 @@ class PerformanceProfiler:
             "memory_profile": data.get("memory_profile", {}),
         }
 
-    def generate_optimization_report(self) -> Dict[str, Any]:
+    def generate_optimization_report(self) -> dict[str, Any]:
         """Generate comprehensive optimization report."""
         optimization_opportunities = []
         performance_summary = {}
@@ -250,7 +249,7 @@ class TestPerformanceProfiling:
         for strategy in strategies_to_profile:
             with profiler.profile_cpu(f"backtest_{strategy}"):
                 with profiler.profile_memory(f"backtest_{strategy}"):
-                    result = await engine.run_backtest(
+                    await engine.run_backtest(
                         symbol="PROFILE_TEST",
                         strategy_type=strategy,
                         parameters=STRATEGY_TEMPLATES[strategy]["parameters"],
@@ -299,7 +298,7 @@ class TestPerformanceProfiling:
             with profiler.profile_cpu(f"data_loading_{symbol}"):
                 with profiler.profile_memory(f"data_loading_{symbol}"):
                     # Profile the data fetching specifically
-                    data = await engine.get_historical_data(
+                    await engine.get_historical_data(
                         symbol=symbol,
                         start_date="2020-01-01",
                         end_date="2023-12-31"
@@ -320,7 +319,7 @@ class TestPerformanceProfiling:
         max_loading_time = max(data_loading_times) if data_loading_times else 0
         avg_loading_memory = np.mean(data_loading_memory) if data_loading_memory else 0
 
-        logger.info(f"Data Loading Performance Analysis:")
+        logger.info("Data Loading Performance Analysis:")
         logger.info(f"  Average Loading Time: {avg_loading_time:.3f}s")
         logger.info(f"  Maximum Loading Time: {max_loading_time:.3f}s")
         logger.info(f"  Average Memory Usage: {avg_loading_memory:.1f}MB")
@@ -396,7 +395,7 @@ class TestPerformanceProfiling:
         avg_retrieve_time = np.mean(retrieve_times) if retrieve_times else 0
         bulk_query_time = bulk_query_profile["execution_time_ms"] if bulk_query_profile["success"] else 0
 
-        logger.info(f"Database Query Performance Analysis:")
+        logger.info("Database Query Performance Analysis:")
         logger.info(f"  Average Save Time: {avg_save_time:.1f}ms")
         logger.info(f"  Average Retrieve Time: {avg_retrieve_time:.1f}ms")
         logger.info(f"  Bulk Query Time: {bulk_query_time:.1f}ms")
@@ -435,7 +434,7 @@ class TestPerformanceProfiling:
 
         for case_name, start_date, end_date in memory_test_cases:
             with profiler.profile_memory(f"memory_{case_name}"):
-                result = await engine.run_backtest(
+                await engine.run_backtest(
                     symbol="MEMORY_TEST",
                     strategy_type="macd",
                     parameters=STRATEGY_TEMPLATES["macd"]["parameters"],
@@ -457,12 +456,12 @@ class TestPerformanceProfiling:
 
         # Calculate memory efficiency (MB per 1000 data points)
         memory_efficiency = [
-            (peak_mem / data_pts * 1000) for peak_mem, data_pts in zip(peak_memories, data_points)
+            (peak_mem / data_pts * 1000) for peak_mem, data_pts in zip(peak_memories, data_points, strict=False)
         ]
 
         avg_memory_efficiency = np.mean(memory_efficiency)
 
-        logger.info(f"Memory Allocation Pattern Analysis:")
+        logger.info("Memory Allocation Pattern Analysis:")
         for profile in memory_profiles:
             efficiency = profile["peak_memory_mb"] / profile["data_points"] * 1000
             logger.info(f"  {profile['case']}: {profile['peak_memory_mb']:.1f}MB peak "
@@ -487,7 +486,7 @@ class TestPerformanceProfiling:
 
         # Profile CPU-intensive strategy
         with profiler.profile_cpu("cpu_intensive_strategy"):
-            cpu_result = await engine.run_backtest(
+            await engine.run_backtest(
                 symbol="CPU_TEST",
                 strategy_type="bollinger",  # More calculations
                 parameters=STRATEGY_TEMPLATES["bollinger"]["parameters"],
@@ -524,16 +523,16 @@ class TestPerformanceProfiling:
         # Calculate I/O vs CPU characteristics
         cpu_bound_ratio = cpu_time / (cpu_time + io_time) if (cpu_time + io_time) > 0 else 0
 
-        logger.info(f"CPU vs I/O Bound Analysis:")
+        logger.info("CPU vs I/O Bound Analysis:")
         logger.info(f"  CPU-Intensive Operation: {cpu_time:.3f}s")
         logger.info(f"  I/O-Intensive Operations: {io_time:.3f}s")
         logger.info(f"  CPU-Bound Ratio: {cpu_bound_ratio:.2%}")
 
-        logger.info(f"  Top CPU-Intensive Functions:")
+        logger.info("  Top CPU-Intensive Functions:")
         for func in cpu_top_functions[:3]:
             logger.info(f"    {func['function']}: {func['cumulative_time']:.3f}s")
 
-        logger.info(f"  Top I/O-Intensive Functions:")
+        logger.info("  Top I/O-Intensive Functions:")
         for func in io_top_functions[:3]:
             logger.info(f"    {func['function']}: {func['cumulative_time']:.3f}s")
 

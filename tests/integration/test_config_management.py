@@ -115,8 +115,8 @@ class TestServerToolEstimationIntegration:
         assert total_tokens > 0
         assert tool_estimate == config.unknown_tool_estimate
 
-    def test_server_credit_tracking_integration(self):
-        """Test integration with credit tracking as done in server.py."""
+    def test_server_usage_estimates_integration(self):
+        """Test integration with usage estimation as done in server.py."""
         # Test known tools that should have specific estimates
         test_tools = [
             ("get_stock_price", "simple"),
@@ -138,7 +138,7 @@ class TestServerToolEstimationIntegration:
             # Verify complexity matches expectations
             assert expected_complexity in estimate.complexity.value.lower()
 
-            # Verify estimates are reasonable for credit tracking
+            # Verify estimates are reasonable for usage tracking
             if expected_complexity == "simple":
                 assert estimate.llm_calls <= 1
             elif expected_complexity == "premium":
