@@ -714,7 +714,7 @@ def track_revenue(
     amount_cents: int,
     product: str = "credits",
     currency: str = "usd",
-    payment_method: str = "stripe",
+    payment_method: str = "internal",
 ):
     """Track revenue metrics."""
     revenue_total.labels(

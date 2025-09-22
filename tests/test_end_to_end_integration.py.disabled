@@ -269,11 +269,11 @@ class TestCompleteUserWorkflows:
         assert "free_balance" in balance_data
         initial_balance = balance_data["balance"]
 
-        # 3. Simulate credit purchase (mock Stripe webhook)
+        # 3. Simulate credit purchase (mock internal webhook)
         purchase_data = {
             "amount": 25.00,
             "credits": 2500,
-            "stripe_payment_intent_id": f"pi_{uuid4().hex[:24]}",
+            "payment_reference_id": f"pi_{uuid4().hex[:24]}",
         }
 
         purchase_response = client.post(

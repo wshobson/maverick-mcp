@@ -9,7 +9,7 @@ tables while maintaining separation of concerns.
 import logging
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, String, Text
+from sqlalchemy import BigInteger, Boolean, Column, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import Session
 
@@ -54,40 +54,6 @@ class DjangoStock(DjangoBase):
 
     def __repr__(self):
         return f"<DjangoStock(symbol={self.symbol}, name={self.name})>"
-
-
-class DjStripeCustomer(DjangoBase):
-    """Read-only mapping to djstripe_customer table."""
-
-    __tablename__ = "djstripe_customer"
-    __table_args__ = {"extend_existing": True}
-
-    djstripe_id = Column(BigInteger, primary_key=True)
-    id = Column(String(255), nullable=False)  # Stripe customer ID
-    email = Column(Text)
-    currency = Column(String(3))
-
-    def __repr__(self):
-        return f"<DjStripeCustomer(id={self.id}, email={self.email})>"
-
-
-class DjStripeSubscription(DjangoBase):
-    """Read-only mapping to djstripe_subscription table."""
-
-    __tablename__ = "djstripe_subscription"
-    __table_args__ = {"extend_existing": True}
-
-    djstripe_id = Column(BigInteger, primary_key=True)
-    id = Column(String(255), nullable=False)  # Stripe subscription ID
-    customer_id = Column(BigInteger)  # FK to djstripe_customer
-    status = Column(String(30))
-    current_period_start = Column(DateTime(timezone=True))
-    current_period_end = Column(DateTime(timezone=True))
-
-    def __repr__(self):
-        return f"<DjStripeSubscription(id={self.id}, status={self.status})>"
-
-
 class DjangoAdapter:
     """
     Adapter for accessing Django-owned database tables.
@@ -115,50 +81,23 @@ class DjangoAdapter:
             .first()
         )
 
-    def get_customer_by_email(self, email: str) -> DjStripeCustomer | None:
-        """Get Stripe customer by email."""
-        return (
-            self.session.query(DjStripeCustomer)
-            .filter(DjStripeCustomer.email == email)
-            .first()
-        )
-
-    def get_active_subscription(self, customer_id: int) -> DjStripeSubscription | None:
-        """Get active subscription for a customer."""
-        return (
-            self.session.query(DjStripeSubscription)
-            .filter(
-                DjStripeSubscription.customer_id == customer_id,
-                DjStripeSubscription.status.in_(["active", "trialing"]),
-            )
-            .first()
-        )
-
     def link_mcp_user_to_django(self, email: str) -> dict | None:
         """
         Link MCP API key to Django user via email.
 
-        Returns user info including subscription status.
+        Returns user info with placeholder subscription metadata.
         """
         # Find Django user
         django_user = self.get_user_by_email(email)
         if not django_user:
             return None
 
-        # Find Stripe customer
-        stripe_customer = self.get_customer_by_email(email)
-
-        # Get subscription if customer exists
-        subscription = None
-        if stripe_customer:
-            subscription = self.get_active_subscription(stripe_customer.djstripe_id)
-
         return {
             "user_id": django_user.id,
             "username": django_user.username,
             "email": django_user.email,
             "is_active": django_user.is_active,
-            "has_subscription": subscription is not None,
-            "subscription_status": subscription.status if subscription else None,
-            "stripe_customer_id": stripe_customer.id if stripe_customer else None,
+            "has_subscription": False,
+            "subscription_status": None,
+            "external_customer_id": None,
         }

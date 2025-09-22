@@ -110,12 +110,12 @@ class TestExceptionHierarchy:
     def test_external_service_error(self):
         """Test ExternalServiceError."""
         exc = ExternalServiceError(
-            "Stripe", "Payment processing failed", original_error="Connection timeout"
+            "MarketDataAPI", "Service request failed", original_error="Connection timeout"
         )
-        assert exc.message == "Payment processing failed"
+        assert exc.message == "Service request failed"
         assert exc.error_code == "EXTERNAL_SERVICE_ERROR"
         assert exc.status_code == 503
-        assert exc.context["service"] == "Stripe"
+        assert exc.context["service"] == "MarketDataAPI"
         assert exc.context["original_error"] == "Connection timeout"
 
     def test_data_provider_error(self):

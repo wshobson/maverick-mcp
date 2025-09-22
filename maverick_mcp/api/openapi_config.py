@@ -106,12 +106,12 @@ All errors follow a consistent format:
                 """,
             },
             {
-                "name": "Billing & Credits",
+                "name": "Credits",
                 "description": """
-                Credit management and payment processing.
+                Credit management for usage tracking.
 
-                Check balances, view usage statistics, purchase credits via Stripe,
-                and configure auto-refill settings.
+                Check balances, view usage statistics, and configure auto-refill
+                settings without integrating third-party payment processors.
                 """,
             },
             {
@@ -191,8 +191,8 @@ All errors follow a consistent format:
                 "description": """
                 Webhook endpoints for integrations.
 
-                Handle Stripe webhooks for payment processing and other
-                third-party integrations.
+                Handle internal notifications and third-party integrations without
+                relying on payment providers.
                 """,
             },
         ],

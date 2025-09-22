@@ -241,7 +241,7 @@ async def demonstrate_monitoring():
 
     # Simulate business events
     track_credit_purchase("100_credits", "usd")
-    track_revenue(2500, "credits", "usd", "stripe")  # $25.00
+    track_revenue(2500, "credits", "usd", "internal")  # $25.00 recorded internally
     update_active_users(daily_count=42, monthly_count=156)
 
     print("Business metrics tracked")
