@@ -345,6 +345,7 @@ async def _check_ml_models_health() -> ComponentStatus:
 
         test_data = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=float)
         sma_result = talib.SMA(test_data, timeperiod=5)
+        sma_last_value = float(sma_result[-1])
 
         return ComponentStatus(
             name="ML Models & Libraries",
@@ -352,10 +353,11 @@ async def _check_ml_models_health() -> ComponentStatus:
             response_time_ms=None,
             last_check=timestamp,
             details={
-                "talib": "available",
-                "pandas_ta": "available",
+                "talib": f"available (v{getattr(talib, '__version__', 'unknown')})",
+                "pandas_ta": f"available (v{getattr(ta, '__version__', 'unknown')})",
                 "numpy": "available",
                 "test_computation": "passed",
+                "test_computation_sma_last": sma_last_value,
             },
         )
 

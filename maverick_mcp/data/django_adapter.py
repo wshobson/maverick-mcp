@@ -54,6 +54,8 @@ class DjangoStock(DjangoBase):
 
     def __repr__(self):
         return f"<DjangoStock(symbol={self.symbol}, name={self.name})>"
+
+
 class DjangoAdapter:
     """
     Adapter for accessing Django-owned database tables.

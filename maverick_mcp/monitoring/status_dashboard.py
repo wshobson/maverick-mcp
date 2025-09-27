@@ -52,7 +52,9 @@ class StatusDashboard:
             circuit_breaker_status = get_all_circuit_breaker_status()
 
             # Calculate metrics
-            metrics = await self._calculate_metrics(health_status, circuit_breaker_status)
+            metrics = await self._calculate_metrics(
+                health_status, circuit_breaker_status
+            )
 
             # Get alerts
             alerts = self._generate_alerts(health_status, metrics)
@@ -61,7 +63,9 @@ class StatusDashboard:
             dashboard_data = {
                 "overview": self._build_overview(health_status),
                 "components": self._build_component_summary(health_status),
-                "circuit_breakers": self._build_circuit_breaker_summary(circuit_breaker_status),
+                "circuit_breakers": self._build_circuit_breaker_summary(
+                    circuit_breaker_status
+                ),
                 "resources": self._build_resource_summary(health_status),
                 "metrics": metrics,
                 "alerts": alerts,
@@ -95,7 +99,9 @@ class StatusDashboard:
         unhealthy_components = checks_summary.get("unhealthy", 0)
 
         # Calculate health percentage
-        health_percentage = (healthy_components / total_components * 100) if total_components > 0 else 0
+        health_percentage = (
+            (healthy_components / total_components * 100) if total_components > 0 else 0
+        )
 
         return {
             "overall_status": health_status.get("status", "unknown"),
@@ -126,7 +132,9 @@ class StatusDashboard:
 
         return component_summary
 
-    def _build_circuit_breaker_summary(self, circuit_breaker_status: dict[str, Any]) -> dict[str, Any]:
+    def _build_circuit_breaker_summary(
+        self, circuit_breaker_status: dict[str, Any]
+    ) -> dict[str, Any]:
         """Build circuit breaker summary."""
         summary = {
             "total_breakers": len(circuit_breaker_status),
@@ -174,21 +182,33 @@ class StatusDashboard:
 
         # Calculate average response time
         response_times = [
-            comp.response_time_ms for comp in components.values() if comp.response_time_ms is not None
+            comp.response_time_ms
+            for comp in components.values()
+            if comp.response_time_ms is not None
         ]
-        avg_response_time = sum(response_times) / len(response_times) if response_times else 0
+        avg_response_time = (
+            sum(response_times) / len(response_times) if response_times else 0
+        )
 
         # Calculate availability
         total_components = len(components)
         available_components = sum(
             1 for comp in components.values() if comp.status in ["healthy", "degraded"]
         )
-        availability_percentage = (available_components / total_components * 100) if total_components > 0 else 0
+        availability_percentage = (
+            (available_components / total_components * 100)
+            if total_components > 0
+            else 0
+        )
 
         # Calculate circuit breaker metrics
         total_breakers = len(circuit_breaker_status)
-        closed_breakers = sum(1 for cb in circuit_breaker_status.values() if cb.get("state") == "closed")
-        breaker_health = (closed_breakers / total_breakers * 100) if total_breakers > 0 else 100
+        closed_breakers = sum(
+            1 for cb in circuit_breaker_status.values() if cb.get("state") == "closed"
+        )
+        breaker_health = (
+            (closed_breakers / total_breakers * 100) if total_breakers > 0 else 100
+        )
 
         # Get resource metrics
         cpu_usage = resource_usage.get("cpu_percent", 0)
@@ -197,7 +217,11 @@ class StatusDashboard:
 
         # Calculate system health score (0-100)
         health_score = self._calculate_health_score(
-            availability_percentage, breaker_health, cpu_usage, memory_usage, avg_response_time
+            availability_percentage,
+            breaker_health,
+            cpu_usage,
+            memory_usage,
+            avg_response_time,
         )
 
         return {
@@ -252,9 +276,13 @@ class StatusDashboard:
         if response_time <= 100:
             response_score = 100
         elif response_time <= 1000:
-            response_score = 100 - (response_time - 100) / 9  # Linear decay from 100 to 0
+            response_score = (
+                100 - (response_time - 100) / 9
+            )  # Linear decay from 100 to 0
         else:
-            response_score = max(0, 100 - response_time / 50)  # Slower decay for very slow responses
+            response_score = max(
+                0, 100 - response_time / 50
+            )  # Slower decay for very slow responses
 
         # Calculate weighted score
         health_score = (
@@ -267,92 +295,115 @@ class StatusDashboard:
 
         return min(100, max(0, health_score))
 
-    def _generate_alerts(self, health_status: dict[str, Any], metrics: dict[str, Any]) -> list[dict[str, Any]]:
+    def _generate_alerts(
+        self, health_status: dict[str, Any], metrics: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """Generate alerts based on health status and metrics."""
         alerts = []
 
         # Check overall system health
         if health_status.get("status") == "unhealthy":
-            alerts.append({
-                "severity": "critical",
-                "type": "system_health",
-                "title": "System Unhealthy",
-                "message": "One or more critical components are unhealthy",
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            alerts.append(
+                {
+                    "severity": "critical",
+                    "type": "system_health",
+                    "title": "System Unhealthy",
+                    "message": "One or more critical components are unhealthy",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
         elif health_status.get("status") == "degraded":
-            alerts.append({
-                "severity": "warning",
-                "type": "system_health",
-                "title": "System Degraded",
-                "message": "System is operating with reduced functionality",
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            alerts.append(
+                {
+                    "severity": "warning",
+                    "type": "system_health",
+                    "title": "System Degraded",
+                    "message": "System is operating with reduced functionality",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
         # Check resource usage
         resource_usage = health_status.get("resource_usage", {})
 
         if resource_usage.get("cpu_percent", 0) > self.alert_thresholds["cpu_usage"]:
-            alerts.append({
-                "severity": "warning",
-                "type": "resource_usage",
-                "title": "High CPU Usage",
-                "message": f"CPU usage is {resource_usage.get('cpu_percent')}%, above threshold of {self.alert_thresholds['cpu_usage']}%",
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            alerts.append(
+                {
+                    "severity": "warning",
+                    "type": "resource_usage",
+                    "title": "High CPU Usage",
+                    "message": f"CPU usage is {resource_usage.get('cpu_percent')}%, above threshold of {self.alert_thresholds['cpu_usage']}%",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
-        if resource_usage.get("memory_percent", 0) > self.alert_thresholds["memory_usage"]:
-            alerts.append({
-                "severity": "warning",
-                "type": "resource_usage",
-                "title": "High Memory Usage",
-                "message": f"Memory usage is {resource_usage.get('memory_percent')}%, above threshold of {self.alert_thresholds['memory_usage']}%",
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+        if (
+            resource_usage.get("memory_percent", 0)
+            > self.alert_thresholds["memory_usage"]
+        ):
+            alerts.append(
+                {
+                    "severity": "warning",
+                    "type": "resource_usage",
+                    "title": "High Memory Usage",
+                    "message": f"Memory usage is {resource_usage.get('memory_percent')}%, above threshold of {self.alert_thresholds['memory_usage']}%",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
         if resource_usage.get("disk_percent", 0) > self.alert_thresholds["disk_usage"]:
-            alerts.append({
-                "severity": "critical",
-                "type": "resource_usage",
-                "title": "High Disk Usage",
-                "message": f"Disk usage is {resource_usage.get('disk_percent')}%, above threshold of {self.alert_thresholds['disk_usage']}%",
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            alerts.append(
+                {
+                    "severity": "critical",
+                    "type": "resource_usage",
+                    "title": "High Disk Usage",
+                    "message": f"Disk usage is {resource_usage.get('disk_percent')}%, above threshold of {self.alert_thresholds['disk_usage']}%",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
         # Check response times
         avg_response_time = metrics.get("average_response_time_ms", 0)
         if avg_response_time > self.alert_thresholds["response_time_ms"]:
-            alerts.append({
-                "severity": "warning",
-                "type": "performance",
-                "title": "Slow Response Times",
-                "message": f"Average response time is {avg_response_time:.1f}ms, above threshold of {self.alert_thresholds['response_time_ms']}ms",
-                "timestamp": datetime.now(UTC).isoformat(),
-            })
+            alerts.append(
+                {
+                    "severity": "warning",
+                    "type": "performance",
+                    "title": "Slow Response Times",
+                    "message": f"Average response time is {avg_response_time:.1f}ms, above threshold of {self.alert_thresholds['response_time_ms']}ms",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
 
         # Check circuit breakers
         circuit_breakers = health_status.get("circuit_breakers", {})
         for name, breaker in circuit_breakers.items():
             if breaker.state == "open":
-                alerts.append({
-                    "severity": "critical",
-                    "type": "circuit_breaker",
-                    "title": f"Circuit Breaker Open: {name}",
-                    "message": f"Circuit breaker for {name} is open due to failures",
-                    "timestamp": datetime.now(UTC).isoformat(),
-                })
+                alerts.append(
+                    {
+                        "severity": "critical",
+                        "type": "circuit_breaker",
+                        "title": f"Circuit Breaker Open: {name}",
+                        "message": f"Circuit breaker for {name} is open due to failures",
+                        "timestamp": datetime.now(UTC).isoformat(),
+                    }
+                )
             elif breaker.state == "half_open":
-                alerts.append({
-                    "severity": "info",
-                    "type": "circuit_breaker",
-                    "title": f"Circuit Breaker Testing: {name}",
-                    "message": f"Circuit breaker for {name} is testing recovery",
-                    "timestamp": datetime.now(UTC).isoformat(),
-                })
+                alerts.append(
+                    {
+                        "severity": "info",
+                        "type": "circuit_breaker",
+                        "title": f"Circuit Breaker Testing: {name}",
+                        "message": f"Circuit breaker for {name} is testing recovery",
+                        "timestamp": datetime.now(UTC).isoformat(),
+                    }
+                )
 
         return alerts
 
-    def _update_historical_data(self, health_status: dict[str, Any], metrics: dict[str, Any]):
+    def _update_historical_data(
+        self, health_status: dict[str, Any], metrics: dict[str, Any]
+    ):
         """Update historical data for trending."""
         timestamp = datetime.now(UTC)
 
@@ -363,7 +414,9 @@ class StatusDashboard:
             "availability": metrics.get("availability_percentage", 0),
             "response_time": metrics.get("average_response_time_ms", 0),
             "cpu_usage": health_status.get("resource_usage", {}).get("cpu_percent", 0),
-            "memory_usage": health_status.get("resource_usage", {}).get("memory_percent", 0),
+            "memory_usage": health_status.get("resource_usage", {}).get(
+                "memory_percent", 0
+            ),
             "circuit_breaker_health": metrics.get("circuit_breaker_health", 100),
         }
 
@@ -374,7 +427,8 @@ class StatusDashboard:
         self.historical_data = [
             point
             for point in self.historical_data
-            if datetime.fromisoformat(point["timestamp"].replace("Z", "+00:00")) > cutoff_time
+            if datetime.fromisoformat(point["timestamp"].replace("Z", "+00:00"))
+            > cutoff_time
         ]
 
     def _get_historical_data(self) -> dict[str, Any]:
@@ -386,9 +440,12 @@ class StatusDashboard:
         summary = {
             "points": len(self.historical_data),
             "timespan_hours": HISTORICAL_DATA_RETENTION,
-            "avg_health_score": sum(p["health_score"] for p in self.historical_data) / len(self.historical_data),
-            "avg_availability": sum(p["availability"] for p in self.historical_data) / len(self.historical_data),
-            "avg_response_time": sum(p["response_time"] for p in self.historical_data) / len(self.historical_data),
+            "avg_health_score": sum(p["health_score"] for p in self.historical_data)
+            / len(self.historical_data),
+            "avg_availability": sum(p["availability"] for p in self.historical_data)
+            / len(self.historical_data),
+            "avg_response_time": sum(p["response_time"] for p in self.historical_data)
+            / len(self.historical_data),
         }
 
         # Downsample data if we have too many points (keep last 100 points for visualization)
@@ -472,7 +529,9 @@ def get_dashboard_metadata() -> dict[str, Any]:
     """Get dashboard metadata."""
     return {
         "version": "1.0.0",
-        "last_updated": _dashboard.last_update.isoformat() if _dashboard.last_update else None,
+        "last_updated": _dashboard.last_update.isoformat()
+        if _dashboard.last_update
+        else None,
         "uptime_seconds": time.time() - _dashboard.start_time,
         "refresh_interval": DASHBOARD_REFRESH_INTERVAL,
         "retention_hours": HISTORICAL_DATA_RETENTION,

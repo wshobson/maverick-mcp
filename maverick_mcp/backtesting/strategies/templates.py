@@ -8,7 +8,9 @@ import pandas as pd
 class SimpleMovingAverageStrategy:
     """Simple Moving Average crossover strategy for ML integration."""
 
-    def __init__(self, parameters: dict = None, fast_period: int = 10, slow_period: int = 20):
+    def __init__(
+        self, parameters: dict = None, fast_period: int = 10, slow_period: int = 20
+    ):
         """
         Initialize SMA strategy.
 
@@ -26,7 +28,7 @@ class SimpleMovingAverageStrategy:
         self.name = "SMA Crossover"
         self.parameters = {
             "fast_period": self.fast_period,
-            "slow_period": self.slow_period
+            "slow_period": self.slow_period,
         }
 
     def generate_signals(self, data: pd.DataFrame) -> tuple:
@@ -39,7 +41,7 @@ class SimpleMovingAverageStrategy:
         Returns:
             Tuple of (entries, exits) as boolean Series
         """
-        close = data['close'] if 'close' in data.columns else data['Close']
+        close = data["close"] if "close" in data.columns else data["Close"]
 
         # Calculate SMAs
         fast_sma = close.rolling(window=self.fast_period).mean()
@@ -57,10 +59,7 @@ class SimpleMovingAverageStrategy:
 
     def get_parameters(self) -> dict[str, Any]:
         """Get strategy parameters."""
-        return {
-            "fast_period": self.fast_period,
-            "slow_period": self.slow_period
-        }
+        return {"fast_period": self.fast_period, "slow_period": self.slow_period}
 
 
 STRATEGY_TEMPLATES = {

@@ -65,9 +65,20 @@ class LoggingSettings:
 
         if self.sensitive_field_patterns is None:
             self.sensitive_field_patterns = [
-                "password", "token", "key", "secret", "auth", "credential",
-                "bearer", "session", "cookie", "api_key", "access_token",
-                "refresh_token", "private", "confidential"
+                "password",
+                "token",
+                "key",
+                "secret",
+                "auth",
+                "credential",
+                "bearer",
+                "session",
+                "cookie",
+                "api_key",
+                "access_token",
+                "refresh_token",
+                "private",
+                "confidential",
             ]
 
     @classmethod
@@ -76,43 +87,61 @@ class LoggingSettings:
         return cls(
             log_level=os.getenv("MAVERICK_LOG_LEVEL", "INFO").upper(),
             log_format=os.getenv("MAVERICK_LOG_FORMAT", "json").lower(),
-            enable_async_logging=os.getenv("MAVERICK_ASYNC_LOGGING", "true").lower() == "true",
+            enable_async_logging=os.getenv("MAVERICK_ASYNC_LOGGING", "true").lower()
+            == "true",
             console_output=os.getenv("MAVERICK_CONSOLE_OUTPUT", "stderr").lower(),
-
             # File logging
-            enable_file_logging=os.getenv("MAVERICK_FILE_LOGGING", "true").lower() == "true",
+            enable_file_logging=os.getenv("MAVERICK_FILE_LOGGING", "true").lower()
+            == "true",
             log_file_path=os.getenv("MAVERICK_LOG_FILE", "logs/backtesting.log"),
-            enable_log_rotation=os.getenv("MAVERICK_LOG_ROTATION", "true").lower() == "true",
+            enable_log_rotation=os.getenv("MAVERICK_LOG_ROTATION", "true").lower()
+            == "true",
             max_log_size_mb=int(os.getenv("MAVERICK_LOG_SIZE_MB", "10")),
             backup_count=int(os.getenv("MAVERICK_LOG_BACKUPS", "5")),
-
             # Debug configuration
             debug_enabled=os.getenv("MAVERICK_DEBUG", "false").lower() == "true",
-            log_request_response=os.getenv("MAVERICK_LOG_REQUESTS", "false").lower() == "true",
+            log_request_response=os.getenv("MAVERICK_LOG_REQUESTS", "false").lower()
+            == "true",
             max_payload_length=int(os.getenv("MAVERICK_MAX_PAYLOAD", "1000")),
-
             # Performance monitoring
-            enable_performance_logging=os.getenv("MAVERICK_PERF_LOGGING", "true").lower() == "true",
-            performance_log_threshold_ms=float(os.getenv("MAVERICK_PERF_THRESHOLD", "1000.0")),
-            enable_resource_tracking=os.getenv("MAVERICK_RESOURCE_TRACKING", "true").lower() == "true",
-            enable_business_metrics=os.getenv("MAVERICK_BUSINESS_METRICS", "true").lower() == "true",
-
+            enable_performance_logging=os.getenv(
+                "MAVERICK_PERF_LOGGING", "true"
+            ).lower()
+            == "true",
+            performance_log_threshold_ms=float(
+                os.getenv("MAVERICK_PERF_THRESHOLD", "1000.0")
+            ),
+            enable_resource_tracking=os.getenv(
+                "MAVERICK_RESOURCE_TRACKING", "true"
+            ).lower()
+            == "true",
+            enable_business_metrics=os.getenv(
+                "MAVERICK_BUSINESS_METRICS", "true"
+            ).lower()
+            == "true",
             # Async logging
             async_log_queue_size=int(os.getenv("MAVERICK_LOG_QUEUE_SIZE", "10000")),
-            async_log_flush_interval=float(os.getenv("MAVERICK_LOG_FLUSH_INTERVAL", "1.0")),
-
+            async_log_flush_interval=float(
+                os.getenv("MAVERICK_LOG_FLUSH_INTERVAL", "1.0")
+            ),
             # Sensitive data
-            mask_sensitive_data=os.getenv("MAVERICK_MASK_SENSITIVE", "true").lower() == "true",
-
+            mask_sensitive_data=os.getenv("MAVERICK_MASK_SENSITIVE", "true").lower()
+            == "true",
             # Remote logging
-            enable_remote_logging=os.getenv("MAVERICK_REMOTE_LOGGING", "false").lower() == "true",
+            enable_remote_logging=os.getenv("MAVERICK_REMOTE_LOGGING", "false").lower()
+            == "true",
             remote_endpoint=os.getenv("MAVERICK_REMOTE_LOG_ENDPOINT"),
             remote_api_key=os.getenv("MAVERICK_REMOTE_LOG_API_KEY"),
-
             # Correlation and tracing
-            enable_correlation_tracking=os.getenv("MAVERICK_CORRELATION_TRACKING", "true").lower() == "true",
-            correlation_id_header=os.getenv("MAVERICK_CORRELATION_HEADER", "X-Correlation-ID"),
-            enable_request_tracing=os.getenv("MAVERICK_REQUEST_TRACING", "true").lower() == "true",
+            enable_correlation_tracking=os.getenv(
+                "MAVERICK_CORRELATION_TRACKING", "true"
+            ).lower()
+            == "true",
+            correlation_id_header=os.getenv(
+                "MAVERICK_CORRELATION_HEADER", "X-Correlation-ID"
+            ),
+            enable_request_tracing=os.getenv("MAVERICK_REQUEST_TRACING", "true").lower()
+            == "true",
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -186,10 +215,12 @@ class LoggingSettings:
         }
 
         if self.enable_log_rotation:
-            config.update({
-                "maxBytes": self.max_log_size_mb * 1024 * 1024,
-                "backupCount": self.backup_count,
-            })
+            config.update(
+                {
+                    "maxBytes": self.max_log_size_mb * 1024 * 1024,
+                    "backupCount": self.backup_count,
+                }
+            )
 
         return config
 
@@ -332,7 +363,9 @@ def validate_logging_settings(settings: LoggingSettings) -> list[str]:
     # Validate console output
     valid_outputs = ["stdout", "stderr"]
     if settings.console_output not in valid_outputs:
-        warnings.append(f"Invalid console output '{settings.console_output}', using stderr")
+        warnings.append(
+            f"Invalid console output '{settings.console_output}', using stderr"
+        )
 
     # Validate file logging
     if settings.enable_file_logging:

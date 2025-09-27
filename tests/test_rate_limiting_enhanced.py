@@ -539,7 +539,9 @@ class TestMonitoringIntegration:
 
         # Check violation count
         assert (
-            rate_limiter.get_violation_count("bad_user", tier=RateLimitTier.DATA_RETRIEVAL)
+            rate_limiter.get_violation_count(
+                "bad_user", tier=RateLimitTier.DATA_RETRIEVAL
+            )
             > rate_limit_config.alert_threshold
         )
 

@@ -91,8 +91,6 @@ class TestFullBacktestWorkflowIntegration:
         self, workflow_with_real_agents, db_session, benchmark_timer
     ):
         """Test complete workflow from start to finish with database persistence."""
-        start_time = datetime.now()
-
         with benchmark_timer() as timer:
             # Execute intelligent backtest
             result = await workflow_with_real_agents.run_intelligent_backtest(
@@ -101,8 +99,6 @@ class TestFullBacktestWorkflowIntegration:
                 end_date="2023-12-31",
                 initial_capital=10000.0,
             )
-
-        execution_time = datetime.now() - start_time
 
         # Test basic result structure
         assert "symbol" in result
@@ -271,7 +267,9 @@ class TestFullBacktestWorkflowIntegration:
         actual_cols = list(data.columns)
         missing_cols = [col for col in required_cols if col not in actual_cols]
 
-        assert all(col in actual_cols for col in required_cols), f"Missing columns: {missing_cols}"
+        assert all(col in actual_cols for col in required_cols), (
+            f"Missing columns: {missing_cols}"
+        )
 
         # Test backtest execution
         backtest_result = await vectorbt_engine.run_backtest(
@@ -360,6 +358,8 @@ class TestFullBacktestWorkflowIntegration:
             quick_result = await workflow_with_real_agents.run_quick_analysis(
                 symbol="AAPL", start_date="2023-01-01", end_date="2023-12-31"
             )
+        assert isinstance(quick_result, dict)
+        assert quick_result.get("symbol") == "AAPL"
         quick_time = timer.elapsed
 
         # Test full workflow performance
@@ -511,7 +511,7 @@ class TestWorkflowErrorResilience:
         memory_pressure = []
         try:
             # Create memory pressure (but not too much to crash the test)
-            for i in range(10):
+            for _ in range(10):
                 large_array = np.random.random((1000, 1000))  # ~8MB each
                 memory_pressure.append(large_array)
 

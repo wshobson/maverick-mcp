@@ -1,4 +1,5 @@
 """Centralised tool usage estimation configuration."""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -153,7 +154,11 @@ class ToolEstimationConfig(BaseModel):
 
     def get_tools_by_complexity(self, complexity: ToolComplexity) -> list[str]:
         return sorted(
-            [name for name, estimate in self.tool_estimates.items() if estimate.complexity == complexity]
+            [
+                name
+                for name, estimate in self.tool_estimates.items()
+                if estimate.complexity == complexity
+            ]
         )
 
     def get_summary_stats(self) -> dict[str, Any]:
@@ -183,7 +188,9 @@ class ToolEstimationConfig(BaseModel):
             "basis_distribution": basis_distribution,
         }
 
-    def should_alert(self, tool_name: str, actual_llm_calls: int, actual_tokens: int) -> tuple[bool, str]:
+    def should_alert(
+        self, tool_name: str, actual_llm_calls: int, actual_tokens: int
+    ) -> tuple[bool, str]:
         estimate = self.get_estimate(tool_name)
         thresholds = self.monitoring
         alerts: list[str] = []
@@ -209,11 +216,15 @@ class ToolEstimationConfig(BaseModel):
         expected_llm = estimate.llm_calls
         expected_tokens = estimate.total_tokens
 
-        llm_variance = float("inf") if expected_llm == 0 and actual_llm_calls > 0 else (
-            (actual_llm_calls - expected_llm) / max(expected_llm, 1)
+        llm_variance = (
+            float("inf")
+            if expected_llm == 0 and actual_llm_calls > 0
+            else ((actual_llm_calls - expected_llm) / max(expected_llm, 1))
         )
-        token_variance = float("inf") if expected_tokens == 0 and actual_tokens > 0 else (
-            (actual_tokens - expected_tokens) / max(expected_tokens, 1)
+        token_variance = (
+            float("inf")
+            if expected_tokens == 0 and actual_tokens > 0
+            else ((actual_tokens - expected_tokens) / max(expected_tokens, 1))
         )
 
         if llm_variance == float("inf") or llm_variance > thresholds.variance_critical:
@@ -221,7 +232,10 @@ class ToolEstimationConfig(BaseModel):
         elif llm_variance > thresholds.variance_warning:
             alerts.append("Warning: LLM call variance elevated")
 
-        if token_variance == float("inf") or token_variance > thresholds.variance_critical:
+        if (
+            token_variance == float("inf")
+            or token_variance > thresholds.variance_critical
+        ):
             alerts.append("Critical: Token variance exceeded acceptable range")
         elif token_variance > thresholds.variance_warning:
             alerts.append("Warning: Token variance elevated")
@@ -450,10 +464,7 @@ def _build_default_estimates(config: ToolEstimationConfig) -> dict[str, ToolEsti
         },
     }
 
-    estimates = {
-        name: ToolEstimate(**details)
-        for name, details in data.items()
-    }
+    estimates = {name: ToolEstimate(**details) for name, details in data.items()}
     return estimates
 
 
@@ -475,7 +486,9 @@ def get_tool_estimate(tool_name: str) -> ToolEstimate:
     return get_tool_estimation_config().get_estimate(tool_name)
 
 
-def should_alert_for_usage(tool_name: str, llm_calls: int, total_tokens: int) -> tuple[bool, str]:
+def should_alert_for_usage(
+    tool_name: str, llm_calls: int, total_tokens: int
+) -> tuple[bool, str]:
     """Check whether actual usage deviates enough to raise an alert."""
 
     return get_tool_estimation_config().should_alert(tool_name, llm_calls, total_tokens)
@@ -541,4 +554,6 @@ def estimate_tool_cost(
 ) -> int:
     """Convenience wrapper around :class:`ToolCostEstimator`."""
 
-    return tool_cost_estimator.estimate_tool_cost(tool_name, category, complexity, kwargs)
+    return tool_cost_estimator.estimate_tool_cost(
+        tool_name, category, complexity, kwargs
+    )

@@ -174,11 +174,17 @@ class StrategyEnsemble(Strategy):
                 entry_signals, exit_signals = strategy.generate_signals(data)
 
                 # Validate signals
-                if not isinstance(entry_signals, pd.Series) or not isinstance(exit_signals, pd.Series):
-                    raise ValueError(f"Strategy {strategy.name} returned invalid signal types")
+                if not isinstance(entry_signals, pd.Series) or not isinstance(
+                    exit_signals, pd.Series
+                ):
+                    raise ValueError(
+                        f"Strategy {strategy.name} returned invalid signal types"
+                    )
 
                 if len(entry_signals) != len(data) or len(exit_signals) != len(data):
-                    raise ValueError(f"Strategy {strategy.name} returned signals with wrong length")
+                    raise ValueError(
+                        f"Strategy {strategy.name} returned signals with wrong length"
+                    )
 
                 if not entry_signals.dtype == bool or not exit_signals.dtype == bool:
                     # Convert to boolean if necessary
@@ -210,7 +216,9 @@ class StrategyEnsemble(Strategy):
                             ]
 
                 except Exception as return_error:
-                    logger.debug(f"Error calculating returns for strategy {strategy.name}: {return_error}")
+                    logger.debug(
+                        f"Error calculating returns for strategy {strategy.name}: {return_error}"
+                    )
 
                 logger.debug(
                     f"Strategy {strategy.name}: {entry_signals.sum()} entries, {exit_signals.sum()} exits"
@@ -239,7 +247,9 @@ class StrategyEnsemble(Strategy):
             logger.warning(f"Failed strategies: {failed_names}")
 
         successful_strategies = len(signals) - len(failed_strategies)
-        logger.info(f"Successfully generated signals from {successful_strategies}/{len(self.strategies)} strategies")
+        logger.info(
+            f"Successfully generated signals from {successful_strategies}/{len(self.strategies)} strategies"
+        )
 
         return signals
 
@@ -285,7 +295,9 @@ class StrategyEnsemble(Strategy):
 
         if total_weights == 0 or valid_strategies == 0:
             logger.warning("No valid strategies with positive weights")
-            return pd.Series(False, index=data_index), pd.Series(False, index=data_index)
+            return pd.Series(False, index=data_index), pd.Series(
+                False, index=data_index
+            )
 
         # Normalize votes by total weights
         entry_votes = entry_votes / total_weights

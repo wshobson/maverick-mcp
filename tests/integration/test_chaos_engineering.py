@@ -46,14 +46,18 @@ class ChaosInjector:
                     raise ConnectionError("Simulated API connection failure")
                 else:
                     raise TimeoutError("Simulated API timeout")
-            return original_get_stock_data(*args, **kwargs) if original_get_stock_data else Mock()
+            return (
+                original_get_stock_data(*args, **kwargs)
+                if original_get_stock_data
+                else Mock()
+            )
 
         try:
             # Store original method and replace with failing version
             with patch.object(
                 VectorBTEngine,
-                'get_historical_data',
-                side_effect=failing_get_stock_data
+                "get_historical_data",
+                side_effect=failing_get_stock_data,
             ):
                 yield
         finally:
@@ -63,6 +67,7 @@ class ChaosInjector:
     @contextmanager
     def database_failure_injection(failure_rate: float = 0.2):
         """Inject database failures at specified rate."""
+
         def failing_db_operation(*args, **kwargs):
             if random.random() < failure_rate:
                 if random.random() < 0.33:
@@ -76,8 +81,8 @@ class ChaosInjector:
         try:
             with patch.object(
                 BacktestPersistenceManager,
-                'save_backtest_result',
-                side_effect=failing_db_operation
+                "save_backtest_result",
+                side_effect=failing_db_operation,
             ):
                 yield
         finally:
@@ -110,7 +115,7 @@ class ChaosInjector:
             while not stop_event.is_set():
                 # Perform CPU-intensive computation
                 for _ in range(int(100000 * load_intensity)):
-                    _ = sum(i ** 2 for i in range(100))
+                    _ = sum(i**2 for i in range(100))
                 time.sleep(0.01)  # Brief pause
 
         try:
@@ -131,8 +136,11 @@ class ChaosInjector:
 
     @staticmethod
     @contextmanager
-    def network_instability_injection(delay_range: tuple = (0.1, 2.0), timeout_rate: float = 0.1):
+    def network_instability_injection(
+        delay_range: tuple = (0.1, 2.0), timeout_rate: float = 0.1
+    ):
         """Inject network instability with delays and timeouts."""
+
         async def unstable_network_call(original_func, *args, **kwargs):
             # Random delay
             delay = random.uniform(*delay_range)
@@ -168,33 +176,43 @@ class TestChaosEngineering:
                         raise ConnectionError(f"API failure for {symbol}")
 
                     # Generate mock data
-                    dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
+                    dates = pd.date_range(
+                        start="2023-01-01", end="2023-12-31", freq="D"
+                    )
                     returns = np.random.normal(0.0008, 0.02, len(dates))
                     prices = 100 * np.cumprod(1 + returns)
 
-                    return pd.DataFrame({
-                        "Open": prices * np.random.uniform(0.99, 1.01, len(dates)),
-                        "High": prices * np.random.uniform(1.00, 1.03, len(dates)),
-                        "Low": prices * np.random.uniform(0.97, 1.00, len(dates)),
-                        "Close": prices,
-                        "Volume": np.random.randint(100000, 5000000, len(dates)),
-                        "Adj Close": prices,
-                    }, index=dates)
+                    return pd.DataFrame(
+                        {
+                            "Open": prices * np.random.uniform(0.99, 1.01, len(dates)),
+                            "High": prices * np.random.uniform(1.00, 1.03, len(dates)),
+                            "Low": prices * np.random.uniform(0.97, 1.00, len(dates)),
+                            "Close": prices,
+                            "Volume": np.random.randint(100000, 5000000, len(dates)),
+                            "Adj Close": prices,
+                        },
+                        index=dates,
+                    )
 
                 except Exception:
                     if attempt == max_retries - 1:
                         # Final attempt failed, return minimal fallback data
-                        logger.warning(f"All retries failed for {symbol}, using fallback data")
+                        logger.warning(
+                            f"All retries failed for {symbol}, using fallback data"
+                        )
                         dates = pd.date_range(start="2023-01-01", periods=10, freq="D")
                         prices = np.full(len(dates), 100.0)
-                        return pd.DataFrame({
-                            "Open": prices,
-                            "High": prices * 1.01,
-                            "Low": prices * 0.99,
-                            "Close": prices,
-                            "Volume": np.full(len(dates), 1000000),
-                            "Adj Close": prices,
-                        }, index=dates)
+                        return pd.DataFrame(
+                            {
+                                "Open": prices,
+                                "High": prices * 1.01,
+                                "Low": prices * 0.99,
+                                "Close": prices,
+                                "Volume": np.full(len(dates), 1000000),
+                                "Adj Close": prices,
+                            },
+                            index=dates,
+                        )
 
                     await asyncio.sleep(retry_delay)
                     retry_delay *= 2  # Exponential backoff
@@ -202,7 +220,9 @@ class TestChaosEngineering:
         provider.get_stock_data.side_effect = resilient_get_data
         return provider
 
-    async def test_api_failures_and_recovery(self, resilient_data_provider, benchmark_timer):
+    async def test_api_failures_and_recovery(
+        self, resilient_data_provider, benchmark_timer
+    ):
         """Test API failure scenarios and recovery mechanisms."""
         symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"]
         strategy = "sma_cross"
@@ -235,15 +255,21 @@ class TestChaosEngineering:
                                 end_date="2023-12-31",
                             )
                             results.append(result)
-                            logger.info(f"✓ {symbol} succeeded under {scenario['name']} conditions")
+                            logger.info(
+                                f"✓ {symbol} succeeded under {scenario['name']} conditions"
+                            )
 
                         except Exception as e:
                             failures.append({"symbol": symbol, "error": str(e)})
-                            logger.error(f"✗ {symbol} failed under {scenario['name']} conditions: {e}")
+                            logger.error(
+                                f"✗ {symbol} failed under {scenario['name']} conditions: {e}"
+                            )
 
                 execution_time = timer.elapsed
                 success_rate = len(results) / len(symbols)
-                recovery_rate = 1 - (scenario["rate"] * (1 - success_rate))  # Account for injected failures
+                recovery_rate = 1 - (
+                    scenario["rate"] * (1 - success_rate)
+                )  # Account for injected failures
 
                 scenario_results[scenario["name"]] = {
                     "failure_rate_injected": scenario["rate"],
@@ -263,11 +289,15 @@ class TestChaosEngineering:
                 )
 
                 # Assert minimum recovery effectiveness
-                assert success_rate >= 0.5, f"Success rate too low for {scenario['name']}: {success_rate:.1%}"
+                assert success_rate >= 0.5, (
+                    f"Success rate too low for {scenario['name']}: {success_rate:.1%}"
+                )
 
         return scenario_results
 
-    async def test_database_connection_drops(self, resilient_data_provider, db_session, benchmark_timer):
+    async def test_database_connection_drops(
+        self, resilient_data_provider, db_session, benchmark_timer
+    ):
         """Test database connection drops and reconnection logic."""
         symbols = ["AAPL", "GOOGL", "MSFT"]
         strategy = "rsi"
@@ -300,35 +330,47 @@ class TestChaosEngineering:
 
                     while retry_count < max_retries:
                         try:
-                            with BacktestPersistenceManager(session=db_session) as persistence:
+                            with BacktestPersistenceManager(
+                                session=db_session
+                            ) as persistence:
                                 backtest_id = persistence.save_backtest_result(
                                     vectorbt_results=result,
                                     execution_time=2.0,
                                     notes=f"Chaos test - {result['symbol']}",
                                 )
-                                persistence_results.append({
-                                    "symbol": result["symbol"],
-                                    "backtest_id": backtest_id,
-                                    "retry_count": retry_count,
-                                })
+                                persistence_results.append(
+                                    {
+                                        "symbol": result["symbol"],
+                                        "backtest_id": backtest_id,
+                                        "retry_count": retry_count,
+                                    }
+                                )
                                 break  # Success, break retry loop
 
                         except Exception as e:
                             retry_count += 1
                             if retry_count >= max_retries:
-                                persistence_failures.append({
-                                    "symbol": result["symbol"],
-                                    "error": str(e),
-                                    "retry_count": retry_count,
-                                })
+                                persistence_failures.append(
+                                    {
+                                        "symbol": result["symbol"],
+                                        "error": str(e),
+                                        "retry_count": retry_count,
+                                    }
+                                )
                             else:
-                                await asyncio.sleep(0.1 * retry_count)  # Exponential backoff
+                                await asyncio.sleep(
+                                    0.1 * retry_count
+                                )  # Exponential backoff
 
             persistence_time = timer.elapsed
 
         # Analyze results
         persistence_success_rate = len(persistence_results) / len(backtest_results)
-        avg_retries = np.mean([r["retry_count"] for r in persistence_results]) if persistence_results else 0
+        avg_retries = (
+            np.mean([r["retry_count"] for r in persistence_results])
+            if persistence_results
+            else 0
+        )
 
         # Test recovery by attempting to retrieve saved data
         retrieval_successes = 0
@@ -336,13 +378,17 @@ class TestChaosEngineering:
             for saved_result in persistence_results:
                 try:
                     with BacktestPersistenceManager(session=db_session) as persistence:
-                        retrieved = persistence.get_backtest_by_id(saved_result["backtest_id"])
+                        retrieved = persistence.get_backtest_by_id(
+                            saved_result["backtest_id"]
+                        )
                         if retrieved:
                             retrieval_successes += 1
                 except Exception as e:
                     logger.error(f"Retrieval failed for {saved_result['symbol']}: {e}")
 
-        retrieval_success_rate = retrieval_successes / len(persistence_results) if persistence_results else 0
+        retrieval_success_rate = (
+            retrieval_successes / len(persistence_results) if persistence_results else 0
+        )
 
         logger.info(
             f"Database Connection Drops Test Results:\n"
@@ -356,8 +402,12 @@ class TestChaosEngineering:
         )
 
         # Assert resilience requirements
-        assert persistence_success_rate >= 0.7, f"Persistence success rate too low: {persistence_success_rate:.1%}"
-        assert retrieval_success_rate >= 0.9, f"Retrieval success rate too low: {retrieval_success_rate:.1%}"
+        assert persistence_success_rate >= 0.7, (
+            f"Persistence success rate too low: {persistence_success_rate:.1%}"
+        )
+        assert retrieval_success_rate >= 0.9, (
+            f"Retrieval success rate too low: {retrieval_success_rate:.1%}"
+        )
 
         return {
             "persistence_success_rate": persistence_success_rate,
@@ -365,7 +415,9 @@ class TestChaosEngineering:
             "avg_retries": avg_retries,
         }
 
-    async def test_cache_failures_and_fallback(self, resilient_data_provider, benchmark_timer):
+    async def test_cache_failures_and_fallback(
+        self, resilient_data_provider, benchmark_timer
+    ):
         """Test cache failures and fallback behavior."""
         symbols = ["CACHE_TEST_1", "CACHE_TEST_2", "CACHE_TEST_3"]
         strategy = "macd"
@@ -395,8 +447,14 @@ class TestChaosEngineering:
                     return True
 
                 cache_patches = [
-                    patch('maverick_mcp.core.cache.CacheManager.get', side_effect=failing_cache_get),
-                    patch('maverick_mcp.core.cache.CacheManager.set', side_effect=failing_cache_set),
+                    patch(
+                        "maverick_mcp.core.cache.CacheManager.get",
+                        side_effect=failing_cache_get,
+                    ),
+                    patch(
+                        "maverick_mcp.core.cache.CacheManager.set",
+                        side_effect=failing_cache_set,
+                    ),
                 ]
             else:
                 cache_patches = []
@@ -424,7 +482,9 @@ class TestChaosEngineering:
 
                         except Exception as e:
                             cache_errors.append({"symbol": symbol, "error": str(e)})
-                            logger.error(f"Backtest failed for {symbol} under {scenario['name']}: {e}")
+                            logger.error(
+                                f"Backtest failed for {symbol} under {scenario['name']}: {e}"
+                            )
 
             execution_time = timer.elapsed
             success_rate = len(results) / len(symbols)
@@ -443,15 +503,24 @@ class TestChaosEngineering:
             )
 
             # Cache failures should not prevent backtests from completing
-            assert success_rate >= 0.8, f"Success rate too low with cache issues: {success_rate:.1%}"
+            assert success_rate >= 0.8, (
+                f"Success rate too low with cache issues: {success_rate:.1%}"
+            )
 
         # Cache failures might slightly increase execution time but shouldn't break functionality
-        time_ratio = scenario_results["cache_failures"]["execution_time"] / scenario_results["normal_cache"]["execution_time"]
-        assert time_ratio < 3.0, f"Cache failure time penalty too high: {time_ratio:.1f}x"
+        time_ratio = (
+            scenario_results["cache_failures"]["execution_time"]
+            / scenario_results["normal_cache"]["execution_time"]
+        )
+        assert time_ratio < 3.0, (
+            f"Cache failure time penalty too high: {time_ratio:.1f}x"
+        )
 
         return scenario_results
 
-    async def test_circuit_breaker_behavior(self, resilient_data_provider, benchmark_timer):
+    async def test_circuit_breaker_behavior(
+        self, resilient_data_provider, benchmark_timer
+    ):
         """Test circuit breaker behavior under load and failures."""
         symbols = ["CB_TEST_1", "CB_TEST_2", "CB_TEST_3", "CB_TEST_4", "CB_TEST_5"]
         strategy = "sma_cross"
@@ -464,12 +533,16 @@ class TestChaosEngineering:
 
         def circuit_breaker_wrapper(func):
             """Simple circuit breaker implementation."""
+
             async def wrapper(*args, **kwargs):
                 current_time = time.time()
 
                 # Check if circuit should reset
-                if (circuit_breaker_state["state"] == "OPEN" and
-                    current_time - circuit_breaker_state["last_failure"] > recovery_timeout):
+                if (
+                    circuit_breaker_state["state"] == "OPEN"
+                    and current_time - circuit_breaker_state["last_failure"]
+                    > recovery_timeout
+                ):
                     circuit_breaker_state["state"] = "HALF_OPEN"
                     logger.info("Circuit breaker moved to HALF_OPEN state")
 
@@ -498,7 +571,9 @@ class TestChaosEngineering:
 
                     if circuit_breaker_state["failures"] >= failure_threshold:
                         circuit_breaker_state["state"] = "OPEN"
-                        logger.warning(f"Circuit breaker OPENED after {circuit_breaker_state['failures']} failures")
+                        logger.warning(
+                            f"Circuit breaker OPENED after {circuit_breaker_state['failures']} failures"
+                        )
 
                     raise e
 
@@ -516,6 +591,7 @@ class TestChaosEngineering:
                 try:
                     # Simulate circuit breaker behavior
                     current_symbol = symbol
+
                     @circuit_breaker_wrapper
                     async def protected_backtest(symbol_to_use=current_symbol):
                         return await engine.run_backtest(
@@ -528,7 +604,9 @@ class TestChaosEngineering:
 
                     result = await protected_backtest()
                     results.append(result)
-                    logger.info(f"✓ {symbol} succeeded (CB state: {circuit_breaker_state['state']})")
+                    logger.info(
+                        f"✓ {symbol} succeeded (CB state: {circuit_breaker_state['state']})"
+                    )
 
                 except Exception as e:
                     if "Circuit breaker is OPEN" in str(e):
@@ -542,6 +620,7 @@ class TestChaosEngineering:
                         # Try once more after recovery timeout
                         try:
                             recovery_symbol = symbol
+
                             @circuit_breaker_wrapper
                             async def recovery_backtest(symbol_to_use=recovery_symbol):
                                 return await engine.run_backtest(
@@ -554,16 +633,22 @@ class TestChaosEngineering:
 
                             result = await recovery_backtest()
                             results.append(result)
-                            logger.info(f"✓ {symbol} succeeded after circuit breaker recovery")
+                            logger.info(
+                                f"✓ {symbol} succeeded after circuit breaker recovery"
+                            )
 
                         except Exception as recovery_error:
-                            logger.error(f"✗ {symbol} failed even after recovery: {recovery_error}")
+                            logger.error(
+                                f"✗ {symbol} failed even after recovery: {recovery_error}"
+                            )
                     else:
                         logger.error(f"✗ {symbol} failed: {e}")
 
         execution_time = timer.elapsed
         success_rate = len(results) / len(symbols)
-        circuit_breaker_effectiveness = circuit_breaker_trips > 0  # Circuit breaker activated
+        circuit_breaker_effectiveness = (
+            circuit_breaker_trips > 0
+        )  # Circuit breaker activated
 
         logger.info(
             f"Circuit Breaker Behavior Test Results:\n"
@@ -579,7 +664,9 @@ class TestChaosEngineering:
 
         # Circuit breaker should provide some protection
         assert circuit_breaker_effectiveness, "Circuit breaker should have activated"
-        assert success_rate >= 0.4, f"Success rate too low even with circuit breaker: {success_rate:.1%}"
+        assert success_rate >= 0.4, (
+            f"Success rate too low even with circuit breaker: {success_rate:.1%}"
+        )
 
         return {
             "success_rate": success_rate,
@@ -588,7 +675,9 @@ class TestChaosEngineering:
             "final_state": circuit_breaker_state["state"],
         }
 
-    async def test_memory_pressure_resilience(self, resilient_data_provider, benchmark_timer):
+    async def test_memory_pressure_resilience(
+        self, resilient_data_provider, benchmark_timer
+    ):
         """Test system resilience under memory pressure."""
         symbols = ["MEM_TEST_1", "MEM_TEST_2", "MEM_TEST_3"]
         strategy = "bollinger"
@@ -619,7 +708,9 @@ class TestChaosEngineering:
 
                         except (MemoryError, Exception) as e:
                             memory_errors.append({"symbol": symbol, "error": str(e)})
-                            logger.error(f"Memory pressure caused failure for {symbol}: {e}")
+                            logger.error(
+                                f"Memory pressure caused failure for {symbol}: {e}"
+                            )
 
                 execution_time = timer.elapsed
                 success_rate = len(results) / len(symbols)
@@ -642,12 +733,18 @@ class TestChaosEngineering:
         moderate_pressure_result = pressure_results["500mb"]
         high_pressure_result = pressure_results["1000mb"]
 
-        assert moderate_pressure_result["success_rate"] >= 0.8, "Should handle moderate memory pressure"
-        assert high_pressure_result["success_rate"] >= 0.5, "Should partially handle high memory pressure"
+        assert moderate_pressure_result["success_rate"] >= 0.8, (
+            "Should handle moderate memory pressure"
+        )
+        assert high_pressure_result["success_rate"] >= 0.5, (
+            "Should partially handle high memory pressure"
+        )
 
         return pressure_results
 
-    async def test_cpu_overload_resilience(self, resilient_data_provider, benchmark_timer):
+    async def test_cpu_overload_resilience(
+        self, resilient_data_provider, benchmark_timer
+    ):
         """Test system resilience under CPU overload."""
         symbols = ["CPU_TEST_1", "CPU_TEST_2"]
         strategy = "momentum"
@@ -672,12 +769,14 @@ class TestChaosEngineering:
                                 start_date="2023-01-01",
                                 end_date="2023-12-31",
                             ),
-                            timeout=30.0  # 30 second timeout
+                            timeout=30.0,  # 30 second timeout
                         )
                         results.append(result)
 
                     except TimeoutError:
-                        timeout_errors.append({"symbol": symbol, "error": "CPU overload timeout"})
+                        timeout_errors.append(
+                            {"symbol": symbol, "error": "CPU overload timeout"}
+                        )
                         logger.error(f"CPU overload caused timeout for {symbol}")
 
                     except Exception as e:
@@ -687,7 +786,9 @@ class TestChaosEngineering:
             execution_time = timer.elapsed
 
         success_rate = len(results) / len(symbols)
-        timeout_rate = len([e for e in timeout_errors if "timeout" in e["error"]]) / len(symbols)
+        timeout_rate = len(
+            [e for e in timeout_errors if "timeout" in e["error"]]
+        ) / len(symbols)
 
         logger.info(
             f"CPU Overload Resilience Results:\n"
@@ -699,8 +800,12 @@ class TestChaosEngineering:
         )
 
         # System should handle some CPU pressure, though performance may degrade
-        assert success_rate >= 0.5, f"Success rate too low under CPU load: {success_rate:.1%}"
-        assert execution_time < 60.0, f"Execution time too long under CPU load: {execution_time:.1f}s"
+        assert success_rate >= 0.5, (
+            f"Success rate too low under CPU load: {success_rate:.1%}"
+        )
+        assert execution_time < 60.0, (
+            f"Execution time too long under CPU load: {execution_time:.1f}s"
+        )
 
         return {
             "success_rate": success_rate,
@@ -708,7 +813,9 @@ class TestChaosEngineering:
             "execution_time": execution_time,
         }
 
-    async def test_cascading_failure_recovery(self, resilient_data_provider, benchmark_timer):
+    async def test_cascading_failure_recovery(
+        self, resilient_data_provider, benchmark_timer
+    ):
         """Test recovery from cascading failures across multiple components."""
         symbols = ["CASCADE_1", "CASCADE_2", "CASCADE_3"]
         strategy = "rsi"
@@ -741,27 +848,34 @@ class TestChaosEngineering:
                                 break  # Success, exit retry loop
 
                             except Exception as e:
-                                failure_chain.append(f"Attempt {attempt + 1}: {str(e)[:50]}")
+                                failure_chain.append(
+                                    f"Attempt {attempt + 1}: {str(e)[:50]}"
+                                )
                                 if attempt < 2:
                                     # Progressive backoff and different strategies
                                     await asyncio.sleep(0.5 * (attempt + 1))
 
                         if final_result:
                             results.append(final_result)
-                            logger.info(f"✓ {symbol} recovered after {len(failure_chain)} failures")
+                            logger.info(
+                                f"✓ {symbol} recovered after {len(failure_chain)} failures"
+                            )
                         else:
-                            cascading_failures.append({
-                                "symbol": symbol,
-                                "failure_chain": failure_chain
-                            })
-                            logger.error(f"✗ {symbol} failed completely: {failure_chain}")
+                            cascading_failures.append(
+                                {"symbol": symbol, "failure_chain": failure_chain}
+                            )
+                            logger.error(
+                                f"✗ {symbol} failed completely: {failure_chain}"
+                            )
 
                 execution_time = timer.elapsed
 
         recovery_rate = len(results) / len(symbols)
-        avg_failures_before_recovery = np.mean([
-            len(cf["failure_chain"]) for cf in cascading_failures
-        ]) if cascading_failures else 0
+        avg_failures_before_recovery = (
+            np.mean([len(cf["failure_chain"]) for cf in cascading_failures])
+            if cascading_failures
+            else 0
+        )
 
         logger.info(
             f"Cascading Failure Recovery Results:\n"
@@ -774,7 +888,9 @@ class TestChaosEngineering:
         )
 
         # System should show some recovery capability even under cascading failures
-        assert recovery_rate >= 0.3, f"Recovery rate too low for cascading failures: {recovery_rate:.1%}"
+        assert recovery_rate >= 0.3, (
+            f"Recovery rate too low for cascading failures: {recovery_rate:.1%}"
+        )
 
         return {
             "recovery_rate": recovery_rate,
@@ -782,13 +898,16 @@ class TestChaosEngineering:
             "avg_failures_before_recovery": avg_failures_before_recovery,
         }
 
+
 if __name__ == "__main__":
     # Run chaos engineering tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=900",  # 15 minute timeout for chaos tests
-        "--durations=15",  # Show 15 slowest tests
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=900",  # 15 minute timeout for chaos tests
+            "--durations=15",  # Show 15 slowest tests
+        ]
+    )

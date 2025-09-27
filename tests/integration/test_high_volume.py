@@ -34,22 +34,121 @@ logger = logging.getLogger(__name__)
 # High volume test parameters
 LARGE_SYMBOL_SET = [
     # Technology
-    "AAPL", "MSFT", "GOOGL", "AMZN", "META", "TSLA", "NVDA", "ADBE", "CRM", "ORCL",
-    "NFLX", "INTC", "AMD", "QCOM", "AVGO", "TXN", "MU", "AMAT", "LRCX", "KLAC",
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "META",
+    "TSLA",
+    "NVDA",
+    "ADBE",
+    "CRM",
+    "ORCL",
+    "NFLX",
+    "INTC",
+    "AMD",
+    "QCOM",
+    "AVGO",
+    "TXN",
+    "MU",
+    "AMAT",
+    "LRCX",
+    "KLAC",
     # Finance
-    "JPM", "BAC", "WFC", "C", "GS", "MS", "AXP", "BRK-B", "BLK", "SPGI",
-    "CME", "ICE", "MCO", "COF", "USB", "TFC", "PNC", "SCHW", "CB", "AIG",
+    "JPM",
+    "BAC",
+    "WFC",
+    "C",
+    "GS",
+    "MS",
+    "AXP",
+    "BRK-B",
+    "BLK",
+    "SPGI",
+    "CME",
+    "ICE",
+    "MCO",
+    "COF",
+    "USB",
+    "TFC",
+    "PNC",
+    "SCHW",
+    "CB",
+    "AIG",
     # Healthcare
-    "JNJ", "PFE", "ABT", "MRK", "TMO", "DHR", "BMY", "ABBV", "AMGN", "GILD",
-    "BIIB", "REGN", "VRTX", "ISRG", "SYK", "BSX", "MDT", "EW", "HOLX", "RMD",
+    "JNJ",
+    "PFE",
+    "ABT",
+    "MRK",
+    "TMO",
+    "DHR",
+    "BMY",
+    "ABBV",
+    "AMGN",
+    "GILD",
+    "BIIB",
+    "REGN",
+    "VRTX",
+    "ISRG",
+    "SYK",
+    "BSX",
+    "MDT",
+    "EW",
+    "HOLX",
+    "RMD",
     # Consumer
-    "WMT", "PG", "KO", "PEP", "COST", "HD", "MCD", "NKE", "SBUX", "TGT",
-    "LOW", "DIS", "CMCSA", "VZ", "T", "TMUS", "CVX", "XOM", "UNH", "CVS",
+    "WMT",
+    "PG",
+    "KO",
+    "PEP",
+    "COST",
+    "HD",
+    "MCD",
+    "NKE",
+    "SBUX",
+    "TGT",
+    "LOW",
+    "DIS",
+    "CMCSA",
+    "VZ",
+    "T",
+    "TMUS",
+    "CVX",
+    "XOM",
+    "UNH",
+    "CVS",
     # Industrials
-    "BA", "CAT", "DE", "GE", "HON", "MMM", "LMT", "RTX", "UNP", "UPS",
-    "FDX", "WM", "EMR", "ETN", "PH", "CMI", "PCAR", "ROK", "DOV", "ITW",
+    "BA",
+    "CAT",
+    "DE",
+    "GE",
+    "HON",
+    "MMM",
+    "LMT",
+    "RTX",
+    "UNP",
+    "UPS",
+    "FDX",
+    "WM",
+    "EMR",
+    "ETN",
+    "PH",
+    "CMI",
+    "PCAR",
+    "ROK",
+    "DOV",
+    "ITW",
     # Extended set for 100+ symbols
-    "F", "GM", "FORD", "RIVN", "LCID", "PLTR", "SNOW", "ZM", "DOCU", "OKTA",
+    "F",
+    "GM",
+    "FORD",
+    "RIVN",
+    "LCID",
+    "PLTR",
+    "SNOW",
+    "ZM",
+    "DOCU",
+    "OKTA",
 ]
 
 STRATEGIES_FOR_VOLUME_TEST = ["sma_cross", "rsi", "macd", "bollinger", "momentum"]
@@ -71,14 +170,18 @@ class TestHighVolumeIntegration:
 
             # Create 3 years of daily data
             start_date = datetime.now() - timedelta(days=years * 365)
-            dates = pd.date_range(start=start_date, periods=years * 252, freq="B")  # Business days
+            dates = pd.date_range(
+                start=start_date, periods=years * 252, freq="B"
+            )  # Business days
 
             # Generate realistic price movements
             base_price = 50 + (symbol_seed % 200)  # Base price $50-$250
             returns = np.random.normal(0.0005, 0.02, len(dates))  # Daily returns
 
             # Add some trend and volatility clustering
-            trend = np.sin(np.arange(len(dates)) / 252 * 2 * np.pi) * 0.001  # Annual cycle
+            trend = (
+                np.sin(np.arange(len(dates)) / 252 * 2 * np.pi) * 0.001
+            )  # Annual cycle
             returns += trend
 
             # Generate prices
@@ -91,25 +194,34 @@ class TestHighVolumeIntegration:
 
             volumes = np.random.randint(100000, 10000000, len(dates))
 
-            data = pd.DataFrame({
-                "Open": prices * open_mult,
-                "High": prices * high_mult,
-                "Low": prices * low_mult,
-                "Close": prices,
-                "Volume": volumes,
-                "Adj Close": prices,
-            }, index=dates)
+            data = pd.DataFrame(
+                {
+                    "Open": prices * open_mult,
+                    "High": prices * high_mult,
+                    "Low": prices * low_mult,
+                    "Close": prices,
+                    "Volume": volumes,
+                    "Adj Close": prices,
+                },
+                index=dates,
+            )
 
             # Ensure OHLC constraints
-            data["High"] = np.maximum(data["High"], np.maximum(data["Open"], data["Close"]))
-            data["Low"] = np.minimum(data["Low"], np.minimum(data["Open"], data["Close"]))
+            data["High"] = np.maximum(
+                data["High"], np.maximum(data["Open"], data["Close"])
+            )
+            data["Low"] = np.minimum(
+                data["Low"], np.minimum(data["Open"], data["Close"])
+            )
 
             return data
 
         provider.get_stock_data.side_effect = generate_multi_year_data
         return provider
 
-    async def test_large_symbol_set_backtesting(self, high_volume_data_provider, benchmark_timer):
+    async def test_large_symbol_set_backtesting(
+        self, high_volume_data_provider, benchmark_timer
+    ):
         """Test backtesting with 100+ symbols."""
         symbols = LARGE_SYMBOL_SET[:100]  # Use first 100 symbols
         strategy = "sma_cross"
@@ -128,7 +240,7 @@ class TestHighVolumeIntegration:
             # Process symbols in batches to manage memory
             batch_size = 20
             for i in range(0, len(symbols), batch_size):
-                batch_symbols = symbols[i:i + batch_size]
+                batch_symbols = symbols[i : i + batch_size]
 
                 # Process batch
                 batch_tasks = []
@@ -144,12 +256,13 @@ class TestHighVolumeIntegration:
 
                 # Execute batch concurrently
                 batch_results = await asyncio.gather(
-                    *[task for _, task in batch_tasks],
-                    return_exceptions=True
+                    *[task for _, task in batch_tasks], return_exceptions=True
                 )
 
                 # Process results
-                for _j, (symbol, result) in enumerate(zip(batch_symbols, batch_results, strict=False)):
+                for _j, (symbol, result) in enumerate(
+                    zip(batch_symbols, batch_results, strict=False)
+                ):
                     if isinstance(result, Exception):
                         failed_symbols.append(symbol)
                         logger.error(f"✗ {symbol} failed: {result}")
@@ -175,8 +288,12 @@ class TestHighVolumeIntegration:
         # Performance assertions
         success_rate = len(results) / len(symbols)
         assert success_rate >= 0.85, f"Success rate too low: {success_rate:.1%}"
-        assert execution_time < 1800, f"Execution time too long: {execution_time:.1f}s"  # 30 minutes max
-        assert total_memory_growth < 3000, f"Memory growth too high: {total_memory_growth:.1f}MB"  # Max 3GB growth
+        assert execution_time < 1800, (
+            f"Execution time too long: {execution_time:.1f}s"
+        )  # 30 minutes max
+        assert total_memory_growth < 3000, (
+            f"Memory growth too high: {total_memory_growth:.1f}MB"
+        )  # Max 3GB growth
 
         # Calculate performance metrics
         avg_execution_time = execution_time / len(symbols)
@@ -203,7 +320,9 @@ class TestHighVolumeIntegration:
             "success_rate": success_rate,
         }
 
-    async def test_multi_year_historical_data(self, high_volume_data_provider, benchmark_timer):
+    async def test_multi_year_historical_data(
+        self, high_volume_data_provider, benchmark_timer
+    ):
         """Test with years of historical data (high data volume)."""
         symbols = ["AAPL", "GOOGL", "MSFT", "AMZN", "TSLA"]
         strategy = "sma_cross"
@@ -242,7 +361,9 @@ class TestHighVolumeIntegration:
                 execution_time = timer.elapsed
 
                 # Calculate average data points processed
-                avg_data_points = np.mean([len(r.get("equity_curve", [])) for r in period_data])
+                avg_data_points = np.mean(
+                    [len(r.get("equity_curve", [])) for r in period_data]
+                )
                 data_throughput = avg_data_points * len(period_data) / execution_time
 
                 period_results[period_name] = {
@@ -269,7 +390,9 @@ class TestHighVolumeIntegration:
 
         return period_results
 
-    async def test_concurrent_user_scenarios(self, high_volume_data_provider, benchmark_timer):
+    async def test_concurrent_user_scenarios(
+        self, high_volume_data_provider, benchmark_timer
+    ):
         """Test concurrent user scenarios with multiple simultaneous backtests."""
         symbols = LARGE_SYMBOL_SET[:50]
         strategies = STRATEGIES_FOR_VOLUME_TEST
@@ -329,7 +452,7 @@ class TestHighVolumeIntegration:
 
             session_results = await asyncio.gather(
                 *[run_with_semaphore(scenario) for scenario in user_scenarios],
-                return_exceptions=True
+                return_exceptions=True,
             )
 
         total_execution_time = timer.elapsed
@@ -344,9 +467,15 @@ class TestHighVolumeIntegration:
 
         # Performance assertions
         session_success_rate = len(successful_sessions) / len(session_results)
-        assert session_success_rate >= 0.8, f"Session success rate too low: {session_success_rate:.1%}"
-        assert avg_success_rate >= 0.8, f"Average backtest success rate too low: {avg_success_rate:.1%}"
-        assert total_execution_time < 600, f"Total execution time too long: {total_execution_time:.1f}s"  # 10 minutes max
+        assert session_success_rate >= 0.8, (
+            f"Session success rate too low: {session_success_rate:.1%}"
+        )
+        assert avg_success_rate >= 0.8, (
+            f"Average backtest success rate too low: {avg_success_rate:.1%}"
+        )
+        assert total_execution_time < 600, (
+            f"Total execution time too long: {total_execution_time:.1f}s"
+        )  # 10 minutes max
 
         concurrent_throughput = total_backtests / total_execution_time
 
@@ -370,7 +499,9 @@ class TestHighVolumeIntegration:
             "total_execution_time": total_execution_time,
         }
 
-    async def test_database_performance_under_load(self, high_volume_data_provider, db_session, benchmark_timer):
+    async def test_database_performance_under_load(
+        self, high_volume_data_provider, db_session, benchmark_timer
+    ):
         """Test database performance under high load."""
         symbols = LARGE_SYMBOL_SET[:30]  # 30 symbols for DB test
         strategy = "sma_cross"
@@ -432,11 +563,19 @@ class TestHighVolumeIntegration:
 
         # Performance assertions
         save_success_rate = len(saved_ids) / len(backtest_results)
-        retrieval_success_rate = len(retrieved_results) / len(saved_ids) if saved_ids else 0
+        retrieval_success_rate = (
+            len(retrieved_results) / len(saved_ids) if saved_ids else 0
+        )
 
-        assert save_success_rate >= 0.95, f"Database save success rate too low: {save_success_rate:.1%}"
-        assert retrieval_success_rate >= 0.95, f"Database retrieval success rate too low: {retrieval_success_rate:.1%}"
-        assert db_operation_time < 300, f"Database operations too slow: {db_operation_time:.1f}s"  # 5 minutes max
+        assert save_success_rate >= 0.95, (
+            f"Database save success rate too low: {save_success_rate:.1%}"
+        )
+        assert retrieval_success_rate >= 0.95, (
+            f"Database retrieval success rate too low: {retrieval_success_rate:.1%}"
+        )
+        assert db_operation_time < 300, (
+            f"Database operations too slow: {db_operation_time:.1f}s"
+        )  # 5 minutes max
 
         # Calculate database performance metrics
         save_throughput = len(saved_ids) / db_operation_time
@@ -460,7 +599,9 @@ class TestHighVolumeIntegration:
             "db_operation_time": db_operation_time,
         }
 
-    async def test_memory_management_large_datasets(self, high_volume_data_provider, benchmark_timer):
+    async def test_memory_management_large_datasets(
+        self, high_volume_data_provider, benchmark_timer
+    ):
         """Test memory management with large datasets."""
         symbols = LARGE_SYMBOL_SET[:25]  # 25 symbols for memory test
         strategies = STRATEGIES_FOR_VOLUME_TEST
@@ -488,13 +629,16 @@ class TestHighVolumeIntegration:
 
                         # Take memory snapshot
                         current_memory = process.memory_info().rss / 1024 / 1024
-                        memory_snapshots.append({
-                            "iteration": i * len(strategies) + strategies.index(strategy),
-                            "symbol": symbol,
-                            "strategy": strategy,
-                            "memory_mb": current_memory,
-                            "memory_growth": current_memory - initial_memory,
-                        })
+                        memory_snapshots.append(
+                            {
+                                "iteration": i * len(strategies)
+                                + strategies.index(strategy),
+                                "symbol": symbol,
+                                "strategy": strategy,
+                                "memory_mb": current_memory,
+                                "memory_growth": current_memory - initial_memory,
+                            }
+                        )
 
                         # Force periodic garbage collection
                         if (i * len(strategies) + strategies.index(strategy)) % 10 == 0:
@@ -534,9 +678,15 @@ class TestHighVolumeIntegration:
             memory_leak_rate = 0
 
         # Performance assertions
-        assert total_memory_growth < 2000, f"Total memory growth too high: {total_memory_growth:.1f}MB"
-        assert peak_memory < initial_memory + 2500, f"Peak memory too high: {peak_memory:.1f}MB"
-        assert abs(memory_leak_rate) < 5, f"Potential memory leak detected: {memory_leak_rate:.2f}MB/iteration"
+        assert total_memory_growth < 2000, (
+            f"Total memory growth too high: {total_memory_growth:.1f}MB"
+        )
+        assert peak_memory < initial_memory + 2500, (
+            f"Peak memory too high: {peak_memory:.1f}MB"
+        )
+        assert abs(memory_leak_rate) < 5, (
+            f"Potential memory leak detected: {memory_leak_rate:.2f}MB/iteration"
+        )
 
         logger.info(
             f"Memory Management Large Datasets Results:\n"
@@ -559,7 +709,9 @@ class TestHighVolumeIntegration:
             "memory_snapshots": memory_snapshots,
         }
 
-    async def test_cache_efficiency_large_dataset(self, high_volume_data_provider, benchmark_timer):
+    async def test_cache_efficiency_large_dataset(
+        self, high_volume_data_provider, benchmark_timer
+    ):
         """Test cache efficiency with large datasets."""
         # Test cache with repeated access patterns
         symbols = LARGE_SYMBOL_SET[:20]
@@ -605,7 +757,10 @@ class TestHighVolumeIntegration:
         second_pass_time = timer.elapsed
 
         # Third pass - different parameters (no cache benefit)
-        modified_parameters = {**parameters, "fast_period": parameters.get("fast_period", 10) + 5}
+        modified_parameters = {
+            **parameters,
+            "fast_period": parameters.get("fast_period", 10) + 5,
+        }
         with benchmark_timer() as timer:
             third_pass_results = []
             for symbol in symbols:
@@ -624,11 +779,17 @@ class TestHighVolumeIntegration:
         third_pass_time = timer.elapsed
 
         # Calculate cache efficiency metrics
-        cache_speedup = first_pass_time / second_pass_time if second_pass_time > 0 else 1.0
-        no_cache_comparison = first_pass_time / third_pass_time if third_pass_time > 0 else 1.0
+        cache_speedup = (
+            first_pass_time / second_pass_time if second_pass_time > 0 else 1.0
+        )
+        no_cache_comparison = (
+            first_pass_time / third_pass_time if third_pass_time > 0 else 1.0
+        )
 
         # Cache hit rate estimation (if second pass is significantly faster)
-        estimated_cache_hit_rate = max(0, min(1, (first_pass_time - second_pass_time) / first_pass_time))
+        estimated_cache_hit_rate = max(
+            0, min(1, (first_pass_time - second_pass_time) / first_pass_time)
+        )
 
         logger.info(
             f"Cache Efficiency Large Dataset Results:\n"
@@ -651,12 +812,14 @@ class TestHighVolumeIntegration:
 
 if __name__ == "__main__":
     # Run high-volume integration tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=3600",  # 1 hour timeout for high-volume tests
-        "--durations=20",  # Show 20 slowest tests
-        "-x",  # Stop on first failure
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=3600",  # 1 hour timeout for high-volume tests
+            "--durations=20",  # Show 20 slowest tests
+            "-x",  # Stop on first failure
+        ]
+    )

@@ -59,8 +59,8 @@ class DebugProfiler:
                 "profile_id": profile_id,
                 "start_memory_mb": profile_data["start_memory"],
                 "start_cpu_percent": profile_data["start_cpu"],
-                **context
-            }
+                **context,
+            },
         )
 
         return profile_id
@@ -93,11 +93,13 @@ class DebugProfiler:
                 "checkpoint": checkpoint_name,
                 "elapsed_ms": elapsed_ms,
                 "memory_mb": checkpoint_data["memory_mb"],
-                **data
-            }
+                **data,
+            },
         )
 
-    def end_profile(self, profile_id: str, success: bool = True, **final_data) -> dict[str, Any]:
+    def end_profile(
+        self, profile_id: str, success: bool = True, **final_data
+    ) -> dict[str, Any]:
         """End a debug profiling session and return comprehensive results."""
         if profile_id not in self._profiles:
             self.logger.warning(f"Profile {profile_id} not found for ending")
@@ -123,12 +125,17 @@ class DebugProfiler:
                 "start_mb": profile["start_memory"],
                 "end_mb": end_memory,
                 "delta_mb": memory_delta,
-                "peak_usage": max(cp["memory_mb"] for cp in profile["checkpoints"]) if profile["checkpoints"] else end_memory,
+                "peak_usage": max(cp["memory_mb"] for cp in profile["checkpoints"])
+                if profile["checkpoints"]
+                else end_memory,
             },
             "cpu_stats": {
                 "start_percent": profile["start_cpu"],
                 "end_percent": end_cpu,
-                "avg_percent": sum(cp["cpu_percent"] for cp in profile["checkpoints"]) / len(profile["checkpoints"]) if profile["checkpoints"] else end_cpu,
+                "avg_percent": sum(cp["cpu_percent"] for cp in profile["checkpoints"])
+                / len(profile["checkpoints"])
+                if profile["checkpoints"]
+                else end_cpu,
             },
             "checkpoints": profile["checkpoints"],
             "checkpoint_count": len(profile["checkpoints"]),
@@ -147,8 +154,8 @@ class DebugProfiler:
                     "memory_delta_mb": memory_delta,
                     "checkpoint_count": len(profile["checkpoints"]),
                     "success": success,
-                }
-            }
+                },
+            },
         )
 
         return results
@@ -195,10 +202,12 @@ class RequestResponseLogger:
                 "request_data": truncated_data,
                 "request_size": len(json.dumps(request_data, default=str)),
                 "timestamp": datetime.now(UTC).isoformat(),
-            }
+            },
         )
 
-    def log_response(self, operation: str, success: bool, duration_ms: float, **response_data):
+    def log_response(
+        self, operation: str, success: bool, duration_ms: float, **response_data
+    ):
         """Log detailed response information."""
         correlation_id = CorrelationIDGenerator.get_correlation_id()
 
@@ -218,7 +227,7 @@ class RequestResponseLogger:
                 "response_data": truncated_data,
                 "response_size": len(json.dumps(response_data, default=str)),
                 "timestamp": datetime.now(UTC).isoformat(),
-            }
+            },
         )
 
     def _sanitize_data(self, data: Any) -> Any:
@@ -226,7 +235,10 @@ class RequestResponseLogger:
         if isinstance(data, dict):
             sanitized = {}
             for key, value in data.items():
-                if any(sensitive in key.lower() for sensitive in ["password", "token", "key", "secret"]):
+                if any(
+                    sensitive in key.lower()
+                    for sensitive in ["password", "token", "key", "secret"]
+                ):
                     sanitized[key] = "***REDACTED***"
                 else:
                     sanitized[key] = self._sanitize_data(value)
@@ -240,7 +252,7 @@ class RequestResponseLogger:
         """Truncate data to prevent log overflow."""
         data_str = json.dumps(data, default=str)
         if len(data_str) > self.max_payload_size:
-            truncated = data_str[:self.max_payload_size]
+            truncated = data_str[: self.max_payload_size]
             return f"{truncated}... (truncated, original size: {len(data_str)})"
         return data
 
@@ -257,7 +269,7 @@ class ErrorTracker:
         error: Exception,
         operation: str,
         context: dict[str, Any],
-        severity: str = "error"
+        severity: str = "error",
     ):
         """Track error with detailed context and statistics."""
         error_type = type(error).__name__
@@ -279,15 +291,19 @@ class ErrorTracker:
         stats["count"] += 1
 
         # Keep only recent contexts (last 10)
-        stats["contexts"].append({
-            "timestamp": datetime.now(UTC).isoformat(),
-            "context": context,
-            "error_message": str(error),
-        })
+        stats["contexts"].append(
+            {
+                "timestamp": datetime.now(UTC).isoformat(),
+                "context": context,
+                "error_message": str(error),
+            }
+        )
         stats["contexts"] = stats["contexts"][-10:]  # Keep only last 10
 
         # Get stack trace
-        stack_trace = traceback.format_exception(type(error), error, error.__traceback__)
+        stack_trace = traceback.format_exception(
+            type(error), error, error.__traceback__
+        )
 
         # Log the error
         correlation_id = CorrelationIDGenerator.get_correlation_id()
@@ -306,7 +322,9 @@ class ErrorTracker:
         }
 
         if severity == "critical":
-            self.logger.critical(f"Critical error in {operation}: {error}", extra=log_data)
+            self.logger.critical(
+                f"Critical error in {operation}: {error}", extra=log_data
+            )
         elif severity == "error":
             self.logger.error(f"Error in {operation}: {error}", extra=log_data)
         elif severity == "warning":
@@ -327,10 +345,14 @@ class ErrorTracker:
 
         # Error breakdown by type
         for _error_key, stats in self._error_stats.items():
-            summary["error_breakdown"][stats["error_type"]] = summary["error_breakdown"].get(stats["error_type"], 0) + stats["count"]
+            summary["error_breakdown"][stats["error_type"]] = (
+                summary["error_breakdown"].get(stats["error_type"], 0) + stats["count"]
+            )
 
         # Most common errors
-        sorted_errors = sorted(self._error_stats.items(), key=lambda x: x[1]["count"], reverse=True)
+        sorted_errors = sorted(
+            self._error_stats.items(), key=lambda x: x[1]["count"], reverse=True
+        )
         summary["most_common_errors"] = [
             {
                 "operation": stats["operation"],
@@ -346,16 +368,16 @@ class ErrorTracker:
         all_contexts = []
         for stats in self._error_stats.values():
             for context in stats["contexts"]:
-                all_contexts.append({
-                    "operation": stats["operation"],
-                    "error_type": stats["error_type"],
-                    **context
-                })
+                all_contexts.append(
+                    {
+                        "operation": stats["operation"],
+                        "error_type": stats["error_type"],
+                        **context,
+                    }
+                )
 
         summary["recent_errors"] = sorted(
-            all_contexts,
-            key=lambda x: x["timestamp"],
-            reverse=True
+            all_contexts, key=lambda x: x["timestamp"], reverse=True
         )[:20]
 
         return summary
@@ -370,7 +392,7 @@ class DebugContextManager:
         enable_profiling: bool = True,
         enable_request_logging: bool = True,
         enable_error_tracking: bool = True,
-        **context
+        **context,
     ):
         self.operation_name = operation_name
         self.enable_profiling = enable_profiling
@@ -380,7 +402,9 @@ class DebugContextManager:
 
         # Initialize components
         self.profiler = DebugProfiler() if enable_profiling else None
-        self.request_logger = RequestResponseLogger() if enable_request_logging else None
+        self.request_logger = (
+            RequestResponseLogger() if enable_request_logging else None
+        )
         self.error_tracker = ErrorTracker() if enable_error_tracking else None
 
         self.profile_id = None
@@ -396,7 +420,9 @@ class DebugContextManager:
 
         # Start profiling
         if self.profiler:
-            self.profile_id = self.profiler.start_profile(self.operation_name, **self.context)
+            self.profile_id = self.profiler.start_profile(
+                self.operation_name, **self.context
+            )
 
         # Log request
         if self.request_logger:
@@ -412,10 +438,7 @@ class DebugContextManager:
         # Track error if occurred
         if not success and self.error_tracker and exc_val:
             self.error_tracker.track_error(
-                exc_val,
-                self.operation_name,
-                self.context,
-                severity="error"
+                exc_val, self.operation_name, self.context, severity="error"
             )
 
         # End profiling
@@ -423,17 +446,14 @@ class DebugContextManager:
             self.profiler.end_profile(
                 self.profile_id,
                 success=success,
-                exception_type=exc_type.__name__ if exc_type else None
+                exception_type=exc_type.__name__ if exc_type else None,
             )
 
         # Log response
         if self.request_logger:
             response_data = {"exception": str(exc_val)} if exc_val else {}
             self.request_logger.log_response(
-                self.operation_name,
-                success,
-                duration_ms,
-                **response_data
+                self.operation_name, success, duration_ms, **response_data
             )
 
     def checkpoint(self, name: str, **data):
@@ -448,7 +468,7 @@ def debug_operation(
     enable_profiling: bool = True,
     enable_request_logging: bool = True,
     enable_error_tracking: bool = True,
-    **default_context
+    **default_context,
 ):
     """Decorator to automatically wrap operations with debug context."""
 
@@ -465,8 +485,14 @@ def debug_operation(
             context = {**default_context}
             # Add non-sensitive parameters to context
             for param_name, param_value in bound_args.arguments.items():
-                if not any(sensitive in param_name.lower() for sensitive in ["password", "token", "key", "secret"]):
-                    if isinstance(param_value, str | int | float | bool) or param_value is None:
+                if not any(
+                    sensitive in param_name.lower()
+                    for sensitive in ["password", "token", "key", "secret"]
+                ):
+                    if (
+                        isinstance(param_value, str | int | float | bool)
+                        or param_value is None
+                    ):
                         context[param_name] = param_value
 
             with DebugContextManager(
@@ -474,10 +500,12 @@ def debug_operation(
                 enable_profiling,
                 enable_request_logging,
                 enable_error_tracking,
-                **context
+                **context,
             ) as debug_ctx:
                 result = await func(*args, **kwargs)
-                debug_ctx.checkpoint("function_completed", result_type=type(result).__name__)
+                debug_ctx.checkpoint(
+                    "function_completed", result_type=type(result).__name__
+                )
                 return result
 
         @wraps(func)
@@ -489,8 +517,14 @@ def debug_operation(
 
             context = {**default_context}
             for param_name, param_value in bound_args.arguments.items():
-                if not any(sensitive in param_name.lower() for sensitive in ["password", "token", "key", "secret"]):
-                    if isinstance(param_value, str | int | float | bool) or param_value is None:
+                if not any(
+                    sensitive in param_name.lower()
+                    for sensitive in ["password", "token", "key", "secret"]
+                ):
+                    if (
+                        isinstance(param_value, str | int | float | bool)
+                        or param_value is None
+                    ):
                         context[param_name] = param_value
 
             with DebugContextManager(
@@ -498,10 +532,12 @@ def debug_operation(
                 enable_profiling,
                 enable_request_logging,
                 enable_error_tracking,
-                **context
+                **context,
             ) as debug_ctx:
                 result = func(*args, **kwargs)
-                debug_ctx.checkpoint("function_completed", result_type=type(result).__name__)
+                debug_ctx.checkpoint(
+                    "function_completed", result_type=type(result).__name__
+                )
                 return result
 
         return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
@@ -511,8 +547,7 @@ def debug_operation(
 
 @contextmanager
 def debug_session(
-    session_name: str,
-    **context
+    session_name: str, **context
 ) -> Generator[DebugContextManager, None, None]:
     """Context manager for manual debug sessions."""
     with DebugContextManager(session_name, **context) as debug_ctx:
@@ -536,9 +571,9 @@ def get_error_tracker() -> ErrorTracker:
 
 def print_debug_summary():
     """Print comprehensive debug summary to console."""
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
     print("MAVERICK MCP DEBUG SUMMARY")
-    print("="*80)
+    print("=" * 80)
 
     # Performance metrics
     print("\n📊 PERFORMANCE METRICS")
@@ -547,12 +582,18 @@ def print_debug_summary():
         manager = get_logger_manager()
         dashboard_data = manager.create_dashboard_metrics()
 
-        print(f"Log Level Counts: {dashboard_data.get('system_metrics', {}).get('log_level_counts', {})}")
-        print(f"Active Correlation IDs: {dashboard_data.get('system_metrics', {}).get('active_correlation_ids', 0)}")
+        print(
+            f"Log Level Counts: {dashboard_data.get('system_metrics', {}).get('log_level_counts', {})}"
+        )
+        print(
+            f"Active Correlation IDs: {dashboard_data.get('system_metrics', {}).get('active_correlation_ids', 0)}"
+        )
 
-        if 'memory_stats' in dashboard_data:
-            memory_stats = dashboard_data['memory_stats']
-            print(f"Memory Usage: {memory_stats.get('rss_mb', 0):.1f}MB RSS, {memory_stats.get('cpu_percent', 0):.1f}% CPU")
+        if "memory_stats" in dashboard_data:
+            memory_stats = dashboard_data["memory_stats"]
+            print(
+                f"Memory Usage: {memory_stats.get('rss_mb', 0):.1f}MB RSS, {memory_stats.get('cpu_percent', 0):.1f}% CPU"
+            )
 
     except Exception as e:
         print(f"Error getting performance metrics: {e}")
@@ -562,26 +603,29 @@ def print_debug_summary():
     print("-" * 40)
     try:
         error_summary = _error_tracker.get_error_summary()
-        if 'message' in error_summary:
-            print(error_summary['message'])
+        if "message" in error_summary:
+            print(error_summary["message"])
         else:
             print(f"Total Error Types: {error_summary['total_error_types']}")
             print(f"Total Errors: {error_summary['total_errors']}")
 
-            if error_summary['most_common_errors']:
+            if error_summary["most_common_errors"]:
                 print("\nMost Common Errors:")
-                for error in error_summary['most_common_errors'][:5]:
-                    print(f"  {error['error_type']} in {error['operation']}: {error['count']} times")
+                for error in error_summary["most_common_errors"][:5]:
+                    print(
+                        f"  {error['error_type']} in {error['operation']}: {error['count']} times"
+                    )
 
     except Exception as e:
         print(f"Error getting error summary: {e}")
 
-    print("\n" + "="*80)
+    print("\n" + "=" * 80)
 
 
 def enable_debug_mode():
     """Enable comprehensive debug mode."""
     import os
+
     os.environ["MAVERICK_DEBUG"] = "true"
     print("🐛 Debug mode enabled")
     print("   - Verbose logging activated")
@@ -593,6 +637,7 @@ def enable_debug_mode():
 def disable_debug_mode():
     """Disable debug mode."""
     import os
+
     if "MAVERICK_DEBUG" in os.environ:
         del os.environ["MAVERICK_DEBUG"]
     print("🐛 Debug mode disabled")

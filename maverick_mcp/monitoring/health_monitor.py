@@ -233,10 +233,13 @@ class HealthMonitor:
         health_record = {
             "timestamp": timestamp.isoformat(),
             "overall_status": health_status.get("status", "unknown"),
-            "components_healthy": len([
-                c for c in health_status.get("components", {}).values()
-                if c.status == "healthy"
-            ]),
+            "components_healthy": len(
+                [
+                    c
+                    for c in health_status.get("components", {}).values()
+                    if c.status == "healthy"
+                ]
+            ),
             "components_total": len(health_status.get("components", {})),
             "resource_usage": health_status.get("resource_usage", {}),
         }
@@ -246,8 +249,10 @@ class HealthMonitor:
         # Keep only last 24 hours of data
         cutoff_time = timestamp - timedelta(hours=24)
         self.health_history = [
-            record for record in self.health_history
-            if datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00")) > cutoff_time
+            record
+            for record in self.health_history
+            if datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))
+            > cutoff_time
         ]
 
     async def _analyze_health_trends(self, current_status: dict[str, Any]):
@@ -259,12 +264,15 @@ class HealthMonitor:
         recent_records = self.health_history[-10:]  # Last 10 records
 
         unhealthy_trend = sum(
-            1 for record in recent_records
+            1
+            for record in recent_records
             if record["overall_status"] in ["degraded", "unhealthy"]
         )
 
         if unhealthy_trend >= 7:  # 70% of recent checks are problematic
-            logger.warning("Detected concerning health trend - system may need attention")
+            logger.warning(
+                "Detected concerning health trend - system may need attention"
+            )
             await self._trigger_maintenance_alert()
 
     async def _handle_open_circuit_breaker(self, name: str, status: dict[str, Any]):
@@ -354,8 +362,7 @@ class HealthMonitor:
             "health_records": len(self.health_history),
             "alerts_sent_count": len(self.alerts_sent),
             "last_health_check": max(
-                [record["timestamp"] for record in self.health_history],
-                default=None
+                [record["timestamp"] for record in self.health_history], default=None
             ),
         }
 

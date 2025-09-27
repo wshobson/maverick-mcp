@@ -28,7 +28,7 @@ class CacheWarmer:
         self,
         data_provider: EnhancedStockDataProvider | None = None,
         cache_manager: CacheManager | None = None,
-        max_workers: int = 5
+        max_workers: int = 5,
     ):
         """Initialize cache warmer.
 
@@ -44,16 +44,46 @@ class CacheWarmer:
 
         # Common symbols to warm up
         self.popular_symbols = [
-            "SPY", "QQQ", "AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META",
-            "TSLA", "BRK-B", "JPM", "V", "JNJ", "WMT", "PG", "UNH", "HD",
-            "MA", "DIS", "BAC", "XOM", "PFE", "ABBV", "KO", "CVX", "PEP",
-            "TMO", "AVGO", "COST", "MRK", "VZ", "ADBE", "CMCSA", "NKE"
+            "SPY",
+            "QQQ",
+            "AAPL",
+            "MSFT",
+            "GOOGL",
+            "AMZN",
+            "NVDA",
+            "META",
+            "TSLA",
+            "BRK-B",
+            "JPM",
+            "V",
+            "JNJ",
+            "WMT",
+            "PG",
+            "UNH",
+            "HD",
+            "MA",
+            "DIS",
+            "BAC",
+            "XOM",
+            "PFE",
+            "ABBV",
+            "KO",
+            "CVX",
+            "PEP",
+            "TMO",
+            "AVGO",
+            "COST",
+            "MRK",
+            "VZ",
+            "ADBE",
+            "CMCSA",
+            "NKE",
         ]
 
         # Common date ranges
         self.common_periods = [
-            ("1d", 1),    # Yesterday
-            ("5d", 5),    # Last week
+            ("1d", 1),  # Yesterday
+            ("5d", 5),  # Last week
             ("1mo", 30),  # Last month
             ("3mo", 90),  # Last 3 months
             ("1y", 365),  # Last year
@@ -71,7 +101,7 @@ class CacheWarmer:
         # Warm up in parallel batches
         batch_size = 5
         for i in range(0, len(symbols), batch_size):
-            batch = symbols[i:i + batch_size]
+            batch = symbols[i : i + batch_size]
             await self._warm_batch(batch)
 
         logger.info("Popular stocks cache warming completed")
@@ -90,8 +120,7 @@ class CacheWarmer:
         # Wait for all tasks with timeout
         try:
             await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=30
+                asyncio.gather(*tasks, return_exceptions=True), timeout=30
             )
         except TimeoutError:
             logger.warning(f"Timeout warming batch: {symbols}")
@@ -108,7 +137,7 @@ class CacheWarmer:
                 symbol=symbol,
                 start_date=start_date,
                 end_date=end_date,
-                interval="1d"
+                interval="1d",
             )
 
             # Check if already cached
@@ -124,7 +153,7 @@ class CacheWarmer:
                 start_date,
                 end_date,
                 None,  # period
-                "1d"   # interval
+                "1d",  # interval
             )
 
             if data is not None and not data.empty:
@@ -151,7 +180,7 @@ class CacheWarmer:
                 self.executor,
                 self.data_provider.get_maverick_recommendations,
                 20,  # limit
-                None  # min_score
+                None,  # min_score
             )
 
             # Warm bear recommendations
@@ -159,7 +188,7 @@ class CacheWarmer:
                 self.executor,
                 self.data_provider.get_maverick_bear_recommendations,
                 20,
-                None
+                None,
             )
 
             # Warm supply/demand breakouts
@@ -167,7 +196,7 @@ class CacheWarmer:
                 self.executor,
                 self.data_provider.get_supply_demand_breakout_recommendations,
                 20,
-                None
+                None,
             )
 
             logger.info("Screening data cache warming completed")
@@ -191,8 +220,7 @@ class CacheWarmer:
 
         try:
             await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=60
+                asyncio.gather(*tasks, return_exceptions=True), timeout=60
             )
         except TimeoutError:
             logger.warning("Timeout warming technical indicators")
@@ -212,7 +240,7 @@ class CacheWarmer:
                 ("ema", [12, 26]),
                 ("rsi", [14]),
                 ("macd", [12, 26, 9]),
-                ("bb", [20, 2])
+                ("bb", [20, 2]),
             ]
 
             for indicator, params in indicators:
@@ -224,7 +252,9 @@ class CacheWarmer:
 
                     # Note: Actual technical calculation would go here
                     # For now, we're just warming the stock data cache
-                    logger.debug(f"Would warm {indicator} for {symbol} with param {param}")
+                    logger.debug(
+                        f"Would warm {indicator} for {symbol} with param {param}"
+                    )
 
         except Exception as e:
             logger.warning(f"Failed to warm technicals for {symbol}: {e}")
@@ -243,7 +273,7 @@ class CacheWarmer:
             self.warm_popular_stocks(),
             self.warm_screening_data(),
             self.warm_technical_indicators(),
-            return_exceptions=True
+            return_exceptions=True,
         )
 
         end_time = asyncio.get_event_loop().time()
@@ -260,7 +290,9 @@ class CacheWarmer:
         if report_stats and initial_stats:
             final_stats = get_cache_stats()
             new_items = final_stats["sets"] - initial_stats["sets"]
-            hit_rate_change = final_stats["hit_rate_percent"] - initial_stats["hit_rate_percent"]
+            hit_rate_change = (
+                final_stats["hit_rate_percent"] - initial_stats["hit_rate_percent"]
+            )
 
             logger.info(
                 f"Cache warmup results: +{new_items} items cached, "
@@ -284,7 +316,9 @@ class CacheWarmer:
             # Wait for next cycle
             await asyncio.sleep(interval_minutes * 60)
 
-    async def benchmark_cache_performance(self, symbols: list[str] | None = None) -> dict[str, Any]:
+    async def benchmark_cache_performance(
+        self, symbols: list[str] | None = None
+    ) -> dict[str, Any]:
         """Benchmark cache performance for analysis.
 
         Args:
@@ -298,6 +332,7 @@ class CacheWarmer:
 
         # Test data retrieval performance
         import time
+
         start_time = time.time()
         cache_hits = 0
         cache_misses = 0
@@ -305,14 +340,16 @@ class CacheWarmer:
         for symbol in symbols:
             for _period_name, days in self.common_periods:
                 end_date = datetime.now().strftime("%Y-%m-%d")
-                start_date = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
+                start_date = (datetime.now() - timedelta(days=days)).strftime(
+                    "%Y-%m-%d"
+                )
 
                 cache_key = generate_cache_key(
                     "backtest_data",
                     symbol=symbol,
                     start_date=start_date,
                     end_date=end_date,
-                    interval="1d"
+                    interval="1d",
                 )
 
                 cached_data = await self.cache.get(cache_key)
@@ -326,7 +363,9 @@ class CacheWarmer:
         # Calculate metrics
         total_requests = cache_hits + cache_misses
         hit_rate = (cache_hits / total_requests * 100) if total_requests > 0 else 0
-        avg_request_time = (end_time - start_time) / total_requests if total_requests > 0 else 0
+        avg_request_time = (
+            (end_time - start_time) / total_requests if total_requests > 0 else 0
+        )
 
         # Get current cache stats
         cache_stats = get_cache_stats()
@@ -344,7 +383,7 @@ class CacheWarmer:
 
         logger.info(
             f"Benchmark completed: {hit_rate:.1f}% hit rate, "
-            f"{avg_request_time*1000:.1f}ms avg request time"
+            f"{avg_request_time * 1000:.1f}ms avg request time"
         )
 
         return benchmark_results

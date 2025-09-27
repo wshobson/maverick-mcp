@@ -41,7 +41,7 @@ class LoggingInitializer:
         self,
         environment: str | None = None,
         custom_settings: dict[str, Any] | None = None,
-        force_reinit: bool = False
+        force_reinit: bool = False,
     ) -> LoggingSettings:
         """
         Initialize the complete logging system.
@@ -108,7 +108,9 @@ class LoggingInitializer:
         self._manager.setup_structured_logging(
             log_level=self._settings.log_level,
             log_format=self._settings.log_format,
-            log_file=self._settings.log_file_path if self._settings.enable_file_logging else None,
+            log_file=self._settings.log_file_path
+            if self._settings.enable_file_logging
+            else None,
             enable_async=self._settings.enable_async_logging,
             enable_rotation=self._settings.enable_log_rotation,
             max_log_size=self._settings.max_log_size_mb * 1024 * 1024,
@@ -122,15 +124,18 @@ class LoggingInitializer:
                 self._manager.debug_manager.enable_verbose_logging(module)
 
             if self._settings.log_request_response:
-                self._manager.debug_manager.add_debug_filter("backtesting_requests", {
-                    "log_request_response": True,
-                    "operations": [
-                        "run_backtest",
-                        "optimize_parameters",
-                        "get_historical_data",
-                        "calculate_technical_indicators"
-                    ]
-                })
+                self._manager.debug_manager.add_debug_filter(
+                    "backtesting_requests",
+                    {
+                        "log_request_response": True,
+                        "operations": [
+                            "run_backtest",
+                            "optimize_parameters",
+                            "get_historical_data",
+                            "calculate_technical_indicators",
+                        ],
+                    },
+                )
 
     def _setup_debug_logging(self):
         """Setup debug-specific logging configuration."""
@@ -152,9 +157,9 @@ class LoggingInitializer:
 
             # Use structured formatter for debug logs
             from maverick_mcp.utils.structured_logger import EnhancedStructuredFormatter
+
             debug_formatter = EnhancedStructuredFormatter(
-                include_performance=True,
-                include_resources=True
+                include_performance=True, include_resources=True
             )
             debug_handler.setFormatter(debug_formatter)
 
@@ -174,16 +179,23 @@ class LoggingInitializer:
             "cache_manager",
             "technical_analysis",
             "portfolio_optimization",
-            "strategy_execution"
+            "strategy_execution",
         ]
 
         for component in components:
-            perf_logger = self._manager.get_performance_logger(f"performance.{component}")
-            perf_logger.logger.info(f"Performance monitoring initialized for {component}")
+            perf_logger = self._manager.get_performance_logger(
+                f"performance.{component}"
+            )
+            perf_logger.logger.info(
+                f"Performance monitoring initialized for {component}"
+            )
 
     def _setup_log_management(self):
         """Setup log rotation and cleanup mechanisms."""
-        if not self._settings.enable_file_logging or not self._settings.enable_log_rotation:
+        if (
+            not self._settings.enable_file_logging
+            or not self._settings.enable_log_rotation
+        ):
             return
 
         # Log rotation is handled by RotatingFileHandler
@@ -194,35 +206,51 @@ class LoggingInitializer:
 
     def _print_initialization_summary(self, environment: str):
         """Print logging initialization summary."""
-        print("\n" + "="*80)
+        print("\n" + "=" * 80)
         print("MAVERICK MCP LOGGING SYSTEM INITIALIZED")
-        print("="*80)
+        print("=" * 80)
         print(f"Environment: {environment}")
         print(f"Log Level: {self._settings.log_level}")
         print(f"Log Format: {self._settings.log_format}")
-        print(f"Debug Mode: {'✅ Enabled' if self._settings.debug_enabled else '❌ Disabled'}")
-        print(f"Performance Monitoring: {'✅ Enabled' if self._settings.enable_performance_logging else '❌ Disabled'}")
-        print(f"File Logging: {'✅ Enabled' if self._settings.enable_file_logging else '❌ Disabled'}")
+        print(
+            f"Debug Mode: {'✅ Enabled' if self._settings.debug_enabled else '❌ Disabled'}"
+        )
+        print(
+            f"Performance Monitoring: {'✅ Enabled' if self._settings.enable_performance_logging else '❌ Disabled'}"
+        )
+        print(
+            f"File Logging: {'✅ Enabled' if self._settings.enable_file_logging else '❌ Disabled'}"
+        )
 
         if self._settings.enable_file_logging:
             print(f"Log File: {self._settings.log_file_path}")
-            print(f"Log Rotation: {'✅ Enabled' if self._settings.enable_log_rotation else '❌ Disabled'}")
+            print(
+                f"Log Rotation: {'✅ Enabled' if self._settings.enable_log_rotation else '❌ Disabled'}"
+            )
 
-        print(f"Async Logging: {'✅ Enabled' if self._settings.enable_async_logging else '❌ Disabled'}")
-        print(f"Resource Tracking: {'✅ Enabled' if self._settings.enable_resource_tracking else '❌ Disabled'}")
+        print(
+            f"Async Logging: {'✅ Enabled' if self._settings.enable_async_logging else '❌ Disabled'}"
+        )
+        print(
+            f"Resource Tracking: {'✅ Enabled' if self._settings.enable_resource_tracking else '❌ Disabled'}"
+        )
 
         if self._settings.debug_enabled:
             print("\n🐛 DEBUG MODE FEATURES:")
-            print(f"   - Request/Response Logging: {'✅' if self._settings.log_request_response else '❌'}")
+            print(
+                f"   - Request/Response Logging: {'✅' if self._settings.log_request_response else '❌'}"
+            )
             print(f"   - Verbose Modules: {len(self._settings.get_debug_modules())}")
             print(f"   - Max Payload Size: {self._settings.max_payload_length} chars")
 
         if self._settings.enable_performance_logging:
             print("\n📊 PERFORMANCE MONITORING:")
             print(f"   - Threshold: {self._settings.performance_log_threshold_ms}ms")
-            print(f"   - Business Metrics: {'✅' if self._settings.enable_business_metrics else '❌'}")
+            print(
+                f"   - Business Metrics: {'✅' if self._settings.enable_business_metrics else '❌'}"
+            )
 
-        print("\n" + "="*80 + "\n")
+        print("\n" + "=" * 80 + "\n")
 
     def get_settings(self) -> LoggingSettings | None:
         """Get current logging settings."""
@@ -280,7 +308,7 @@ class LoggingInitializer:
         if self._manager:
             # Close any open handlers
             for handler in logging.getLogger().handlers:
-                if hasattr(handler, 'close'):
+                if hasattr(handler, "close"):
                     handler.close()
 
         self._initialized = False
@@ -321,9 +349,7 @@ def initialize_for_production(**custom_settings) -> LoggingSettings:
 
 
 def initialize_backtesting_logging(
-    environment: str | None = None,
-    debug_mode: bool = False,
-    **custom_settings
+    environment: str | None = None, debug_mode: bool = False, **custom_settings
 ) -> LoggingSettings:
     """
     Convenient function to initialize logging specifically for backtesting.
@@ -387,8 +413,7 @@ def auto_initialize_logging() -> LoggingSettings:
     debug_mode = os.getenv("MAVERICK_DEBUG", "false").lower() == "true"
 
     return initialize_backtesting_logging(
-        environment=environment,
-        debug_mode=debug_mode
+        environment=environment, debug_mode=debug_mode
     )
 
 

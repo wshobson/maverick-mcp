@@ -1,4 +1,5 @@
 """Enhanced rate limiting middleware and utilities."""
+
 from __future__ import annotations
 
 import asyncio
@@ -46,7 +47,14 @@ class EndpointClassification:
     @staticmethod
     def classify_endpoint(path: str) -> RateLimitTier:
         normalized = path.lower()
-        if normalized in {"/health", "/metrics", "/docs", "/openapi.json", "/api/docs", "/api/openapi.json"}:
+        if normalized in {
+            "/health",
+            "/metrics",
+            "/docs",
+            "/openapi.json",
+            "/api/docs",
+            "/api/openapi.json",
+        }:
             return RateLimitTier.PUBLIC
         if normalized.startswith("/api/auth"):
             return RateLimitTier.AUTHENTICATION
@@ -54,7 +62,10 @@ class EndpointClassification:
             return RateLimitTier.ADMINISTRATIVE
         if "bulk" in normalized or normalized.endswith("/batch"):
             return RateLimitTier.BULK_OPERATION
-        if any(segment in normalized for segment in ("analysis", "technical", "screening", "portfolio")):
+        if any(
+            segment in normalized
+            for segment in ("analysis", "technical", "screening", "portfolio")
+        ):
             return RateLimitTier.ANALYSIS
         return RateLimitTier.DATA_RETRIEVAL
 
@@ -92,7 +103,9 @@ class RateLimitConfig:
         elif tier == RateLimitTier.DATA_RETRIEVAL:
             limit = self.data_limit if authenticated else self.data_limit_anonymous
         elif tier == RateLimitTier.ANALYSIS:
-            limit = self.analysis_limit if authenticated else self.analysis_limit_anonymous
+            limit = (
+                self.analysis_limit if authenticated else self.analysis_limit_anonymous
+            )
         elif tier == RateLimitTier.BULK_OPERATION:
             limit = self.bulk_limit_per_hour
         elif tier == RateLimitTier.ADMINISTRATIVE:
@@ -164,7 +177,9 @@ class RateLimiter:
         namespaced_key = self._tiered_key(tier, key) if tier else key
         self._violations[namespaced_key] += 1
 
-    def get_violation_count(self, key: str, *, tier: RateLimitTier | None = None) -> int:
+    def get_violation_count(
+        self, key: str, *, tier: RateLimitTier | None = None
+    ) -> int:
         namespaced_key = self._tiered_key(tier, key) if tier else key
         return self._violations.get(namespaced_key, 0)
 
@@ -329,9 +344,15 @@ class RateLimiter:
         cutoff = time.time() - older_than_hours * 3600
         cursor = 0
         while True:
-            cursor, keys = await client.scan(cursor=cursor, match="rate_limit:*", count=200)
+            cursor, keys = await client.scan(
+                cursor=cursor, match="rate_limit:*", count=200
+            )
             for raw_key in keys:
-                key = raw_key.decode() if isinstance(raw_key, bytes | bytearray) else raw_key
+                key = (
+                    raw_key.decode()
+                    if isinstance(raw_key, bytes | bytearray)
+                    else raw_key
+                )
                 redis_type = await client.type(key)
                 if redis_type == "zset":
                     await client.zremrangebyscore(key, 0, cutoff)
@@ -353,7 +374,9 @@ class EnhancedRateLimitMiddleware(BaseHTTPMiddleware):
         self.config = config or RateLimitConfig()
         self.rate_limiter = RateLimiter(self.config)
 
-    async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:  # type: ignore[override]
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:  # type: ignore[override]
         path = request.url.path
         tier = EndpointClassification.classify_endpoint(path)
         user_id = getattr(request.state, "user_id", None)
@@ -384,7 +407,9 @@ class EnhancedRateLimitMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
         response.headers["X-RateLimit-Limit"] = str(limit)
-        response.headers["X-RateLimit-Remaining"] = str(max(info.get("remaining", limit), 0))
+        response.headers["X-RateLimit-Remaining"] = str(
+            max(info.get("remaining", limit), 0)
+        )
         response.headers["X-RateLimit-Tier"] = tier.value
         return response
 
@@ -413,7 +438,9 @@ def rate_limit(
 
     def decorator(func: Callable[..., Awaitable[Any]]):
         if not asyncio.iscoroutinefunction(func):
-            raise TypeError("rate_limit decorator can only be applied to async callables")
+            raise TypeError(
+                "rate_limit decorator can only be applied to async callables"
+            )
 
         @wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:

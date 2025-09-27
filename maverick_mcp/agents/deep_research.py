@@ -5,18 +5,22 @@ Provides comprehensive financial research capabilities with web search,
 content analysis, sentiment detection, and source validation.
 """
 
+from __future__ import annotations
+
 import asyncio
+import json
 import logging
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool, tool
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, START, StateGraph
-from langgraph.types import Command
+from langgraph.graph import END, START, StateGraph  # type: ignore[import-untyped]
+from langgraph.types import Command  # type: ignore[import-untyped]
 
 from maverick_mcp.agents.base import PersonaAwareAgent
 from maverick_mcp.agents.circuit_breaker import circuit_manager
@@ -32,6 +36,11 @@ from maverick_mcp.utils.orchestration_logging import (
     log_performance_metrics,
     log_synthesis_operation,
 )
+
+try:  # pragma: no cover - optional dependency
+    from tavily import TavilyClient  # type: ignore[import-not-found]
+except ImportError:  # pragma: no cover
+    TavilyClient = None  # type: ignore[assignment]
 
 # Import moved to avoid circular dependency - will import where needed
 from maverick_mcp.workflows.state import DeepResearchState
@@ -258,17 +267,7 @@ class WebSearchProvider:
             provider_results = []
             for query in queries:
                 try:
-                    if provider_name == "exa" and hasattr(self, "_search_exa"):
-                        query_results = await self._search_exa(
-                            query, max_results_per_query
-                        )
-                    elif provider_name == "tavily" and hasattr(self, "_search_tavily"):
-                        query_results = await self._search_tavily(
-                            query, max_results_per_query
-                        )
-                    else:
-                        # Fallback to default search method
-                        query_results = await self.search(query, max_results_per_query)
+                    query_results = await self.search(query, max_results_per_query)
 
                     provider_results.extend(query_results or [])
                 except Exception as e:
@@ -766,7 +765,8 @@ class TavilySearchProvider(WebSearchProvider):
         )
 
         async def _search() -> list[dict[str, Any]]:
-            from tavily import TavilyClient
+            if TavilyClient is None:
+                raise ImportError("tavily package is required for TavilySearchProvider")
 
             client = TavilyClient(api_key=self.api_key)
             response = await asyncio.get_event_loop().run_in_executor(
@@ -777,7 +777,9 @@ class TavilySearchProvider(WebSearchProvider):
 
         return await circuit_breaker.call(_search, timeout=timeout)
 
-    def _process_results(self, results: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _process_results(
+        self, results: Iterable[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         processed: list[dict[str, Any]] = []
         for item in results:
             url = item.get("url", "")
@@ -803,6 +805,27 @@ class ContentAnalyzer:
     def __init__(self, llm: BaseChatModel):
         self.llm = llm
         self._batch_size = 4  # Process up to 4 sources concurrently
+
+    @staticmethod
+    def _coerce_message_content(raw_content: Any) -> str:
+        """Convert LLM response content to a string for JSON parsing."""
+        if isinstance(raw_content, str):
+            return raw_content
+
+        if isinstance(raw_content, list):
+            parts: list[str] = []
+            for item in raw_content:
+                if isinstance(item, dict):
+                    text_value = item.get("text")
+                    if isinstance(text_value, str):
+                        parts.append(text_value)
+                    else:
+                        parts.append(str(text_value))
+                else:
+                    parts.append(str(item))
+            return "".join(parts)
+
+        return str(raw_content)
 
     async def analyze_content(
         self, content: str, persona: str, analysis_focus: str = "general"
@@ -846,10 +869,8 @@ class ContentAnalyzer:
                 ]
             )
 
-            # Parse AI response
-            import json
-
-            analysis = json.loads(response.content.strip())
+            raw_content = self._coerce_message_content(response.content).strip()
+            analysis = json.loads(raw_content)
 
             return {
                 "insights": analysis.get("KEY_INSIGHTS", []),
@@ -968,11 +989,17 @@ class ContentAnalyzer:
                         fallback_result["source_identifier"] = source_id
                         fallback_result["batch_processed"] = True
                         results.append(fallback_result)
+                    elif isinstance(result, dict):
+                        enriched_result = dict(result)
+                        enriched_result["source_identifier"] = batch[j][1]
+                        enriched_result["batch_processed"] = True
+                        results.append(enriched_result)
                     else:
-                        # Add source identifier to successful results
-                        result["source_identifier"] = batch[j][1]
-                        result["batch_processed"] = True
-                        results.append(result)
+                        content, source_id = batch[j]
+                        fallback_result = self._fallback_analysis(content, persona)
+                        fallback_result["source_identifier"] = source_id
+                        fallback_result["batch_processed"] = True
+                        results.append(fallback_result)
 
             except Exception as e:
                 logger.error(f"Batch analysis completely failed: {e}")
@@ -1030,9 +1057,10 @@ class ContentAnalyzer:
                         ]
                     )
 
-                    import json
-
-                    analysis = json.loads(response.content.strip())
+                    coerced_content = self._coerce_message_content(
+                        response.content
+                    ).strip()
+                    analysis = json.loads(coerced_content)
                     analyzed_results.append(analysis)
                 except Exception as e:
                     logger.warning(f"Content analysis failed: {e}")
@@ -1136,9 +1164,9 @@ class ContentAnalyzer:
                 ]
             )
 
-            import json
-
-            result = json.loads(response.content)
+            result = json.loads(
+                ContentAnalyzer._coerce_message_content(response.content)
+            )
             return result.get("themes", [])
 
         except Exception as e:
@@ -1335,7 +1363,7 @@ class DeepResearchAgent(PersonaAwareAgent):
             topic: str, timeframe: str = "7d"
         ) -> dict[str, Any]:
             """Analyze market sentiment around a topic using news and social signals."""
-            return await self._analyze_market_sentiment(topic, timeframe)
+            return await self._analyze_market_sentiment_tool(topic, timeframe)
 
         @tool
         async def validate_research_claims(
@@ -1354,6 +1382,124 @@ class DeepResearchAgent(PersonaAwareAgent):
         )
 
         return tools
+
+    async def _perform_web_search(
+        self, query: str, num_results: int, provider: str = "auto"
+    ) -> dict[str, Any]:
+        """Fallback web search across configured providers."""
+        await self._ensure_search_providers_loaded()
+
+        if not self.search_providers:
+            return {
+                "error": "No search providers available",
+                "results": [],
+                "total_results": 0,
+            }
+
+        aggregated_results: list[dict[str, Any]] = []
+        target = provider.lower()
+
+        for provider_obj in self.search_providers:
+            provider_name = provider_obj.__class__.__name__.lower()
+            if target != "auto" and target not in provider_name:
+                continue
+
+            try:
+                results = await provider_obj.search(query, num_results)
+                aggregated_results.extend(results)
+                if target != "auto":
+                    break
+            except Exception as error:  # pragma: no cover - fallback logging
+                logger.warning(
+                    "Fallback web search failed for provider %s: %s",
+                    provider_obj.__class__.__name__,
+                    error,
+                )
+
+        if not aggregated_results:
+            return {
+                "error": "Search failed",
+                "results": [],
+                "total_results": 0,
+            }
+
+        truncated_results = aggregated_results[:num_results]
+        return {
+            "results": truncated_results,
+            "total_results": len(truncated_results),
+            "search_duration": 0.0,
+            "search_strategy": "fallback",
+        }
+
+    async def _research_company_fundamentals(
+        self, symbol: str, depth: str = "standard"
+    ) -> dict[str, Any]:
+        """Convenience wrapper for company fundamental research used by tools."""
+
+        session_id = f"fundamentals-{symbol}-{uuid4().hex}"
+        focus_areas = [
+            "fundamentals",
+            "financials",
+            "valuation",
+            "risk_management",
+            "growth_drivers",
+        ]
+
+        return await self.research_comprehensive(
+            topic=f"{symbol} company fundamentals analysis",
+            session_id=session_id,
+            depth=depth,
+            focus_areas=focus_areas,
+            timeframe="180d",
+            use_parallel_execution=False,
+        )
+
+    async def _analyze_market_sentiment_tool(
+        self, topic: str, timeframe: str = "7d"
+    ) -> dict[str, Any]:
+        """Wrapper used by the sentiment analysis tool."""
+
+        session_id = f"sentiment-{uuid4().hex}"
+        return await self.analyze_market_sentiment(
+            topic=topic,
+            session_id=session_id,
+            timeframe=timeframe,
+            use_parallel_execution=False,
+        )
+
+    async def _validate_claims(
+        self, claims: list[str], sources: list[str]
+    ) -> dict[str, Any]:
+        """Lightweight claim validation used for tool compatibility."""
+
+        validation_results: list[dict[str, Any]] = []
+
+        for claim in claims:
+            source_checks = []
+            for source in sources:
+                source_checks.append(
+                    {
+                        "source": source,
+                        "status": "not_verified",
+                        "confidence": 0.0,
+                        "notes": "Automatic validation not available in fallback mode",
+                    }
+                )
+
+            validation_results.append(
+                {
+                    "claim": claim,
+                    "validated": False,
+                    "confidence": 0.0,
+                    "evidence": [],
+                    "source_checks": source_checks,
+                }
+            )
+
+        return {
+            "results": validation_results,
+            "summary": "Claim validation is currently using fallback heuristics.",
+        }
 
     async def _perform_financial_search(
         self, query: str, num_results: int, provider: str, strategy: str
@@ -1877,8 +2023,12 @@ class DeepResearchAgent(PersonaAwareAgent):
             ]
         )
 
+        raw_synthesis = ContentAnalyzer._coerce_message_content(
+            synthesis_response.content
+        )
+
         research_findings = {
-            "synthesis": synthesis_response.content,
+            "synthesis": raw_synthesis,
             "key_insights": self._extract_key_insights(validated_sources),
             "overall_sentiment": self._calculate_overall_sentiment(validated_sources),
             "risk_assessment": self._assess_risks(validated_sources),
@@ -2560,7 +2710,9 @@ class DeepResearchAgent(PersonaAwareAgent):
                 ]
             )
 
-            synthesis_text = synthesis_response.content
+            synthesis_text = ContentAnalyzer._coerce_message_content(
+                synthesis_response.content
+            )
             synthesis_logger.info("🧠 LLM_SYNTHESIS_SUCCESS")
         except Exception as e:
             synthesis_logger.warning(
@@ -2608,19 +2760,24 @@ class DeepResearchAgent(PersonaAwareAgent):
 
     async def _format_parallel_research_response(
         self,
-        research_result,  # Type: ResearchResult
+        research_result,
         topic: str,
         session_id: str,
         depth: str,
-        initial_state: dict[str, Any],
-        start_time: datetime,
+        initial_state: dict[str, Any] | None,
+        start_time: datetime | None,
     ) -> dict[str, Any]:
         """Format parallel research results to match expected sequential format."""
 
-        execution_time = (datetime.now() - start_time).total_seconds() * 1000
+        if start_time is not None:
+            execution_time = (datetime.now() - start_time).total_seconds() * 1000
+        else:
+            execution_time = 0.0
 
         # Extract synthesis from research result
         synthesis = research_result.synthesis or {}
+
+        state_snapshot: dict[str, Any] = initial_state or {}
 
         # Create citations from task results
         citations = []
@@ -2649,7 +2806,7 @@ class DeepResearchAgent(PersonaAwareAgent):
             "status": "success",
             "agent_type": "deep_research",
             "execution_mode": "parallel",
-            "persona": initial_state.get("persona"),
+            "persona": state_snapshot.get("persona"),
             "research_topic": topic,
             "research_depth": depth,
             "findings": synthesis,
@@ -2799,7 +2956,7 @@ class DeepResearchAgent(PersonaAwareAgent):
 class BaseSubagent:
     """Base class for specialized research subagents."""
 
-    def __init__(self, parent_agent: "DeepResearchAgent"):
+    def __init__(self, parent_agent: DeepResearchAgent):
         self.parent = parent_agent
         self.llm = parent_agent.llm
         self.search_providers = parent_agent.search_providers

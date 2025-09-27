@@ -312,7 +312,7 @@ class OnlineLearningStrategy(Strategy):
                 tol=1e-4,
                 warm_start=True,  # Enable incremental learning
                 alpha=0.01,  # Regularization
-                fit_intercept=True
+                fit_intercept=True,
             )
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
@@ -364,12 +364,14 @@ class OnlineLearningStrategy(Strategy):
             kurt_return = returns.kurtosis() if len(returns) > 3 else 0.0
 
             # Replace NaN/inf values
-            features.extend([
-                mean_return if np.isfinite(mean_return) else 0.0,
-                std_return if np.isfinite(std_return) else 0.01,
-                skew_return if np.isfinite(skew_return) else 0.0,
-                kurt_return if np.isfinite(kurt_return) else 0.0,
-            ])
+            features.extend(
+                [
+                    mean_return if np.isfinite(mean_return) else 0.0,
+                    std_return if np.isfinite(std_return) else 0.01,
+                    skew_return if np.isfinite(skew_return) else 0.0,
+                    kurt_return if np.isfinite(kurt_return) else 0.0,
+                ]
+            )
 
             # Technical indicators with fallbacks
             current_price = window_data["close"].iloc[-1]
@@ -412,7 +414,9 @@ class OnlineLearningStrategy(Strategy):
                 # Volume trend
                 if len(window_data) >= 10:
                     volume_ma_long = window_data["volume"].rolling(10).mean().iloc[-1]
-                    volume_trend = volume_ma / volume_ma_long if volume_ma_long > 0 else 1.0
+                    volume_trend = (
+                        volume_ma / volume_ma_long if volume_ma_long > 0 else 1.0
+                    )
                     features.append(volume_trend if np.isfinite(volume_trend) else 1.0)
                 else:
                     features.append(1.0)
@@ -425,13 +429,17 @@ class OnlineLearningStrategy(Strategy):
             if self.expected_feature_count is None:
                 self.expected_feature_count = len(feature_array)
             elif len(feature_array) != self.expected_feature_count:
-                logger.warning(f"Feature count mismatch: expected {self.expected_feature_count}, got {len(feature_array)}")
+                logger.warning(
+                    f"Feature count mismatch: expected {self.expected_feature_count}, got {len(feature_array)}"
+                )
                 return np.array([])
 
             # Check for any remaining NaN or inf values
             if not np.all(np.isfinite(feature_array)):
                 logger.warning("Non-finite features detected, replacing with defaults")
-                feature_array = np.nan_to_num(feature_array, nan=0.0, posinf=1.0, neginf=-1.0)
+                feature_array = np.nan_to_num(
+                    feature_array, nan=0.0, posinf=1.0, neginf=-1.0
+                )
 
             return feature_array
 
@@ -485,9 +493,13 @@ class OnlineLearningStrategy(Strategy):
             training_targets = []
 
             # Use a substantial portion of historical data for initial training
-            start_idx = max(self.feature_window, current_idx - self.initial_training_period)
+            start_idx = max(
+                self.feature_window, current_idx - self.initial_training_period
+            )
 
-            for idx in range(start_idx, current_idx - 10):  # Leave some data for validation
+            for idx in range(
+                start_idx, current_idx - 10
+            ):  # Leave some data for validation
                 features = self.extract_features(data, idx)
                 if len(features) > 0:
                     target = self.create_target(data, idx)
@@ -495,7 +507,9 @@ class OnlineLearningStrategy(Strategy):
                     training_targets.append(target)
 
             if len(training_examples) < self.min_training_samples:
-                logger.debug(f"Insufficient training samples: {len(training_examples)} < {self.min_training_samples}")
+                logger.debug(
+                    f"Insufficient training samples: {len(training_examples)} < {self.min_training_samples}"
+                )
                 return False
 
             X = np.array(training_examples)
@@ -504,7 +518,9 @@ class OnlineLearningStrategy(Strategy):
             # Check for class balance
             unique_classes, class_counts = np.unique(y, return_counts=True)
             if len(unique_classes) < 2:
-                logger.warning(f"Insufficient class diversity for training: {unique_classes}")
+                logger.warning(
+                    f"Insufficient class diversity for training: {unique_classes}"
+                )
                 return False
 
             # Initialize scaler with training data
@@ -517,7 +533,9 @@ class OnlineLearningStrategy(Strategy):
             self.is_trained = True
             self.training_samples_count = len(X)
 
-            logger.info(f"Initial training completed with {len(X)} samples, classes: {dict(zip(unique_classes, class_counts, strict=False))}")
+            logger.info(
+                f"Initial training completed with {len(X)} samples, classes: {dict(zip(unique_classes, class_counts, strict=False))}"
+            )
             return True
 
         except Exception as e:
@@ -602,7 +620,9 @@ class OnlineLearningStrategy(Strategy):
             start_idx = max(self.feature_window, self.initial_training_period + 10)
 
             if len(data) < start_idx:
-                logger.warning(f"Insufficient data for online learning: {len(data)} < {start_idx}")
+                logger.warning(
+                    f"Insufficient data for online learning: {len(data)} < {start_idx}"
+                )
                 return entry_signals, exit_signals
 
             for idx in range(start_idx, len(data)):
@@ -649,7 +669,9 @@ class OnlineLearningStrategy(Strategy):
             # Log summary statistics
             total_entry_signals = entry_signals.sum()
             total_exit_signals = exit_signals.sum()
-            logger.info(f"Generated {total_entry_signals} entry and {total_exit_signals} exit signals using online learning")
+            logger.info(
+                f"Generated {total_entry_signals} entry and {total_exit_signals} exit signals using online learning"
+            )
 
         except Exception as e:
             logger.error(f"Error generating online learning signals: {e}")
@@ -683,8 +705,12 @@ class OnlineLearningStrategy(Strategy):
 
         if self.scaler is not None:
             info["feature_scaling"] = {
-                "mean": self.scaler.mean_.tolist() if hasattr(self.scaler, "mean_") else None,
-                "scale": self.scaler.scale_.tolist() if hasattr(self.scaler, "scale_") else None,
+                "mean": self.scaler.mean_.tolist()
+                if hasattr(self.scaler, "mean_")
+                else None,
+                "scale": self.scaler.scale_.tolist()
+                if hasattr(self.scaler, "scale_")
+                else None,
             }
 
         return info

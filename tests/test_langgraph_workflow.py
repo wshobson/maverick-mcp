@@ -224,7 +224,7 @@ class TestBacktestingWorkflow:
             "finalize_workflow",
         ]
         for node in expected_nodes:
-            assert node in [n for n in nodes]
+            assert node in nodes
 
     async def test_successful_workflow_execution(self, workflow_with_mocks):
         """Test successful end-to-end workflow execution."""
@@ -555,6 +555,8 @@ class TestLangGraphIntegration:
         result = await workflow.run_intelligent_backtest(
             symbol="AAPL", start_date="2023-01-01", end_date="2023-12-31"
         )
+        assert isinstance(result, dict)
+        assert result.get("symbol") == "AAPL"
 
         # Verify mock agents were called in sequence
         workflow.market_analyzer.analyze_market_regime.assert_called_once()

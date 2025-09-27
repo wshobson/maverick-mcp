@@ -639,7 +639,7 @@ class EnhancedStockDataProvider:
             end_date=end_date,
             period=period,
             interval=interval,
-            use_cache=use_cache
+            use_cache=use_cache,
         )
 
         # Execute in thread pool to avoid blocking the event loop
@@ -674,7 +674,7 @@ class EnhancedStockDataProvider:
             start=start_date,
             end=end_date,
             period=period,
-            interval=interval
+            interval=interval,
         )
 
         # Check if dataframe is empty or if required columns are missing

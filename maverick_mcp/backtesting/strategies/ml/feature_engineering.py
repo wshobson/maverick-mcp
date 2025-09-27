@@ -37,10 +37,10 @@ class FeatureExtractor:
         features = pd.DataFrame(index=data.index)
 
         # Normalize column names to handle both cases
-        high = data.get('high', data.get('High'))
-        low = data.get('low', data.get('Low'))
-        close = data.get('close', data.get('Close'))
-        open_ = data.get('open', data.get('Open'))
+        high = data.get("high", data.get("High"))
+        low = data.get("low", data.get("Low"))
+        close = data.get("close", data.get("Close"))
+        open_ = data.get("open", data.get("Open"))
 
         # Safe division helper function
         def safe_divide(numerator, denominator, default=0.0):
@@ -51,26 +51,38 @@ class FeatureExtractor:
             num = np.asarray(numerator)
             den = np.asarray(denominator)
             # Use numpy divide with where condition for safety
-            return np.divide(num, den, out=np.full_like(num, default, dtype=float), where=(den != 0))
+            return np.divide(
+                num, den, out=np.full_like(num, default, dtype=float), where=(den != 0)
+            )
 
         # Price ratios and spreads with safe division
         features["high_low_ratio"] = safe_divide(high, low, 1.0)
         features["close_open_ratio"] = safe_divide(close, open_, 1.0)
-        features["hl_spread"] = safe_divide(high - low, close, 0.0) if high is not None and low is not None and close is not None else 0.0
-        features["co_spread"] = safe_divide(close - open_, open_, 0.0) if close is not None and open_ is not None else 0.0
+        features["hl_spread"] = (
+            safe_divide(high - low, close, 0.0)
+            if high is not None and low is not None and close is not None
+            else 0.0
+        )
+        features["co_spread"] = (
+            safe_divide(close - open_, open_, 0.0)
+            if close is not None and open_ is not None
+            else 0.0
+        )
 
         # Returns with safe calculation
         if close is not None:
             features["returns"] = close.pct_change().fillna(0)
             # Safe log returns calculation
             price_ratio = safe_divide(close, close.shift(1), 1.0)
-            features["log_returns"] = np.log(np.maximum(price_ratio, 1e-8))  # Prevent log(0)
+            features["log_returns"] = np.log(
+                np.maximum(price_ratio, 1e-8)
+            )  # Prevent log(0)
         else:
             features["returns"] = 0
             features["log_returns"] = 0
 
         # Volume features with safe calculations
-        volume = data.get('volume', data.get('Volume'))
+        volume = data.get("volume", data.get("Volume"))
         if volume is not None and close is not None:
             volume_ma = volume.rolling(20).mean()
             features["volume_ma_ratio"] = safe_divide(volume, volume_ma, 1.0)
@@ -95,9 +107,9 @@ class FeatureExtractor:
         features = pd.DataFrame(index=data.index)
 
         # Normalize column names
-        close = data.get('close', data.get('Close'))
-        high = data.get('high', data.get('High'))
-        low = data.get('low', data.get('Low'))
+        close = data.get("close", data.get("Close"))
+        high = data.get("high", data.get("High"))
+        low = data.get("low", data.get("Low"))
 
         # Safe division helper (reused from price features)
         def safe_divide(numerator, denominator, default=0.0):
@@ -108,7 +120,9 @@ class FeatureExtractor:
             num = np.asarray(numerator)
             den = np.asarray(denominator)
             # Use numpy divide with where condition for safety
-            return np.divide(num, den, out=np.full_like(num, default, dtype=float), where=(den != 0))
+            return np.divide(
+                num, den, out=np.full_like(num, default, dtype=float), where=(den != 0)
+            )
 
         # Moving averages with safe calculations
         for period in self.lookback_periods:
@@ -118,7 +132,11 @@ class FeatureExtractor:
 
                 features[f"sma_{period}_ratio"] = safe_divide(close, sma, 1.0)
                 features[f"ema_{period}_ratio"] = safe_divide(close, ema, 1.0)
-                features[f"sma_ema_diff_{period}"] = safe_divide(sma - ema, close, 0.0) if sma is not None and ema is not None else 0.0
+                features[f"sma_ema_diff_{period}"] = (
+                    safe_divide(sma - ema, close, 0.0)
+                    if sma is not None and ema is not None
+                    else 0.0
+                )
             else:
                 features[f"sma_{period}_ratio"] = 1.0
                 features[f"ema_{period}_ratio"] = 1.0
@@ -192,8 +210,12 @@ class FeatureExtractor:
 
                 # Safe BB position calculation
                 bb_width = features["bb_upper"] - features["bb_lower"]
-                features["bb_position"] = safe_divide(close - features["bb_lower"], bb_width, 0.5)
-                features["bb_squeeze"] = safe_divide(bb_width, features["bb_middle"], 0.1)
+                features["bb_position"] = safe_divide(
+                    close - features["bb_lower"], bb_width, 0.5
+                )
+                features["bb_squeeze"] = safe_divide(
+                    bb_width, features["bb_middle"], 0.1
+                )
             else:
                 # Fallback to manual calculation with safe operations
                 if close is not None:
@@ -205,8 +227,12 @@ class FeatureExtractor:
 
                     # Safe BB calculations
                     bb_width = features["bb_upper"] - features["bb_lower"]
-                    features["bb_position"] = safe_divide(close - features["bb_lower"], bb_width, 0.5)
-                    features["bb_squeeze"] = safe_divide(bb_width, features["bb_middle"], 0.1)
+                    features["bb_position"] = safe_divide(
+                        close - features["bb_lower"], bb_width, 0.5
+                    )
+                    features["bb_squeeze"] = safe_divide(
+                        bb_width, features["bb_middle"], 0.1
+                    )
                 else:
                     features["bb_upper"] = 0
                     features["bb_middle"] = 0
@@ -224,8 +250,12 @@ class FeatureExtractor:
 
                 # Safe BB calculations
                 bb_width = features["bb_upper"] - features["bb_lower"]
-                features["bb_position"] = safe_divide(close - features["bb_lower"], bb_width, 0.5)
-                features["bb_squeeze"] = safe_divide(bb_width, features["bb_middle"], 0.1)
+                features["bb_position"] = safe_divide(
+                    close - features["bb_lower"], bb_width, 0.5
+                )
+                features["bb_squeeze"] = safe_divide(
+                    bb_width, features["bb_middle"], 0.1
+                )
             else:
                 features["bb_upper"] = 0
                 features["bb_middle"] = 0
@@ -256,7 +286,9 @@ class FeatureExtractor:
         # ATR (Average True Range) with safe calculation
         if high is not None and low is not None and close is not None:
             features["atr"] = ta.atr(high, low, close)
-            features["atr_ratio"] = safe_divide(features["atr"], close, 0.02)  # Default 2% ATR ratio
+            features["atr_ratio"] = safe_divide(
+                features["atr"], close, 0.02
+            )  # Default 2% ATR ratio
         else:
             features["atr"] = 0
             features["atr_ratio"] = 0.02
@@ -283,7 +315,9 @@ class FeatureExtractor:
             num = np.asarray(numerator)
             den = np.asarray(denominator)
             # Use numpy divide with where condition for safety
-            return np.divide(num, den, out=np.full_like(num, default, dtype=float), where=(den != 0))
+            return np.divide(
+                num, den, out=np.full_like(num, default, dtype=float), where=(den != 0)
+            )
 
         # Rolling statistics
         for period in self.lookback_periods:
@@ -293,7 +327,9 @@ class FeatureExtractor:
             vol_short = returns.rolling(period).std()
             vol_long = returns.rolling(period * 2).std()
             features[f"volatility_{period}"] = vol_short
-            features[f"volatility_ratio_{period}"] = safe_divide(vol_short, vol_long, 1.0)
+            features[f"volatility_ratio_{period}"] = safe_divide(
+                vol_short, vol_long, 1.0
+            )
 
             # Skewness and Kurtosis
             features[f"skewness_{period}"] = returns.rolling(period).skew()
@@ -303,14 +339,20 @@ class FeatureExtractor:
             if "high" in data.columns and "low" in data.columns:
                 rolling_high = data["high"].rolling(period).max()
                 rolling_low = data["low"].rolling(period).min()
-                features[f"high_ratio_{period}"] = safe_divide(data["close"], rolling_high, 1.0)
-                features[f"low_ratio_{period}"] = safe_divide(data["close"], rolling_low, 1.0)
+                features[f"high_ratio_{period}"] = safe_divide(
+                    data["close"], rolling_high, 1.0
+                )
+                features[f"low_ratio_{period}"] = safe_divide(
+                    data["close"], rolling_low, 1.0
+                )
             else:
                 features[f"high_ratio_{period}"] = 1.0
                 features[f"low_ratio_{period}"] = 1.0
 
             # Momentum features with safe division
-            features[f"momentum_{period}"] = safe_divide(data["close"], data["close"].shift(period), 1.0)
+            features[f"momentum_{period}"] = safe_divide(
+                data["close"], data["close"].shift(period), 1.0
+            )
             features[f"roc_{period}"] = data["close"].pct_change(periods=period)
 
         return features
@@ -335,19 +377,25 @@ class FeatureExtractor:
             num = np.asarray(numerator)
             den = np.asarray(denominator)
             # Use numpy divide with where condition for safety
-            return np.divide(num, den, out=np.full_like(num, default, dtype=float), where=(den != 0))
+            return np.divide(
+                num, den, out=np.full_like(num, default, dtype=float), where=(den != 0)
+            )
 
         # Bid-ask spread proxy (high-low spread) with safe calculation
         if "high" in data.columns and "low" in data.columns:
             mid_price = (data["high"] + data["low"]) / 2
-            features["spread_proxy"] = safe_divide(data["high"] - data["low"], mid_price, 0.02)
+            features["spread_proxy"] = safe_divide(
+                data["high"] - data["low"], mid_price, 0.02
+            )
         else:
             features["spread_proxy"] = 0.02
 
         # Price impact measures with safe calculations
         if "volume" in data.columns:
             returns_abs = abs(data["close"].pct_change())
-            features["amihud_illiquidity"] = safe_divide(returns_abs, data["volume"], 0.0)
+            features["amihud_illiquidity"] = safe_divide(
+                returns_abs, data["volume"], 0.0
+            )
 
             if "high" in data.columns and "low" in data.columns:
                 features["volume_weighted_price"] = (
@@ -362,13 +410,19 @@ class FeatureExtractor:
         # Intraday patterns with safe calculations
         if "open" in data.columns and "close" in data.columns:
             prev_close = data["close"].shift(1)
-            features["open_gap"] = safe_divide(data["open"] - prev_close, prev_close, 0.0)
+            features["open_gap"] = safe_divide(
+                data["open"] - prev_close, prev_close, 0.0
+            )
         else:
             features["open_gap"] = 0.0
 
         if "high" in data.columns and "low" in data.columns and "close" in data.columns:
-            features["close_to_high"] = safe_divide(data["high"] - data["close"], data["close"], 0.0)
-            features["close_to_low"] = safe_divide(data["close"] - data["low"], data["close"], 0.0)
+            features["close_to_high"] = safe_divide(
+                data["high"] - data["close"], data["close"], 0.0
+            )
+            features["close_to_low"] = safe_divide(
+                data["close"] - data["low"], data["close"], 0.0
+            )
         else:
             features["close_to_high"] = 0.0
             features["close_to_low"] = 0.0
@@ -388,9 +442,9 @@ class FeatureExtractor:
         Returns:
             Target variable (0: sell, 1: hold, 2: buy)
         """
-        close = data.get('close', data.get('Close'))
-        forward_returns = (
-            close.pct_change(periods=forward_periods).shift(-forward_periods)
+        close = data.get("close", data.get("Close"))
+        forward_returns = close.pct_change(periods=forward_periods).shift(
+            -forward_periods
         )
 
         target = pd.Series(1, index=data.index)  # Default to hold
@@ -452,11 +506,18 @@ class FeatureExtractor:
                 all_features = pd.concat(feature_dfs, axis=1)
             else:
                 # Fallback: create minimal feature set
-                logger.warning("No features extracted successfully, creating minimal fallback features")
-                all_features = pd.DataFrame({
-                    'returns': data.get('close', pd.Series(0, index=data.index)).pct_change().fillna(0),
-                    'close': data.get('close', pd.Series(0, index=data.index))
-                }, index=data.index)
+                logger.warning(
+                    "No features extracted successfully, creating minimal fallback features"
+                )
+                all_features = pd.DataFrame(
+                    {
+                        "returns": data.get("close", pd.Series(0, index=data.index))
+                        .pct_change()
+                        .fillna(0),
+                        "close": data.get("close", pd.Series(0, index=data.index)),
+                    },
+                    index=data.index,
+                )
 
             # Handle missing values with robust method
             if not all_features.empty:
@@ -477,10 +538,16 @@ class FeatureExtractor:
         except Exception as e:
             logger.error(f"Critical error extracting features: {e}")
             # Return minimal fallback instead of raising
-            return pd.DataFrame({
-                'returns': pd.Series(0, index=data.index if data is not None else [0]),
-                'close': pd.Series(0, index=data.index if data is not None else [0])
-            })
+            return pd.DataFrame(
+                {
+                    "returns": pd.Series(
+                        0, index=data.index if data is not None else [0]
+                    ),
+                    "close": pd.Series(
+                        0, index=data.index if data is not None else [0]
+                    ),
+                }
+            )
 
 
 class MLPredictor:
@@ -582,7 +649,9 @@ class MLPredictor:
             target_dist = {int(k): int(v) for k, v in target_dist.items()}
 
             metrics = {
-                "train_accuracy": float(train_score),  # Convert numpy float to Python float
+                "train_accuracy": float(
+                    train_score
+                ),  # Convert numpy float to Python float
                 "n_samples": int(len(features)),
                 "n_features": int(len(features.columns)),
                 "target_distribution": target_dist,

@@ -32,12 +32,7 @@ class MetricsMiddleware:
         self.collector = get_backtesting_metrics()
         self.logger = get_logger(f"{__name__}.MetricsMiddleware")
 
-    def track_api_call(
-        self,
-        provider: str,
-        endpoint: str,
-        method: str = "GET"
-    ):
+    def track_api_call(self, provider: str, endpoint: str, method: str = "GET"):
         """
         Decorator to automatically track API call metrics.
 
@@ -47,6 +42,7 @@ class MetricsMiddleware:
                 # API call logic here
                 pass
         """
+
         def decorator(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -58,7 +54,7 @@ class MetricsMiddleware:
                     result = await func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    status_code = getattr(e, 'status_code', 500)
+                    status_code = getattr(e, "status_code", 500)
                     error_type = type(e).__name__
                     raise
                 finally:
@@ -69,7 +65,7 @@ class MetricsMiddleware:
                         method=method,
                         status_code=status_code,
                         duration=duration,
-                        error_type=error_type
+                        error_type=error_type,
                     )
 
             @wraps(func)
@@ -82,7 +78,7 @@ class MetricsMiddleware:
                     result = func(*args, **kwargs)
                     return result
                 except Exception as e:
-                    status_code = getattr(e, 'status_code', 500)
+                    status_code = getattr(e, "status_code", 500)
                     error_type = type(e).__name__
                     raise
                 finally:
@@ -93,7 +89,7 @@ class MetricsMiddleware:
                         method=method,
                         status_code=status_code,
                         duration=duration,
-                        error_type=error_type
+                        error_type=error_type,
                     )
 
             # Return appropriate wrapper based on function type
@@ -105,10 +101,7 @@ class MetricsMiddleware:
         return decorator
 
     def track_strategy_execution(
-        self,
-        strategy_name: str,
-        symbol: str,
-        timeframe: str = "1D"
+        self, strategy_name: str, symbol: str, timeframe: str = "1D"
     ):
         """
         Decorator to automatically track strategy execution metrics.
@@ -119,6 +112,7 @@ class MetricsMiddleware:
                 # Strategy execution logic here
                 return results
         """
+
         def decorator(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -126,7 +120,7 @@ class MetricsMiddleware:
                     strategy_name=strategy_name,
                     symbol=symbol,
                     timeframe=timeframe,
-                    data_points=kwargs.get('data_points', 0)
+                    data_points=kwargs.get("data_points", 0),
                 ):
                     result = await func(*args, **kwargs)
 
@@ -144,7 +138,7 @@ class MetricsMiddleware:
                     strategy_name=strategy_name,
                     symbol=symbol,
                     timeframe=timeframe,
-                    data_points=kwargs.get('data_points', 0)
+                    data_points=kwargs.get("data_points", 0),
                 ):
                     result = func(*args, **kwargs)
 
@@ -174,10 +168,12 @@ class MetricsMiddleware:
                 # VectorBT analysis logic here
                 pass
         """
+
         def decorator(func):
             @wraps(func)
             async def async_wrapper(*args, **kwargs):
                 import psutil
+
                 process = psutil.Process()
                 start_memory = process.memory_info().rss / 1024 / 1024
                 start_time = time.time()
@@ -192,20 +188,25 @@ class MetricsMiddleware:
 
                     # Determine data size category
                     data_size = "unknown"
-                    if 'data' in kwargs:
-                        data_length = len(kwargs['data']) if hasattr(kwargs['data'], '__len__') else 0
+                    if "data" in kwargs:
+                        data_length = (
+                            len(kwargs["data"])
+                            if hasattr(kwargs["data"], "__len__")
+                            else 0
+                        )
                         data_size = self.collector._categorize_data_size(data_length)
 
                     self.collector.track_resource_usage(
                         operation_type=operation_type,
                         memory_mb=memory_used,
                         computation_time=duration,
-                        data_size=data_size
+                        data_size=data_size,
                     )
 
             @wraps(func)
             def sync_wrapper(*args, **kwargs):
                 import psutil
+
                 process = psutil.Process()
                 start_memory = process.memory_info().rss / 1024 / 1024
                 start_time = time.time()
@@ -220,15 +221,19 @@ class MetricsMiddleware:
 
                     # Determine data size category
                     data_size = "unknown"
-                    if 'data' in kwargs:
-                        data_length = len(kwargs['data']) if hasattr(kwargs['data'], '__len__') else 0
+                    if "data" in kwargs:
+                        data_length = (
+                            len(kwargs["data"])
+                            if hasattr(kwargs["data"], "__len__")
+                            else 0
+                        )
                         data_size = self.collector._categorize_data_size(data_length)
 
                     self.collector.track_resource_usage(
                         operation_type=operation_type,
                         memory_mb=memory_used,
                         computation_time=duration,
-                        data_size=data_size
+                        data_size=data_size,
                     )
 
             # Return appropriate wrapper based on function type
@@ -241,10 +246,7 @@ class MetricsMiddleware:
 
     @asynccontextmanager
     async def track_database_operation(
-        self,
-        query_type: str,
-        table_name: str,
-        operation: str
+        self, query_type: str, table_name: str, operation: str
     ):
         """
         Context manager to track database operation performance.
@@ -262,25 +264,21 @@ class MetricsMiddleware:
                 query_type=query_type,
                 table_name=table_name,
                 operation=operation,
-                duration=duration
+                duration=duration,
             )
 
     def _extract_and_track_performance(
-        self,
-        result: dict[str, Any],
-        strategy_name: str,
-        symbol: str,
-        timeframe: str
+        self, result: dict[str, Any], strategy_name: str, symbol: str, timeframe: str
     ):
         """Extract and track strategy performance metrics from results."""
         try:
             # Extract common performance metrics from result dictionary
-            returns = result.get('total_return', result.get('returns', 0.0))
-            sharpe_ratio = result.get('sharpe_ratio', 0.0)
-            max_drawdown = result.get('max_drawdown', result.get('max_dd', 0.0))
-            win_rate = result.get('win_rate', result.get('win_ratio', 0.0))
-            total_trades = result.get('total_trades', result.get('num_trades', 0))
-            winning_trades = result.get('winning_trades', 0)
+            returns = result.get("total_return", result.get("returns", 0.0))
+            sharpe_ratio = result.get("sharpe_ratio", 0.0)
+            max_drawdown = result.get("max_drawdown", result.get("max_dd", 0.0))
+            win_rate = result.get("win_rate", result.get("win_ratio", 0.0))
+            total_trades = result.get("total_trades", result.get("num_trades", 0))
+            winning_trades = result.get("winning_trades", 0)
 
             # Convert win rate to percentage if it's in decimal form
             if win_rate <= 1.0:
@@ -295,10 +293,8 @@ class MetricsMiddleware:
                 winning_trades = int(total_trades * (win_rate / 100))
 
             # Determine period from timeframe or use default
-            period_mapping = {
-                '1D': '1Y', '1H': '3M', '5m': '1M', '1m': '1W'
-            }
-            period = period_mapping.get(timeframe, '1Y')
+            period_mapping = {"1D": "1Y", "1H": "3M", "5m": "1M", "1m": "1W"}
+            period = period_mapping.get(timeframe, "1Y")
 
             # Track the performance metrics
             self.collector.track_strategy_performance(
@@ -310,26 +306,30 @@ class MetricsMiddleware:
                 max_drawdown=max_drawdown,
                 win_rate=win_rate,
                 total_trades=total_trades,
-                winning_trades=winning_trades
+                winning_trades=winning_trades,
             )
 
             self.logger.debug(
                 f"Tracked strategy performance for {strategy_name}",
                 extra={
-                    'strategy': strategy_name,
-                    'symbol': symbol,
-                    'returns': returns,
-                    'sharpe_ratio': sharpe_ratio,
-                    'max_drawdown': max_drawdown,
-                    'win_rate': win_rate,
-                    'total_trades': total_trades
-                }
+                    "strategy": strategy_name,
+                    "symbol": symbol,
+                    "returns": returns,
+                    "sharpe_ratio": sharpe_ratio,
+                    "max_drawdown": max_drawdown,
+                    "win_rate": win_rate,
+                    "total_trades": total_trades,
+                },
             )
 
         except Exception as e:
             self.logger.warning(
                 f"Failed to extract performance metrics from result: {e}",
-                extra={'result_keys': list(result.keys()) if isinstance(result, dict) else 'not_dict'}
+                extra={
+                    "result_keys": list(result.keys())
+                    if isinstance(result, dict)
+                    else "not_dict"
+                },
             )
 
 
@@ -353,7 +353,9 @@ def track_api_call(provider: str, endpoint: str, method: str = "GET"):
 
 def track_strategy_execution(strategy_name: str, symbol: str, timeframe: str = "1D"):
     """Convenience decorator for strategy execution tracking."""
-    return get_metrics_middleware().track_strategy_execution(strategy_name, symbol, timeframe)
+    return get_metrics_middleware().track_strategy_execution(
+        strategy_name, symbol, timeframe
+    )
 
 
 def track_resource_usage(operation_type: str):
@@ -363,7 +365,9 @@ def track_resource_usage(operation_type: str):
 
 def track_database_operation(query_type: str, table_name: str, operation: str):
     """Convenience context manager for database operation tracking."""
-    return get_metrics_middleware().track_database_operation(query_type, table_name, operation)
+    return get_metrics_middleware().track_database_operation(
+        query_type, table_name, operation
+    )
 
 
 # Example circuit breaker with metrics
@@ -380,7 +384,7 @@ class MetricsCircuitBreaker:
         endpoint: str,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
-        expected_exception: type = Exception
+        expected_exception: type = Exception,
     ):
         self.provider = provider
         self.endpoint = endpoint
@@ -390,21 +394,23 @@ class MetricsCircuitBreaker:
 
         self.failure_count = 0
         self.last_failure_time = 0
-        self.state = 'closed'  # closed, open, half-open
+        self.state = "closed"  # closed, open, half-open
 
         self.collector = get_backtesting_metrics()
         self.logger = get_logger(f"{__name__}.MetricsCircuitBreaker")
 
     async def call(self, func: Callable, *args, **kwargs):
         """Execute function with circuit breaker protection and metrics tracking."""
-        if self.state == 'open':
+        if self.state == "open":
             if time.time() - self.last_failure_time > self.recovery_timeout:
-                self.state = 'half-open'
+                self.state = "half-open"
                 self.collector.track_circuit_breaker(
                     self.provider, self.endpoint, self.state, 0
                 )
             else:
-                raise Exception(f"Circuit breaker is open for {self.provider}/{self.endpoint}")
+                raise Exception(
+                    f"Circuit breaker is open for {self.provider}/{self.endpoint}"
+                )
 
         try:
             if asyncio.iscoroutinefunction(func):
@@ -413,13 +419,15 @@ class MetricsCircuitBreaker:
                 result = func(*args, **kwargs)
 
             # Success - reset failure count and close circuit if half-open
-            if self.state == 'half-open':
-                self.state = 'closed'
+            if self.state == "half-open":
+                self.state = "closed"
                 self.failure_count = 0
                 self.collector.track_circuit_breaker(
                     self.provider, self.endpoint, self.state, 0
                 )
-                self.logger.info(f"Circuit breaker closed for {self.provider}/{self.endpoint}")
+                self.logger.info(
+                    f"Circuit breaker closed for {self.provider}/{self.endpoint}"
+                )
 
             return result
 
@@ -434,7 +442,7 @@ class MetricsCircuitBreaker:
 
             # Open circuit if threshold reached
             if self.failure_count >= self.failure_threshold:
-                self.state = 'open'
+                self.state = "open"
                 self.collector.track_circuit_breaker(
                     self.provider, self.endpoint, self.state, 0
                 )

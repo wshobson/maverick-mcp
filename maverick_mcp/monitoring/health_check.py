@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class HealthStatus(str, Enum):
     """Health status enumeration."""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -27,6 +28,7 @@ class HealthStatus(str, Enum):
 @dataclass
 class ComponentHealth:
     """Health information for a component."""
+
     name: str
     status: HealthStatus
     message: str
@@ -38,6 +40,7 @@ class ComponentHealth:
 @dataclass
 class SystemHealth:
     """Overall system health information."""
+
     status: HealthStatus
     components: dict[str, ComponentHealth]
     overall_response_time_ms: float
@@ -98,7 +101,7 @@ class HealthChecker:
             if component_name in self._component_checkers:
                 task = asyncio.create_task(
                     self._check_component_with_timeout(component_name),
-                    name=f"health_check_{component_name}"
+                    name=f"health_check_{component_name}",
                 )
                 tasks.append((component_name, task))
 
@@ -112,7 +115,7 @@ class HealthChecker:
                     name=component_name,
                     status=HealthStatus.UNHEALTHY,
                     message=f"Health check failed: {str(e)}",
-                    last_check=datetime.now(UTC)
+                    last_check=datetime.now(UTC),
                 )
 
         # Calculate overall response time
@@ -127,7 +130,7 @@ class HealthChecker:
             overall_response_time_ms=overall_response_time,
             timestamp=datetime.now(UTC),
             uptime_seconds=time.time() - self.start_time,
-            version=self._get_application_version()
+            version=self._get_application_version(),
         )
 
     async def _check_component_with_timeout(
@@ -145,15 +148,14 @@ class HealthChecker:
         """
         try:
             return await asyncio.wait_for(
-                self._component_checkers[component_name](),
-                timeout=timeout
+                self._component_checkers[component_name](), timeout=timeout
             )
         except TimeoutError:
             return ComponentHealth(
                 name=component_name,
                 status=HealthStatus.UNHEALTHY,
                 message=f"Health check timed out after {timeout}s",
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
     async def _check_database_health(self) -> ComponentHealth:
@@ -178,7 +180,7 @@ class HealthChecker:
                 message="Database connection successful",
                 response_time_ms=response_time,
                 last_check=datetime.now(UTC),
-                details={"connection_type": "SQLAlchemy"}
+                details={"connection_type": "SQLAlchemy"},
             )
 
         except Exception as e:
@@ -187,7 +189,7 @@ class HealthChecker:
                 status=HealthStatus.UNHEALTHY,
                 message=f"Database connection failed: {str(e)}",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
     async def _check_cache_health(self) -> ComponentHealth:
@@ -203,19 +205,19 @@ class HealthChecker:
 
             if redis_client:
                 # Test Redis connection
-                await asyncio.get_event_loop().run_in_executor(
-                    None, redis_client.ping
-                )
+                await asyncio.get_event_loop().run_in_executor(None, redis_client.ping)
                 cache_details["type"] = "redis"
                 cache_details["redis_connected"] = True
 
             # Get cache statistics
             stats = get_cache_stats()
-            cache_details.update({
-                "hit_rate_percent": stats.get("hit_rate_percent", 0),
-                "total_requests": stats.get("total_requests", 0),
-                "memory_cache_size": stats.get("memory_cache_size", 0)
-            })
+            cache_details.update(
+                {
+                    "hit_rate_percent": stats.get("hit_rate_percent", 0),
+                    "total_requests": stats.get("total_requests", 0),
+                    "memory_cache_size": stats.get("memory_cache_size", 0),
+                }
+            )
 
             response_time = (time.time() - start_time) * 1000
 
@@ -225,7 +227,7 @@ class HealthChecker:
                 message="Cache system operational",
                 response_time_ms=response_time,
                 last_check=datetime.now(UTC),
-                details=cache_details
+                details=cache_details,
             )
 
         except Exception as e:
@@ -234,7 +236,7 @@ class HealthChecker:
                 status=HealthStatus.DEGRADED,
                 message=f"Cache issues detected: {str(e)}",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
     async def _check_tiingo_api_health(self) -> ComponentHealth:
@@ -252,7 +254,7 @@ class HealthChecker:
                     status=HealthStatus.UNKNOWN,
                     message="Tiingo API key not configured",
                     response_time_ms=(time.time() - start_time) * 1000,
-                    last_check=datetime.now(UTC)
+                    last_check=datetime.now(UTC),
                 )
 
             # Test API with a simple quote request
@@ -268,7 +270,7 @@ class HealthChecker:
                     message="Tiingo API responding correctly",
                     response_time_ms=response_time,
                     last_check=datetime.now(UTC),
-                    details={"test_symbol": "AAPL", "price_available": True}
+                    details={"test_symbol": "AAPL", "price_available": True},
                 )
             else:
                 return ComponentHealth(
@@ -276,7 +278,7 @@ class HealthChecker:
                     status=HealthStatus.DEGRADED,
                     message="Tiingo API responding but data may be incomplete",
                     response_time_ms=response_time,
-                    last_check=datetime.now(UTC)
+                    last_check=datetime.now(UTC),
                 )
 
         except Exception as e:
@@ -285,7 +287,7 @@ class HealthChecker:
                 status=HealthStatus.UNHEALTHY,
                 message=f"Tiingo API check failed: {str(e)}",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
     async def _check_openrouter_api_health(self) -> ComponentHealth:
@@ -302,7 +304,7 @@ class HealthChecker:
                     status=HealthStatus.UNKNOWN,
                     message="OpenRouter API key not configured",
                     response_time_ms=(time.time() - start_time) * 1000,
-                    last_check=datetime.now(UTC)
+                    last_check=datetime.now(UTC),
                 )
 
             # For now, just check if the key is configured
@@ -315,7 +317,7 @@ class HealthChecker:
                 message="OpenRouter API key configured",
                 response_time_ms=response_time,
                 last_check=datetime.now(UTC),
-                details={"api_key_configured": True}
+                details={"api_key_configured": True},
             )
 
         except Exception as e:
@@ -324,7 +326,7 @@ class HealthChecker:
                 status=HealthStatus.UNHEALTHY,
                 message=f"OpenRouter API check failed: {str(e)}",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
     async def _check_exa_api_health(self) -> ComponentHealth:
@@ -341,7 +343,7 @@ class HealthChecker:
                     status=HealthStatus.UNKNOWN,
                     message="Exa API key not configured",
                     response_time_ms=(time.time() - start_time) * 1000,
-                    last_check=datetime.now(UTC)
+                    last_check=datetime.now(UTC),
                 )
 
             # For now, just check if the key is configured
@@ -354,7 +356,7 @@ class HealthChecker:
                 message="Exa API key configured",
                 response_time_ms=response_time,
                 last_check=datetime.now(UTC),
-                details={"api_key_configured": True}
+                details={"api_key_configured": True},
             )
 
         except Exception as e:
@@ -363,7 +365,7 @@ class HealthChecker:
                 status=HealthStatus.UNHEALTHY,
                 message=f"Exa API check failed: {str(e)}",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
     async def _check_system_resources_health(self) -> ComponentHealth:
@@ -376,25 +378,41 @@ class HealthChecker:
             # Get system resource usage
             cpu_percent = psutil.cpu_percent(interval=1)
             memory = psutil.virtual_memory()
-            disk = psutil.disk_usage('/')
+            disk = psutil.disk_usage("/")
 
             # Determine status based on resource usage
             status = HealthStatus.HEALTHY
             messages = []
 
             if cpu_percent > 80:
-                status = HealthStatus.DEGRADED if cpu_percent < 90 else HealthStatus.UNHEALTHY
+                status = (
+                    HealthStatus.DEGRADED
+                    if cpu_percent < 90
+                    else HealthStatus.UNHEALTHY
+                )
                 messages.append(f"High CPU usage: {cpu_percent:.1f}%")
 
             if memory.percent > 85:
-                status = HealthStatus.DEGRADED if memory.percent < 95 else HealthStatus.UNHEALTHY
+                status = (
+                    HealthStatus.DEGRADED
+                    if memory.percent < 95
+                    else HealthStatus.UNHEALTHY
+                )
                 messages.append(f"High memory usage: {memory.percent:.1f}%")
 
             if disk.percent > 90:
-                status = HealthStatus.DEGRADED if disk.percent < 95 else HealthStatus.UNHEALTHY
+                status = (
+                    HealthStatus.DEGRADED
+                    if disk.percent < 95
+                    else HealthStatus.UNHEALTHY
+                )
                 messages.append(f"High disk usage: {disk.percent:.1f}%")
 
-            message = "; ".join(messages) if messages else "System resources within normal limits"
+            message = (
+                "; ".join(messages)
+                if messages
+                else "System resources within normal limits"
+            )
 
             response_time = (time.time() - start_time) * 1000
 
@@ -409,8 +427,8 @@ class HealthChecker:
                     "memory_percent": memory.percent,
                     "disk_percent": disk.percent,
                     "memory_available_gb": memory.available / (1024**3),
-                    "disk_free_gb": disk.free / (1024**3)
-                }
+                    "disk_free_gb": disk.free / (1024**3),
+                },
             )
 
         except ImportError:
@@ -419,7 +437,7 @@ class HealthChecker:
                 status=HealthStatus.UNKNOWN,
                 message="psutil not available for system monitoring",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
         except Exception as e:
             return ComponentHealth(
@@ -427,10 +445,12 @@ class HealthChecker:
                 status=HealthStatus.UNHEALTHY,
                 message=f"System resource check failed: {str(e)}",
                 response_time_ms=(time.time() - start_time) * 1000,
-                last_check=datetime.now(UTC)
+                last_check=datetime.now(UTC),
             )
 
-    def _calculate_overall_status(self, components: dict[str, ComponentHealth]) -> HealthStatus:
+    def _calculate_overall_status(
+        self, components: dict[str, ComponentHealth]
+    ) -> HealthStatus:
         """
         Calculate overall system health status based on component health.
 
@@ -464,6 +484,7 @@ class HealthChecker:
         """Get application version."""
         try:
             from maverick_mcp import __version__
+
             return __version__
         except ImportError:
             return None
@@ -482,8 +503,10 @@ class HealthChecker:
             ValueError: If component_name is not supported
         """
         if component_name not in self._component_checkers:
-            raise ValueError(f"Unknown component: {component_name}. "
-                           f"Supported components: {list(self._component_checkers.keys())}")
+            raise ValueError(
+                f"Unknown component: {component_name}. "
+                f"Supported components: {list(self._component_checkers.keys())}"
+            )
 
         return await self._check_component_with_timeout(component_name)
 
@@ -504,22 +527,21 @@ class HealthChecker:
             Dictionary with health status and component information
         """
         import asyncio
+
         try:
             # Try to get the current event loop
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 # We're already in an async context, return simplified status
                 return {
-                    'status': 'HEALTHY',
-                    'components': {
-                        name: {
-                            'status': 'UNKNOWN',
-                            'message': 'Check pending'
-                        } for name in self._component_checkers.keys()
+                    "status": "HEALTHY",
+                    "components": {
+                        name: {"status": "UNKNOWN", "message": "Check pending"}
+                        for name in self._component_checkers.keys()
                     },
-                    'timestamp': datetime.now(UTC).isoformat(),
-                    'message': 'Health check in async context',
-                    'uptime_seconds': time.time() - self.start_time
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "message": "Health check in async context",
+                    "uptime_seconds": time.time() - self.start_time,
                 }
             else:
                 # Run the async check in the existing loop
@@ -551,20 +573,23 @@ class HealthChecker:
             Dictionary representation
         """
         return {
-            'status': health.status.value,
-            'components': {
+            "status": health.status.value,
+            "components": {
                 name: {
-                    'status': comp.status.value,
-                    'message': comp.message,
-                    'response_time_ms': comp.response_time_ms,
-                    'details': comp.details,
-                    'last_check': comp.last_check.isoformat() if comp.last_check else None
-                } for name, comp in health.components.items()
+                    "status": comp.status.value,
+                    "message": comp.message,
+                    "response_time_ms": comp.response_time_ms,
+                    "details": comp.details,
+                    "last_check": comp.last_check.isoformat()
+                    if comp.last_check
+                    else None,
+                }
+                for name, comp in health.components.items()
             },
-            'overall_response_time_ms': health.overall_response_time_ms,
-            'timestamp': health.timestamp.isoformat(),
-            'uptime_seconds': health.uptime_seconds,
-            'version': health.version
+            "overall_response_time_ms": health.overall_response_time_ms,
+            "timestamp": health.timestamp.isoformat(),
+            "uptime_seconds": health.uptime_seconds,
+            "version": health.version,
         }
 
 

@@ -35,13 +35,24 @@ logger = logging.getLogger(__name__)
 
 # Strategy definitions for comprehensive testing
 TRADITIONAL_STRATEGIES = [
-    "sma_cross", "ema_cross", "rsi", "macd", "bollinger",
-    "momentum", "breakout", "mean_reversion", "volume_momentum"
+    "sma_cross",
+    "ema_cross",
+    "rsi",
+    "macd",
+    "bollinger",
+    "momentum",
+    "breakout",
+    "mean_reversion",
+    "volume_momentum",
 ]
 
 ML_STRATEGIES = [
-    "ml_predictor", "adaptive", "ensemble",
-    "regime_aware", "online_learning", "reinforcement_learning"
+    "ml_predictor",
+    "adaptive",
+    "ensemble",
+    "regime_aware",
+    "online_learning",
+    "reinforcement_learning",
 ]
 
 ALL_STRATEGIES = TRADITIONAL_STRATEGIES + ML_STRATEGIES
@@ -77,23 +88,24 @@ class TestAdvancedBacktestWorkflowIntegration:
         volumes = np.maximum(volumes, 100000)  # Minimum volume
         volumes = volumes.astype(int)  # Convert back to integers
 
-        stock_data = pd.DataFrame({
-            "Open": prices * np.random.uniform(0.995, 1.005, len(dates)),
-            "High": prices * np.random.uniform(1.002, 1.025, len(dates)),
-            "Low": prices * np.random.uniform(0.975, 0.998, len(dates)),
-            "Close": prices,
-            "Volume": volumes.astype(int),
-            "Adj Close": prices,
-        }, index=dates)
+        stock_data = pd.DataFrame(
+            {
+                "Open": prices * np.random.uniform(0.995, 1.005, len(dates)),
+                "High": prices * np.random.uniform(1.002, 1.025, len(dates)),
+                "Low": prices * np.random.uniform(0.975, 0.998, len(dates)),
+                "Close": prices,
+                "Volume": volumes.astype(int),
+                "Adj Close": prices,
+            },
+            index=dates,
+        )
 
         # Ensure OHLC constraints
         stock_data["High"] = np.maximum(
-            stock_data["High"],
-            np.maximum(stock_data["Open"], stock_data["Close"])
+            stock_data["High"], np.maximum(stock_data["Open"], stock_data["Close"])
         )
         stock_data["Low"] = np.minimum(
-            stock_data["Low"],
-            np.minimum(stock_data["Open"], stock_data["Close"])
+            stock_data["Low"], np.minimum(stock_data["Open"], stock_data["Close"])
         )
 
         provider.get_stock_data.return_value = stock_data
@@ -105,7 +117,9 @@ class TestAdvancedBacktestWorkflowIntegration:
         engine = VectorBTEngine(data_provider=enhanced_stock_data_provider)
         return engine
 
-    async def test_all_15_strategies_integration(self, complete_vectorbt_engine, benchmark_timer):
+    async def test_all_15_strategies_integration(
+        self, complete_vectorbt_engine, benchmark_timer
+    ):
         """Test all 15 strategies (9 traditional + 6 ML) in complete workflow."""
         results = {}
         failed_strategies = []
@@ -153,11 +167,17 @@ class TestAdvancedBacktestWorkflowIntegration:
                             "total_trades": np.random.randint(10, 100),
                         },
                         "trades": [],
-                        "equity_curve": np.random.cumsum(np.random.normal(0.001, 0.02, 252)).tolist(),
+                        "equity_curve": np.random.cumsum(
+                            np.random.normal(0.001, 0.02, 252)
+                        ).tolist(),
                         "ml_specific": {
                             "model_accuracy": np.random.uniform(0.55, 0.85),
-                            "feature_importance": {"momentum": 0.3, "volatility": 0.25, "volume": 0.45},
-                        }
+                            "feature_importance": {
+                                "momentum": 0.3,
+                                "volatility": 0.25,
+                                "volume": 0.45,
+                            },
+                        },
                     }
                     results[strategy] = mock_ml_result
                     logger.info(f"✓ {strategy} ML strategy simulated successfully")
@@ -198,7 +218,9 @@ class TestAdvancedBacktestWorkflowIntegration:
             "results": results,
         }
 
-    async def test_parallel_execution_capabilities(self, complete_vectorbt_engine, benchmark_timer):
+    async def test_parallel_execution_capabilities(
+        self, complete_vectorbt_engine, benchmark_timer
+    ):
         """Test parallel execution of multiple backtests."""
         symbols = ["AAPL", "GOOGL", "MSFT", "TSLA", "AMZN", "META", "NFLX", "NVDA"]
         strategies = ["sma_cross", "rsi", "macd", "bollinger"]
@@ -214,9 +236,19 @@ class TestAdvancedBacktestWorkflowIntegration:
                     start_date="2023-01-01",
                     end_date="2023-12-31",
                 )
-                return {"symbol": symbol, "strategy": strategy, "result": result, "success": True}
+                return {
+                    "symbol": symbol,
+                    "strategy": strategy,
+                    "result": result,
+                    "success": True,
+                }
             except Exception as e:
-                return {"symbol": symbol, "strategy": strategy, "error": str(e), "success": False}
+                return {
+                    "symbol": symbol,
+                    "strategy": strategy,
+                    "error": str(e),
+                    "success": False,
+                }
 
         with benchmark_timer() as timer:
             # Create all combinations
@@ -233,15 +265,16 @@ class TestAdvancedBacktestWorkflowIntegration:
                     return await task
 
             results = await asyncio.gather(
-                *[run_with_semaphore(task) for task in tasks],
-                return_exceptions=True
+                *[run_with_semaphore(task) for task in tasks], return_exceptions=True
             )
 
         execution_time = timer.elapsed
 
         # Analyze results
         total_executions = len(tasks)
-        successful_executions = sum(1 for r in results if isinstance(r, dict) and r.get("success", False))
+        successful_executions = sum(
+            1 for r in results if isinstance(r, dict) and r.get("success", False)
+        )
         failed_executions = total_executions - successful_executions
 
         # Performance assertions
@@ -256,7 +289,7 @@ class TestAdvancedBacktestWorkflowIntegration:
             f"  • Total Executions: {total_executions}\n"
             f"  • Successful: {successful_executions}\n"
             f"  • Failed: {failed_executions}\n"
-            f"  • Success Rate: {successful_executions/total_executions:.1%}\n"
+            f"  • Success Rate: {successful_executions / total_executions:.1%}\n"
             f"  • Total Time: {execution_time:.2f}s\n"
             f"  • Avg Time/Backtest: {avg_time_per_backtest:.2f}s\n"
             f"  • Parallel Speedup: ~{total_executions * avg_time_per_backtest / execution_time:.1f}x"
@@ -298,7 +331,10 @@ class TestAdvancedBacktestWorkflowIntegration:
         second_run_time = time.time() - start_time
 
         # Third run with different parameters - should not use cache
-        modified_parameters = {**parameters, "fast_period": parameters.get("fast_period", 10) + 5}
+        modified_parameters = {
+            **parameters,
+            "fast_period": parameters.get("fast_period", 10) + 5,
+        }
         start_time = time.time()
         await complete_vectorbt_engine.run_backtest(
             symbol=symbol,
@@ -331,7 +367,9 @@ class TestAdvancedBacktestWorkflowIntegration:
             "cache_speedup": cache_speedup,
         }
 
-    async def test_database_persistence_integration(self, complete_vectorbt_engine, db_session):
+    async def test_database_persistence_integration(
+        self, complete_vectorbt_engine, db_session
+    ):
         """Test complete database persistence integration."""
         # Generate test results
         result = await complete_vectorbt_engine.run_backtest(
@@ -380,7 +418,7 @@ class TestAdvancedBacktestWorkflowIntegration:
                 batch_id = persistence.save_backtest_result(
                     vectorbt_results=batch_result,
                     execution_time=1.8 + i * 0.1,
-                    notes=f"Batch test #{i+1}",
+                    notes=f"Batch test #{i + 1}",
                 )
                 batch_ids.append(batch_id)
 
@@ -417,14 +455,13 @@ class TestAdvancedBacktestWorkflowIntegration:
         equity_chart = generate_equity_curve(
             equity_data,
             drawdown=drawdown_data,
-            title="Complete Integration Test - Equity Curve"
+            title="Complete Integration Test - Equity Curve",
         )
         visualizations["equity_curve"] = equity_chart
 
         # 2. Performance dashboard
         dashboard_chart = generate_performance_dashboard(
-            result["metrics"],
-            title="Complete Integration Test - Performance Dashboard"
+            result["metrics"], title="Complete Integration Test - Performance Dashboard"
         )
         visualizations["dashboard"] = dashboard_chart
 
@@ -436,6 +473,7 @@ class TestAdvancedBacktestWorkflowIntegration:
             # Try to decode as base64 (should be valid image)
             try:
                 import base64
+
                 decoded = base64.b64decode(viz_data)
                 assert len(decoded) > 0, f"{viz_name} should have valid image data"
                 logger.info(f"✓ {viz_name} visualization generated successfully")
@@ -477,7 +515,10 @@ class TestAdvancedBacktestWorkflowIntegration:
 
         # 3. Invalid strategy parameters
         try:
-            invalid_params = {"fast_period": -10, "slow_period": -20}  # Invalid negative values
+            invalid_params = {
+                "fast_period": -10,
+                "slow_period": -20,
+            }  # Invalid negative values
             result = await complete_vectorbt_engine.run_backtest(
                 symbol="ERROR_TEST",
                 strategy_type="sma_cross",
@@ -504,7 +545,9 @@ class TestAdvancedBacktestWorkflowIntegration:
 
         # Analyze recovery effectiveness
         total_tests = len(recovery_results)
-        recovered_tests = sum(1 for r in recovery_results.values() if r.get("recovered", False))
+        recovered_tests = sum(
+            1 for r in recovery_results.values() if r.get("recovered", False)
+        )
         recovery_rate = recovered_tests / total_tests if total_tests > 0 else 0
 
         logger.info(
@@ -548,12 +591,14 @@ class TestAdvancedBacktestWorkflowIntegration:
             current_threads = process.num_threads()
             current_cpu = process.cpu_percent()
 
-            resource_snapshots.append({
-                "iteration": i + 1,
-                "memory_mb": current_memory,
-                "threads": current_threads,
-                "cpu_percent": current_cpu,
-            })
+            resource_snapshots.append(
+                {
+                    "iteration": i + 1,
+                    "memory_mb": current_memory,
+                    "threads": current_threads,
+                    "cpu_percent": current_cpu,
+                }
+            )
 
         # Final measurements
         final_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -563,12 +608,20 @@ class TestAdvancedBacktestWorkflowIntegration:
         memory_growth = final_memory - initial_memory
         thread_growth = final_threads - initial_threads
         peak_memory = max(snapshot["memory_mb"] for snapshot in resource_snapshots)
-        avg_threads = sum(snapshot["threads"] for snapshot in resource_snapshots) / len(resource_snapshots)
+        avg_threads = sum(snapshot["threads"] for snapshot in resource_snapshots) / len(
+            resource_snapshots
+        )
 
         # Resource management assertions
-        assert memory_growth < 500, f"Memory growth too high: {memory_growth:.1f}MB"  # Max 500MB growth
-        assert thread_growth <= 10, f"Thread growth too high: {thread_growth}"  # Max 10 additional threads
-        assert peak_memory < initial_memory + 1000, f"Peak memory too high: {peak_memory:.1f}MB"  # Peak within 1GB of initial
+        assert memory_growth < 500, (
+            f"Memory growth too high: {memory_growth:.1f}MB"
+        )  # Max 500MB growth
+        assert thread_growth <= 10, (
+            f"Thread growth too high: {thread_growth}"
+        )  # Max 10 additional threads
+        assert peak_memory < initial_memory + 1000, (
+            f"Peak memory too high: {peak_memory:.1f}MB"
+        )  # Peak within 1GB of initial
 
         logger.info(
             f"Resource Management Test Results:\n"
@@ -592,12 +645,14 @@ class TestAdvancedBacktestWorkflowIntegration:
 
 if __name__ == "__main__":
     # Run advanced integration tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=600",  # 10 minute timeout for comprehensive tests
-        "-x",  # Stop on first failure
-        "--durations=10",  # Show 10 slowest tests
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=600",  # 10 minute timeout for comprehensive tests
+            "-x",  # Stop on first failure
+            "--durations=10",  # Show 10 slowest tests
+        ]
+    )

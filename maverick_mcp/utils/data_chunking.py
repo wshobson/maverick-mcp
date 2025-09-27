@@ -29,11 +29,13 @@ MIN_ROWS_PER_CHUNK = 100
 class DataChunker:
     """Advanced data chunking utility with multiple strategies."""
 
-    def __init__(self,
-                 chunk_size_mb: float = DEFAULT_CHUNK_SIZE_MB,
-                 min_rows_per_chunk: int = MIN_ROWS_PER_CHUNK,
-                 optimize_chunks: bool = True,
-                 auto_gc: bool = True):
+    def __init__(
+        self,
+        chunk_size_mb: float = DEFAULT_CHUNK_SIZE_MB,
+        min_rows_per_chunk: int = MIN_ROWS_PER_CHUNK,
+        optimize_chunks: bool = True,
+        auto_gc: bool = True,
+    ):
         """Initialize data chunker.
 
         Args:
@@ -48,8 +50,10 @@ class DataChunker:
         self.optimize_chunks = optimize_chunks
         self.auto_gc = auto_gc
 
-        logger.debug(f"DataChunker initialized: {self.chunk_size_mb}MB chunks, "
-                    f"min {self.min_rows_per_chunk} rows")
+        logger.debug(
+            f"DataChunker initialized: {self.chunk_size_mb}MB chunks, "
+            f"min {self.min_rows_per_chunk} rows"
+        )
 
     def estimate_chunk_size(self, df: pd.DataFrame) -> tuple[int, int]:
         """Estimate optimal chunk size for a DataFrame.
@@ -68,8 +72,7 @@ class DataChunker:
 
         # Calculate rows per chunk based on memory target
         rows_per_chunk = max(
-            self.min_rows_per_chunk,
-            int(self.chunk_size_bytes / memory_per_row)
+            self.min_rows_per_chunk, int(self.chunk_size_bytes / memory_per_row)
         )
 
         # Ensure we don't exceed the DataFrame size
@@ -77,13 +80,16 @@ class DataChunker:
 
         estimated_chunks = math.ceil(len(df) / rows_per_chunk)
 
-        logger.debug(f"Estimated chunking: {rows_per_chunk} rows/chunk, "
-                    f"{estimated_chunks} chunks total")
+        logger.debug(
+            f"Estimated chunking: {rows_per_chunk} rows/chunk, "
+            f"{estimated_chunks} chunks total"
+        )
 
         return rows_per_chunk, estimated_chunks
 
-    def chunk_by_rows(self, df: pd.DataFrame,
-                      rows_per_chunk: int = None) -> Generator[pd.DataFrame, None, None]:
+    def chunk_by_rows(
+        self, df: pd.DataFrame, rows_per_chunk: int = None
+    ) -> Generator[pd.DataFrame, None, None]:
         """Chunk DataFrame by number of rows.
 
         Args:
@@ -97,8 +103,10 @@ class DataChunker:
             rows_per_chunk, _ = self.estimate_chunk_size(df)
 
         total_chunks = math.ceil(len(df) / rows_per_chunk)
-        logger.debug(f"Chunking {len(df)} rows into {total_chunks} chunks "
-                    f"of ~{rows_per_chunk} rows each")
+        logger.debug(
+            f"Chunking {len(df)} rows into {total_chunks} chunks "
+            f"of ~{rows_per_chunk} rows each"
+        )
 
         for i, start_idx in enumerate(range(0, len(df), rows_per_chunk)):
             end_idx = min(start_idx + rows_per_chunk, len(df))
@@ -107,8 +115,9 @@ class DataChunker:
             if self.optimize_chunks:
                 chunk = optimize_dataframe(chunk)
 
-            logger.debug(f"Yielding chunk {i + 1}/{total_chunks}: "
-                        f"rows {start_idx}-{end_idx-1}")
+            logger.debug(
+                f"Yielding chunk {i + 1}/{total_chunks}: rows {start_idx}-{end_idx - 1}"
+            )
 
             yield chunk
 
@@ -138,9 +147,12 @@ class DataChunker:
         # Use row-based chunking with memory-based estimation
         yield from self.chunk_by_rows(df)
 
-    def chunk_by_date(self, df: pd.DataFrame,
-                     freq: Literal['D', 'W', 'M', 'Q', 'Y'] = 'M',
-                     date_column: str = None) -> Generator[pd.DataFrame, None, None]:
+    def chunk_by_date(
+        self,
+        df: pd.DataFrame,
+        freq: Literal["D", "W", "M", "Q", "Y"] = "M",
+        date_column: str = None,
+    ) -> Generator[pd.DataFrame, None, None]:
         """Chunk DataFrame by date periods.
 
         Args:
@@ -155,11 +167,16 @@ class DataChunker:
             if date_column not in df.columns:
                 raise ValueError(f"Date column '{date_column}' not found")
         elif not isinstance(df.index, pd.DatetimeIndex):
-            raise ValueError("DataFrame must have datetime index or specify date_column")
+            raise ValueError(
+                "DataFrame must have datetime index or specify date_column"
+            )
 
         # Group by period
-        period_groups = df.groupby(pd.Grouper(key=date_column, freq=freq)
-                                  if date_column else pd.Grouper(freq=freq))
+        period_groups = df.groupby(
+            pd.Grouper(key=date_column, freq=freq)
+            if date_column
+            else pd.Grouper(freq=freq)
+        )
 
         total_periods = len(period_groups)
         logger.debug(f"Chunking by {freq} periods: {total_periods} chunks")
@@ -171,20 +188,24 @@ class DataChunker:
             if self.optimize_chunks:
                 group = optimize_dataframe(group)
 
-            logger.debug(f"Yielding period chunk {i + 1}/{total_periods}: "
-                        f"{period} ({len(group)} rows)")
+            logger.debug(
+                f"Yielding period chunk {i + 1}/{total_periods}: "
+                f"{period} ({len(group)} rows)"
+            )
 
             yield group
 
             if self.auto_gc and i % 3 == 0:  # GC every 3 periods
                 force_garbage_collection()
 
-    def process_in_chunks(self,
-                         df: pd.DataFrame,
-                         processor: Callable[[pd.DataFrame], Any],
-                         combiner: Callable[[list], Any] = None,
-                         chunk_method: Literal['rows', 'memory', 'date'] = 'memory',
-                         **chunk_kwargs) -> Any:
+    def process_in_chunks(
+        self,
+        df: pd.DataFrame,
+        processor: Callable[[pd.DataFrame], Any],
+        combiner: Callable[[list], Any] = None,
+        chunk_method: Literal["rows", "memory", "date"] = "memory",
+        **chunk_kwargs,
+    ) -> Any:
         """Process DataFrame in chunks and combine results.
 
         Args:
@@ -200,11 +221,11 @@ class DataChunker:
         results = []
 
         # Select chunking method
-        if chunk_method == 'rows':
+        if chunk_method == "rows":
             chunk_generator = self.chunk_by_rows(df, **chunk_kwargs)
-        elif chunk_method == 'memory':
+        elif chunk_method == "memory":
             chunk_generator = self.chunk_by_memory(df)
-        elif chunk_method == 'date':
+        elif chunk_method == "date":
             chunk_generator = self.chunk_by_date(df, **chunk_kwargs)
         else:
             raise ValueError(f"Unknown chunk method: {chunk_method}")
@@ -242,11 +263,13 @@ class StreamingDataProcessor:
         self.chunk_size_mb = chunk_size_mb
         self.chunker = DataChunker(chunk_size_mb=chunk_size_mb)
 
-    def stream_from_csv(self,
-                       filepath: str,
-                       processor: Callable[[pd.DataFrame], Any],
-                       chunksize: int = None,
-                       **read_kwargs) -> Generator[Any, None, None]:
+    def stream_from_csv(
+        self,
+        filepath: str,
+        processor: Callable[[pd.DataFrame], Any],
+        chunksize: int = None,
+        **read_kwargs,
+    ) -> Generator[Any, None, None]:
         """Stream process CSV file in chunks.
 
         Args:
@@ -285,11 +308,13 @@ class StreamingDataProcessor:
             if i % 5 == 0:
                 force_garbage_collection()
 
-    def stream_from_database(self,
-                            query: str,
-                            connection,
-                            processor: Callable[[pd.DataFrame], Any],
-                            chunksize: int = None) -> Generator[Any, None, None]:
+    def stream_from_database(
+        self,
+        query: str,
+        connection,
+        processor: Callable[[pd.DataFrame], Any],
+        chunksize: int = None,
+    ) -> Generator[Any, None, None]:
         """Stream process database query results in chunks.
 
         Args:
@@ -321,9 +346,9 @@ class StreamingDataProcessor:
                 force_garbage_collection()
 
 
-def optimize_dataframe_dtypes(df: pd.DataFrame,
-                             aggressive: bool = False,
-                             categorical_threshold: float = 0.5) -> pd.DataFrame:
+def optimize_dataframe_dtypes(
+    df: pd.DataFrame, aggressive: bool = False, categorical_threshold: float = 0.5
+) -> pd.DataFrame:
     """Optimize DataFrame data types for memory efficiency.
 
     Args:
@@ -343,34 +368,39 @@ def optimize_dataframe_dtypes(df: pd.DataFrame,
         col_type = df_opt[col].dtype
 
         try:
-            if col_type == 'object':
+            if col_type == "object":
                 # Convert string columns to categorical if beneficial
                 unique_count = df_opt[col].nunique()
                 total_count = len(df_opt[col])
 
                 if unique_count / total_count < categorical_threshold:
-                    df_opt[col] = df_opt[col].astype('category')
+                    df_opt[col] = df_opt[col].astype("category")
                     logger.debug(f"Converted {col} to categorical")
 
-            elif 'int' in str(col_type):
+            elif "int" in str(col_type):
                 # Downcast integers
                 c_min = df_opt[col].min()
                 c_max = df_opt[col].max()
 
                 if c_min >= np.iinfo(np.int8).min and c_max <= np.iinfo(np.int8).max:
                     df_opt[col] = df_opt[col].astype(np.int8)
-                elif c_min >= np.iinfo(np.int16).min and c_max <= np.iinfo(np.int16).max:
+                elif (
+                    c_min >= np.iinfo(np.int16).min and c_max <= np.iinfo(np.int16).max
+                ):
                     df_opt[col] = df_opt[col].astype(np.int16)
-                elif c_min >= np.iinfo(np.int32).min and c_max <= np.iinfo(np.int32).max:
+                elif (
+                    c_min >= np.iinfo(np.int32).min and c_max <= np.iinfo(np.int32).max
+                ):
                     df_opt[col] = df_opt[col].astype(np.int32)
 
-            elif 'float' in str(col_type) and col_type == 'float64':
+            elif "float" in str(col_type) and col_type == "float64":
                 # Downcast float64 to float32 if no precision loss
                 if aggressive:
                     # Check if conversion preserves data
                     temp = df_opt[col].astype(np.float32)
-                    if np.allclose(df_opt[col].fillna(0), temp.fillna(0),
-                                  rtol=1e-6, equal_nan=True):
+                    if np.allclose(
+                        df_opt[col].fillna(0), temp.fillna(0), rtol=1e-6, equal_nan=True
+                    ):
                         df_opt[col] = temp
                         logger.debug(f"Converted {col} to float32")
 
@@ -382,15 +412,17 @@ def optimize_dataframe_dtypes(df: pd.DataFrame,
     memory_saved = initial_memory - final_memory
 
     if memory_saved > 0:
-        logger.info(f"DataFrame optimization saved {memory_saved / (1024**2):.2f}MB "
-                   f"({memory_saved / initial_memory * 100:.1f}% reduction)")
+        logger.info(
+            f"DataFrame optimization saved {memory_saved / (1024**2):.2f}MB "
+            f"({memory_saved / initial_memory * 100:.1f}% reduction)"
+        )
 
     return df_opt
 
 
-def create_memory_efficient_dataframe(data: dict | list,
-                                     optimize: bool = True,
-                                     categorical_columns: list[str] = None) -> pd.DataFrame:
+def create_memory_efficient_dataframe(
+    data: dict | list, optimize: bool = True, categorical_columns: list[str] = None
+) -> pd.DataFrame:
     """Create a memory-efficient DataFrame from data.
 
     Args:
@@ -407,7 +439,7 @@ def create_memory_efficient_dataframe(data: dict | list,
         if categorical_columns:
             for col in categorical_columns:
                 if col in df.columns:
-                    df[col] = df[col].astype('category')
+                    df[col] = df[col].astype("category")
 
         if optimize:
             df = optimize_dataframe_dtypes(df)
@@ -415,10 +447,12 @@ def create_memory_efficient_dataframe(data: dict | list,
         return df
 
 
-def batch_process_large_dataframe(df: pd.DataFrame,
-                                 operation: Callable,
-                                 batch_size: int = None,
-                                 combine_results: bool = True) -> Any:
+def batch_process_large_dataframe(
+    df: pd.DataFrame,
+    operation: Callable,
+    batch_size: int = None,
+    combine_results: bool = True,
+) -> Any:
     """Process large DataFrame in batches to manage memory.
 
     Args:
@@ -515,8 +549,10 @@ class LazyDataFrame:
 
 # Utility functions for common operations
 
-def chunked_concat(dataframes: list[pd.DataFrame],
-                  chunk_size: int = 10) -> pd.DataFrame:
+
+def chunked_concat(
+    dataframes: list[pd.DataFrame], chunk_size: int = 10
+) -> pd.DataFrame:
     """Concatenate DataFrames in chunks to manage memory.
 
     Args:
@@ -535,8 +571,8 @@ def chunked_concat(dataframes: list[pd.DataFrame],
     # Process in chunks
     results = []
     for i in range(0, len(dataframes), chunk_size):
-        chunk = dataframes[i:i + chunk_size]
-        with memory_context(f"concat_chunk_{i//chunk_size}"):
+        chunk = dataframes[i : i + chunk_size]
+        with memory_context(f"concat_chunk_{i // chunk_size}"):
             result = pd.concat(chunk, ignore_index=True)
             results.append(result)
 
@@ -552,10 +588,9 @@ def chunked_concat(dataframes: list[pd.DataFrame],
     return final_result
 
 
-def memory_efficient_groupby(df: pd.DataFrame,
-                            group_col: str,
-                            agg_func: Callable,
-                            chunk_size_mb: float = 50.0) -> pd.DataFrame:
+def memory_efficient_groupby(
+    df: pd.DataFrame, group_col: str, agg_func: Callable, chunk_size_mb: float = 50.0
+) -> pd.DataFrame:
     """Perform memory-efficient groupby operations.
 
     Args:

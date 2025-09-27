@@ -36,16 +36,13 @@ class MonitoredStockDataProvider:
             provider="tiingo",
             endpoint="/daily",
             failure_threshold=5,
-            recovery_timeout=60
+            recovery_timeout=60,
         )
         self.logger = get_logger(f"{__name__}.MonitoredStockDataProvider")
 
     @track_api_call("tiingo", "/daily/{symbol}")
     async def get_stock_data(
-        self,
-        symbol: str,
-        start_date: str = None,
-        end_date: str = None
+        self, symbol: str, start_date: str = None, end_date: str = None
     ) -> pd.DataFrame:
         """
         Fetch stock data with automatic API call tracking.
@@ -63,15 +60,17 @@ class MonitoredStockDataProvider:
             raise Exception("API rate limit exceeded")
 
         # Generate sample data
-        dates = pd.date_range(start='2023-01-01', end='2023-12-31', freq='D')
-        data = pd.DataFrame({
-            'Date': dates,
-            'Open': np.random.uniform(100, 200, len(dates)),
-            'High': np.random.uniform(150, 250, len(dates)),
-            'Low': np.random.uniform(50, 150, len(dates)),
-            'Close': np.random.uniform(100, 200, len(dates)),
-            'Volume': np.random.randint(1000000, 10000000, len(dates))
-        })
+        dates = pd.date_range(start="2023-01-01", end="2023-12-31", freq="D")
+        data = pd.DataFrame(
+            {
+                "Date": dates,
+                "Open": np.random.uniform(100, 200, len(dates)),
+                "High": np.random.uniform(150, 250, len(dates)),
+                "Low": np.random.uniform(50, 150, len(dates)),
+                "Close": np.random.uniform(100, 200, len(dates)),
+                "Volume": np.random.randint(1000000, 10000000, len(dates)),
+            }
+        )
 
         # Track additional metrics
         collector = get_backtesting_metrics()
@@ -79,7 +78,7 @@ class MonitoredStockDataProvider:
             cache_type="api_response",
             operation="fetch",
             hit=False,  # Assume cache miss for this example
-            key_pattern=f"stock_data_{symbol}"
+            key_pattern=f"stock_data_{symbol}",
         )
 
         return data
@@ -90,10 +89,7 @@ class MonitoredStockDataProvider:
 
         Automatically tracks circuit breaker state changes and failures.
         """
-        return await self.circuit_breaker.call(
-            self.get_stock_data,
-            symbol=symbol
-        )
+        return await self.circuit_breaker.call(self.get_stock_data, symbol=symbol)
 
 
 class MonitoredTradingStrategy:
@@ -111,10 +107,7 @@ class MonitoredTradingStrategy:
 
     @track_strategy_execution("RSI_Strategy", "AAPL", "1D")
     async def run_backtest(
-        self,
-        symbol: str,
-        data: pd.DataFrame = None,
-        data_points: int = None
+        self, symbol: str, data: pd.DataFrame = None, data_points: int = None
     ) -> dict[str, Any]:
         """
         Run backtest with automatic strategy execution tracking.
@@ -138,7 +131,7 @@ class MonitoredTradingStrategy:
         performance_results = await self._simulate_trading(data, symbol)
 
         # Add data points info to results for metrics tracking
-        performance_results['data_points_processed'] = actual_data_points
+        performance_results["data_points_processed"] = actual_data_points
 
         return performance_results
 
@@ -156,15 +149,15 @@ class MonitoredTradingStrategy:
         await asyncio.sleep(0.05)  # Simulate computation time
 
         # Calculate RSI (simplified version)
-        data['rsi'] = np.random.uniform(20, 80, len(data))
-        data['signal'] = np.where(data['rsi'] < 30, 1, np.where(data['rsi'] > 70, -1, 0))
+        data["rsi"] = np.random.uniform(20, 80, len(data))
+        data["signal"] = np.where(
+            data["rsi"] < 30, 1, np.where(data["rsi"] > 70, -1, 0)
+        )
 
         return data
 
     async def _simulate_trading(
-        self,
-        data: pd.DataFrame,
-        symbol: str
+        self, data: pd.DataFrame, symbol: str
     ) -> dict[str, Any]:
         """
         Simulate trading and calculate performance metrics.
@@ -173,7 +166,7 @@ class MonitoredTradingStrategy:
         automatically tracked by the strategy execution decorator.
         """
         # Simulate trading logic
-        signals = data['signal']
+        signals = data["signal"]
 
         # Calculate returns (simplified)
         total_return = np.random.uniform(-10, 30)  # Random return between -10% and 30%
@@ -193,32 +186,28 @@ class MonitoredTradingStrategy:
             portfolio_value_usd=100000 * (1 + total_return / 100),
             daily_pnl_usd=total_return * 1000,  # Simulated daily PnL
             strategy=self.name,
-            positions=[{
-                'symbol': symbol,
-                'quantity': 100,
-                'type': 'long'
-            }]
+            positions=[{"symbol": symbol, "quantity": 100, "type": "long"}],
         )
 
         # Return performance metrics in expected format
         return {
-            'strategy_name': self.name,
-            'symbol': symbol,
-            'total_return': total_return,
-            'returns': total_return,  # Alternative key name
-            'sharpe_ratio': sharpe_ratio,
-            'max_drawdown': max_drawdown,
-            'max_dd': max_drawdown,  # Alternative key name
-            'win_rate': win_rate * 100,  # Convert to percentage
-            'win_ratio': win_rate,  # Alternative key name
-            'total_trades': int(total_trades),
-            'num_trades': int(total_trades),  # Alternative key name
-            'winning_trades': winning_trades,
-            'performance_summary': {
-                'profitable': total_return > 0,
-                'risk_adjusted_return': sharpe_ratio,
-                'maximum_loss': max_drawdown
-            }
+            "strategy_name": self.name,
+            "symbol": symbol,
+            "total_return": total_return,
+            "returns": total_return,  # Alternative key name
+            "sharpe_ratio": sharpe_ratio,
+            "max_drawdown": max_drawdown,
+            "max_dd": max_drawdown,  # Alternative key name
+            "win_rate": win_rate * 100,  # Convert to percentage
+            "win_ratio": win_rate,  # Alternative key name
+            "total_trades": int(total_trades),
+            "num_trades": int(total_trades),  # Alternative key name
+            "winning_trades": winning_trades,
+            "performance_summary": {
+                "profitable": total_return > 0,
+                "risk_adjusted_return": sharpe_ratio,
+                "maximum_loss": max_drawdown,
+            },
         }
 
 
@@ -234,18 +223,13 @@ class MonitoredDatabaseRepository:
         self.logger = get_logger(f"{__name__}.MonitoredDatabaseRepository")
 
     async def save_backtest_results(
-        self,
-        strategy_name: str,
-        symbol: str,
-        results: dict[str, Any]
+        self, strategy_name: str, symbol: str, results: dict[str, Any]
     ) -> bool:
         """
         Save backtest results with database operation tracking.
         """
         async with self.middleware.track_database_operation(
-            query_type="INSERT",
-            table_name="backtest_results",
-            operation="save_results"
+            query_type="INSERT", table_name="backtest_results", operation="save_results"
         ):
             # Simulate database save operation
             await asyncio.sleep(0.02)
@@ -257,18 +241,16 @@ class MonitoredDatabaseRepository:
             self.logger.info(
                 f"Saved backtest results for {strategy_name} on {symbol}",
                 extra={
-                    'strategy': strategy_name,
-                    'symbol': symbol,
-                    'total_return': results.get('total_return', 0)
-                }
+                    "strategy": strategy_name,
+                    "symbol": symbol,
+                    "total_return": results.get("total_return", 0),
+                },
             )
 
             return True
 
     async def get_historical_performance(
-        self,
-        strategy_name: str,
-        days: int = 30
+        self, strategy_name: str, days: int = 30
     ) -> list[dict[str, Any]]:
         """
         Retrieve historical performance with tracking.
@@ -276,7 +258,7 @@ class MonitoredDatabaseRepository:
         async with self.middleware.track_database_operation(
             query_type="SELECT",
             table_name="backtest_results",
-            operation="get_performance"
+            operation="get_performance",
         ):
             # Simulate database query
             await asyncio.sleep(0.01)
@@ -284,12 +266,14 @@ class MonitoredDatabaseRepository:
             # Generate sample historical data
             historical_data = []
             for i in range(days):
-                historical_data.append({
-                    'date': f'2024-01-{i+1:02d}',
-                    'strategy': strategy_name,
-                    'return': np.random.uniform(-2, 3),
-                    'sharpe_ratio': np.random.uniform(0.5, 2.0)
-                })
+                historical_data.append(
+                    {
+                        "date": f"2024-01-{i + 1:02d}",
+                        "strategy": strategy_name,
+                        "return": np.random.uniform(-2, 3),
+                        "sharpe_ratio": np.random.uniform(0.5, 2.0),
+                    }
+                )
 
             return historical_data
 
@@ -318,30 +302,27 @@ async def demonstrate_monitoring_integration():
             # Run backtest (automatically tracked)
             results = await strategy.run_backtest(
                 symbol=symbol,
-                data_points=252  # One year of trading days
+                data_points=252,  # One year of trading days
             )
 
             # Save results (automatically tracked)
             await repository.save_backtest_results(
-                strategy_name=strategy.name,
-                symbol=symbol,
-                results=results
+                strategy_name=strategy.name, symbol=symbol, results=results
             )
 
             # Get historical performance (automatically tracked)
             historical = await repository.get_historical_performance(
-                strategy_name=strategy.name,
-                days=30
+                strategy_name=strategy.name, days=30
             )
 
             logger.info(
                 f"Completed backtest for {symbol}",
                 extra={
-                    'symbol': symbol,
-                    'total_return': results.get('total_return', 0),
-                    'sharpe_ratio': results.get('sharpe_ratio', 0),
-                    'historical_records': len(historical)
-                }
+                    "symbol": symbol,
+                    "total_return": results.get("total_return", 0),
+                    "sharpe_ratio": results.get("sharpe_ratio", 0),
+                    "historical_records": len(historical),
+                },
             )
 
         except Exception as e:
@@ -353,10 +334,10 @@ async def demonstrate_monitoring_integration():
                 anomaly_type="backtest_execution_failure",
                 severity="critical",
                 context={
-                    'strategy_name': strategy.name,
-                    'symbol': symbol,
-                    'error': str(e)
-                }
+                    "strategy_name": strategy.name,
+                    "symbol": symbol,
+                    "error": str(e),
+                },
             )
 
     logger.info("Monitoring integration demonstration completed")
@@ -389,10 +370,10 @@ async def check_and_report_anomalies():
                 anomaly_type="low_sharpe_ratio",
                 severity="warning" if recent_sharpe > 0 else "critical",
                 context={
-                    'strategy_name': strategy,
-                    'sharpe_ratio': recent_sharpe,
-                    'threshold': 0.5
-                }
+                    "strategy_name": strategy,
+                    "sharpe_ratio": recent_sharpe,
+                    "threshold": 0.5,
+                },
             )
             anomalies_detected += 1
 
@@ -401,16 +382,14 @@ async def check_and_report_anomalies():
                 anomaly_type="high_drawdown",
                 severity="critical",
                 context={
-                    'strategy_name': strategy,
-                    'max_drawdown': recent_drawdown,
-                    'threshold': 25
-                }
+                    "strategy_name": strategy,
+                    "max_drawdown": recent_drawdown,
+                    "threshold": 25,
+                },
             )
             anomalies_detected += 1
 
-    logger.info(
-        f"Anomaly check completed. Detected {anomalies_detected} anomalies"
-    )
+    logger.info(f"Anomaly check completed. Detected {anomalies_detected} anomalies")
 
     return anomalies_detected
 
@@ -424,9 +403,9 @@ if __name__ == "__main__":
         # Print metrics summary
         collector = get_backtesting_metrics()
         metrics_text = collector.get_metrics_text()
-        print("\n" + "="*50)
+        print("\n" + "=" * 50)
         print("PROMETHEUS METRICS SAMPLE:")
-        print("="*50)
+        print("=" * 50)
         print(metrics_text[:1000] + "..." if len(metrics_text) > 1000 else metrics_text)
 
     asyncio.run(main())

@@ -10,6 +10,7 @@ __all__ = []
 # Try to import full VectorBT engine
 try:
     from .vectorbt_engine import VectorBTEngine
+
     __all__.append("VectorBTEngine")
 except ImportError:
     # If VectorBT dependencies aren't available, use stub

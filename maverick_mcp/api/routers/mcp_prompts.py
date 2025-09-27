@@ -311,67 +311,75 @@ Parameters:
                 "sma_cross": {
                     "name": "Simple Moving Average Crossover",
                     "parameters": ["fast_period", "slow_period"],
-                    "default_values": {"fast_period": 10, "slow_period": 20}
+                    "default_values": {"fast_period": 10, "slow_period": 20},
                 },
                 "rsi": {
                     "name": "RSI Mean Reversion",
                     "parameters": ["period", "oversold", "overbought"],
-                    "default_values": {"period": 14, "oversold": 30, "overbought": 70}
+                    "default_values": {"period": 14, "oversold": 30, "overbought": 70},
                 },
                 "macd": {
                     "name": "MACD Signal Line Crossover",
                     "parameters": ["fast_period", "slow_period", "signal_period"],
-                    "default_values": {"fast_period": 12, "slow_period": 26, "signal_period": 9}
+                    "default_values": {
+                        "fast_period": 12,
+                        "slow_period": 26,
+                        "signal_period": 9,
+                    },
                 },
                 "bollinger": {
                     "name": "Bollinger Bands",
                     "parameters": ["period", "std_dev"],
-                    "default_values": {"period": 20, "std_dev": 2}
+                    "default_values": {"period": 20, "std_dev": 2},
                 },
                 "momentum": {
                     "name": "Momentum Trading",
                     "parameters": ["period", "threshold"],
-                    "default_values": {"period": 10, "threshold": 0.02}
+                    "default_values": {"period": 10, "threshold": 0.02},
                 },
                 "ema_cross": {
                     "name": "EMA Crossover",
                     "parameters": ["fast_period", "slow_period"],
-                    "default_values": {"fast_period": 12, "slow_period": 26}
+                    "default_values": {"fast_period": 12, "slow_period": 26},
                 },
                 "mean_reversion": {
                     "name": "Mean Reversion",
                     "parameters": ["lookback", "entry_z", "exit_z"],
-                    "default_values": {"lookback": 20, "entry_z": -2, "exit_z": 0}
+                    "default_values": {"lookback": 20, "entry_z": -2, "exit_z": 0},
                 },
                 "breakout": {
                     "name": "Channel Breakout",
                     "parameters": ["lookback", "breakout_factor"],
-                    "default_values": {"lookback": 20, "breakout_factor": 1.5}
+                    "default_values": {"lookback": 20, "breakout_factor": 1.5},
                 },
                 "volume_momentum": {
                     "name": "Volume-Weighted Momentum",
                     "parameters": ["period", "volume_factor"],
-                    "default_values": {"period": 10, "volume_factor": 1.5}
-                }
+                    "default_values": {"period": 10, "volume_factor": 1.5},
+                },
             },
             "ml_strategies": {
                 "online_learning": {
                     "name": "Online Learning Adaptive Strategy",
                     "parameters": ["lookback", "learning_rate"],
-                    "default_values": {"lookback": 20, "learning_rate": 0.01}
+                    "default_values": {"lookback": 20, "learning_rate": 0.01},
                 },
                 "regime_aware": {
                     "name": "Market Regime Detection",
                     "parameters": ["regime_window", "threshold"],
-                    "default_values": {"regime_window": 50, "threshold": 0.02}
+                    "default_values": {"regime_window": 50, "threshold": 0.02},
                 },
                 "ensemble": {
                     "name": "Ensemble Voting Strategy",
                     "parameters": ["fast_period", "slow_period", "rsi_period"],
-                    "default_values": {"fast_period": 10, "slow_period": 20, "rsi_period": 14}
-                }
+                    "default_values": {
+                        "fast_period": 10,
+                        "slow_period": 20,
+                        "rsi_period": 14,
+                    },
+                },
             },
-            "total_strategies": 15
+            "total_strategies": 15,
         }
 
     @mcp.resource("tools://categories")
@@ -382,37 +390,33 @@ Parameters:
                 "run_backtest",
                 "optimize_parameters",
                 "compare_strategies",
-                "get_strategy_info"
+                "get_strategy_info",
             ],
-            "data": [
-                "get_stock_data",
-                "get_stock_info",
-                "get_multiple_stocks_data"
-            ],
+            "data": ["get_stock_data", "get_stock_info", "get_multiple_stocks_data"],
             "technical_analysis": [
                 "calculate_sma",
                 "calculate_ema",
                 "calculate_rsi",
                 "calculate_macd",
                 "calculate_bollinger_bands",
-                "get_full_technical_analysis"
+                "get_full_technical_analysis",
             ],
             "screening": [
                 "get_maverick_recommendations",
                 "get_maverick_bear_recommendations",
-                "get_trending_breakout_recommendations"
+                "get_trending_breakout_recommendations",
             ],
             "portfolio": [
                 "optimize_portfolio",
                 "analyze_portfolio_risk",
-                "calculate_correlation_matrix"
+                "calculate_correlation_matrix",
             ],
             "research": [
                 "research_comprehensive",
                 "research_company",
                 "analyze_market_sentiment",
-                "coordinate_agents"
-            ]
+                "coordinate_agents",
+            ],
         }
 
     @mcp.resource("examples://backtesting")
@@ -422,28 +426,28 @@ Parameters:
             "simple_backtest": {
                 "description": "Basic backtest with default parameters",
                 "example": "run_backtest(symbol='AAPL', strategy_type='sma_cross')",
-                "expected_output": "Performance metrics including total return, sharpe ratio, win rate"
+                "expected_output": "Performance metrics including total return, sharpe ratio, win rate",
             },
             "custom_parameters": {
                 "description": "Backtest with custom strategy parameters",
                 "example": "run_backtest(symbol='TSLA', strategy_type='rsi', period=21, oversold=25)",
-                "expected_output": "Performance with adjusted RSI parameters"
+                "expected_output": "Performance with adjusted RSI parameters",
             },
             "ml_strategy": {
                 "description": "Running ML-based strategy",
                 "example": "run_backtest(symbol='NVDA', strategy_type='online_learning', lookback=30)",
-                "expected_output": "Adaptive strategy performance with online learning"
+                "expected_output": "Adaptive strategy performance with online learning",
             },
             "optimization": {
                 "description": "Optimize strategy parameters",
                 "example": "optimize_parameters(symbol='MSFT', strategy_type='sma_cross')",
-                "expected_output": "Best parameter combination and performance metrics"
+                "expected_output": "Best parameter combination and performance metrics",
             },
             "comparison": {
                 "description": "Compare multiple strategies",
                 "example": "compare_strategies(symbol='SPY', strategies=['sma_cross', 'rsi', 'online_learning'])",
-                "expected_output": "Side-by-side comparison of strategy performance"
-            }
+                "expected_output": "Side-by-side comparison of strategy performance",
+            },
         }
 
     return True

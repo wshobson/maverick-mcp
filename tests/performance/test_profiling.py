@@ -57,7 +57,7 @@ class PerformanceProfiler:
             # Capture profiling stats
             stats_stream = io.StringIO()
             stats = pstats.Stats(profiler, stream=stats_stream)
-            stats.sort_stats('cumulative')
+            stats.sort_stats("cumulative")
             stats.print_stats(20)  # Top 20 functions
 
             self.profiling_data[operation_name] = {
@@ -90,7 +90,9 @@ class PerformanceProfiler:
             else:
                 self.profiling_data[operation_name] = {"memory_profile": memory_data}
 
-    def profile_database_query(self, query_name: str, query_func: Callable) -> dict[str, Any]:
+    def profile_database_query(
+        self, query_name: str, query_func: Callable
+    ) -> dict[str, Any]:
         """Profile database query performance."""
         start_time = time.time()
 
@@ -125,31 +127,35 @@ class PerformanceProfiler:
             return {"error": "No CPU profiling stats available"}
 
         # Extract top functions by cumulative time
-        stats.sort_stats('cumulative')
+        stats.sort_stats("cumulative")
         top_functions = []
 
         for func_data in list(stats.stats.items())[:10]:
             func_name, (cc, nc, tt, ct, callers) = func_data
-            top_functions.append({
-                "function": f"{func_name[0]}:{func_name[1]}({func_name[2]})",
-                "cumulative_time": ct,
-                "total_time": tt,
-                "call_count": nc,
-                "time_per_call": ct / nc if nc > 0 else 0,
-            })
+            top_functions.append(
+                {
+                    "function": f"{func_name[0]}:{func_name[1]}({func_name[2]})",
+                    "cumulative_time": ct,
+                    "total_time": tt,
+                    "call_count": nc,
+                    "time_per_call": ct / nc if nc > 0 else 0,
+                }
+            )
 
         # Extract top functions by self time
-        stats.sort_stats('tottime')
+        stats.sort_stats("tottime")
         self_time_functions = []
 
         for func_data in list(stats.stats.items())[:10]:
             func_name, (cc, nc, tt, ct, callers) = func_data
-            self_time_functions.append({
-                "function": f"{func_name[0]}:{func_name[1]}({func_name[2]})",
-                "self_time": tt,
-                "cumulative_time": ct,
-                "call_count": nc,
-            })
+            self_time_functions.append(
+                {
+                    "function": f"{func_name[0]}:{func_name[1]}({func_name[2]})",
+                    "self_time": tt,
+                    "cumulative_time": ct,
+                    "call_count": nc,
+                }
+            )
 
         return {
             "operation_name": operation_name,
@@ -169,30 +175,42 @@ class PerformanceProfiler:
 
             performance_summary[operation_name] = {
                 "execution_time": data.get("execution_time", 0),
-                "peak_memory_mb": data.get("memory_profile", {}).get("peak_memory_mb", 0),
+                "peak_memory_mb": data.get("memory_profile", {}).get(
+                    "peak_memory_mb", 0
+                ),
             }
 
             # Identify optimization opportunities
             if "top_functions_by_cumulative" in analysis:
-                for func in analysis["top_functions_by_cumulative"][:3]:  # Top 3 functions
+                for func in analysis["top_functions_by_cumulative"][
+                    :3
+                ]:  # Top 3 functions
                     if func["cumulative_time"] > 0.1:  # More than 100ms
-                        optimization_opportunities.append({
-                            "operation": operation_name,
-                            "function": func["function"],
-                            "issue": "High cumulative time",
-                            "time": func["cumulative_time"],
-                            "priority": "High" if func["cumulative_time"] > 1.0 else "Medium",
-                        })
+                        optimization_opportunities.append(
+                            {
+                                "operation": operation_name,
+                                "function": func["function"],
+                                "issue": "High cumulative time",
+                                "time": func["cumulative_time"],
+                                "priority": "High"
+                                if func["cumulative_time"] > 1.0
+                                else "Medium",
+                            }
+                        )
 
             # Memory optimization opportunities
             memory_profile = data.get("memory_profile", {})
             if memory_profile.get("peak_memory_mb", 0) > 100:  # More than 100MB
-                optimization_opportunities.append({
-                    "operation": operation_name,
-                    "issue": "High memory usage",
-                    "memory_mb": memory_profile["peak_memory_mb"],
-                    "priority": "High" if memory_profile["peak_memory_mb"] > 500 else "Medium",
-                })
+                optimization_opportunities.append(
+                    {
+                        "operation": operation_name,
+                        "issue": "High memory usage",
+                        "memory_mb": memory_profile["peak_memory_mb"],
+                        "priority": "High"
+                        if memory_profile["peak_memory_mb"] > 500
+                        else "Medium",
+                    }
+                )
 
         return {
             "performance_summary": performance_summary,
@@ -212,7 +230,9 @@ class TestPerformanceProfiling:
         def generate_profiling_data(symbol: str) -> pd.DataFrame:
             """Generate data with known performance characteristics."""
             # Generate larger dataset to create measurable performance impact
-            dates = pd.date_range(start="2020-01-01", end="2023-12-31", freq="D")  # 4 years
+            dates = pd.date_range(
+                start="2020-01-01", end="2023-12-31", freq="D"
+            )  # 4 years
             np.random.seed(hash(symbol) % 1000)
 
             returns = np.random.normal(0.0008, 0.02, len(dates))
@@ -224,17 +244,22 @@ class TestPerformanceProfiling:
 
             # Simulate expensive volume calculations
             base_volume = np.random.randint(1000000, 10000000, len(dates))
-            volume_multiplier = np.exp(np.random.normal(0, 0.1, len(dates)))  # Log-normal distribution
+            volume_multiplier = np.exp(
+                np.random.normal(0, 0.1, len(dates))
+            )  # Log-normal distribution
             volumes = (base_volume * volume_multiplier).astype(int)
 
-            return pd.DataFrame({
-                "Open": prices * np.random.uniform(0.995, 1.005, len(dates)),
-                "High": high_prices,
-                "Low": low_prices,
-                "Close": prices,
-                "Volume": volumes,
-                "Adj Close": prices,
-            }, index=dates)
+            return pd.DataFrame(
+                {
+                    "Open": prices * np.random.uniform(0.995, 1.005, len(dates)),
+                    "High": high_prices,
+                    "Low": low_prices,
+                    "Close": prices,
+                    "Volume": volumes,
+                    "Adj Close": prices,
+                },
+                index=dates,
+            )
 
         provider.get_stock_data.side_effect = generate_profiling_data
         return provider
@@ -263,26 +288,37 @@ class TestPerformanceProfiling:
         # Log performance analysis
         logger.info("Backtest Execution Profiling Results:")
         for operation, summary in report["performance_summary"].items():
-            logger.info(f"  {operation}: {summary['execution_time']:.3f}s, "
-                       f"{summary['peak_memory_mb']:.1f}MB peak")
+            logger.info(
+                f"  {operation}: {summary['execution_time']:.3f}s, "
+                f"{summary['peak_memory_mb']:.1f}MB peak"
+            )
 
         # Log optimization opportunities
         if report["optimization_opportunities"]:
             logger.info("Optimization Opportunities:")
             for opportunity in report["optimization_opportunities"]:
                 priority_symbol = "🔴" if opportunity["priority"] == "High" else "🟡"
-                logger.info(f"  {priority_symbol} {opportunity['operation']}: {opportunity['issue']}")
+                logger.info(
+                    f"  {priority_symbol} {opportunity['operation']}: {opportunity['issue']}"
+                )
 
         # Performance assertions
         max_execution_time = max(
-            summary["execution_time"] for summary in report["performance_summary"].values()
+            summary["execution_time"]
+            for summary in report["performance_summary"].values()
         )
-        assert max_execution_time <= 5.0, f"Slowest backtest took too long: {max_execution_time:.2f}s"
+        assert max_execution_time <= 5.0, (
+            f"Slowest backtest took too long: {max_execution_time:.2f}s"
+        )
 
         high_priority_issues = [
-            opp for opp in report["optimization_opportunities"] if opp["priority"] == "High"
+            opp
+            for opp in report["optimization_opportunities"]
+            if opp["priority"] == "High"
         ]
-        assert len(high_priority_issues) <= 2, f"Too many high-priority performance issues: {len(high_priority_issues)}"
+        assert len(high_priority_issues) <= 2, (
+            f"Too many high-priority performance issues: {len(high_priority_issues)}"
+        )
 
         return report
 
@@ -299,9 +335,7 @@ class TestPerformanceProfiling:
                 with profiler.profile_memory(f"data_loading_{symbol}"):
                     # Profile the data fetching specifically
                     await engine.get_historical_data(
-                        symbol=symbol,
-                        start_date="2020-01-01",
-                        end_date="2023-12-31"
+                        symbol=symbol, start_date="2020-01-01", end_date="2023-12-31"
                     )
 
         # Analyze data loading performance
@@ -311,8 +345,12 @@ class TestPerformanceProfiling:
         for symbol in symbols:
             operation_name = f"data_loading_{symbol}"
             if operation_name in profiler.profiling_data:
-                data_loading_times.append(profiler.profiling_data[operation_name]["execution_time"])
-                memory_profile = profiler.profiling_data[operation_name].get("memory_profile", {})
+                data_loading_times.append(
+                    profiler.profiling_data[operation_name]["execution_time"]
+                )
+                memory_profile = profiler.profiling_data[operation_name].get(
+                    "memory_profile", {}
+                )
                 data_loading_memory.append(memory_profile.get("peak_memory_mb", 0))
 
         avg_loading_time = np.mean(data_loading_times) if data_loading_times else 0
@@ -325,9 +363,15 @@ class TestPerformanceProfiling:
         logger.info(f"  Average Memory Usage: {avg_loading_memory:.1f}MB")
 
         # Performance assertions for data loading
-        assert avg_loading_time <= 0.5, f"Average data loading too slow: {avg_loading_time:.3f}s"
-        assert max_loading_time <= 1.0, f"Slowest data loading too slow: {max_loading_time:.3f}s"
-        assert avg_loading_memory <= 50.0, f"Data loading memory usage too high: {avg_loading_memory:.1f}MB"
+        assert avg_loading_time <= 0.5, (
+            f"Average data loading too slow: {avg_loading_time:.3f}s"
+        )
+        assert max_loading_time <= 1.0, (
+            f"Slowest data loading too slow: {max_loading_time:.3f}s"
+        )
+        assert avg_loading_memory <= 50.0, (
+            f"Data loading memory usage too high: {avg_loading_memory:.1f}MB"
+        )
 
         return {
             "avg_loading_time": avg_loading_time,
@@ -336,7 +380,9 @@ class TestPerformanceProfiling:
             "individual_times": data_loading_times,
         }
 
-    async def test_profile_database_query_performance(self, profiling_data_provider, db_session):
+    async def test_profile_database_query_performance(
+        self, profiling_data_provider, db_session
+    ):
         """Profile database queries to identify slow operations."""
         profiler = PerformanceProfiler()
         engine = VectorBTEngine(data_provider=profiling_data_provider)
@@ -365,7 +411,7 @@ class TestPerformanceProfiling:
                         vectorbt_results=r,
                         execution_time=2.0,
                         notes="Database profiling test",
-                    )
+                    ),
                 )
                 query_profiles.append(query_profile)
 
@@ -373,27 +419,41 @@ class TestPerformanceProfiling:
             saved_ids = [qp.get("result") for qp in query_profiles if qp.get("success")]
 
             # Profile retrieval operations
-            for i, backtest_id in enumerate(saved_ids[:5]):  # Profile first 5 retrievals
+            for i, backtest_id in enumerate(
+                saved_ids[:5]
+            ):  # Profile first 5 retrievals
                 query_profile = profiler.profile_database_query(
                     f"retrieve_backtest_{i}",
-                    lambda bid=backtest_id: persistence.get_backtest_by_id(bid)
+                    lambda bid=backtest_id: persistence.get_backtest_by_id(bid),
                 )
                 query_profiles.append(query_profile)
 
             # Profile bulk query operations
             bulk_query_profile = profiler.profile_database_query(
                 "bulk_query_by_strategy",
-                lambda: persistence.get_backtests_by_strategy("sma_cross")
+                lambda: persistence.get_backtests_by_strategy("sma_cross"),
             )
             query_profiles.append(bulk_query_profile)
 
         # Analyze database query performance
-        save_times = [qp["execution_time_ms"] for qp in query_profiles if "save_backtest" in qp["query_name"] and qp["success"]]
-        retrieve_times = [qp["execution_time_ms"] for qp in query_profiles if "retrieve_backtest" in qp["query_name"] and qp["success"]]
+        save_times = [
+            qp["execution_time_ms"]
+            for qp in query_profiles
+            if "save_backtest" in qp["query_name"] and qp["success"]
+        ]
+        retrieve_times = [
+            qp["execution_time_ms"]
+            for qp in query_profiles
+            if "retrieve_backtest" in qp["query_name"] and qp["success"]
+        ]
 
         avg_save_time = np.mean(save_times) if save_times else 0
         avg_retrieve_time = np.mean(retrieve_times) if retrieve_times else 0
-        bulk_query_time = bulk_query_profile["execution_time_ms"] if bulk_query_profile["success"] else 0
+        bulk_query_time = (
+            bulk_query_profile["execution_time_ms"]
+            if bulk_query_profile["success"]
+            else 0
+        )
 
         logger.info("Database Query Performance Analysis:")
         logger.info(f"  Average Save Time: {avg_save_time:.1f}ms")
@@ -401,12 +461,20 @@ class TestPerformanceProfiling:
         logger.info(f"  Bulk Query Time: {bulk_query_time:.1f}ms")
 
         # Identify slow queries
-        slow_queries = [qp for qp in query_profiles if qp["execution_time_ms"] > 100 and qp["success"]]
+        slow_queries = [
+            qp
+            for qp in query_profiles
+            if qp["execution_time_ms"] > 100 and qp["success"]
+        ]
         logger.info(f"  Slow Queries (>100ms): {len(slow_queries)}")
 
         # Performance assertions for database queries
-        assert avg_save_time <= 50.0, f"Average save time too slow: {avg_save_time:.1f}ms"
-        assert avg_retrieve_time <= 20.0, f"Average retrieve time too slow: {avg_retrieve_time:.1f}ms"
+        assert avg_save_time <= 50.0, (
+            f"Average save time too slow: {avg_save_time:.1f}ms"
+        )
+        assert avg_retrieve_time <= 20.0, (
+            f"Average retrieve time too slow: {avg_retrieve_time:.1f}ms"
+        )
         assert bulk_query_time <= 100.0, f"Bulk query too slow: {bulk_query_time:.1f}ms"
         assert len(slow_queries) <= 2, f"Too many slow queries: {len(slow_queries)}"
 
@@ -442,13 +510,19 @@ class TestPerformanceProfiling:
                     end_date=end_date,
                 )
 
-            memory_data = profiler.profiling_data[f"memory_{case_name}"]["memory_profile"]
-            memory_profiles.append({
-                "case": case_name,
-                "peak_memory_mb": memory_data["peak_memory_mb"],
-                "memory_growth_mb": memory_data["memory_growth_mb"],
-                "data_points": len(pd.date_range(start=start_date, end=end_date, freq="D")),
-            })
+            memory_data = profiler.profiling_data[f"memory_{case_name}"][
+                "memory_profile"
+            ]
+            memory_profiles.append(
+                {
+                    "case": case_name,
+                    "peak_memory_mb": memory_data["peak_memory_mb"],
+                    "memory_growth_mb": memory_data["memory_growth_mb"],
+                    "data_points": len(
+                        pd.date_range(start=start_date, end=end_date, freq="D")
+                    ),
+                }
+            )
 
         # Analyze memory scaling
         data_points = [mp["data_points"] for mp in memory_profiles]
@@ -456,7 +530,8 @@ class TestPerformanceProfiling:
 
         # Calculate memory efficiency (MB per 1000 data points)
         memory_efficiency = [
-            (peak_mem / data_pts * 1000) for peak_mem, data_pts in zip(peak_memories, data_points, strict=False)
+            (peak_mem / data_pts * 1000)
+            for peak_mem, data_pts in zip(peak_memories, data_points, strict=False)
         ]
 
         avg_memory_efficiency = np.mean(memory_efficiency)
@@ -464,14 +539,22 @@ class TestPerformanceProfiling:
         logger.info("Memory Allocation Pattern Analysis:")
         for profile in memory_profiles:
             efficiency = profile["peak_memory_mb"] / profile["data_points"] * 1000
-            logger.info(f"  {profile['case']}: {profile['peak_memory_mb']:.1f}MB peak "
-                       f"({efficiency:.2f} MB/1k points)")
+            logger.info(
+                f"  {profile['case']}: {profile['peak_memory_mb']:.1f}MB peak "
+                f"({efficiency:.2f} MB/1k points)"
+            )
 
-        logger.info(f"  Average Memory Efficiency: {avg_memory_efficiency:.2f} MB per 1000 data points")
+        logger.info(
+            f"  Average Memory Efficiency: {avg_memory_efficiency:.2f} MB per 1000 data points"
+        )
 
         # Memory efficiency assertions
-        assert avg_memory_efficiency <= 5.0, f"Memory efficiency too poor: {avg_memory_efficiency:.2f} MB/1k points"
-        assert max(peak_memories) <= 200.0, f"Peak memory usage too high: {max(peak_memories):.1f}MB"
+        assert avg_memory_efficiency <= 5.0, (
+            f"Memory efficiency too poor: {avg_memory_efficiency:.2f} MB/1k points"
+        )
+        assert max(peak_memories) <= 200.0, (
+            f"Peak memory usage too high: {max(peak_memories):.1f}MB"
+        )
 
         return {
             "memory_profiles": memory_profiles,
@@ -521,7 +604,9 @@ class TestPerformanceProfiling:
         io_top_functions = io_analysis.get("top_functions_by_cumulative", [])
 
         # Calculate I/O vs CPU characteristics
-        cpu_bound_ratio = cpu_time / (cpu_time + io_time) if (cpu_time + io_time) > 0 else 0
+        cpu_bound_ratio = (
+            cpu_time / (cpu_time + io_time) if (cpu_time + io_time) > 0 else 0
+        )
 
         logger.info("CPU vs I/O Bound Analysis:")
         logger.info(f"  CPU-Intensive Operation: {cpu_time:.3f}s")
@@ -548,18 +633,32 @@ class TestPerformanceProfiling:
             "io_top_functions": io_top_functions[:5],
         }
 
-    async def test_comprehensive_profiling_suite(self, profiling_data_provider, db_session):
+    async def test_comprehensive_profiling_suite(
+        self, profiling_data_provider, db_session
+    ):
         """Run comprehensive profiling suite and generate optimization report."""
         logger.info("Starting Comprehensive Performance Profiling Suite...")
 
         profiling_results = {}
 
         # Run all profiling tests
-        profiling_results["backtest_execution"] = await self.test_profile_backtest_execution(profiling_data_provider)
-        profiling_results["data_loading"] = await self.test_profile_data_loading_bottlenecks(profiling_data_provider)
-        profiling_results["database_queries"] = await self.test_profile_database_query_performance(profiling_data_provider, db_session)
-        profiling_results["memory_allocation"] = await self.test_profile_memory_allocation_patterns(profiling_data_provider)
-        profiling_results["cpu_vs_io"] = await self.test_profile_cpu_vs_io_bound_operations(profiling_data_provider)
+        profiling_results[
+            "backtest_execution"
+        ] = await self.test_profile_backtest_execution(profiling_data_provider)
+        profiling_results[
+            "data_loading"
+        ] = await self.test_profile_data_loading_bottlenecks(profiling_data_provider)
+        profiling_results[
+            "database_queries"
+        ] = await self.test_profile_database_query_performance(
+            profiling_data_provider, db_session
+        )
+        profiling_results[
+            "memory_allocation"
+        ] = await self.test_profile_memory_allocation_patterns(profiling_data_provider)
+        profiling_results[
+            "cpu_vs_io"
+        ] = await self.test_profile_cpu_vs_io_bound_operations(profiling_data_provider)
 
         # Generate comprehensive optimization report
         optimization_report = {
@@ -578,7 +677,8 @@ class TestPerformanceProfiling:
         # Analyze backtest execution performance
         backtest_report = profiling_results["backtest_execution"]
         high_priority_issues = [
-            opp for opp in backtest_report.get("optimization_opportunities", [])
+            opp
+            for opp in backtest_report.get("optimization_opportunities", [])
             if opp["priority"] == "High"
         ]
         if high_priority_issues:
@@ -603,17 +703,19 @@ class TestPerformanceProfiling:
             bottlenecks.append("High memory usage per data point")
             priorities.append("Optimize memory allocation patterns")
 
-        optimization_report["executive_summary"]["performance_bottlenecks"] = bottlenecks
+        optimization_report["executive_summary"]["performance_bottlenecks"] = (
+            bottlenecks
+        )
         optimization_report["executive_summary"]["optimization_priorities"] = priorities
 
         # Log comprehensive report
         logger.info(
-            f"\n{'='*60}\n"
+            f"\n{'=' * 60}\n"
             f"COMPREHENSIVE PROFILING REPORT\n"
-            f"{'='*60}\n"
+            f"{'=' * 60}\n"
             f"Profiling Areas Analyzed: {len(profiling_results)}\n"
             f"Performance Bottlenecks: {len(bottlenecks)}\n"
-            f"{'='*60}\n"
+            f"{'=' * 60}\n"
         )
 
         if bottlenecks:
@@ -626,20 +728,24 @@ class TestPerformanceProfiling:
             for i, priority in enumerate(priorities, 1):
                 logger.info(f"  {i}. {priority}")
 
-        logger.info(f"\n{'='*60}")
+        logger.info(f"\n{'=' * 60}")
 
         # Assert profiling success
-        assert len(bottlenecks) <= 3, f"Too many performance bottlenecks identified: {len(bottlenecks)}"
+        assert len(bottlenecks) <= 3, (
+            f"Too many performance bottlenecks identified: {len(bottlenecks)}"
+        )
 
         return optimization_report
 
 
 if __name__ == "__main__":
     # Run profiling tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=300",  # 5 minute timeout for profiling tests
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=300",  # 5 minute timeout for profiling tests
+        ]
+    )

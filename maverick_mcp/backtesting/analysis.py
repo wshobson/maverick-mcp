@@ -18,7 +18,7 @@ def convert_to_native(value):
         return float(value)
     elif isinstance(value, np.ndarray):
         return value.tolist()
-    elif hasattr(value, 'item'):  # For numpy scalars
+    elif hasattr(value, "item"):  # For numpy scalars
         return value.item()
     elif pd.isna(value):
         return None
@@ -60,8 +60,12 @@ class BacktestAnalyzer:
             return self._create_empty_backtest_results(initial_capital)
 
         # Check for empty signals or all-False signals
-        if (len(entry_signals) == 0 or len(exit_signals) == 0 or
-            entry_signals.size == 0 or exit_signals.size == 0):
+        if (
+            len(entry_signals) == 0
+            or len(exit_signals) == 0
+            or entry_signals.size == 0
+            or exit_signals.size == 0
+        ):
             logger.warning("Empty signal arrays provided to run_vectorbt_backtest")
             return self._create_empty_backtest_results(initial_capital)
 
@@ -91,12 +95,20 @@ class BacktestAnalyzer:
         # Extract metrics
         metrics = {
             "total_return": float(portfolio.total_return()),
-            "annual_return": float(portfolio.annualized_return()) if hasattr(portfolio, "annualized_return") else 0,
-            "sharpe_ratio": float(portfolio.sharpe_ratio()) if not np.isnan(portfolio.sharpe_ratio()) else 0,
+            "annual_return": float(portfolio.annualized_return())
+            if hasattr(portfolio, "annualized_return")
+            else 0,
+            "sharpe_ratio": float(portfolio.sharpe_ratio())
+            if not np.isnan(portfolio.sharpe_ratio())
+            else 0,
             "max_drawdown": float(portfolio.max_drawdown()),
-            "win_rate": float(portfolio.trades.win_rate()) if portfolio.trades.count() > 0 else 0,
+            "win_rate": float(portfolio.trades.win_rate())
+            if portfolio.trades.count() > 0
+            else 0,
             "total_trades": int(portfolio.trades.count()),
-            "profit_factor": float(portfolio.trades.profit_factor()) if portfolio.trades.count() > 0 else 0,
+            "profit_factor": float(portfolio.trades.profit_factor())
+            if portfolio.trades.count() > 0
+            else 0,
         }
 
         # Extract trades
@@ -107,27 +119,45 @@ class BacktestAnalyzer:
                 trade_records = portfolio.trades.records
                 for i in range(len(trade_records)):
                     trade = trade_records[i]
-                    trades.append({
-                        "entry_time": convert_to_native(trade['entry_idx']) if 'entry_idx' in trade.dtype.names else i,
-                        "exit_time": convert_to_native(trade['exit_idx']) if 'exit_idx' in trade.dtype.names else i+1,
-                        "pnl": convert_to_native(trade['pnl']) if 'pnl' in trade.dtype.names else 0.0,
-                        "return": convert_to_native(trade['return']) if 'return' in trade.dtype.names else 0.0,
-                    })
+                    trades.append(
+                        {
+                            "entry_time": convert_to_native(trade["entry_idx"])
+                            if "entry_idx" in trade.dtype.names
+                            else i,
+                            "exit_time": convert_to_native(trade["exit_idx"])
+                            if "exit_idx" in trade.dtype.names
+                            else i + 1,
+                            "pnl": convert_to_native(trade["pnl"])
+                            if "pnl" in trade.dtype.names
+                            else 0.0,
+                            "return": convert_to_native(trade["return"])
+                            if "return" in trade.dtype.names
+                            else 0.0,
+                        }
+                    )
             except (AttributeError, TypeError, KeyError) as e:
                 # Fallback for different trade formats
                 logger.debug(f"Could not extract detailed trades: {e}")
-                trades = [{
-                    "total_trades": int(portfolio.trades.count()),
-                    "message": "Detailed trade data not available"
-                }]
+                trades = [
+                    {
+                        "total_trades": int(portfolio.trades.count()),
+                        "message": "Detailed trade data not available",
+                    }
+                ]
 
         # Convert equity curve to ensure all values are Python native types
         equity_curve_raw = portfolio.value().to_dict()
-        equity_curve = {str(k): convert_to_native(v) for k, v in equity_curve_raw.items()}
+        equity_curve = {
+            str(k): convert_to_native(v) for k, v in equity_curve_raw.items()
+        }
 
         # Also get drawdown series with proper conversion
-        drawdown_raw = portfolio.drawdown().to_dict() if hasattr(portfolio, 'drawdown') else {}
-        drawdown_series = {str(k): convert_to_native(v) for k, v in drawdown_raw.items()}
+        drawdown_raw = (
+            portfolio.drawdown().to_dict() if hasattr(portfolio, "drawdown") else {}
+        )
+        drawdown_series = {
+            str(k): convert_to_native(v) for k, v in drawdown_raw.items()
+        }
 
         return {
             "metrics": metrics,
@@ -506,7 +536,9 @@ class BacktestAnalyzer:
 
         return summary
 
-    def _create_empty_backtest_results(self, initial_capital: float, error: str = None) -> dict[str, Any]:
+    def _create_empty_backtest_results(
+        self, initial_capital: float, error: str = None
+    ) -> dict[str, Any]:
         """Create empty backtest results when no valid signals are available.
 
         Args:
@@ -530,10 +562,12 @@ class BacktestAnalyzer:
             "equity_curve": {str(0): initial_capital},
             "drawdown_series": {str(0): 0.0},
             "error": error,
-            "message": "No trading signals generated - empty backtest results returned"
+            "message": "No trading signals generated - empty backtest results returned",
         }
 
-    def _create_buyhold_backtest_results(self, data: pd.DataFrame, initial_capital: float) -> dict[str, Any]:
+    def _create_buyhold_backtest_results(
+        self, data: pd.DataFrame, initial_capital: float
+    ) -> dict[str, Any]:
         """Create buy-and-hold backtest results when no trading signals are available.
 
         Args:
@@ -555,17 +589,25 @@ class BacktestAnalyzer:
 
             # Simple buy and hold equity curve
             normalized_prices = close / start_price * initial_capital
-            equity_curve = {str(idx): convert_to_native(val) for idx, val in normalized_prices.to_dict().items()}
+            equity_curve = {
+                str(idx): convert_to_native(val)
+                for idx, val in normalized_prices.to_dict().items()
+            }
 
             # Calculate drawdown for buy and hold
             cummax = normalized_prices.expanding().max()
             drawdown = (normalized_prices - cummax) / cummax
-            drawdown_series = {str(idx): convert_to_native(val) for idx, val in drawdown.to_dict().items()}
+            drawdown_series = {
+                str(idx): convert_to_native(val)
+                for idx, val in drawdown.to_dict().items()
+            }
 
             return {
                 "metrics": {
                     "total_return": float(total_return),
-                    "annual_return": float(total_return * 252 / len(data)) if len(data) > 0 else 0.0,
+                    "annual_return": float(total_return * 252 / len(data))
+                    if len(data) > 0
+                    else 0.0,
                     "sharpe_ratio": 0.0,  # Cannot calculate without trading
                     "max_drawdown": float(drawdown.min()) if len(drawdown) > 0 else 0.0,
                     "win_rate": 0.0,  # No trades
@@ -575,7 +617,7 @@ class BacktestAnalyzer:
                 "trades": [],
                 "equity_curve": equity_curve,
                 "drawdown_series": drawdown_series,
-                "message": "No trading signals generated - returning buy-and-hold performance"
+                "message": "No trading signals generated - returning buy-and-hold performance",
             }
         except Exception as e:
             logger.error(f"Error creating buy-and-hold results: {e}")

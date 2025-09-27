@@ -52,7 +52,7 @@ def convert_numpy_types(obj: Any) -> Any:
     elif isinstance(obj, np.floating):
         return float(obj)
     # Check for numpy boolean type
-    elif isinstance(obj, np.bool_ | bool) and hasattr(obj, 'item'):
+    elif isinstance(obj, np.bool_ | bool) and hasattr(obj, "item"):
         return bool(obj)
     # Check for numpy complex types
     elif isinstance(obj, np.complexfloating):
@@ -65,12 +65,12 @@ def convert_numpy_types(obj: Any) -> Any:
         return obj.tolist()
     # Handle pandas DataFrame
     elif isinstance(obj, pd.DataFrame):
-        return obj.to_dict('records')
+        return obj.to_dict("records")
     # Handle NaN/None values
     elif pd.isna(obj):
         return None
     # Handle other numpy scalars with .item() method
-    elif hasattr(obj, 'item') and hasattr(obj, 'dtype'):
+    elif hasattr(obj, "item") and hasattr(obj, "dtype"):
         try:
             return obj.item()
         except Exception:
@@ -82,7 +82,7 @@ def convert_numpy_types(obj: Any) -> Any:
     elif isinstance(obj, list | tuple):
         return [convert_numpy_types(item) for item in obj]
     # Try to handle custom objects with __dict__
-    elif hasattr(obj, '__dict__') and not isinstance(obj, type):
+    elif hasattr(obj, "__dict__") and not isinstance(obj, type):
         try:
             return convert_numpy_types(obj.__dict__)
         except Exception:
@@ -158,7 +158,9 @@ def setup_backtesting_tools(mcp):
                     elif param_type is float:
                         return float(value)
                 except (ValueError, TypeError) as e:
-                    raise ValueError(f"Invalid {param_type.__name__} value: {value}") from e
+                    raise ValueError(
+                        f"Invalid {param_type.__name__} value: {value}"
+                    ) from e
             return value
 
         # Build parameters dict from provided arguments with type conversion
@@ -218,7 +220,7 @@ def setup_backtesting_tools(mcp):
                 total_return=metrics.get("total_return", 0),
                 sharpe_ratio=metrics.get("sharpe_ratio", 0),
                 max_drawdown=metrics.get("max_drawdown", 0),
-                total_trades=metrics.get("total_trades", 0)
+                total_trades=metrics.get("total_trades", 0),
             )
 
             # Set correlation context for downstream operations
@@ -227,8 +229,12 @@ def setup_backtesting_tools(mcp):
         return results
 
     @mcp.tool()
-    @with_structured_logging("optimize_strategy", include_performance=True, log_params=True)
-    @debug_operation("optimize_strategy", enable_profiling=True, strategy="optimization_strategy")
+    @with_structured_logging(
+        "optimize_strategy", include_performance=True, log_params=True
+    )
+    @debug_operation(
+        "optimize_strategy", enable_profiling=True, strategy="optimization_strategy"
+    )
     async def optimize_strategy(
         ctx: Context,
         symbol: str,
@@ -377,7 +383,9 @@ def setup_backtesting_tools(mcp):
                     elif param_type is float:
                         return float(value)
                 except (ValueError, TypeError) as e:
-                    raise ValueError(f"Invalid {param_type.__name__} value: {value}") from e
+                    raise ValueError(
+                        f"Invalid {param_type.__name__} value: {value}"
+                    ) from e
             return value
 
         # Build parameters dict from provided arguments with type conversion
@@ -447,6 +455,7 @@ def setup_backtesting_tools(mcp):
         # Handle strategies as JSON string from some clients
         if isinstance(strategies, str):
             import json
+
             try:
                 strategies = json.loads(strategies)
             except json.JSONDecodeError:
@@ -586,7 +595,9 @@ def setup_backtesting_tools(mcp):
                     elif param_type is float:
                         return float(value)
                 except (ValueError, TypeError) as e:
-                    raise ValueError(f"Invalid {param_type.__name__} value: {value}") from e
+                    raise ValueError(
+                        f"Invalid {param_type.__name__} value: {value}"
+                    ) from e
             return value
 
         # Build parameters dict from provided arguments with type conversion
@@ -829,7 +840,9 @@ def setup_backtesting_tools(mcp):
         # Enhanced data validation for ML strategies
         min_total_data = 200  # Minimum total data points for ML strategies
         if len(data) < min_total_data:
-            return {"error": f"Insufficient data for ML strategy: {len(data)} < {min_total_data} required"}
+            return {
+                "error": f"Insufficient data for ML strategy: {len(data)} < {min_total_data} required"
+            }
 
         # Split data for training/testing
         split_idx = int(len(data) * train_ratio)
@@ -841,12 +854,18 @@ def setup_backtesting_tools(mcp):
         min_test_data = 50
 
         if len(train_data) < min_train_data:
-            return {"error": f"Insufficient training data: {len(train_data)} < {min_train_data} required"}
+            return {
+                "error": f"Insufficient training data: {len(train_data)} < {min_train_data} required"
+            }
 
         if len(test_data) < min_test_data:
-            return {"error": f"Insufficient test data: {len(test_data)} < {min_test_data} required"}
+            return {
+                "error": f"Insufficient test data: {len(test_data)} < {min_test_data} required"
+            }
 
-        logger.info(f"ML backtest data split: {len(train_data)} training, {len(test_data)} testing samples")
+        logger.info(
+            f"ML backtest data split: {len(train_data)} training, {len(test_data)} testing samples"
+        )
 
         try:
             # Create ML strategy based on type
@@ -869,7 +888,7 @@ def setup_backtesting_tools(mcp):
                 )
                 training_metrics = {
                     "adaptation_method": adaptation_method,
-                    "strategy_alias": strategy_type
+                    "strategy_alias": strategy_type,
                 }
 
             elif strategy_type == "ensemble":
@@ -1194,12 +1213,16 @@ def setup_backtesting_tools(mcp):
                 elif strategy_name == "rsi":
                     # Create RSI-based SMA strategy with different parameters
                     strategy_instances.append(
-                        SimpleMovingAverageStrategy({"fast_period": 14, "slow_period": 28})
+                        SimpleMovingAverageStrategy(
+                            {"fast_period": 14, "slow_period": 28}
+                        )
                     )
                 elif strategy_name == "macd":
                     # Create MACD-like SMA strategy with MACD default periods
                     strategy_instances.append(
-                        SimpleMovingAverageStrategy({"fast_period": 12, "slow_period": 26})
+                        SimpleMovingAverageStrategy(
+                            {"fast_period": 12, "slow_period": 26}
+                        )
                     )
                 # Add more strategies as needed
 
@@ -1261,19 +1284,21 @@ def setup_backtesting_tools(mcp):
             avg_trades = total_trades / len(ensemble_results)
 
             # Convert all numpy types before returning
-            return convert_numpy_types({
-                "ensemble_summary": {
-                    "symbols_tested": len(ensemble_results),
-                    "base_strategies": base_strategies,
-                    "weighting_method": weighting_method,
-                    "average_return": avg_return,
-                    "total_trades": total_trades,
-                    "average_trades_per_symbol": avg_trades,
-                },
-                "individual_results": ensemble_results,
-                "final_strategy_weights": ensemble.get_strategy_weights(),
-                "strategy_performance_analysis": ensemble.get_strategy_performance(),
-            })
+            return convert_numpy_types(
+                {
+                    "ensemble_summary": {
+                        "symbols_tested": len(ensemble_results),
+                        "base_strategies": base_strategies,
+                        "weighting_method": weighting_method,
+                        "average_return": avg_return,
+                        "total_trades": total_trades,
+                        "average_trades_per_symbol": avg_trades,
+                    },
+                    "individual_results": ensemble_results,
+                    "final_strategy_weights": ensemble.get_strategy_weights(),
+                    "strategy_performance_analysis": ensemble.get_strategy_performance(),
+                }
+            )
 
         except Exception as e:
             return {"error": f"Ensemble creation failed: {str(e)}"}

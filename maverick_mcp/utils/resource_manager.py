@@ -27,16 +27,17 @@ logger = logging.getLogger(__name__)
 
 # Resource limits (in bytes)
 DEFAULT_MEMORY_LIMIT = 2 * 1024 * 1024 * 1024  # 2GB
-DEFAULT_SWAP_LIMIT = 4 * 1024 * 1024 * 1024     # 4GB
-CRITICAL_MEMORY_THRESHOLD = 0.9                   # 90% of limit
+DEFAULT_SWAP_LIMIT = 4 * 1024 * 1024 * 1024  # 4GB
+CRITICAL_MEMORY_THRESHOLD = 0.9  # 90% of limit
 
 # Global resource manager instance
-_resource_manager: Optional['ResourceManager'] = None
+_resource_manager: Optional["ResourceManager"] = None
 
 
 @dataclass
 class ResourceLimits:
     """Resource limit configuration."""
+
     memory_limit_bytes: int = DEFAULT_MEMORY_LIMIT
     swap_limit_bytes: int = DEFAULT_SWAP_LIMIT
     cpu_time_limit_seconds: int = 3600  # 1 hour
@@ -49,6 +50,7 @@ class ResourceLimits:
 @dataclass
 class ResourceUsage:
     """Current resource usage snapshot."""
+
     memory_rss_bytes: int
     memory_vms_bytes: int
     memory_percent: float
@@ -60,6 +62,7 @@ class ResourceUsage:
 
 class ResourceExhaustionError(Exception):
     """Raised when resource limits are exceeded."""
+
     pass
 
 
@@ -88,6 +91,7 @@ class ResourceManager:
 
     def _setup_signal_handlers(self):
         """Setup signal handlers for resource cleanup."""
+
         def signal_handler(signum, frame):
             logger.info(f"Received signal {signum}, performing cleanup")
             self.cleanup_all()
@@ -165,7 +169,10 @@ class ResourceManager:
     def _check_resource_limits(self, usage: ResourceUsage):
         """Check if resource limits are exceeded and take action."""
         # Memory limit check
-        if usage.memory_rss_bytes > self.limits.memory_limit_bytes * CRITICAL_MEMORY_THRESHOLD:
+        if (
+            usage.memory_rss_bytes
+            > self.limits.memory_limit_bytes * CRITICAL_MEMORY_THRESHOLD
+        ):
             logger.warning(
                 f"Memory usage {usage.memory_rss_bytes / (1024**3):.2f}GB "
                 f"approaching limit {self.limits.memory_limit_bytes / (1024**3):.2f}GB"
@@ -201,6 +208,7 @@ class ResourceManager:
         # Clear memory profiler snapshots
         try:
             from maverick_mcp.utils.memory_profiler import reset_memory_stats
+
             reset_memory_stats()
         except ImportError:
             pass
@@ -208,6 +216,7 @@ class ResourceManager:
         # Clear cache if available
         try:
             from maverick_mcp.data.cache import clear_cache
+
             clear_cache()
         except ImportError:
             pass
@@ -258,22 +267,23 @@ class ResourceManager:
 
         report = {
             "current_usage": {
-                "memory_mb": current.memory_rss_bytes / (1024 ** 2),
+                "memory_mb": current.memory_rss_bytes / (1024**2),
                 "memory_percent": current.memory_percent,
                 "cpu_percent": current.cpu_percent,
                 "open_files": current.open_files,
                 "threads": current.threads,
             },
             "limits": {
-                "memory_limit_mb": self.limits.memory_limit_bytes / (1024 ** 2),
-                "memory_usage_ratio": current.memory_rss_bytes / self.limits.memory_limit_bytes,
+                "memory_limit_mb": self.limits.memory_limit_bytes / (1024**2),
+                "memory_usage_ratio": current.memory_rss_bytes
+                / self.limits.memory_limit_bytes,
                 "file_descriptor_limit": self.limits.file_descriptor_limit,
             },
             "monitoring": {
                 "active": self.monitoring_active,
                 "history_size": len(self.resource_history),
                 "cleanup_callbacks": len(self.cleanup_callbacks),
-            }
+            },
         }
 
         # Add memory profiler stats if available
@@ -326,16 +336,20 @@ class ResourceManager:
         fd_ratio = current.open_files / self.limits.file_descriptor_limit
         if fd_ratio > 0.8:
             health_report["status"] = "warning"
-            health_report["issues"].append(f"High file descriptor usage: {current.open_files}")
+            health_report["issues"].append(
+                f"High file descriptor usage: {current.open_files}"
+            )
             health_report["recommendations"].append("Review open files")
 
         return health_report
 
 
 @contextmanager
-def resource_limit_context(memory_limit_mb: int = None,
-                          cpu_limit_percent: float = None,
-                          cleanup_on_exit: bool = True):
+def resource_limit_context(
+    memory_limit_mb: int = None,
+    cpu_limit_percent: float = None,
+    cleanup_on_exit: bool = True,
+):
     """Context manager for resource-limited operations.
 
     Args:
@@ -386,6 +400,7 @@ def monitor_async_task(task: asyncio.Task, name: str = "unknown"):
         task: Asyncio task to monitor
         name: Name of the task for logging
     """
+
     def task_done_callback(finished_task):
         if finished_task.exception():
             logger.error(f"Task {name} failed: {finished_task.exception()}")
@@ -437,23 +452,29 @@ class ResourceAwareExecutor:
 
 # Utility functions
 
+
 def cleanup_on_low_memory(threshold_mb: float = 500.0):
     """Decorator to trigger cleanup when memory is low.
 
     Args:
         threshold_mb: Memory threshold in MB
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             get_resource_manager().get_current_usage()
-            available_mb = (psutil.virtual_memory().available / (1024 ** 2))
+            available_mb = psutil.virtual_memory().available / (1024**2)
 
             if available_mb < threshold_mb:
-                logger.warning(f"Low memory detected ({available_mb:.1f}MB), triggering cleanup")
+                logger.warning(
+                    f"Low memory detected ({available_mb:.1f}MB), triggering cleanup"
+                )
                 get_resource_manager()._trigger_emergency_cleanup()
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -464,6 +485,7 @@ def log_resource_usage(func: Callable = None, *, interval: int = 60):
         func: Function to decorate
         interval: Logging interval in seconds
     """
+
     def decorator(f):
         def wrapper(*args, **kwargs):
             start_time = time.time()
@@ -480,6 +502,7 @@ def log_resource_usage(func: Callable = None, *, interval: int = 60):
                     f"{f.__name__} completed in {duration:.2f}s, "
                     f"memory delta: {memory_delta / (1024**2):+.2f}MB"
                 )
+
         return wrapper
 
     if func is None:
@@ -504,7 +527,9 @@ def initialize_resource_management(memory_limit_gb: float = 2.0):
     )
 
     _resource_manager = ResourceManager(limits)
-    logger.info(f"Resource management initialized with {memory_limit_gb}GB memory limit")
+    logger.info(
+        f"Resource management initialized with {memory_limit_gb}GB memory limit"
+    )
 
 
 # Cleanup function for graceful shutdown

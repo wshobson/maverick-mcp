@@ -49,8 +49,8 @@ class MarketRegimeDetector:
                 max_iter=200,
                 tol=1e-6,
                 reg_covar=1e-6,  # Regularization for numerical stability
-                init_params='kmeans',  # Better initialization
-                warm_start=False
+                init_params="kmeans",  # Better initialization
+                warm_start=False,
             )
         elif self.method == "kmeans":
             self.model = KMeans(
@@ -59,7 +59,7 @@ class MarketRegimeDetector:
                 n_init=10,
                 max_iter=500,
                 tol=1e-6,
-                algorithm='lloyd'  # More stable algorithm
+                algorithm="lloyd",  # More stable algorithm
             )
         elif self.method == "threshold":
             # Threshold-based regime detection
@@ -110,12 +110,14 @@ class MarketRegimeDetector:
                         kurt_return = 0.0
 
                     # Replace NaN/inf values with sensible defaults
-                    features.extend([
-                        mean_return if np.isfinite(mean_return) else 0.0,
-                        std_return if np.isfinite(std_return) else 0.01,
-                        skew_return if np.isfinite(skew_return) else 0.0,
-                        kurt_return if np.isfinite(kurt_return) else 0.0,
-                    ])
+                    features.extend(
+                        [
+                            mean_return if np.isfinite(mean_return) else 0.0,
+                            std_return if np.isfinite(std_return) else 0.01,
+                            skew_return if np.isfinite(skew_return) else 0.0,
+                            kurt_return if np.isfinite(kurt_return) else 0.0,
+                        ]
+                    )
                 else:
                     # Default values for insufficient data
                     features.extend([0.0, 0.01, 0.0, 0.0])
@@ -127,15 +129,23 @@ class MarketRegimeDetector:
             if len(data) >= 20:
                 # Short-term trend (20-day)
                 sma_20 = data["close"].rolling(20).mean()
-                sma_20_value = float(sma_20.iloc[-1]) if not pd.isna(sma_20.iloc[-1]) else 0.0
+                sma_20_value = (
+                    float(sma_20.iloc[-1]) if not pd.isna(sma_20.iloc[-1]) else 0.0
+                )
                 if sma_20_value != 0.0:
                     trend_strength_20 = (current_price - sma_20_value) / sma_20_value
                 else:
                     trend_strength_20 = 0.0
-                features.append(trend_strength_20 if np.isfinite(trend_strength_20) else 0.0)
+                features.append(
+                    trend_strength_20 if np.isfinite(trend_strength_20) else 0.0
+                )
 
                 # Price momentum (rate of change)
-                prev_price = float(data["close"].iloc[-20]) if not pd.isna(data["close"].iloc[-20]) else current_price
+                prev_price = (
+                    float(data["close"].iloc[-20])
+                    if not pd.isna(data["close"].iloc[-20])
+                    else current_price
+                )
                 if prev_price != 0.0:
                     momentum_20 = (current_price - prev_price) / prev_price
                 else:
@@ -146,8 +156,14 @@ class MarketRegimeDetector:
 
             # Multi-timeframe volatility regime detection
             if len(returns) >= 20:
-                vol_short = returns.rolling(20).std().iloc[-1] * np.sqrt(252)  # Annualized
-                vol_medium = returns.rolling(60).std().iloc[-1] * np.sqrt(252) if len(returns) >= 60 else vol_short
+                vol_short = returns.rolling(20).std().iloc[-1] * np.sqrt(
+                    252
+                )  # Annualized
+                vol_medium = (
+                    returns.rolling(60).std().iloc[-1] * np.sqrt(252)
+                    if len(returns) >= 60
+                    else vol_short
+                )
 
                 # Volatility regime indicator
                 vol_regime = vol_short / vol_medium if vol_medium > 0 else 1.0
@@ -168,14 +184,18 @@ class MarketRegimeDetector:
                     volume_ma_short = data["volume"].rolling(10).mean().iloc[-1]
                     volume_ma_long = data["volume"].rolling(20).mean().iloc[-1]
 
-                    volume_trend = (volume_ma_short / volume_ma_long
-                                    if volume_ma_long > 0 else 1.0)
+                    volume_trend = (
+                        volume_ma_short / volume_ma_long if volume_ma_long > 0 else 1.0
+                    )
                     features.append(volume_trend if np.isfinite(volume_trend) else 1.0)
 
                     # Volume surge indicator
-                    volume_surge = (current_volume / volume_ma_long
-                                   if volume_ma_long > 0 else 1.0)
-                    features.append(min(volume_surge, 10.0) if np.isfinite(volume_surge) else 1.0)
+                    volume_surge = (
+                        current_volume / volume_ma_long if volume_ma_long > 0 else 1.0
+                    )
+                    features.append(
+                        min(volume_surge, 10.0) if np.isfinite(volume_surge) else 1.0
+                    )
                 else:
                     features.extend([1.0, 1.0])
             else:
@@ -184,7 +204,11 @@ class MarketRegimeDetector:
             # Price dispersion (high-low range analysis)
             if "high" in data.columns and "low" in data.columns and len(data) >= 10:
                 hl_range = (data["high"] - data["low"]) / data["close"]
-                avg_range = hl_range.rolling(20).mean().iloc[-1] if len(data) >= 20 else hl_range.mean()
+                avg_range = (
+                    hl_range.rolling(20).mean().iloc[-1]
+                    if len(data) >= 20
+                    else hl_range.mean()
+                )
                 current_range = hl_range.iloc[-1]
 
                 range_regime = current_range / avg_range if avg_range > 0 else 1.0
@@ -199,7 +223,9 @@ class MarketRegimeDetector:
                 return np.array([])
 
             # Replace any remaining NaN/inf values
-            feature_array = np.nan_to_num(feature_array, nan=0.0, posinf=1.0, neginf=-1.0)
+            feature_array = np.nan_to_num(
+                feature_array, nan=0.0, posinf=1.0, neginf=-1.0
+            )
 
             return feature_array
 
@@ -256,7 +282,9 @@ class MarketRegimeDetector:
             # Need sufficient data for stable regime detection
             min_required_samples = max(50, self.n_regimes * 20)
             if len(data) < min_required_samples + self.lookback_period:
-                logger.warning(f"Insufficient data for regime fitting: {len(data)} < {min_required_samples + self.lookback_period}")
+                logger.warning(
+                    f"Insufficient data for regime fitting: {len(data)} < {min_required_samples + self.lookback_period}"
+                )
                 self.is_fitted = True
                 return
 
@@ -268,7 +296,7 @@ class MarketRegimeDetector:
             step_size = max(1, self.lookback_period // 10)
 
             for i in range(self.lookback_period, len(data), step_size):
-                window_data = data.iloc[max(0, i - self.lookback_period): i + 1]
+                window_data = data.iloc[max(0, i - self.lookback_period) : i + 1]
                 features = self.extract_regime_features(window_data)
 
                 if len(features) > 0 and np.all(np.isfinite(features)):
@@ -276,7 +304,9 @@ class MarketRegimeDetector:
                     if feature_consistency_count is None:
                         feature_consistency_count = len(features)
                     elif len(features) != feature_consistency_count:
-                        logger.warning(f"Feature dimension mismatch: expected {feature_consistency_count}, got {len(features)}")
+                        logger.warning(
+                            f"Feature dimension mismatch: expected {feature_consistency_count}, got {len(features)}"
+                        )
                         continue
 
                     feature_list.append(features)
@@ -290,7 +320,9 @@ class MarketRegimeDetector:
 
             # Ensure we have valid feature_list before creating array
             if len(feature_list) == 0:
-                logger.warning("Empty feature list after filtering, cannot create feature matrix")
+                logger.warning(
+                    "Empty feature list after filtering, cannot create feature matrix"
+                )
                 self.is_fitted = True
                 return
 
@@ -309,7 +341,9 @@ class MarketRegimeDetector:
             feature_std = np.std(X, axis=0)
             zero_variance_features = np.where(feature_std < 1e-8)[0]
             if len(zero_variance_features) > 0:
-                logger.debug(f"Found {len(zero_variance_features)} zero-variance features")
+                logger.debug(
+                    f"Found {len(zero_variance_features)} zero-variance features"
+                )
                 # Add small noise to zero-variance features
                 for idx in zero_variance_features:
                     X[:, idx] += np.random.normal(0, 1e-6, X.shape[0])
@@ -324,29 +358,47 @@ class MarketRegimeDetector:
                     self.model.fit(X_scaled)
 
                     # Validate fitted model
-                    if not hasattr(self.model, 'weights_') or len(self.model.weights_) != self.n_regimes:
+                    if (
+                        not hasattr(self.model, "weights_")
+                        or len(self.model.weights_) != self.n_regimes
+                    ):
                         raise ValueError("Model fitting failed - invalid weights")
 
                     # Check convergence
                     if not self.model.converged_:
-                        logger.warning("GaussianMixture did not converge, but will proceed")
+                        logger.warning(
+                            "GaussianMixture did not converge, but will proceed"
+                        )
 
                 elif self.method == "kmeans":
                     self.model.fit(X_scaled)
 
                     # Validate fitted model
-                    if not hasattr(self.model, 'cluster_centers_') or len(self.model.cluster_centers_) != self.n_regimes:
-                        raise ValueError("KMeans fitting failed - invalid cluster centers")
+                    if (
+                        not hasattr(self.model, "cluster_centers_")
+                        or len(self.model.cluster_centers_) != self.n_regimes
+                    ):
+                        raise ValueError(
+                            "KMeans fitting failed - invalid cluster centers"
+                        )
 
                 self.is_fitted = True
 
                 # Log fitting success with model diagnostics
                 if self.method == "hmm":
                     avg_log_likelihood = self.model.score(X_scaled) / len(X_scaled)
-                    logger.info(f"Fitted {self.method} regime detector with {len(X)} samples, avg log-likelihood: {avg_log_likelihood:.4f}")
+                    logger.info(
+                        f"Fitted {self.method} regime detector with {len(X)} samples, avg log-likelihood: {avg_log_likelihood:.4f}"
+                    )
                 else:
-                    inertia = self.model.inertia_ if hasattr(self.model, 'inertia_') else 'N/A'
-                    logger.info(f"Fitted {self.method} regime detector with {len(X)} samples, inertia: {inertia}")
+                    inertia = (
+                        self.model.inertia_
+                        if hasattr(self.model, "inertia_")
+                        else "N/A"
+                    )
+                    logger.info(
+                        f"Fitted {self.method} regime detector with {len(X)} samples, inertia: {inertia}"
+                    )
 
             except Exception as model_error:
                 logger.error(f"Model fitting failed: {model_error}")
@@ -388,9 +440,15 @@ class MarketRegimeDetector:
                 features = np.nan_to_num(features, nan=0.0, posinf=1.0, neginf=-1.0)
 
             # Validate feature consistency with training
-            expected_features = self.scaler.n_features_in_ if hasattr(self.scaler, 'n_features_in_') else None
+            expected_features = (
+                self.scaler.n_features_in_
+                if hasattr(self.scaler, "n_features_in_")
+                else None
+            )
             if expected_features is not None and len(features) != expected_features:
-                logger.warning(f"Feature count mismatch in prediction: expected {expected_features}, got {len(features)}")
+                logger.warning(
+                    f"Feature count mismatch in prediction: expected {expected_features}, got {len(features)}"
+                )
                 return self.detect_regime_threshold(data)
 
             # Scale features and predict regime
@@ -400,13 +458,17 @@ class MarketRegimeDetector:
 
                 # Validate regime prediction
                 if regime < 0 or regime >= self.n_regimes:
-                    logger.warning(f"Invalid regime prediction: {regime}, using threshold method")
+                    logger.warning(
+                        f"Invalid regime prediction: {regime}, using threshold method"
+                    )
                     return self.detect_regime_threshold(data)
 
                 return int(regime)
 
             except Exception as pred_error:
-                logger.debug(f"Prediction error: {pred_error}, falling back to threshold method")
+                logger.debug(
+                    f"Prediction error: {pred_error}, falling back to threshold method"
+                )
                 return self.detect_regime_threshold(data)
 
         except Exception as e:
@@ -589,21 +651,29 @@ class RegimeAwareStrategy(Strategy):
                 logger.warning("Empty or invalid data provided to generate_signals")
                 # Create empty Series with a dummy index to avoid empty array issues
                 dummy_index = pd.DatetimeIndex([pd.Timestamp.now()])
-                return pd.Series(False, index=dummy_index), pd.Series(False, index=dummy_index)
+                return pd.Series(False, index=dummy_index), pd.Series(
+                    False, index=dummy_index
+                )
 
             # Ensure minimum data requirements
             min_required_data = max(50, self.regime_detector.lookback_period)
             if len(data) < min_required_data:
-                logger.warning(f"Insufficient data for regime-aware strategy: {len(data)} < {min_required_data}")
+                logger.warning(
+                    f"Insufficient data for regime-aware strategy: {len(data)} < {min_required_data}"
+                )
                 # Return all False signals but with valid data index
-                return pd.Series(False, index=data.index), pd.Series(False, index=data.index)
+                return pd.Series(False, index=data.index), pd.Series(
+                    False, index=data.index
+                )
 
             # Fit regime detector if not already done
             if not self.regime_detector.is_fitted:
                 try:
                     self.fit_regime_detector(data)
                 except Exception as e:
-                    logger.error(f"Failed to fit regime detector: {e}, falling back to single strategy")
+                    logger.error(
+                        f"Failed to fit regime detector: {e}, falling back to single strategy"
+                    )
                     # Fallback to using first available strategy without regime switching
                     fallback_strategy = next(iter(self.regime_strategies.values()))
                     return fallback_strategy.generate_signals(data)
@@ -651,11 +721,15 @@ class RegimeAwareStrategy(Strategy):
             logger.error(f"Error generating regime-aware signals: {e}")
             # Ensure we always return valid series even on error
             if data is not None and len(data) > 0:
-                return pd.Series(False, index=data.index), pd.Series(False, index=data.index)
+                return pd.Series(False, index=data.index), pd.Series(
+                    False, index=data.index
+                )
             else:
                 # Create dummy index to avoid empty array issues
                 dummy_index = pd.DatetimeIndex([pd.Timestamp.now()])
-                return pd.Series(False, index=dummy_index), pd.Series(False, index=dummy_index)
+                return pd.Series(False, index=dummy_index), pd.Series(
+                    False, index=dummy_index
+                )
 
     def get_regime_analysis(self) -> dict[str, Any]:
         """Get analysis of regime detection and switching.

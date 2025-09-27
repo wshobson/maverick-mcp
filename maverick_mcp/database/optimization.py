@@ -55,14 +55,12 @@ class QueryOptimizer:
                 PriceCache.__table__.c.date,
                 PriceCache.__table__.c.close_price,
             ),
-
             # Index for volume-based queries (common in strategy analysis)
             Index(
                 "mcp_price_cache_volume_date_idx",
                 PriceCache.__table__.c.volume,
                 PriceCache.__table__.c.date,
             ),
-
             # Covering index for OHLCV queries (includes all price data)
             Index(
                 "mcp_price_cache_ohlcv_covering_idx",
@@ -75,14 +73,12 @@ class QueryOptimizer:
                 PriceCache.__table__.c.close_price,
                 PriceCache.__table__.c.volume,
             ),
-
             # Index for latest price queries
             Index(
                 "mcp_price_cache_latest_price_idx",
                 PriceCache.__table__.c.stock_id,
                 PriceCache.__table__.c.date.desc(),
             ),
-
             # Partial index for recent data (last 2 years) - most commonly queried
             # Note: This is PostgreSQL-specific, will be skipped for SQLite
         ]
@@ -90,7 +86,7 @@ class QueryOptimizer:
         try:
             with engine.connect() as conn:
                 # Check if we're using PostgreSQL for partial indexes
-                is_postgresql = engine.dialect.name == 'postgresql'
+                is_postgresql = engine.dialect.name == "postgresql"
 
                 for index in additional_indexes:
                     try:
@@ -109,11 +105,13 @@ class QueryOptimizer:
                 if is_postgresql:
                     try:
                         # Create partial index for recent data (last 2 years)
-                        conn.execute(text("""
+                        conn.execute(
+                            text("""
                             CREATE INDEX CONCURRENTLY IF NOT EXISTS mcp_price_cache_recent_data_idx
                             ON mcp_price_cache (stock_id, date DESC, close_price)
                             WHERE date >= CURRENT_DATE - INTERVAL '2 years'
-                        """))
+                        """)
+                        )
                         logger.info("Created partial index for recent data")
 
                         # Update table statistics for better query planning
@@ -122,7 +120,9 @@ class QueryOptimizer:
                         logger.info("Updated table statistics")
 
                     except Exception as e:
-                        logger.warning(f"Failed to create PostgreSQL optimizations: {e}")
+                        logger.warning(
+                            f"Failed to create PostgreSQL optimizations: {e}"
+                        )
 
                 conn.commit()
 
@@ -152,7 +152,7 @@ class QueryOptimizer:
         def bulk_insert_price_data_optimized(
             session: Session,
             price_data_list: list[dict[str, Any]],
-            batch_size: int = 1000
+            batch_size: int = 1000,
         ):
             """
             Optimized bulk insert for price data with batching.
@@ -171,7 +171,7 @@ class QueryOptimizer:
             try:
                 # Process in batches to avoid memory issues
                 for i in range(0, len(price_data_list), batch_size):
-                    batch = price_data_list[i:i + batch_size]
+                    batch = price_data_list[i : i + batch_size]
 
                     # Use bulk_insert_mappings for better performance
                     session.bulk_insert_mappings(PriceCache, batch)
@@ -183,8 +183,10 @@ class QueryOptimizer:
                 session.commit()
 
                 elapsed = time.time() - start_time
-                logger.info(f"Bulk insert completed in {elapsed:.2f}s "
-                           f"({len(price_data_list) / elapsed:.0f} records/sec)")
+                logger.info(
+                    f"Bulk insert completed in {elapsed:.2f}s "
+                    f"({len(price_data_list) / elapsed:.0f} records/sec)"
+                )
 
             except Exception as e:
                 logger.error(f"Bulk insert failed: {e}")
@@ -269,7 +271,7 @@ class QueryOptimizer:
         session: Session,
         query: str,
         params: dict[str, Any],
-        query_name: str = "unnamed"
+        query_name: str = "unnamed",
     ) -> pd.DataFrame:
         """Execute optimized query with performance monitoring."""
         with self.query_performance_monitor(query_name):
@@ -295,10 +297,13 @@ class QueryOptimizer:
             "query_stats": self._query_stats.copy(),
             "connection_pool_stats": self._connection_pool_stats.copy(),
             "top_slow_queries": sorted(
-                [(name, stats["avg_time"]) for name, stats in self._query_stats.items()],
+                [
+                    (name, stats["avg_time"])
+                    for name, stats in self._query_stats.items()
+                ],
                 key=lambda x: x[1],
-                reverse=True
-            )[:5]
+                reverse=True,
+            )[:5],
         }
 
     def reset_statistics(self):
@@ -324,7 +329,7 @@ class BatchQueryExecutor:
         symbols: list[str],
         start_date: str,
         end_date: str,
-        session: Session = None
+        session: Session = None,
     ) -> dict[str, pd.DataFrame]:
         """
         Efficiently fetch data for multiple symbols in a single query.
@@ -357,7 +362,7 @@ class BatchQueryExecutor:
                     "start_date": start_date,
                     "end_date": end_date,
                 },
-                query_name="batch_symbol_fetch"
+                query_name="batch_symbol_fetch",
             )
 
             # Group by symbol and create separate DataFrames
@@ -371,8 +376,10 @@ class BatchQueryExecutor:
                 # Return empty DataFrames for all symbols
                 symbol_data = {symbol: pd.DataFrame() for symbol in symbols}
 
-            logger.info(f"Batch fetched data for {len(symbols)} symbols: "
-                       f"{sum(len(df) for df in symbol_data.values())} total records")
+            logger.info(
+                f"Batch fetched data for {len(symbols)} symbols: "
+                f"{sum(len(df) for df in symbol_data.values())} total records"
+            )
 
             return symbol_data
 
@@ -422,7 +429,7 @@ def optimized_db_session():
     try:
         # Configure session for optimal performance
         session.execute(text("PRAGMA synchronous = NORMAL"))  # SQLite optimization
-        session.execute(text("PRAGMA journal_mode = WAL"))     # SQLite optimization
+        session.execute(text("PRAGMA journal_mode = WAL"))  # SQLite optimization
         yield session
         session.commit()
     except Exception:
@@ -435,10 +442,13 @@ def optimized_db_session():
 # Performance monitoring decorator
 def monitor_query_performance(query_name: str):
     """Decorator for monitoring query performance."""
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             optimizer = get_query_optimizer()
             with optimizer.query_performance_monitor(query_name):
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator

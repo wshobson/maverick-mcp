@@ -32,6 +32,7 @@ class MockFastMCP:
 
     def tool(self, name: str = None):
         """Mock tool decorator."""
+
         def decorator(func):
             tool_name = name or func.__name__
             self.tools[tool_name] = {
@@ -41,11 +42,13 @@ class MockFastMCP:
             }
             self.tool_functions[tool_name] = func
             return func
+
         return decorator
 
     def _get_function_signature(self, func):
         """Extract function signature for validation."""
         import inspect
+
         sig = inspect.signature(func)
         return {
             "parameters": list(sig.parameters.keys()),
@@ -114,7 +117,10 @@ class TestMCPToolsIntegration:
             assert callable(tool_info["function"]), f"Tool {tool_name} is not callable"
             assert "signature" in tool_info, f"Tool {tool_name} missing signature"
 
-        return {"registered_tools": list(registered_tools), "tool_count": len(registered_tools)}
+        return {
+            "registered_tools": list(registered_tools),
+            "tool_count": len(registered_tools),
+        }
 
     async def test_run_backtest_tool_comprehensive(self, setup_tools, mock_context):
         """Test run_backtest tool with comprehensive parameter validation."""
@@ -200,22 +206,36 @@ class TestMCPToolsIntegration:
                     result = await tool_func(mock_context, **test_case["params"])
 
                     if test_case["should_succeed"]:
-                        assert isinstance(result, dict), f"Result should be dict for {test_case['name']}"
-                        assert "symbol" in result, f"Missing symbol in result for {test_case['name']}"
-                        assert "metrics" in result, f"Missing metrics in result for {test_case['name']}"
+                        assert isinstance(result, dict), (
+                            f"Result should be dict for {test_case['name']}"
+                        )
+                        assert "symbol" in result, (
+                            f"Missing symbol in result for {test_case['name']}"
+                        )
+                        assert "metrics" in result, (
+                            f"Missing metrics in result for {test_case['name']}"
+                        )
                         results[test_case["name"]] = {"success": True, "result": result}
                         logger.info(f"✓ {test_case['name']} succeeded as expected")
                     else:
                         # If we got here, it didn't fail as expected
-                        results[test_case["name"]] = {"success": False, "unexpected_success": True}
-                        logger.warning(f"⚠ {test_case['name']} succeeded but was expected to fail")
+                        results[test_case["name"]] = {
+                            "success": False,
+                            "unexpected_success": True,
+                        }
+                        logger.warning(
+                            f"⚠ {test_case['name']} succeeded but was expected to fail"
+                        )
 
             except Exception as e:
                 if test_case["should_succeed"]:
                     results[test_case["name"]] = {"success": False, "error": str(e)}
                     logger.error(f"✗ {test_case['name']} failed unexpectedly: {e}")
                 else:
-                    results[test_case["name"]] = {"success": True, "expected_error": str(e)}
+                    results[test_case["name"]] = {
+                        "success": True,
+                        "expected_error": str(e),
+                    }
                     logger.info(f"✓ {test_case['name']} failed as expected: {e}")
 
         # Calculate success rate
@@ -236,7 +256,9 @@ class TestMCPToolsIntegration:
         strategies_result = await list_func(mock_context)
 
         assert isinstance(strategies_result, dict), "list_strategies should return dict"
-        assert "available_strategies" in strategies_result, "Missing available_strategies"
+        assert "available_strategies" in strategies_result, (
+            "Missing available_strategies"
+        )
         assert "total_count" in strategies_result, "Missing total_count"
         assert strategies_result["total_count"] > 0, "Should have strategies available"
 
@@ -262,7 +284,9 @@ class TestMCPToolsIntegration:
 
                 parse_results[description] = result
                 status = "✓" if result["success"] else "⚠"
-                logger.info(f"{status} Parsed: '{description}' -> {result['strategy'].get('strategy_type', 'unknown')}")
+                logger.info(
+                    f"{status} Parsed: '{description}' -> {result['strategy'].get('strategy_type', 'unknown')}"
+                )
 
             except Exception as e:
                 parse_results[description] = {"error": str(e)}
@@ -291,8 +315,14 @@ class TestMCPToolsIntegration:
                     "max_drawdown": -0.08,
                 },
                 "optimization_results": [
-                    {"parameters": {"fast_period": 10, "slow_period": 20}, "metrics": {"sharpe_ratio": 1.2}},
-                    {"parameters": {"fast_period": 12, "slow_period": 26}, "metrics": {"sharpe_ratio": 1.8}},
+                    {
+                        "parameters": {"fast_period": 10, "slow_period": 20},
+                        "metrics": {"sharpe_ratio": 1.2},
+                    },
+                    {
+                        "parameters": {"fast_period": 12, "slow_period": 26},
+                        "metrics": {"sharpe_ratio": 1.8},
+                    },
                 ],
             }
             mock_engine.optimize_parameters.return_value = mock_optimization_result
@@ -315,7 +345,9 @@ class TestMCPToolsIntegration:
             walk_forward_func = mcp.tool_functions["walk_forward_analysis"]
 
             # Mock walk-forward analysis
-            with patch("maverick_mcp.backtesting.StrategyOptimizer") as mock_optimizer_class:
+            with patch(
+                "maverick_mcp.backtesting.StrategyOptimizer"
+            ) as mock_optimizer_class:
                 mock_optimizer = Mock()
                 mock_optimizer_class.return_value = mock_optimizer
 
@@ -328,7 +360,9 @@ class TestMCPToolsIntegration:
                     "windows_tested": 4,
                     "average_window_performance": 0.15,
                 }
-                mock_optimizer.walk_forward_analysis.return_value = mock_walk_forward_result
+                mock_optimizer.walk_forward_analysis.return_value = (
+                    mock_walk_forward_result
+                )
 
                 result = await walk_forward_func(
                     mock_context,
@@ -338,7 +372,9 @@ class TestMCPToolsIntegration:
                     step_size=63,
                 )
 
-                assert isinstance(result, dict), "walk_forward_analysis should return dict"
+                assert isinstance(result, dict), (
+                    "walk_forward_analysis should return dict"
+                )
                 logger.info("✓ walk_forward_analysis tool executed successfully")
 
         return {"optimization_tests": "completed"}
@@ -363,21 +399,31 @@ class TestMCPToolsIntegration:
                     tool_func = mcp.tool_functions[tool_name]
 
                     # Mock ML dependencies
-                    with patch("maverick_mcp.backtesting.VectorBTEngine") as mock_engine:
+                    with patch(
+                        "maverick_mcp.backtesting.VectorBTEngine"
+                    ) as mock_engine:
                         mock_instance = Mock()
                         mock_engine.return_value = mock_instance
 
                         # Mock historical data
                         import numpy as np
                         import pandas as pd
-                        dates = pd.date_range(start="2022-01-01", end="2023-12-31", freq="D")
-                        mock_data = pd.DataFrame({
-                            "open": np.random.uniform(100, 200, len(dates)),
-                            "high": np.random.uniform(100, 200, len(dates)),
-                            "low": np.random.uniform(100, 200, len(dates)),
-                            "close": np.random.uniform(100, 200, len(dates)),
-                            "volume": np.random.randint(1000000, 10000000, len(dates)),
-                        }, index=dates)
+
+                        dates = pd.date_range(
+                            start="2022-01-01", end="2023-12-31", freq="D"
+                        )
+                        mock_data = pd.DataFrame(
+                            {
+                                "open": np.random.uniform(100, 200, len(dates)),
+                                "high": np.random.uniform(100, 200, len(dates)),
+                                "low": np.random.uniform(100, 200, len(dates)),
+                                "close": np.random.uniform(100, 200, len(dates)),
+                                "volume": np.random.randint(
+                                    1000000, 10000000, len(dates)
+                                ),
+                            },
+                            index=dates,
+                        )
                         mock_instance.get_historical_data.return_value = mock_data
 
                         # Test specific ML tools
@@ -409,7 +455,10 @@ class TestMCPToolsIntegration:
                                 base_strategies=["sma_cross", "rsi"],
                             )
 
-                        ml_results[tool_name] = {"success": True, "type": type(result).__name__}
+                        ml_results[tool_name] = {
+                            "success": True,
+                            "type": type(result).__name__,
+                        }
                         logger.info(f"✓ {tool_name} executed successfully")
 
                 except Exception as e:
@@ -437,7 +486,9 @@ class TestMCPToolsIntegration:
                     tool_func = mcp.tool_functions[tool_name]
 
                     # Mock VectorBT engine and visualization dependencies
-                    with patch("maverick_mcp.backtesting.VectorBTEngine") as mock_engine:
+                    with patch(
+                        "maverick_mcp.backtesting.VectorBTEngine"
+                    ) as mock_engine:
                         mock_instance = Mock()
                         mock_engine.return_value = mock_instance
 
@@ -447,8 +498,16 @@ class TestMCPToolsIntegration:
                             "equity_curve": [10000, 10100, 10200, 10300, 10250],
                             "drawdown_series": [0, -0.01, -0.02, 0, -0.005],
                             "trades": [
-                                {"entry_time": "2023-01-01", "exit_time": "2023-02-01", "pnl": 100},
-                                {"entry_time": "2023-03-01", "exit_time": "2023-04-01", "pnl": -50},
+                                {
+                                    "entry_time": "2023-01-01",
+                                    "exit_time": "2023-02-01",
+                                    "pnl": 100,
+                                },
+                                {
+                                    "entry_time": "2023-03-01",
+                                    "exit_time": "2023-04-01",
+                                    "pnl": -50,
+                                },
                             ],
                             "metrics": {
                                 "total_return": 0.15,
@@ -460,11 +519,18 @@ class TestMCPToolsIntegration:
                         mock_instance.run_backtest.return_value = mock_result
 
                         # Mock visualization functions
-                        with patch("maverick_mcp.backtesting.visualization.generate_equity_curve") as mock_equity:
-                            with patch("maverick_mcp.backtesting.visualization.generate_performance_dashboard") as mock_dashboard:
-                                with patch("maverick_mcp.backtesting.visualization.generate_trade_scatter") as mock_scatter:
-                                    with patch("maverick_mcp.backtesting.visualization.generate_optimization_heatmap") as mock_heatmap:
-
+                        with patch(
+                            "maverick_mcp.backtesting.visualization.generate_equity_curve"
+                        ) as mock_equity:
+                            with patch(
+                                "maverick_mcp.backtesting.visualization.generate_performance_dashboard"
+                            ) as mock_dashboard:
+                                with patch(
+                                    "maverick_mcp.backtesting.visualization.generate_trade_scatter"
+                                ) as mock_scatter:
+                                    with patch(
+                                        "maverick_mcp.backtesting.visualization.generate_optimization_heatmap"
+                                    ) as mock_heatmap:
                                         # Mock chart returns (base64 strings)
                                         mock_chart_data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
                                         mock_equity.return_value = mock_chart_data
@@ -480,19 +546,27 @@ class TestMCPToolsIntegration:
                                             theme="light",
                                         )
 
-                                        assert isinstance(result, dict), f"{tool_name} should return dict"
+                                        assert isinstance(result, dict), (
+                                            f"{tool_name} should return dict"
+                                        )
 
                                         # Validate chart data
                                         for chart_name, chart_data in result.items():
-                                            assert isinstance(chart_data, str), f"Chart {chart_name} should be string"
-                                            assert len(chart_data) > 0, f"Chart {chart_name} should have data"
+                                            assert isinstance(chart_data, str), (
+                                                f"Chart {chart_name} should be string"
+                                            )
+                                            assert len(chart_data) > 0, (
+                                                f"Chart {chart_name} should have data"
+                                            )
 
                                         viz_results[tool_name] = {
                                             "success": True,
                                             "charts_generated": list(result.keys()),
                                             "chart_count": len(result),
                                         }
-                                        logger.info(f"✓ {tool_name} generated {len(result)} charts successfully")
+                                        logger.info(
+                                            f"✓ {tool_name} generated {len(result)} charts successfully"
+                                        )
 
                 except Exception as e:
                     viz_results[tool_name] = {"success": False, "error": str(e)}
@@ -560,7 +634,9 @@ class TestMCPToolsIntegration:
             mock_engine.run_backtest.return_value = mock_backtest_result
 
             # Mock comparison results
-            with patch("maverick_mcp.backtesting.BacktestAnalyzer") as mock_analyzer_class:
+            with patch(
+                "maverick_mcp.backtesting.BacktestAnalyzer"
+            ) as mock_analyzer_class:
                 mock_analyzer = Mock()
                 mock_analyzer_class.return_value = mock_analyzer
 
@@ -575,7 +651,9 @@ class TestMCPToolsIntegration:
                 mock_analyzer.compare_strategies.return_value = mock_comparison
 
                 # Mock visualization
-                with patch("maverick_mcp.backtesting.visualization.generate_equity_curve") as mock_viz:
+                with patch(
+                    "maverick_mcp.backtesting.visualization.generate_equity_curve"
+                ) as mock_viz:
                     mock_viz.return_value = "mock_chart_data"
 
                     # Execute session commands
@@ -584,37 +662,51 @@ class TestMCPToolsIntegration:
                             start_time = asyncio.get_event_loop().time()
 
                             tool_func = mcp.tool_functions[command_info["tool"]]
-                            result = await tool_func(mock_context, **command_info["params"])
+                            result = await tool_func(
+                                mock_context, **command_info["params"]
+                            )
 
-                            execution_time = asyncio.get_event_loop().time() - start_time
+                            execution_time = (
+                                asyncio.get_event_loop().time() - start_time
+                            )
 
-                            session_results.append({
-                                "command": command_info["command"],
-                                "tool": command_info["tool"],
-                                "success": True,
-                                "execution_time": execution_time,
-                                "result_type": type(result).__name__,
-                            })
+                            session_results.append(
+                                {
+                                    "command": command_info["command"],
+                                    "tool": command_info["tool"],
+                                    "success": True,
+                                    "execution_time": execution_time,
+                                    "result_type": type(result).__name__,
+                                }
+                            )
 
-                            logger.info(f"✓ '{command_info['command']}' completed in {execution_time:.3f}s")
+                            logger.info(
+                                f"✓ '{command_info['command']}' completed in {execution_time:.3f}s"
+                            )
 
                         except Exception as e:
-                            session_results.append({
-                                "command": command_info["command"],
-                                "tool": command_info["tool"],
-                                "success": False,
-                                "error": str(e),
-                            })
+                            session_results.append(
+                                {
+                                    "command": command_info["command"],
+                                    "tool": command_info["tool"],
+                                    "success": False,
+                                    "error": str(e),
+                                }
+                            )
                             logger.error(f"✗ '{command_info['command']}' failed: {e}")
 
         # Analyze session results
         total_commands = len(session_commands)
         successful_commands = sum(1 for r in session_results if r.get("success", False))
         success_rate = successful_commands / total_commands
-        avg_execution_time = np.mean([r.get("execution_time", 0) for r in session_results if r.get("success")])
+        avg_execution_time = np.mean(
+            [r.get("execution_time", 0) for r in session_results if r.get("success")]
+        )
 
         assert success_rate >= 0.75, f"Session success rate too low: {success_rate:.1%}"
-        assert avg_execution_time < 5.0, f"Average execution time too high: {avg_execution_time:.3f}s"
+        assert avg_execution_time < 5.0, (
+            f"Average execution time too high: {avg_execution_time:.3f}s"
+        )
 
         logger.info(
             f"Claude Desktop Simulation Results:\n"
@@ -630,7 +722,9 @@ class TestMCPToolsIntegration:
             "avg_execution_time": avg_execution_time,
         }
 
-    async def test_tool_parameter_validation_comprehensive(self, setup_tools, mock_context):
+    async def test_tool_parameter_validation_comprehensive(
+        self, setup_tools, mock_context
+    ):
         """Test comprehensive parameter validation across all tools."""
         mcp = setup_tools
 
@@ -643,16 +737,27 @@ class TestMCPToolsIntegration:
                 "valid_params": {"symbol": "AAPL", "strategy": "sma_cross"},
                 "invalid_params": [
                     {"symbol": "", "strategy": "sma_cross"},  # Empty symbol
-                    {"symbol": "AAPL", "strategy": ""},       # Empty strategy
-                    {"symbol": "AAPL", "strategy": "sma_cross", "fast_period": "not_a_number"},  # Invalid number
+                    {"symbol": "AAPL", "strategy": ""},  # Empty strategy
+                    {
+                        "symbol": "AAPL",
+                        "strategy": "sma_cross",
+                        "fast_period": "not_a_number",
+                    },  # Invalid number
                 ],
             },
             {
                 "tool": "optimize_strategy",
                 "valid_params": {"symbol": "AAPL", "strategy": "sma_cross"},
                 "invalid_params": [
-                    {"symbol": "AAPL", "strategy": "invalid_strategy"},  # Invalid strategy
-                    {"symbol": "AAPL", "strategy": "sma_cross", "top_n": -1},  # Negative top_n
+                    {
+                        "symbol": "AAPL",
+                        "strategy": "invalid_strategy",
+                    },  # Invalid strategy
+                    {
+                        "symbol": "AAPL",
+                        "strategy": "sma_cross",
+                        "top_n": -1,
+                    },  # Negative top_n
                 ],
             },
         ]
@@ -666,18 +771,22 @@ class TestMCPToolsIntegration:
                 try:
                     with patch("maverick_mcp.backtesting.VectorBTEngine"):
                         await tool_func(mock_context, **test_case["valid_params"])
-                        validation_tests.append({
+                        validation_tests.append(
+                            {
+                                "tool": tool_name,
+                                "test": "valid_params",
+                                "success": True,
+                            }
+                        )
+                except Exception as e:
+                    validation_tests.append(
+                        {
                             "tool": tool_name,
                             "test": "valid_params",
-                            "success": True,
-                        })
-                except Exception as e:
-                    validation_tests.append({
-                        "tool": tool_name,
-                        "test": "valid_params",
-                        "success": False,
-                        "error": str(e),
-                    })
+                            "success": False,
+                            "error": str(e),
+                        }
+                    )
 
                 # Test invalid parameters
                 for invalid_params in test_case["invalid_params"]:
@@ -685,25 +794,35 @@ class TestMCPToolsIntegration:
                         with patch("maverick_mcp.backtesting.VectorBTEngine"):
                             await tool_func(mock_context, **invalid_params)
                         # If we got here, validation didn't catch the error
-                        validation_tests.append({
-                            "tool": tool_name,
-                            "test": f"invalid_params_{invalid_params}",
-                            "success": False,
-                            "error": "Validation should have failed but didn't",
-                        })
+                        validation_tests.append(
+                            {
+                                "tool": tool_name,
+                                "test": f"invalid_params_{invalid_params}",
+                                "success": False,
+                                "error": "Validation should have failed but didn't",
+                            }
+                        )
                     except Exception as e:
                         # Expected to fail
-                        validation_tests.append({
-                            "tool": tool_name,
-                            "test": f"invalid_params_{invalid_params}",
-                            "success": True,
-                            "expected_error": str(e),
-                        })
+                        validation_tests.append(
+                            {
+                                "tool": tool_name,
+                                "test": f"invalid_params_{invalid_params}",
+                                "success": True,
+                                "expected_error": str(e),
+                            }
+                        )
 
         # Calculate validation success rate
         total_validation_tests = len(validation_tests)
-        successful_validations = sum(1 for t in validation_tests if t.get("success", False))
-        validation_success_rate = successful_validations / total_validation_tests if total_validation_tests > 0 else 0
+        successful_validations = sum(
+            1 for t in validation_tests if t.get("success", False)
+        )
+        validation_success_rate = (
+            successful_validations / total_validation_tests
+            if total_validation_tests > 0
+            else 0
+        )
 
         logger.info(
             f"Parameter Validation Results:\n"
@@ -720,11 +839,13 @@ class TestMCPToolsIntegration:
 
 if __name__ == "__main__":
     # Run MCP tools integration tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=300",  # 5 minute timeout
-        "--durations=10",
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=300",  # 5 minute timeout
+            "--durations=10",
+        ]
+    )

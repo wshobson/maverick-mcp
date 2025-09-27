@@ -39,11 +39,19 @@ correlation_id_var: ContextVar[str | None] = ContextVar("correlation_id", defaul
 request_start_var: ContextVar[float | None] = ContextVar("request_start", default=None)
 user_id_var: ContextVar[str | None] = ContextVar("user_id", default=None)
 tool_name_var: ContextVar[str | None] = ContextVar("tool_name", default=None)
-operation_context_var: ContextVar[dict[str, Any] | None] = ContextVar("operation_context", default=None)
+operation_context_var: ContextVar[dict[str, Any] | None] = ContextVar(
+    "operation_context", default=None
+)
 
 # Global logger registry for performance metrics aggregation
 _performance_logger_registry: dict[str, "PerformanceMetricsLogger"] = {}
-_log_level_counts: dict[str, int] = {"DEBUG": 0, "INFO": 0, "WARNING": 0, "ERROR": 0, "CRITICAL": 0}
+_log_level_counts: dict[str, int] = {
+    "DEBUG": 0,
+    "INFO": 0,
+    "WARNING": 0,
+    "ERROR": 0,
+    "CRITICAL": 0,
+}
 
 # Thread pool for async logging operations
 _async_log_executor: ThreadPoolExecutor | None = None
@@ -61,7 +69,9 @@ class CorrelationIDGenerator:
         return f"{prefix}-{timestamp}-{random_part}"
 
     @staticmethod
-    def set_correlation_id(correlation_id: str | None = None, prefix: str = "bt") -> str:
+    def set_correlation_id(
+        correlation_id: str | None = None, prefix: str = "bt"
+    ) -> str:
         """Set correlation ID in context with automatic generation."""
         if not correlation_id:
             correlation_id = CorrelationIDGenerator.generate_correlation_id(prefix)
@@ -76,19 +86,23 @@ class CorrelationIDGenerator:
     @staticmethod
     def propagate_context(target_context: dict[str, Any]) -> dict[str, Any]:
         """Propagate correlation context to target dict."""
-        target_context.update({
-            "correlation_id": correlation_id_var.get(),
-            "user_id": user_id_var.get(),
-            "tool_name": tool_name_var.get(),
-            "operation_context": operation_context_var.get(),
-        })
+        target_context.update(
+            {
+                "correlation_id": correlation_id_var.get(),
+                "user_id": user_id_var.get(),
+                "tool_name": tool_name_var.get(),
+                "operation_context": operation_context_var.get(),
+            }
+        )
         return target_context
 
 
 class EnhancedStructuredFormatter(logging.Formatter):
     """Enhanced JSON formatter with performance metrics and resource tracking."""
 
-    def __init__(self, include_performance: bool = True, include_resources: bool = True):
+    def __init__(
+        self, include_performance: bool = True, include_resources: bool = True
+    ):
         super().__init__()
         self.include_performance = include_performance
         self.include_resources = include_resources
@@ -132,19 +146,39 @@ class EnhancedStructuredFormatter(logging.Formatter):
         # Add exception information
         if record.exc_info:
             log_data["exception"] = {
-                "type": record.exc_info[0].__name__ if record.exc_info[0] else "Unknown",
+                "type": record.exc_info[0].__name__
+                if record.exc_info[0]
+                else "Unknown",
                 "message": str(record.exc_info[1]),
-                "traceback": traceback.format_exception(*record.exc_info)
+                "traceback": traceback.format_exception(*record.exc_info),
             }
 
         # Add extra fields from the record
         extra_fields = {}
         for key, value in record.__dict__.items():
             if key not in {
-                "name", "msg", "args", "created", "filename", "funcName",
-                "levelname", "levelno", "lineno", "module", "msecs", "pathname",
-                "process", "processName", "relativeCreated", "thread", "threadName",
-                "exc_info", "exc_text", "stack_info", "getMessage", "message"
+                "name",
+                "msg",
+                "args",
+                "created",
+                "filename",
+                "funcName",
+                "levelname",
+                "levelno",
+                "lineno",
+                "module",
+                "msecs",
+                "pathname",
+                "process",
+                "processName",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "exc_info",
+                "exc_text",
+                "stack_info",
+                "getMessage",
+                "message",
             }:
                 # Sanitize sensitive data
                 if self._is_sensitive_field(key):
@@ -160,9 +194,20 @@ class EnhancedStructuredFormatter(logging.Formatter):
     def _is_sensitive_field(self, field_name: str) -> bool:
         """Check if field contains sensitive information."""
         sensitive_keywords = {
-            "password", "token", "key", "secret", "auth", "credential",
-            "bearer", "session", "cookie", "api_key", "access_token",
-            "refresh_token", "private", "confidential"
+            "password",
+            "token",
+            "key",
+            "secret",
+            "auth",
+            "credential",
+            "bearer",
+            "session",
+            "cookie",
+            "api_key",
+            "access_token",
+            "refresh_token",
+            "private",
+            "confidential",
         }
         return any(keyword in field_name.lower() for keyword in sensitive_keywords)
 
@@ -243,7 +288,7 @@ class PerformanceMetricsLogger:
             "execution_times": [],
             "memory_usage": [],
             "cpu_usage": [],
-            "operation_counts": []
+            "operation_counts": [],
         }
         self._start_times: dict[str, float] = {}
         self._lock = threading.Lock()
@@ -269,8 +314,8 @@ class PerformanceMetricsLogger:
                 "operation_id": operation_id,
                 "operation_type": operation_type,
                 "start_time": start_time,
-                **context
-            }
+                **context,
+            },
         )
 
     def end_operation(self, operation_id: str, success: bool = True, **metrics):
@@ -308,8 +353,8 @@ class PerformanceMetricsLogger:
                 "memory_mb": memory_mb,
                 "cpu_percent": cpu_percent,
                 "success": success,
-                **metrics
-            }
+                **metrics,
+            },
         )
 
     def log_business_metric(self, metric_name: str, value: int | float, **context):
@@ -320,8 +365,8 @@ class PerformanceMetricsLogger:
                 "metric_name": metric_name,
                 "metric_value": value,
                 "metric_type": "business",
-                **context
-            }
+                **context,
+            },
         )
 
     def get_performance_summary(self) -> dict[str, Any]:
@@ -340,17 +385,19 @@ class PerformanceMetricsLogger:
                     "avg_ms": sum(execution_times) / len(execution_times),
                     "min_ms": min(execution_times),
                     "max_ms": max(execution_times),
-                    "total_ms": sum(execution_times)
+                    "total_ms": sum(execution_times),
                 },
                 "memory_stats": {
-                    "avg_mb": sum(memory_usage) / len(memory_usage) if memory_usage else 0,
-                    "peak_mb": max(memory_usage) if memory_usage else 0
+                    "avg_mb": sum(memory_usage) / len(memory_usage)
+                    if memory_usage
+                    else 0,
+                    "peak_mb": max(memory_usage) if memory_usage else 0,
                 },
                 "cpu_stats": {
                     "avg_percent": sum(cpu_usage) / len(cpu_usage) if cpu_usage else 0,
-                    "peak_percent": max(cpu_usage) if cpu_usage else 0
+                    "peak_percent": max(cpu_usage) if cpu_usage else 0,
                 },
-                "timestamp": datetime.now(UTC).isoformat()
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
 
@@ -358,7 +405,11 @@ class DebugModeManager:
     """Manages debug mode configuration and verbose logging."""
 
     def __init__(self):
-        self._debug_enabled = os.getenv("MAVERICK_DEBUG", "false").lower() in ("true", "1", "on")
+        self._debug_enabled = os.getenv("MAVERICK_DEBUG", "false").lower() in (
+            "true",
+            "1",
+            "on",
+        )
         self._verbose_modules: set = set()
         self._debug_filters: dict[str, Any] = {}
 
@@ -388,7 +439,9 @@ class DebugModeManager:
 
         # Check specific filters
         for _filter_name, config in self._debug_filters.items():
-            if config.get("log_request_response") and operation_name in config.get("operations", []):
+            if config.get("log_request_response") and operation_name in config.get(
+                "operations", []
+            ):
                 return True
 
         return True  # Default to true in debug mode
@@ -412,7 +465,7 @@ class StructuredLoggerManager:
         max_log_size: int = 10 * 1024 * 1024,  # 10MB
         backup_count: int = 5,
         console_output: str = "stdout",  # stdout, stderr
-        remote_handler_config: dict[str, Any] | None = None
+        remote_handler_config: dict[str, Any] | None = None,
     ):
         """Setup comprehensive structured logging infrastructure."""
 
@@ -435,8 +488,7 @@ class StructuredLoggerManager:
 
         if log_format == "json":
             console_formatter = EnhancedStructuredFormatter(
-                include_performance=True,
-                include_resources=True
+                include_performance=True, include_resources=True
             )
         else:
             console_formatter = logging.Formatter(
@@ -453,9 +505,7 @@ class StructuredLoggerManager:
 
             if enable_rotation:
                 file_handler = logging.handlers.RotatingFileHandler(
-                    log_file,
-                    maxBytes=max_log_size,
-                    backupCount=backup_count
+                    log_file, maxBytes=max_log_size, backupCount=backup_count
                 )
             else:
                 file_handler = logging.FileHandler(log_file)
@@ -506,7 +556,9 @@ class StructuredLoggerManager:
     def get_performance_logger(self, logger_name: str) -> PerformanceMetricsLogger:
         """Get or create performance logger for specific component."""
         if logger_name not in self.performance_loggers:
-            self.performance_loggers[logger_name] = PerformanceMetricsLogger(logger_name)
+            self.performance_loggers[logger_name] = PerformanceMetricsLogger(
+                logger_name
+            )
         return self.performance_loggers[logger_name]
 
     def get_logger(self, name: str) -> logging.Logger:
@@ -521,15 +573,19 @@ class StructuredLoggerManager:
             "system_metrics": {
                 "timestamp": datetime.now(UTC).isoformat(),
                 "log_level_counts": _log_level_counts.copy(),
-                "active_correlation_ids": len([cid for cid in [correlation_id_var.get()] if cid]),
+                "active_correlation_ids": len(
+                    [cid for cid in [correlation_id_var.get()] if cid]
+                ),
             },
             "performance_metrics": {},
-            "memory_stats": {}
+            "memory_stats": {},
         }
 
         # Aggregate performance metrics from all loggers
         for logger_name, perf_logger in _performance_logger_registry.items():
-            dashboard_data["performance_metrics"][logger_name] = perf_logger.get_performance_summary()
+            dashboard_data["performance_metrics"][logger_name] = (
+                perf_logger.get_performance_summary()
+            )
 
         # System memory stats
         try:
@@ -543,7 +599,7 @@ class StructuredLoggerManager:
                     "generation_0": gc.get_count()[0],
                     "generation_1": gc.get_count()[1],
                     "generation_2": gc.get_count()[2],
-                }
+                },
             }
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             dashboard_data["memory_stats"] = {"error": "Unable to collect memory stats"}
@@ -567,7 +623,7 @@ def with_structured_logging(
     operation_name: str,
     include_performance: bool = True,
     log_params: bool = True,
-    log_result: bool = False
+    log_result: bool = False,
 ):
     """Decorator for automatic structured logging of operations."""
 
@@ -587,19 +643,28 @@ def with_structured_logging(
             perf_logger = None
 
             if include_performance:
-                perf_logger = get_logger_manager().get_performance_logger(f"performance.{operation_name}")
+                perf_logger = get_logger_manager().get_performance_logger(
+                    f"performance.{operation_name}"
+                )
                 perf_logger.start_operation(
                     operation_id=operation_id,
                     operation_type=operation_name,
-                    tool_name=operation_name
+                    tool_name=operation_name,
                 )
 
             # Log operation start
-            extra_data = {"operation_id": operation_id, "correlation_id": correlation_id}
+            extra_data = {
+                "operation_id": operation_id,
+                "correlation_id": correlation_id,
+            }
             if log_params:
                 # Sanitize parameters
-                safe_kwargs = {k: "***MASKED***" if "password" in k.lower() or "token" in k.lower()
-                             else v for k, v in kwargs.items()}
+                safe_kwargs = {
+                    k: "***MASKED***"
+                    if "password" in k.lower() or "token" in k.lower()
+                    else v
+                    for k, v in kwargs.items()
+                }
                 extra_data["parameters"] = safe_kwargs
 
             logger.info(f"Starting {operation_name}", extra=extra_data)
@@ -613,7 +678,11 @@ def with_structured_logging(
                 if log_result and result is not None:
                     # Limit result size for logging
                     result_str = str(result)
-                    success_data["result"] = result_str[:1000] + "..." if len(result_str) > 1000 else result_str
+                    success_data["result"] = (
+                        result_str[:1000] + "..."
+                        if len(result_str) > 1000
+                        else result_str
+                    )
 
                 logger.info(f"Completed {operation_name}", extra=success_data)
 
@@ -630,8 +699,8 @@ def with_structured_logging(
                     extra={
                         "operation_id": operation_id,
                         "error_type": type(e).__name__,
-                        "success": False
-                    }
+                        "success": False,
+                    },
                 )
 
                 if perf_logger:
@@ -653,18 +722,29 @@ def with_structured_logging(
             perf_logger = None
 
             if include_performance:
-                perf_logger = get_logger_manager().get_performance_logger(f"performance.{operation_name}")
+                perf_logger = get_logger_manager().get_performance_logger(
+                    f"performance.{operation_name}"
+                )
                 perf_logger.start_operation(
                     operation_id=operation_id,
                     operation_type=operation_name,
-                    tool_name=operation_name
+                    tool_name=operation_name,
                 )
 
-            extra_data = {"operation_id": operation_id, "correlation_id": correlation_id}
+            extra_data = {
+                "operation_id": operation_id,
+                "correlation_id": correlation_id,
+            }
             if log_params:
-                safe_kwargs = {k: "***MASKED***" if any(sensitive in k.lower()
-                             for sensitive in ["password", "token", "key", "secret"])
-                             else v for k, v in kwargs.items()}
+                safe_kwargs = {
+                    k: "***MASKED***"
+                    if any(
+                        sensitive in k.lower()
+                        for sensitive in ["password", "token", "key", "secret"]
+                    )
+                    else v
+                    for k, v in kwargs.items()
+                }
                 extra_data["parameters"] = safe_kwargs
 
             logger.info(f"Starting {operation_name}", extra=extra_data)
@@ -675,7 +755,11 @@ def with_structured_logging(
                 success_data = {"operation_id": operation_id, "success": True}
                 if log_result and result is not None:
                     result_str = str(result)
-                    success_data["result"] = result_str[:1000] + "..." if len(result_str) > 1000 else result_str
+                    success_data["result"] = (
+                        result_str[:1000] + "..."
+                        if len(result_str) > 1000
+                        else result_str
+                    )
 
                 logger.info(f"Completed {operation_name}", extra=success_data)
 
@@ -691,8 +775,8 @@ def with_structured_logging(
                     extra={
                         "operation_id": operation_id,
                         "error_type": type(e).__name__,
-                        "success": False
-                    }
+                        "success": False,
+                    },
                 )
 
                 if perf_logger:
@@ -717,9 +801,7 @@ def get_performance_logger(component: str) -> PerformanceMetricsLogger:
 
 
 def setup_backtesting_logging(
-    log_level: str = "INFO",
-    enable_debug: bool = False,
-    log_file: str | None = None
+    log_level: str = "INFO", enable_debug: bool = False, log_file: str | None = None
 ):
     """Setup logging specifically configured for backtesting operations."""
 
@@ -735,15 +817,22 @@ def setup_backtesting_logging(
         log_file=log_file or "logs/backtesting.log",
         enable_async=True,
         enable_rotation=True,
-        console_output="stderr"  # Use stderr for MCP compatibility
+        console_output="stderr",  # Use stderr for MCP compatibility
     )
 
     # Configure debug filters for backtesting
     if enable_debug:
-        manager.debug_manager.add_debug_filter("backtesting", {
-            "log_request_response": True,
-            "operations": ["run_backtest", "optimize_parameters", "get_historical_data"]
-        })
+        manager.debug_manager.add_debug_filter(
+            "backtesting",
+            {
+                "log_request_response": True,
+                "operations": [
+                    "run_backtest",
+                    "optimize_parameters",
+                    "get_historical_data",
+                ],
+            },
+        )
 
 
 # Update log level counts (for dashboard metrics)
@@ -752,7 +841,9 @@ class LogLevelCounterFilter(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         global _log_level_counts
-        _log_level_counts[record.levelname] = _log_level_counts.get(record.levelname, 0) + 1
+        _log_level_counts[record.levelname] = (
+            _log_level_counts.get(record.levelname, 0) + 1
+        )
         return True
 
 

@@ -40,6 +40,7 @@ _memory_stats = {
 @dataclass
 class MemorySnapshot:
     """Memory usage snapshot."""
+
     timestamp: float
     rss_memory: int
     vms_memory: int
@@ -82,10 +83,12 @@ class MemoryProfiler:
 
         if self.enable_tracemalloc and tracemalloc.is_tracing():
             current, peak = tracemalloc.get_traced_memory()
-            result.update({
-                "tracemalloc_current": current,
-                "tracemalloc_peak": peak,
-            })
+            result.update(
+                {
+                    "tracemalloc_current": current,
+                    "tracemalloc_peak": peak,
+                }
+            )
 
         return result
 
@@ -141,11 +144,11 @@ class MemoryProfiler:
         first = self.snapshots[0]
 
         report = {
-            "current_memory_mb": latest.rss_memory / (1024 ** 2),
-            "peak_memory_mb": max(s.rss_memory for s in self.snapshots) / (1024 ** 2),
-            "memory_growth_mb": (latest.rss_memory - first.rss_memory) / (1024 ** 2),
+            "current_memory_mb": latest.rss_memory / (1024**2),
+            "peak_memory_mb": max(s.rss_memory for s in self.snapshots) / (1024**2),
+            "memory_growth_mb": (latest.rss_memory - first.rss_memory) / (1024**2),
             "memory_percent": latest.memory_percent,
-            "available_memory_gb": latest.available_memory / (1024 ** 3),
+            "available_memory_gb": latest.available_memory / (1024**3),
             "snapshots_count": len(self.snapshots),
             "warning_count": _memory_stats["warning_count"],
             "critical_count": _memory_stats["critical_count"],
@@ -154,10 +157,12 @@ class MemoryProfiler:
         }
 
         if self.enable_tracemalloc:
-            report.update({
-                "tracemalloc_current_mb": latest.tracemalloc_current / (1024 ** 2),
-                "tracemalloc_peak_mb": latest.tracemalloc_peak / (1024 ** 2),
-            })
+            report.update(
+                {
+                    "tracemalloc_current_mb": latest.tracemalloc_current / (1024**2),
+                    "tracemalloc_peak_mb": latest.tracemalloc_peak / (1024**2),
+                }
+            )
 
         return report
 
@@ -186,10 +191,13 @@ def reset_memory_stats() -> None:
     _global_profiler.snapshots.clear()
 
 
-def profile_memory(func: Callable = None, *,
-                   log_results: bool = True,
-                   enable_gc: bool = True,
-                   threshold_mb: float = 100.0):
+def profile_memory(
+    func: Callable = None,
+    *,
+    log_results: bool = True,
+    enable_gc: bool = True,
+    threshold_mb: float = 100.0,
+):
     """Decorator to profile memory usage of a function.
 
     Args:
@@ -198,6 +206,7 @@ def profile_memory(func: Callable = None, *,
         enable_gc: Whether to trigger garbage collection
         threshold_mb: Memory usage threshold to log warnings (MB)
     """
+
     def decorator(f: Callable) -> Callable:
         @functools.wraps(f)
         def wrapper(*args, **kwargs):
@@ -214,7 +223,7 @@ def profile_memory(func: Callable = None, *,
                 final = _global_profiler.take_snapshot(f"end_{function_name}")
 
                 # Calculate memory usage
-                memory_diff_mb = (final.rss_memory - initial.rss_memory) / (1024 ** 2)
+                memory_diff_mb = (final.rss_memory - initial.rss_memory) / (1024**2)
 
                 if log_results:
                     if memory_diff_mb > threshold_mb:
@@ -247,8 +256,9 @@ def profile_memory(func: Callable = None, *,
 
 
 @contextmanager
-def memory_context(name: str = "operation",
-                   cleanup_after: bool = True) -> Iterator[MemoryProfiler]:
+def memory_context(
+    name: str = "operation", cleanup_after: bool = True
+) -> Iterator[MemoryProfiler]:
     """Context manager for memory profiling operations.
 
     Args:
@@ -266,16 +276,16 @@ def memory_context(name: str = "operation",
     finally:
         final = profiler.take_snapshot(f"end_{name}")
 
-        memory_diff_mb = (final.rss_memory - initial.rss_memory) / (1024 ** 2)
+        memory_diff_mb = (final.rss_memory - initial.rss_memory) / (1024**2)
         logger.debug(f"Memory usage in {name}: {memory_diff_mb:.2f}MB")
 
         if cleanup_after:
             force_garbage_collection()
 
 
-def optimize_dataframe(df: pd.DataFrame,
-                      aggressive: bool = False,
-                      categorical_threshold: float = 0.5) -> pd.DataFrame:
+def optimize_dataframe(
+    df: pd.DataFrame, aggressive: bool = False, categorical_threshold: float = 0.5
+) -> pd.DataFrame:
     """Optimize DataFrame memory usage.
 
     Args:
@@ -296,16 +306,16 @@ def optimize_dataframe(df: pd.DataFrame,
     for col in df_optimized.columns:
         col_type = df_optimized[col].dtype
 
-        if col_type == 'object':
+        if col_type == "object":
             # Try to convert to categorical if many duplicates
             unique_ratio = df_optimized[col].nunique() / len(df_optimized[col])
             if unique_ratio < categorical_threshold:
                 try:
-                    df_optimized[col] = df_optimized[col].astype('category')
+                    df_optimized[col] = df_optimized[col].astype("category")
                 except Exception:
                     pass
 
-        elif 'int' in str(col_type):
+        elif "int" in str(col_type):
             # Downcast integers
             c_min = df_optimized[col].min()
             c_max = df_optimized[col].max()
@@ -317,14 +327,18 @@ def optimize_dataframe(df: pd.DataFrame,
             elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
                 df_optimized[col] = df_optimized[col].astype(np.int32)
 
-        elif 'float' in str(col_type):
+        elif "float" in str(col_type):
             # Downcast floats
             if aggressive:
                 # Try float32 first
                 try:
                     temp = df_optimized[col].astype(np.float32)
-                    if np.allclose(df_optimized[col].fillna(0), temp.fillna(0),
-                                  rtol=1e-6, equal_nan=True):
+                    if np.allclose(
+                        df_optimized[col].fillna(0),
+                        temp.fillna(0),
+                        rtol=1e-6,
+                        equal_nan=True,
+                    ):
                         df_optimized[col] = temp
                 except Exception:
                     pass
@@ -378,7 +392,7 @@ def check_memory_leak(threshold_mb: float = 100.0) -> bool:
     recent_avg = sum(s.rss_memory for s in recent) / len(recent)
     older_avg = sum(s.rss_memory for s in older) / len(older)
 
-    growth_mb = (recent_avg - older_avg) / (1024 ** 2)
+    growth_mb = (recent_avg - older_avg) / (1024**2)
 
     if growth_mb > threshold_mb:
         logger.warning(f"Potential memory leak detected: {growth_mb:.2f}MB growth")
@@ -418,17 +432,20 @@ class DataFrameChunker:
         memory_per_row = total_memory / len(df)
         rows_per_chunk = max(1, int(self.chunk_size_bytes / memory_per_row))
 
-        logger.debug(f"Chunking DataFrame: {len(df)} rows, "
-                    f"~{rows_per_chunk} rows per chunk")
+        logger.debug(
+            f"Chunking DataFrame: {len(df)} rows, ~{rows_per_chunk} rows per chunk"
+        )
 
         for i in range(0, len(df), rows_per_chunk):
-            chunk = df.iloc[i:i + rows_per_chunk]
+            chunk = df.iloc[i : i + rows_per_chunk]
             yield chunk
 
-    def process_in_chunks(self,
-                         df: pd.DataFrame,
-                         processor: Callable[[pd.DataFrame], Any],
-                         combine_results: Callable = None) -> Any:
+    def process_in_chunks(
+        self,
+        df: pd.DataFrame,
+        processor: Callable[[pd.DataFrame], Any],
+        combine_results: Callable = None,
+    ) -> Any:
         """Process DataFrame in chunks and optionally combine results.
 
         Args:
@@ -462,7 +479,7 @@ def cleanup_dataframes(*dfs: pd.DataFrame) -> None:
         *dfs: DataFrames to clean up
     """
     for df in dfs:
-        if hasattr(df, '_mgr'):
+        if hasattr(df, "_mgr"):
             # Clear internal references
             df._mgr = None
         del df
@@ -482,11 +499,10 @@ def get_dataframe_memory_usage(df: pd.DataFrame) -> dict[str, Any]:
     memory_usage = df.memory_usage(deep=True)
 
     return {
-        "total_memory_mb": memory_usage.sum() / (1024 ** 2),
-        "index_memory_mb": memory_usage.iloc[0] / (1024 ** 2),
+        "total_memory_mb": memory_usage.sum() / (1024**2),
+        "index_memory_mb": memory_usage.iloc[0] / (1024**2),
         "columns_memory_mb": {
-            col: memory_usage.loc[col] / (1024 ** 2)
-            for col in df.columns
+            col: memory_usage.loc[col] / (1024**2) for col in df.columns
         },
         "shape": df.shape,
         "dtypes": df.dtypes.to_dict(),
@@ -514,7 +530,9 @@ def memory_limit_context(limit_mb: float) -> Iterator[None]:
         memory_used = current_memory - initial_memory
 
         if memory_used > limit_bytes:
-            logger.error(f"Memory limit exceeded: {memory_used / (1024**2):.2f}MB > {limit_mb}MB")
+            logger.error(
+                f"Memory limit exceeded: {memory_used / (1024**2):.2f}MB > {limit_mb}MB"
+            )
             # Force cleanup
             force_garbage_collection()
 
@@ -533,11 +551,12 @@ def suggest_memory_optimizations(df: pd.DataFrame) -> list[str]:
 
     # Check for object columns that could be categorical
     for col in df.columns:
-        if df[col].dtype == 'object':
+        if df[col].dtype == "object":
             unique_ratio = df[col].nunique() / len(df)
             if unique_ratio < 0.5:
-                memory_savings = (memory_info["columns_memory_mb"][col] *
-                                (1 - unique_ratio))
+                memory_savings = memory_info["columns_memory_mb"][col] * (
+                    1 - unique_ratio
+                )
                 suggestions.append(
                     f"Convert '{col}' to categorical (potential savings: "
                     f"{memory_savings:.2f}MB, {unique_ratio:.1%} unique values)"
@@ -545,7 +564,7 @@ def suggest_memory_optimizations(df: pd.DataFrame) -> list[str]:
 
     # Check for float64 that could be float32
     for col in df.columns:
-        if df[col].dtype == 'float64':
+        if df[col].dtype == "float64":
             try:
                 temp = df[col].astype(np.float32)
                 if np.allclose(df[col].fillna(0), temp.fillna(0), rtol=1e-6):
@@ -559,14 +578,14 @@ def suggest_memory_optimizations(df: pd.DataFrame) -> list[str]:
 
     # Check for integer downcasting opportunities
     for col in df.columns:
-        if 'int' in str(df[col].dtype):
+        if "int" in str(df[col].dtype):
             c_min = df[col].min()
             c_max = df[col].max()
             current_bytes = df[col].memory_usage(deep=True) / len(df)
 
             if c_min >= np.iinfo(np.int8).min and c_max <= np.iinfo(np.int8).max:
                 if current_bytes > 1:
-                    savings = (current_bytes - 1) * len(df) / (1024 ** 2)
+                    savings = (current_bytes - 1) * len(df) / (1024**2)
                     suggestions.append(
                         f"Convert '{col}' to int8 (potential savings: {savings:.2f}MB)"
                     )

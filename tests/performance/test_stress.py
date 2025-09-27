@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ResourceSnapshot:
     """Snapshot of system resources at a point in time."""
+
     timestamp: float
     memory_rss_mb: float
     memory_vms_mb: float
@@ -70,7 +71,9 @@ class ResourceMonitor:
         self.monitoring = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=2.0)
-        logger.info(f"Resource monitoring stopped. Collected {len(self.snapshots)} snapshots")
+        logger.info(
+            f"Resource monitoring stopped. Collected {len(self.snapshots)} snapshots"
+        )
 
     def _monitor_loop(self):
         """Continuous monitoring loop."""
@@ -140,7 +143,11 @@ class ResourceMonitor:
         sum_tm = sum(t * m for t, m in zip(timestamps, memories, strict=False))
         sum_tt = sum(t * t for t in timestamps)
 
-        memory_slope = (n * sum_tm - sum_t * sum_m) / (n * sum_tt - sum_t * sum_t) if n * sum_tt != sum_t * sum_t else 0
+        memory_slope = (
+            (n * sum_tm - sum_t * sum_m) / (n * sum_tt - sum_t * sum_t)
+            if n * sum_tt != sum_t * sum_t
+            else 0
+        )
 
         return {
             "duration_seconds": timestamps[-1] - timestamps[0],
@@ -166,9 +173,13 @@ class StressTestRunner:
         self.data_provider = data_provider
         self.resource_monitor = ResourceMonitor(interval=2.0)
 
-    async def sustained_load_test(self, duration_minutes: int = 60, concurrent_load: int = 10) -> dict[str, Any]:
+    async def sustained_load_test(
+        self, duration_minutes: int = 60, concurrent_load: int = 10
+    ) -> dict[str, Any]:
         """Run sustained load test for extended duration."""
-        logger.info(f"Starting sustained load test: {duration_minutes} minutes with {concurrent_load} concurrent operations")
+        logger.info(
+            f"Starting sustained load test: {duration_minutes} minutes with {concurrent_load} concurrent operations"
+        )
 
         self.resource_monitor.start_monitoring()
         start_time = time.time()
@@ -188,7 +199,9 @@ class StressTestRunner:
 
                 engine = VectorBTEngine(data_provider=self.data_provider)
                 symbol = f"STRESS_{operation_id % 20}"  # Cycle through 20 symbols
-                strategy = ["sma_cross", "rsi", "macd"][operation_id % 3]  # Cycle through strategies
+                strategy = ["sma_cross", "rsi", "macd"][
+                    operation_id % 3
+                ]  # Cycle through strategies
 
                 try:
                     async with semaphore:
@@ -247,14 +260,20 @@ class StressTestRunner:
             "duration_minutes": actual_duration / 60,
             "total_operations": total_operations,
             "total_errors": total_errors,
-            "error_rate": total_errors / total_operations if total_operations > 0 else 0,
+            "error_rate": total_errors / total_operations
+            if total_operations > 0
+            else 0,
             "operations_per_minute": total_operations / (actual_duration / 60),
-            "avg_operation_time": sum(operation_times) / len(operation_times) if operation_times else 0,
+            "avg_operation_time": sum(operation_times) / len(operation_times)
+            if operation_times
+            else 0,
             "resource_trends": trend_analysis,
             "concurrent_load": concurrent_load,
         }
 
-    async def memory_leak_detection_test(self, iterations: int = 1000) -> dict[str, Any]:
+    async def memory_leak_detection_test(
+        self, iterations: int = 1000
+    ) -> dict[str, Any]:
         """Test for memory leaks over many iterations."""
         logger.info(f"Starting memory leak detection test with {iterations} iterations")
 
@@ -281,15 +300,19 @@ class StressTestRunner:
                 if i % 50 == 0:
                     gc.collect()
                     snapshot = self.resource_monitor.get_current_snapshot()
-                    memory_measurements.append({
-                        "iteration": i,
-                        "memory_mb": snapshot.memory_rss_mb,
-                        "memory_growth": snapshot.memory_rss_mb - initial_memory,
-                    })
+                    memory_measurements.append(
+                        {
+                            "iteration": i,
+                            "memory_mb": snapshot.memory_rss_mb,
+                            "memory_growth": snapshot.memory_rss_mb - initial_memory,
+                        }
+                    )
 
                     if i % 200 == 0:
-                        logger.info(f"Iteration {i}: Memory = {snapshot.memory_rss_mb:.1f}MB "
-                                   f"(+{snapshot.memory_rss_mb - initial_memory:.1f}MB)")
+                        logger.info(
+                            f"Iteration {i}: Memory = {snapshot.memory_rss_mb:.1f}MB "
+                            f"(+{snapshot.memory_rss_mb - initial_memory:.1f}MB)"
+                        )
 
         finally:
             self.resource_monitor.stop_monitoring()
@@ -306,7 +329,9 @@ class StressTestRunner:
             n = len(iterations_list)
             sum_x = sum(iterations_list)
             sum_y = sum(growth_list)
-            sum_xy = sum(x * y for x, y in zip(iterations_list, growth_list, strict=False))
+            sum_xy = sum(
+                x * y for x, y in zip(iterations_list, growth_list, strict=False)
+            )
             sum_xx = sum(x * x for x in iterations_list)
 
             if n * sum_xx != sum_x * sum_x:
@@ -328,12 +353,17 @@ class StressTestRunner:
             "leak_rate_mb_per_iteration": leak_rate,
             "leak_per_1000_iterations_mb": leak_per_1000_iterations,
             "memory_measurements": memory_measurements,
-            "leak_detected": abs(leak_per_1000_iterations) > 10.0,  # More than 10MB per 1000 iterations
+            "leak_detected": abs(leak_per_1000_iterations)
+            > 10.0,  # More than 10MB per 1000 iterations
         }
 
-    async def cpu_stress_test(self, duration_minutes: int = 10, cpu_target: float = 0.9) -> dict[str, Any]:
+    async def cpu_stress_test(
+        self, duration_minutes: int = 10, cpu_target: float = 0.9
+    ) -> dict[str, Any]:
         """Test CPU utilization under stress."""
-        logger.info(f"Starting CPU stress test: {duration_minutes} minutes at {cpu_target*100}% target")
+        logger.info(
+            f"Starting CPU stress test: {duration_minutes} minutes at {cpu_target * 100}% target"
+        )
 
         self.resource_monitor.start_monitoring()
 
@@ -346,7 +376,7 @@ class StressTestRunner:
             while not stop_event.is_set():
                 # Perform CPU-intensive work
                 for _ in range(10000):
-                    _ = sum(i ** 2 for i in range(100))
+                    _ = sum(i**2 for i in range(100))
                 time.sleep(0.001)  # Brief pause
 
         try:
@@ -379,7 +409,7 @@ class StressTestRunner:
                             start_date="2023-01-01",
                             end_date="2023-12-31",
                         ),
-                        timeout=30.0  # Prevent hanging under CPU stress
+                        timeout=30.0,  # Prevent hanging under CPU stress
                     )
 
                     response_time = time.time() - op_start
@@ -412,16 +442,24 @@ class StressTestRunner:
             "cpu_target_percent": cpu_target * 100,
             "operations_completed": operations_completed,
             "cpu_stress_errors": cpu_stress_errors,
-            "error_rate": cpu_stress_errors / (operations_completed + cpu_stress_errors) if (operations_completed + cpu_stress_errors) > 0 else 0,
-            "avg_response_time": sum(response_times) / len(response_times) if response_times else 0,
+            "error_rate": cpu_stress_errors / (operations_completed + cpu_stress_errors)
+            if (operations_completed + cpu_stress_errors) > 0
+            else 0,
+            "avg_response_time": sum(response_times) / len(response_times)
+            if response_times
+            else 0,
             "max_response_time": max(response_times) if response_times else 0,
             "avg_cpu_utilization": trend_analysis["avg_cpu_percent"],
             "peak_cpu_utilization": trend_analysis["peak_cpu_percent"],
         }
 
-    async def database_connection_exhaustion_test(self, db_session, max_connections: int = 50) -> dict[str, Any]:
+    async def database_connection_exhaustion_test(
+        self, db_session, max_connections: int = 50
+    ) -> dict[str, Any]:
         """Test database behavior under connection exhaustion."""
-        logger.info(f"Starting database connection exhaustion test with {max_connections} connections")
+        logger.info(
+            f"Starting database connection exhaustion test with {max_connections} connections"
+        )
 
         # Generate test data
         engine = VectorBTEngine(data_provider=self.data_provider)
@@ -476,15 +514,12 @@ class StressTestRunner:
         # Create many concurrent database operations
         start_time = time.time()
 
-        connection_tasks = [
-            database_operation(i) for i in range(max_connections)
-        ]
+        connection_tasks = [database_operation(i) for i in range(max_connections)]
 
         # Execute with timeout to prevent hanging
         try:
             results = await asyncio.wait_for(
-                asyncio.gather(*connection_tasks, return_exceptions=True),
-                timeout=60.0
+                asyncio.gather(*connection_tasks, return_exceptions=True), timeout=60.0
             )
         except TimeoutError:
             logger.warning("Database connection test timed out")
@@ -493,11 +528,14 @@ class StressTestRunner:
         execution_time = time.time() - start_time
 
         # Analyze results
-        successful_connections = sum(1 for r in results if isinstance(r, dict) and r.get("success", False))
+        successful_connections = sum(
+            1 for r in results if isinstance(r, dict) and r.get("success", False)
+        )
         failed_connections = len(results) - successful_connections
 
         total_operations = sum(
-            r.get("operations_completed", 0) for r in results
+            r.get("operations_completed", 0)
+            for r in results
             if isinstance(r, dict) and r.get("success", False)
         )
 
@@ -505,10 +543,14 @@ class StressTestRunner:
             "max_connections_attempted": max_connections,
             "successful_connections": successful_connections,
             "failed_connections": failed_connections,
-            "connection_success_rate": successful_connections / max_connections if max_connections > 0 else 0,
+            "connection_success_rate": successful_connections / max_connections
+            if max_connections > 0
+            else 0,
             "total_operations": total_operations,
             "execution_time": execution_time,
-            "operations_per_second": total_operations / execution_time if execution_time > 0 else 0,
+            "operations_per_second": total_operations / execution_time
+            if execution_time > 0
+            else 0,
         }
 
     async def file_descriptor_exhaustion_test(self) -> dict[str, Any]:
@@ -526,7 +568,9 @@ class StressTestRunner:
         except Exception:
             soft_limit, hard_limit = 1024, 4096  # Default assumptions
 
-        logger.info(f"FD limits - Soft: {soft_limit}, Hard: {hard_limit}, Initial: {initial_fds}")
+        logger.info(
+            f"FD limits - Soft: {soft_limit}, Hard: {hard_limit}, Initial: {initial_fds}"
+        )
 
         try:
             engine = VectorBTEngine(data_provider=self.data_provider)
@@ -546,14 +590,18 @@ class StressTestRunner:
 
                 if i % 10 == 0:
                     snapshot = self.resource_monitor.get_current_snapshot()
-                    fd_measurements.append({
-                        "iteration": i,
-                        "file_descriptors": snapshot.file_descriptors,
-                        "fd_growth": snapshot.file_descriptors - initial_fds,
-                    })
+                    fd_measurements.append(
+                        {
+                            "iteration": i,
+                            "file_descriptors": snapshot.file_descriptors,
+                            "fd_growth": snapshot.file_descriptors - initial_fds,
+                        }
+                    )
 
                     if snapshot.file_descriptors > soft_limit * 0.8:
-                        logger.warning(f"High FD usage detected: {snapshot.file_descriptors}/{soft_limit}")
+                        logger.warning(
+                            f"High FD usage detected: {snapshot.file_descriptors}/{soft_limit}"
+                        )
 
         finally:
             self.resource_monitor.stop_monitoring()
@@ -601,14 +649,17 @@ class TestStressTesting:
                 returns = np.random.normal(0.001, 0.02, len(dates))
                 prices = 100 * np.cumprod(1 + returns)
 
-                data_cache[symbol] = pd.DataFrame({
-                    "Open": prices * np.random.uniform(0.99, 1.01, len(dates)),
-                    "High": prices * np.random.uniform(1.01, 1.03, len(dates)),
-                    "Low": prices * np.random.uniform(0.97, 0.99, len(dates)),
-                    "Close": prices,
-                    "Volume": np.random.randint(1000000, 5000000, len(dates)),
-                    "Adj Close": prices,
-                }, index=dates)
+                data_cache[symbol] = pd.DataFrame(
+                    {
+                        "Open": prices * np.random.uniform(0.99, 1.01, len(dates)),
+                        "High": prices * np.random.uniform(1.01, 1.03, len(dates)),
+                        "Low": prices * np.random.uniform(0.97, 0.99, len(dates)),
+                        "Close": prices,
+                        "Volume": np.random.randint(1000000, 5000000, len(dates)),
+                        "Adj Close": prices,
+                    },
+                    index=dates,
+                )
 
             return data_cache[symbol].copy()
 
@@ -622,18 +673,26 @@ class TestStressTesting:
 
         result = await stress_runner.sustained_load_test(
             duration_minutes=15,  # Reduced for CI/testing
-            concurrent_load=8
+            concurrent_load=8,
         )
 
         # Assertions for sustained load
-        assert result["error_rate"] <= 0.05, f"Error rate too high: {result['error_rate']:.3f}"
-        assert result["operations_per_minute"] >= 10, f"Throughput too low: {result['operations_per_minute']:.1f} ops/min"
+        assert result["error_rate"] <= 0.05, (
+            f"Error rate too high: {result['error_rate']:.3f}"
+        )
+        assert result["operations_per_minute"] >= 10, (
+            f"Throughput too low: {result['operations_per_minute']:.1f} ops/min"
+        )
 
         # Resource growth should be reasonable
         trends = result["resource_trends"]
-        assert trends["memory_growth_rate_mb_per_hour"] <= 100, f"Memory growth rate too high: {trends['memory_growth_rate_mb_per_hour']:.1f} MB/hour"
+        assert trends["memory_growth_rate_mb_per_hour"] <= 100, (
+            f"Memory growth rate too high: {trends['memory_growth_rate_mb_per_hour']:.1f} MB/hour"
+        )
 
-        logger.info(f"✓ Sustained load test completed: {result['total_operations']} operations in {result['duration_minutes']:.1f} minutes")
+        logger.info(
+            f"✓ Sustained load test completed: {result['total_operations']} operations in {result['duration_minutes']:.1f} minutes"
+        )
         return result
 
     async def test_memory_leak_detection(self, stress_data_provider):
@@ -643,10 +702,16 @@ class TestStressTesting:
         result = await stress_runner.memory_leak_detection_test(iterations=200)
 
         # Memory leak assertions
-        assert not result["leak_detected"], f"Memory leak detected: {result['leak_per_1000_iterations_mb']:.2f} MB per 1000 iterations"
-        assert result["total_memory_growth_mb"] <= 300, f"Total memory growth too high: {result['total_memory_growth_mb']:.1f} MB"
+        assert not result["leak_detected"], (
+            f"Memory leak detected: {result['leak_per_1000_iterations_mb']:.2f} MB per 1000 iterations"
+        )
+        assert result["total_memory_growth_mb"] <= 300, (
+            f"Total memory growth too high: {result['total_memory_growth_mb']:.1f} MB"
+        )
 
-        logger.info(f"✓ Memory leak test completed: {result['total_memory_growth_mb']:.1f}MB growth over {result['iterations']} iterations")
+        logger.info(
+            f"✓ Memory leak test completed: {result['total_memory_growth_mb']:.1f}MB growth over {result['iterations']} iterations"
+        )
         return result
 
     async def test_cpu_stress_resilience(self, stress_data_provider):
@@ -655,15 +720,23 @@ class TestStressTesting:
 
         result = await stress_runner.cpu_stress_test(
             duration_minutes=5,  # Reduced for testing
-            cpu_target=0.7  # 70% CPU utilization
+            cpu_target=0.7,  # 70% CPU utilization
         )
 
         # CPU stress assertions
-        assert result["error_rate"] <= 0.2, f"Error rate too high under CPU stress: {result['error_rate']:.3f}"
-        assert result["avg_response_time"] <= 10.0, f"Response time too slow under CPU stress: {result['avg_response_time']:.2f}s"
-        assert result["operations_completed"] >= 10, f"Too few operations completed: {result['operations_completed']}"
+        assert result["error_rate"] <= 0.2, (
+            f"Error rate too high under CPU stress: {result['error_rate']:.3f}"
+        )
+        assert result["avg_response_time"] <= 10.0, (
+            f"Response time too slow under CPU stress: {result['avg_response_time']:.2f}s"
+        )
+        assert result["operations_completed"] >= 10, (
+            f"Too few operations completed: {result['operations_completed']}"
+        )
 
-        logger.info(f"✓ CPU stress test completed: {result['operations_completed']} operations with {result['avg_cpu_utilization']:.1f}% avg CPU")
+        logger.info(
+            f"✓ CPU stress test completed: {result['operations_completed']} operations with {result['avg_cpu_utilization']:.1f}% avg CPU"
+        )
         return result
 
     async def test_database_connection_stress(self, stress_data_provider, db_session):
@@ -672,14 +745,20 @@ class TestStressTesting:
 
         result = await stress_runner.database_connection_exhaustion_test(
             db_session=db_session,
-            max_connections=20  # Reduced for testing
+            max_connections=20,  # Reduced for testing
         )
 
         # Database stress assertions
-        assert result["connection_success_rate"] >= 0.8, f"Connection success rate too low: {result['connection_success_rate']:.3f}"
-        assert result["operations_per_second"] >= 5.0, f"Database throughput too low: {result['operations_per_second']:.2f} ops/s"
+        assert result["connection_success_rate"] >= 0.8, (
+            f"Connection success rate too low: {result['connection_success_rate']:.3f}"
+        )
+        assert result["operations_per_second"] >= 5.0, (
+            f"Database throughput too low: {result['operations_per_second']:.2f} ops/s"
+        )
 
-        logger.info(f"✓ Database stress test completed: {result['successful_connections']}/{result['max_connections_attempted']} connections succeeded")
+        logger.info(
+            f"✓ Database stress test completed: {result['successful_connections']}/{result['max_connections_attempted']} connections succeeded"
+        )
         return result
 
     async def test_file_descriptor_management(self, stress_data_provider):
@@ -689,10 +768,14 @@ class TestStressTesting:
         result = await stress_runner.file_descriptor_exhaustion_test()
 
         # File descriptor assertions
-        assert result["fd_utilization_percent"] <= 50.0, f"FD utilization too high: {result['fd_utilization_percent']:.1f}%"
+        assert result["fd_utilization_percent"] <= 50.0, (
+            f"FD utilization too high: {result['fd_utilization_percent']:.1f}%"
+        )
         assert result["fd_growth"] <= 100, f"FD growth too high: {result['fd_growth']}"
 
-        logger.info(f"✓ File descriptor test completed: {result['peak_file_descriptors']} peak FDs ({result['fd_utilization_percent']:.1f}% utilization)")
+        logger.info(
+            f"✓ File descriptor test completed: {result['peak_file_descriptors']} peak FDs ({result['fd_utilization_percent']:.1f}% utilization)"
+        )
         return result
 
     async def test_queue_overflow_scenarios(self, stress_data_provider):
@@ -738,7 +821,7 @@ class TestStressTesting:
             if i < max_queue_size:
                 await asyncio.sleep(0.01)  # Rapid creation
             else:
-                await asyncio.sleep(0.1)   # Slower creation after queue fills
+                await asyncio.sleep(0.1)  # Slower creation after queue fills
 
         # Wait for all tasks to complete
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -747,10 +830,16 @@ class TestStressTesting:
 
         # Queue overflow assertions
         processing_success_rate = processed_tasks / overflow_tasks
-        assert processing_success_rate >= 0.8, f"Queue processing success rate too low: {processing_success_rate:.3f}"
-        assert execution_time < 120.0, f"Queue processing took too long: {execution_time:.1f}s"
+        assert processing_success_rate >= 0.8, (
+            f"Queue processing success rate too low: {processing_success_rate:.3f}"
+        )
+        assert execution_time < 120.0, (
+            f"Queue processing took too long: {execution_time:.1f}s"
+        )
 
-        logger.info(f"✓ Queue overflow test completed: {processed_tasks}/{overflow_tasks} tasks processed in {execution_time:.1f}s")
+        logger.info(
+            f"✓ Queue overflow test completed: {processed_tasks}/{overflow_tasks} tasks processed in {execution_time:.1f}s"
+        )
 
         return {
             "overflow_tasks": overflow_tasks,
@@ -767,12 +856,24 @@ class TestStressTesting:
         stress_results = {}
 
         # Run individual stress tests
-        stress_results["sustained_load"] = await self.test_sustained_load_15_minutes(stress_data_provider)
-        stress_results["memory_leak"] = await self.test_memory_leak_detection(stress_data_provider)
-        stress_results["cpu_stress"] = await self.test_cpu_stress_resilience(stress_data_provider)
-        stress_results["database_stress"] = await self.test_database_connection_stress(stress_data_provider, db_session)
-        stress_results["file_descriptors"] = await self.test_file_descriptor_management(stress_data_provider)
-        stress_results["queue_overflow"] = await self.test_queue_overflow_scenarios(stress_data_provider)
+        stress_results["sustained_load"] = await self.test_sustained_load_15_minutes(
+            stress_data_provider
+        )
+        stress_results["memory_leak"] = await self.test_memory_leak_detection(
+            stress_data_provider
+        )
+        stress_results["cpu_stress"] = await self.test_cpu_stress_resilience(
+            stress_data_provider
+        )
+        stress_results["database_stress"] = await self.test_database_connection_stress(
+            stress_data_provider, db_session
+        )
+        stress_results["file_descriptors"] = await self.test_file_descriptor_management(
+            stress_data_provider
+        )
+        stress_results["queue_overflow"] = await self.test_queue_overflow_scenarios(
+            stress_data_provider
+        )
 
         # Aggregate stress test analysis
         total_tests = len(stress_results)
@@ -785,13 +886,19 @@ class TestStressTesting:
 
             if test_name == "sustained_load" and result["error_rate"] > 0.1:
                 test_passed = False
-                critical_failures.append(f"Sustained load error rate: {result['error_rate']:.3f}")
+                critical_failures.append(
+                    f"Sustained load error rate: {result['error_rate']:.3f}"
+                )
             elif test_name == "memory_leak" and result["leak_detected"]:
                 test_passed = False
-                critical_failures.append(f"Memory leak detected: {result['leak_per_1000_iterations_mb']:.2f} MB/1k iterations")
+                critical_failures.append(
+                    f"Memory leak detected: {result['leak_per_1000_iterations_mb']:.2f} MB/1k iterations"
+                )
             elif test_name == "cpu_stress" and result["error_rate"] > 0.3:
                 test_passed = False
-                critical_failures.append(f"CPU stress error rate: {result['error_rate']:.3f}")
+                critical_failures.append(
+                    f"CPU stress error rate: {result['error_rate']:.3f}"
+                )
 
             if test_passed:
                 passed_tests += 1
@@ -799,19 +906,23 @@ class TestStressTesting:
         overall_pass_rate = passed_tests / total_tests
 
         logger.info(
-            f"\n{'='*60}\n"
+            f"\n{'=' * 60}\n"
             f"COMPREHENSIVE STRESS TEST REPORT\n"
-            f"{'='*60}\n"
+            f"{'=' * 60}\n"
             f"Total Tests: {total_tests}\n"
             f"Passed: {passed_tests}\n"
             f"Overall Pass Rate: {overall_pass_rate:.1%}\n"
             f"Critical Failures: {len(critical_failures)}\n"
-            f"{'='*60}\n"
+            f"{'=' * 60}\n"
         )
 
         # Assert overall stress test success
-        assert overall_pass_rate >= 0.8, f"Overall stress test pass rate too low: {overall_pass_rate:.1%}"
-        assert len(critical_failures) <= 1, f"Too many critical failures: {critical_failures}"
+        assert overall_pass_rate >= 0.8, (
+            f"Overall stress test pass rate too low: {overall_pass_rate:.1%}"
+        )
+        assert len(critical_failures) <= 1, (
+            f"Too many critical failures: {critical_failures}"
+        )
 
         return {
             "overall_pass_rate": overall_pass_rate,
@@ -822,11 +933,14 @@ class TestStressTesting:
 
 if __name__ == "__main__":
     # Run stress testing suite
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=1800",  # 30 minute timeout for stress tests
-        "-m", "not slow",  # Skip slow tests by default
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=1800",  # 30 minute timeout for stress tests
+            "-m",
+            "not slow",  # Skip slow tests by default
+        ]
+    )

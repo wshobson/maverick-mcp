@@ -356,8 +356,9 @@ def run_self_contained_migrations(alembic_config_path: str = "alembic.ini"):
         alembic_config_path: Path to alembic configuration file
     """
     try:
-        from alembic import command
         from alembic.config import Config
+
+        from alembic import command
 
         # Set up alembic config
         alembic_cfg = Config(alembic_config_path)

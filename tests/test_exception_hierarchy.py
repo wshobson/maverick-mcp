@@ -97,7 +97,9 @@ class TestExceptionHierarchy:
     def test_external_service_error(self):
         """Test ExternalServiceError."""
         exc = ExternalServiceError(
-            "MarketDataAPI", "Service request failed", original_error="Connection timeout"
+            "MarketDataAPI",
+            "Service request failed",
+            original_error="Connection timeout",
         )
         assert exc.message == "Service request failed"
         assert exc.error_code == "EXTERNAL_SERVICE_ERROR"

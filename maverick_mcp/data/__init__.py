@@ -66,19 +66,21 @@ try:
     get_latest_maverick_screening = _get_latest_maverick_screening
     init_db = _init_db
 
-    __all__.extend([
-        "Stock",
-        "PriceCache",
-        "MaverickStocks",
-        "MaverickBearStocks",
-        "SupplyDemandBreakoutStocks",
-        "SessionLocal",
-        "get_db",
-        "init_db",
-        "ensure_database_schema",
-        "bulk_insert_price_data",
-        "get_latest_maverick_screening",
-    ])
+    __all__.extend(
+        [
+            "Stock",
+            "PriceCache",
+            "MaverickStocks",
+            "MaverickBearStocks",
+            "SupplyDemandBreakoutStocks",
+            "SessionLocal",
+            "get_db",
+            "init_db",
+            "ensure_database_schema",
+            "bulk_insert_price_data",
+            "get_latest_maverick_screening",
+        ]
+    )
 except ImportError:
     # Model functionality not available (missing SQLAlchemy or other deps)
     pass
@@ -94,17 +96,18 @@ try:
     # Create module-level validation instance for easy access
     validation = DataValidator()
 
-    __all__.extend([
-        "DataValidator",
-        "validate_stock_data",
-        "validate_backtest_data",
-        "validation",
-    ])
+    __all__.extend(
+        [
+            "DataValidator",
+            "validate_stock_data",
+            "validate_backtest_data",
+            "validation",
+        ]
+    )
 except ImportError as import_error:
     # If validation can't be imported, create a minimal stub
     error_message = (
-        "Validation functionality requires additional dependencies: "
-        f"{import_error}"
+        f"Validation functionality requires additional dependencies: {import_error}"
     )
 
     def _raise_validation_import_error() -> None:
@@ -142,9 +145,11 @@ except ImportError as import_error:
     def validate_backtest_data(*args, **kwargs):
         return {"error": "Dependencies not available"}
 
-    __all__.extend([
-        "DataValidator",
-        "validate_stock_data",
-        "validate_backtest_data",
-        "validation",
-    ])
+    __all__.extend(
+        [
+            "DataValidator",
+            "validate_stock_data",
+            "validate_backtest_data",
+            "validation",
+        ]
+    )

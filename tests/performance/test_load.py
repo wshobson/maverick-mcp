@@ -36,6 +36,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LoadTestResult:
     """Data class for load test results."""
+
     concurrent_users: int
     total_requests: int
     successful_requests: int
@@ -61,7 +62,9 @@ class LoadTestRunner:
         self.results = []
         self.active_requests = 0
 
-    async def simulate_user_session(self, user_id: int, session_config: dict[str, Any]) -> dict[str, Any]:
+    async def simulate_user_session(
+        self, user_id: int, session_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Simulate a realistic user session with multiple backtests."""
         session_start = time.time()
         user_results = []
@@ -79,7 +82,9 @@ class LoadTestRunner:
                 request_start = time.time()
 
                 try:
-                    parameters = STRATEGY_TEMPLATES.get(strategy, {}).get("parameters", {})
+                    parameters = STRATEGY_TEMPLATES.get(strategy, {}).get(
+                        "parameters", {}
+                    )
 
                     result = await engine.run_backtest(
                         symbol=symbol,
@@ -92,25 +97,29 @@ class LoadTestRunner:
                     request_time = time.time() - request_start
                     response_times.append(request_time)
 
-                    user_results.append({
-                        "symbol": symbol,
-                        "strategy": strategy,
-                        "success": True,
-                        "response_time": request_time,
-                        "result_size": len(str(result)),
-                    })
+                    user_results.append(
+                        {
+                            "symbol": symbol,
+                            "strategy": strategy,
+                            "success": True,
+                            "response_time": request_time,
+                            "result_size": len(str(result)),
+                        }
+                    )
 
                 except Exception as e:
                     request_time = time.time() - request_start
                     response_times.append(request_time)
 
-                    user_results.append({
-                        "symbol": symbol,
-                        "strategy": strategy,
-                        "success": False,
-                        "response_time": request_time,
-                        "error": str(e),
-                    })
+                    user_results.append(
+                        {
+                            "symbol": symbol,
+                            "strategy": strategy,
+                            "success": False,
+                            "response_time": request_time,
+                            "error": str(e),
+                        }
+                    )
 
                 finally:
                     self.active_requests -= 1
@@ -142,12 +151,16 @@ class LoadTestRunner:
             "p99": np.percentile(sorted_times, 99),
         }
 
-    async def run_load_test(self,
-                           concurrent_users: int,
-                           session_config: dict[str, Any],
-                           duration_seconds: int = 60) -> LoadTestResult:
+    async def run_load_test(
+        self,
+        concurrent_users: int,
+        session_config: dict[str, Any],
+        duration_seconds: int = 60,
+    ) -> LoadTestResult:
         """Run load test with specified concurrent users."""
-        logger.info(f"Starting load test: {concurrent_users} concurrent users for {duration_seconds}s")
+        logger.info(
+            f"Starting load test: {concurrent_users} concurrent users for {duration_seconds}s"
+        )
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss / 1024 / 1024  # MB
@@ -173,7 +186,7 @@ class LoadTestRunner:
         try:
             user_results = await asyncio.wait_for(
                 asyncio.gather(*user_tasks, return_exceptions=True),
-                timeout=duration_seconds + 30  # Add buffer to test timeout
+                timeout=duration_seconds + 30,  # Add buffer to test timeout
             )
         except TimeoutError:
             logger.warning(f"Load test timed out after {duration_seconds + 30}s")
@@ -196,18 +209,26 @@ class LoadTestRunner:
 
         # Calculate metrics
         total_requests = len(all_user_results)
-        successful_requests = sum(1 for r in all_user_results if r.get("success", False))
+        successful_requests = sum(
+            1 for r in all_user_results if r.get("success", False)
+        )
         failed_requests = total_requests - successful_requests
 
         # Response time statistics
         percentiles = self.calculate_percentiles(all_response_times)
-        avg_response_time = statistics.mean(all_response_times) if all_response_times else 0
+        avg_response_time = (
+            statistics.mean(all_response_times) if all_response_times else 0
+        )
         min_response_time = min(all_response_times) if all_response_times else 0
         max_response_time = max(all_response_times) if all_response_times else 0
 
         # Throughput metrics
-        requests_per_second = total_requests / actual_duration if actual_duration > 0 else 0
-        errors_per_second = failed_requests / actual_duration if actual_duration > 0 else 0
+        requests_per_second = (
+            total_requests / actual_duration if actual_duration > 0 else 0
+        )
+        errors_per_second = (
+            failed_requests / actual_duration if actual_duration > 0 else 0
+        )
 
         # Resource usage
         final_memory = process.memory_info().rss / 1024 / 1024
@@ -235,7 +256,7 @@ class LoadTestRunner:
         logger.info(
             f"Load Test Results ({concurrent_users} users):\n"
             f"  • Total Requests: {total_requests}\n"
-            f"  • Success Rate: {successful_requests/total_requests*100:.1f}%\n"
+            f"  • Success Rate: {successful_requests / total_requests * 100:.1f}%\n"
             f"  • Avg Response Time: {avg_response_time:.3f}s\n"
             f"  • 95th Percentile: {percentiles['p95']:.3f}s\n"
             f"  • Throughput: {requests_per_second:.1f} req/s\n"
@@ -268,19 +289,26 @@ class TestLoadTesting:
                 returns = np.random.normal(0.001, 0.02, len(dates))
                 prices = 100 * np.cumprod(1 + returns)
 
-                symbol_data_cache[symbol] = pd.DataFrame({
-                    "Open": prices * np.random.uniform(0.99, 1.01, len(dates)),
-                    "High": prices * np.random.uniform(1.01, 1.03, len(dates)),
-                    "Low": prices * np.random.uniform(0.97, 0.99, len(dates)),
-                    "Close": prices,
-                    "Volume": np.random.randint(1000000, 10000000, len(dates)),
-                    "Adj Close": prices,
-                }, index=dates)
+                symbol_data_cache[symbol] = pd.DataFrame(
+                    {
+                        "Open": prices * np.random.uniform(0.99, 1.01, len(dates)),
+                        "High": prices * np.random.uniform(1.01, 1.03, len(dates)),
+                        "Low": prices * np.random.uniform(0.97, 0.99, len(dates)),
+                        "Close": prices,
+                        "Volume": np.random.randint(1000000, 10000000, len(dates)),
+                        "Adj Close": prices,
+                    },
+                    index=dates,
+                )
 
                 # Ensure OHLC constraints
                 data = symbol_data_cache[symbol]
-                data["High"] = np.maximum(data["High"], np.maximum(data["Open"], data["Close"]))
-                data["Low"] = np.minimum(data["Low"], np.minimum(data["Open"], data["Close"]))
+                data["High"] = np.maximum(
+                    data["High"], np.maximum(data["Open"], data["Close"])
+                )
+                data["Low"] = np.minimum(
+                    data["Low"], np.minimum(data["Open"], data["Close"])
+                )
 
             return symbol_data_cache[symbol].copy()
 
@@ -299,17 +327,25 @@ class TestLoadTesting:
 
         with benchmark_timer():
             result = await load_runner.run_load_test(
-                concurrent_users=10,
-                session_config=session_config,
-                duration_seconds=30
+                concurrent_users=10, session_config=session_config, duration_seconds=30
             )
 
         # Performance assertions for 10 users
-        assert result.requests_per_second >= 2.0, f"Throughput too low: {result.requests_per_second:.1f} req/s"
-        assert result.avg_response_time <= 5.0, f"Response time too high: {result.avg_response_time:.2f}s"
-        assert result.p95_response_time <= 10.0, f"95th percentile too high: {result.p95_response_time:.2f}s"
-        assert result.successful_requests / result.total_requests >= 0.9, "Success rate too low"
-        assert result.memory_usage_mb <= 500, f"Memory usage too high: {result.memory_usage_mb:.1f}MB"
+        assert result.requests_per_second >= 2.0, (
+            f"Throughput too low: {result.requests_per_second:.1f} req/s"
+        )
+        assert result.avg_response_time <= 5.0, (
+            f"Response time too high: {result.avg_response_time:.2f}s"
+        )
+        assert result.p95_response_time <= 10.0, (
+            f"95th percentile too high: {result.p95_response_time:.2f}s"
+        )
+        assert result.successful_requests / result.total_requests >= 0.9, (
+            "Success rate too low"
+        )
+        assert result.memory_usage_mb <= 500, (
+            f"Memory usage too high: {result.memory_usage_mb:.1f}MB"
+        )
 
         return result
 
@@ -325,17 +361,25 @@ class TestLoadTesting:
 
         with benchmark_timer():
             result = await load_runner.run_load_test(
-                concurrent_users=50,
-                session_config=session_config,
-                duration_seconds=60
+                concurrent_users=50, session_config=session_config, duration_seconds=60
             )
 
         # Performance assertions for 50 users
-        assert result.requests_per_second >= 5.0, f"Throughput too low: {result.requests_per_second:.1f} req/s"
-        assert result.avg_response_time <= 8.0, f"Response time too high: {result.avg_response_time:.2f}s"
-        assert result.p95_response_time <= 15.0, f"95th percentile too high: {result.p95_response_time:.2f}s"
-        assert result.successful_requests / result.total_requests >= 0.85, "Success rate too low"
-        assert result.memory_usage_mb <= 1000, f"Memory usage too high: {result.memory_usage_mb:.1f}MB"
+        assert result.requests_per_second >= 5.0, (
+            f"Throughput too low: {result.requests_per_second:.1f} req/s"
+        )
+        assert result.avg_response_time <= 8.0, (
+            f"Response time too high: {result.avg_response_time:.2f}s"
+        )
+        assert result.p95_response_time <= 15.0, (
+            f"95th percentile too high: {result.p95_response_time:.2f}s"
+        )
+        assert result.successful_requests / result.total_requests >= 0.85, (
+            "Success rate too low"
+        )
+        assert result.memory_usage_mb <= 1000, (
+            f"Memory usage too high: {result.memory_usage_mb:.1f}MB"
+        )
 
         return result
 
@@ -351,17 +395,25 @@ class TestLoadTesting:
 
         with benchmark_timer():
             result = await load_runner.run_load_test(
-                concurrent_users=100,
-                session_config=session_config,
-                duration_seconds=90
+                concurrent_users=100, session_config=session_config, duration_seconds=90
             )
 
         # More relaxed performance assertions for 100 users
-        assert result.requests_per_second >= 3.0, f"Throughput too low: {result.requests_per_second:.1f} req/s"
-        assert result.avg_response_time <= 15.0, f"Response time too high: {result.avg_response_time:.2f}s"
-        assert result.p95_response_time <= 30.0, f"95th percentile too high: {result.p95_response_time:.2f}s"
-        assert result.successful_requests / result.total_requests >= 0.8, "Success rate too low"
-        assert result.memory_usage_mb <= 2000, f"Memory usage too high: {result.memory_usage_mb:.1f}MB"
+        assert result.requests_per_second >= 3.0, (
+            f"Throughput too low: {result.requests_per_second:.1f} req/s"
+        )
+        assert result.avg_response_time <= 15.0, (
+            f"Response time too high: {result.avg_response_time:.2f}s"
+        )
+        assert result.p95_response_time <= 30.0, (
+            f"95th percentile too high: {result.p95_response_time:.2f}s"
+        )
+        assert result.successful_requests / result.total_requests >= 0.8, (
+            "Success rate too low"
+        )
+        assert result.memory_usage_mb <= 2000, (
+            f"Memory usage too high: {result.memory_usage_mb:.1f}MB"
+        )
 
         return result
 
@@ -384,7 +436,7 @@ class TestLoadTesting:
             result = await load_runner.run_load_test(
                 concurrent_users=user_count,
                 session_config=session_config,
-                duration_seconds=30
+                duration_seconds=30,
             )
 
             scalability_results.append(result)
@@ -398,10 +450,16 @@ class TestLoadTesting:
 
         for i, result in enumerate(scalability_results):
             expected_rps = baseline_rps * user_loads[i] / user_loads[0]
-            actual_efficiency = result.requests_per_second / expected_rps if expected_rps > 0 else 0
+            actual_efficiency = (
+                result.requests_per_second / expected_rps if expected_rps > 0 else 0
+            )
             throughput_efficiency.append(actual_efficiency)
 
-            response_degradation = result.avg_response_time / baseline_response_time if baseline_response_time > 0 else 1
+            response_degradation = (
+                result.avg_response_time / baseline_response_time
+                if baseline_response_time > 0
+                else 1
+            )
             response_time_degradation.append(response_degradation)
 
             logger.info(
@@ -417,8 +475,12 @@ class TestLoadTesting:
         avg_efficiency = statistics.mean(throughput_efficiency)
         max_response_degradation = max(response_time_degradation)
 
-        assert avg_efficiency >= 0.5, f"Average throughput efficiency too low: {avg_efficiency:.2%}"
-        assert max_response_degradation <= 5.0, f"Response time degradation too high: {max_response_degradation:.1f}x"
+        assert avg_efficiency >= 0.5, (
+            f"Average throughput efficiency too low: {avg_efficiency:.2%}"
+        )
+        assert max_response_degradation <= 5.0, (
+            f"Response time degradation too high: {max_response_degradation:.1f}x"
+        )
 
         return {
             "user_loads": user_loads,
@@ -442,21 +504,29 @@ class TestLoadTesting:
         result = await load_runner.run_load_test(
             concurrent_users=25,
             session_config=session_config,
-            duration_seconds=300  # 5 minutes
+            duration_seconds=300,  # 5 minutes
         )
 
         # Stability assertions
-        assert result.errors_per_second <= 0.1, f"Error rate too high: {result.errors_per_second:.3f} err/s"
-        assert result.successful_requests / result.total_requests >= 0.95, "Success rate degraded over time"
-        assert result.memory_usage_mb <= 800, f"Memory usage grew too much: {result.memory_usage_mb:.1f}MB"
+        assert result.errors_per_second <= 0.1, (
+            f"Error rate too high: {result.errors_per_second:.3f} err/s"
+        )
+        assert result.successful_requests / result.total_requests >= 0.95, (
+            "Success rate degraded over time"
+        )
+        assert result.memory_usage_mb <= 800, (
+            f"Memory usage grew too much: {result.memory_usage_mb:.1f}MB"
+        )
 
         # Check for performance consistency (no significant degradation)
-        assert result.p99_response_time / result.p50_response_time <= 5.0, "Response time variance too high"
+        assert result.p99_response_time / result.p50_response_time <= 5.0, (
+            "Response time variance too high"
+        )
 
         logger.info(
             f"Sustained Load Results (25 users, 5 minutes):\n"
             f"  • Total Requests: {result.total_requests}\n"
-            f"  • Success Rate: {result.successful_requests/result.total_requests*100:.2f}%\n"
+            f"  • Success Rate: {result.successful_requests / result.total_requests * 100:.2f}%\n"
             f"  • Avg Throughput: {result.requests_per_second:.2f} req/s\n"
             f"  • Response Time (50/95/99): {result.p50_response_time:.2f}s/"
             f"{result.p95_response_time:.2f}s/{result.p99_response_time:.2f}s\n"
@@ -466,7 +536,9 @@ class TestLoadTesting:
 
         return result
 
-    async def test_database_connection_pooling_under_load(self, optimized_data_provider, db_session):
+    async def test_database_connection_pooling_under_load(
+        self, optimized_data_provider, db_session
+    ):
         """Test database connection pooling under concurrent load."""
         # Generate backtest results to save to database
         engine = VectorBTEngine(data_provider=optimized_data_provider)
@@ -539,7 +611,9 @@ class TestLoadTesting:
 
         total_operations = sum(r["operations_completed"] for r in successful_operations)
         total_errors = sum(len(r["errors"]) for r in successful_operations)
-        avg_operation_time = statistics.mean([r["operation_time"] for r in successful_operations])
+        avg_operation_time = statistics.mean(
+            [r["operation_time"] for r in successful_operations]
+        )
 
         db_throughput = total_operations / total_time if total_time > 0 else 0
         error_rate = total_errors / total_operations if total_operations > 0 else 0
@@ -556,7 +630,9 @@ class TestLoadTesting:
         )
 
         # Database performance assertions
-        assert len(successful_operations) / len(db_results) >= 0.9, "DB session success rate too low"
+        assert len(successful_operations) / len(db_results) >= 0.9, (
+            "DB session success rate too low"
+        )
         assert error_rate <= 0.05, f"DB error rate too high: {error_rate:.3%}"
         assert db_throughput >= 5.0, f"DB throughput too low: {db_throughput:.2f} ops/s"
 
@@ -570,11 +646,13 @@ class TestLoadTesting:
 
 if __name__ == "__main__":
     # Run load testing suite
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=600",  # 10 minute timeout for load tests
-        "--durations=10",
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=600",  # 10 minute timeout for load tests
+            "--durations=10",
+        ]
+    )

@@ -102,6 +102,7 @@ async def test_email_templates():
     success = await send_api_key_email(test_email, test_name, "test_1234567890")
     print("✅ API key email sent" if success else "❌ API key email failed")
 
+
 async def main():
     """Run all tests."""
     print("\nMaverick-MCP Mailgun Email Test Suite")

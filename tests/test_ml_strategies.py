@@ -22,14 +22,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-
 from maverick_mcp.backtesting.strategies.base import Strategy
 from maverick_mcp.backtesting.strategies.ml.adaptive import (
     AdaptiveStrategy,
     HybridAdaptiveStrategy,
     OnlineLearningStrategy,
 )
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 class MockBaseStrategy(Strategy):
@@ -53,14 +53,13 @@ class MockBaseStrategy(Strategy):
         exit_signals = pd.Series(False, index=data.index)
 
         window = self.parameters.get("window", 20)
-        threshold = self.parameters.get("threshold", 0.02)
+        threshold = float(self.parameters.get("threshold", 0.02) or 0.0)
+        step = max(5, int(round(10 * (1 + abs(threshold) * 10))))
 
         if self._signal_pattern == "alternating":
-            # Alternate between entry and exit signals
-            for i in range(
-                window, len(data), 10
-            ):  # Every 10 days starting after window
-                if (i // 10) % 2 == 0:
+            # Alternate between entry and exit signals with threshold-adjusted cadence
+            for i in range(window, len(data), step):
+                if (i // step) % 2 == 0:
                     entry_signals.iloc[i] = True
                 else:
                     exit_signals.iloc[i] = True
@@ -209,9 +208,6 @@ class TestAdaptiveStrategy:
         """Test random search parameter adaptation."""
         adaptive_strategy.adaptation_method = "random_search"
 
-        # Store initial parameters
-        initial_params = adaptive_strategy.base_strategy.parameters.copy()
-
         # Apply random search adaptation
         adaptive_strategy.adapt_parameters_random_search()
 
@@ -281,7 +277,6 @@ class TestAdaptiveStrategy:
         adaptive_strategy.generate_signals(sample_market_data)
 
         # Parameters should have changed
-        adapted_params = adaptive_strategy.base_strategy.parameters.copy()
 
         # Reset to original
         adaptive_strategy.reset_to_original()
@@ -437,7 +432,7 @@ class TestOnlineLearningStrategy:
         info = online_strategy.get_model_info()
 
         assert info["model_type"] == "sgd"
-        assert info["is_trained"] == False
+        assert not info["is_trained"]
         assert info["feature_window"] == 20
         assert info["update_frequency"] == 10
         assert info["confidence_threshold"] == 0.6
@@ -447,7 +442,7 @@ class TestOnlineLearningStrategy:
 
         # Get info after training
         trained_info = online_strategy.get_model_info()
-        assert trained_info["is_trained"] == True
+        assert trained_info["is_trained"]
 
         # Should have coefficients if model supports them
         if (
@@ -712,14 +707,22 @@ class TestMLStrategiesPerformance:
         )
 
         # Generate initial signals and measure performance
-        initial_signals = adaptive_strategy.generate_signals(sample_market_data)
-        initial_performance = len(adaptive_strategy.performance_history)
+        initial_entry_signals, initial_exit_signals = (
+            adaptive_strategy.generate_signals(sample_market_data)
+        )
+        assert len(initial_entry_signals) == len(sample_market_data)
+        assert len(initial_exit_signals) == len(sample_market_data)
+        assert len(adaptive_strategy.performance_history) > 0
 
         # Reset and generate again (should have different adaptations)
         adaptive_strategy.reset_to_original()
-        second_signals = adaptive_strategy.generate_signals(sample_market_data)
+        post_reset_entry, post_reset_exit = adaptive_strategy.generate_signals(
+            sample_market_data
+        )
+        assert len(post_reset_entry) == len(sample_market_data)
+        assert len(post_reset_exit) == len(sample_market_data)
 
-        # Should have recorded performance metrics
+        # Should have recorded performance metrics again
         assert len(adaptive_strategy.performance_history) > 0
         assert len(adaptive_strategy.parameter_history) > 0
 
@@ -878,6 +881,7 @@ class TestMLStrategiesErrorHandling:
 
         # Parameter should be bounded
         new_window = mock_base_strategy.parameters["window"]
+        assert new_window != original_window
         adaptable_params = adaptive_strategy.get_adaptable_parameters()
 
         if "window" in adaptable_params:
@@ -890,6 +894,8 @@ class TestMLStrategiesErrorHandling:
 
         # Generate initial signals successfully
         initial_signals = adaptive_strategy.generate_signals(sample_market_data)
+        assert isinstance(initial_signals, tuple)
+        assert len(initial_signals) == 2
         initial_state = {
             "performance_history": len(adaptive_strategy.performance_history),
             "parameter_history": len(adaptive_strategy.parameter_history),
@@ -909,6 +915,15 @@ class TestMLStrategiesErrorHandling:
         assert len(error_signals) == 2
         assert isinstance(error_signals[0], pd.Series)
         assert isinstance(error_signals[1], pd.Series)
+        assert (
+            len(adaptive_strategy.performance_history)
+            == initial_state["performance_history"]
+        )
+        assert (
+            len(adaptive_strategy.parameter_history)
+            == initial_state["parameter_history"]
+        )
+        assert adaptive_strategy.base_strategy.parameters == initial_state["parameters"]
 
 
 if __name__ == "__main__":

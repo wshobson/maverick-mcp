@@ -711,7 +711,9 @@ def initialize_circuit_breakers() -> dict[str, EnhancedCircuitBreaker]:
             circuit_breakers[service_name] = breaker
             logger.info(f"Initialized circuit breaker for {service_name}")
         except Exception as e:
-            logger.error(f"Failed to initialize circuit breaker for {service_name}: {e}")
+            logger.error(
+                f"Failed to initialize circuit breaker for {service_name}: {e}"
+            )
 
     logger.info(f"Initialized {len(circuit_breakers)} circuit breakers")
     return circuit_breakers
@@ -735,7 +737,9 @@ def with_circuit_breaker(service_name: str):
         def wrapper(*args, **kwargs) -> T:
             breaker = get_circuit_breaker(service_name)
             if not breaker:
-                logger.warning(f"Circuit breaker '{service_name}' not found, executing without protection")
+                logger.warning(
+                    f"Circuit breaker '{service_name}' not found, executing without protection"
+                )
                 return func(*args, **kwargs)
 
             return breaker.call(func, *args, **kwargs)
@@ -763,7 +767,9 @@ def with_async_circuit_breaker(service_name: str):
         async def wrapper(*args, **kwargs) -> T:
             breaker = get_circuit_breaker(service_name)
             if not breaker:
-                logger.warning(f"Circuit breaker '{service_name}' not found, executing without protection")
+                logger.warning(
+                    f"Circuit breaker '{service_name}' not found, executing without protection"
+                )
                 return await func(*args, **kwargs)
 
             return await breaker.call_async(func, *args, **kwargs)
@@ -885,6 +891,7 @@ def get_all_circuit_breaker_status() -> dict[str, dict[str, Any]]:
 
 # Specific circuit breaker decorators for common services
 
+
 def with_yfinance_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Decorator for yfinance API calls."""
     return cast(F, with_circuit_breaker("yfinance")(func))
@@ -911,6 +918,7 @@ def with_exa_circuit_breaker(func: F) -> F:  # noqa: UP047
 
 
 # Async versions
+
 
 def with_async_yfinance_circuit_breaker(func: F) -> F:  # noqa: UP047
     """Async decorator for yfinance API calls."""

@@ -259,6 +259,10 @@ class TestBacktestPersistenceManager:
         aapl_results = persistence_manager.get_backtests_by_symbol("AAPL")
         assert len(aapl_results) == 2
         assert all(result.symbol == "AAPL" for result in aapl_results)
+        assert backtest_id1 != backtest_id2
+        assert backtest_id3 not in {backtest_id1, backtest_id2}
+        retrieved_ids = {str(result.backtest_id) for result in aapl_results}
+        assert {backtest_id1, backtest_id2}.issubset(retrieved_ids)
 
         # Test with strategy filter
         aapl_v1_results = persistence_manager.get_backtests_by_symbol(

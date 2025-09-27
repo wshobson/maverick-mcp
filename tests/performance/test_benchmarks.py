@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BenchmarkResult:
     """Data class for benchmark test results."""
+
     test_name: str
     target_value: float
     actual_value: float
@@ -53,20 +54,26 @@ class BenchmarkTracker:
         self.results = []
         self.process = psutil.Process(os.getpid())
 
-    def add_benchmark(self,
-                     test_name: str,
-                     target_value: float,
-                     actual_value: float,
-                     unit: str,
-                     comparison: str = "<=",
-                     details: dict[str, Any] | None = None) -> BenchmarkResult:
+    def add_benchmark(
+        self,
+        test_name: str,
+        target_value: float,
+        actual_value: float,
+        unit: str,
+        comparison: str = "<=",
+        details: dict[str, Any] | None = None,
+    ) -> BenchmarkResult:
         """Add a benchmark result."""
         if comparison == "<=":
             passed = actual_value <= target_value
-            margin = (actual_value - target_value) / target_value if target_value > 0 else 0
+            margin = (
+                (actual_value - target_value) / target_value if target_value > 0 else 0
+            )
         elif comparison == ">=":
             passed = actual_value >= target_value
-            margin = (target_value - actual_value) / target_value if target_value > 0 else 0
+            margin = (
+                (target_value - actual_value) / target_value if target_value > 0 else 0
+            )
         else:
             raise ValueError(f"Unsupported comparison: {comparison}")
 
@@ -83,7 +90,9 @@ class BenchmarkTracker:
         self.results.append(result)
 
         status = "✓ PASS" if passed else "✗ FAIL"
-        logger.info(f"{status} {test_name}: {actual_value:.3f}{unit} (target: {target_value}{unit})")
+        logger.info(
+            f"{status} {test_name}: {actual_value:.3f}{unit} (target: {target_value}{unit})"
+        )
 
         return result
 
@@ -129,14 +138,17 @@ class TestPerformanceBenchmarks:
             returns = np.random.normal(0.0008, 0.02, len(dates))
             prices = 100 * np.cumprod(1 + returns)
 
-            return pd.DataFrame({
-                "Open": prices * np.random.uniform(0.995, 1.005, len(dates)),
-                "High": prices * np.random.uniform(1.005, 1.025, len(dates)),
-                "Low": prices * np.random.uniform(0.975, 0.995, len(dates)),
-                "Close": prices,
-                "Volume": np.random.randint(1000000, 5000000, len(dates)),
-                "Adj Close": prices,
-            }, index=dates)
+            return pd.DataFrame(
+                {
+                    "Open": prices * np.random.uniform(0.995, 1.005, len(dates)),
+                    "High": prices * np.random.uniform(1.005, 1.025, len(dates)),
+                    "Low": prices * np.random.uniform(0.975, 0.995, len(dates)),
+                    "Close": prices,
+                    "Volume": np.random.randint(1000000, 5000000, len(dates)),
+                    "Adj Close": prices,
+                },
+                index=dates,
+            )
 
         provider.get_stock_data.side_effect = generate_benchmark_data
         return provider
@@ -178,7 +190,11 @@ class TestPerformanceBenchmarks:
                 actual_value=execution_time,
                 unit="s",
                 comparison="<=",
-                details={"symbol": symbol, "strategy": strategy, "result_size": len(str(result))}
+                details={
+                    "symbol": symbol,
+                    "strategy": strategy,
+                    "result_size": len(str(result)),
+                },
             )
 
         # Overall benchmark
@@ -191,7 +207,7 @@ class TestPerformanceBenchmarks:
             actual_value=avg_execution_time,
             unit="s",
             comparison="<=",
-            details={"individual_times": execution_times}
+            details={"individual_times": execution_times},
         )
 
         benchmark.add_benchmark(
@@ -200,14 +216,18 @@ class TestPerformanceBenchmarks:
             actual_value=max_execution_time,
             unit="s",
             comparison="<=",
-            details={"slowest_case": test_cases[execution_times.index(max_execution_time)]}
+            details={
+                "slowest_case": test_cases[execution_times.index(max_execution_time)]
+            },
         )
 
-        logger.info(f"Backtest Execution Time Benchmark Summary:\n"
-                   f"  • Average: {avg_execution_time:.3f}s\n"
-                   f"  • Maximum: {max_execution_time:.3f}s\n"
-                   f"  • Minimum: {min(execution_times):.3f}s\n"
-                   f"  • Standard Deviation: {statistics.stdev(execution_times):.3f}s")
+        logger.info(
+            f"Backtest Execution Time Benchmark Summary:\n"
+            f"  • Average: {avg_execution_time:.3f}s\n"
+            f"  • Maximum: {max_execution_time:.3f}s\n"
+            f"  • Minimum: {min(execution_times):.3f}s\n"
+            f"  • Standard Deviation: {statistics.stdev(execution_times):.3f}s"
+        )
 
         return benchmark.summary()
 
@@ -219,7 +239,13 @@ class TestPerformanceBenchmarks:
         initial_memory = benchmark.get_memory_usage()
         memory_measurements = []
 
-        test_symbols = ["MEM_TEST_1", "MEM_TEST_2", "MEM_TEST_3", "MEM_TEST_4", "MEM_TEST_5"]
+        test_symbols = [
+            "MEM_TEST_1",
+            "MEM_TEST_2",
+            "MEM_TEST_3",
+            "MEM_TEST_4",
+            "MEM_TEST_5",
+        ]
 
         for _i, symbol in enumerate(test_symbols):
             gc.collect()  # Force garbage collection before measurement
@@ -237,12 +263,14 @@ class TestPerformanceBenchmarks:
             post_backtest_memory = benchmark.get_memory_usage()
             memory_delta = post_backtest_memory - pre_backtest_memory
 
-            memory_measurements.append({
-                "symbol": symbol,
-                "pre_memory": pre_backtest_memory,
-                "post_memory": post_backtest_memory,
-                "delta": memory_delta,
-            })
+            memory_measurements.append(
+                {
+                    "symbol": symbol,
+                    "pre_memory": pre_backtest_memory,
+                    "post_memory": post_backtest_memory,
+                    "delta": memory_delta,
+                }
+            )
 
             # Individual memory benchmark
             benchmark.add_benchmark(
@@ -254,13 +282,15 @@ class TestPerformanceBenchmarks:
                 details={
                     "pre_memory": pre_backtest_memory,
                     "post_memory": post_backtest_memory,
-                    "result_size": len(str(result))
-                }
+                    "result_size": len(str(result)),
+                },
             )
 
         # Overall memory benchmarks
         total_memory_growth = benchmark.get_memory_usage() - initial_memory
-        avg_memory_per_backtest = total_memory_growth / len(test_symbols) if test_symbols else 0
+        avg_memory_per_backtest = (
+            total_memory_growth / len(test_symbols) if test_symbols else 0
+        )
         max_memory_delta = max(m["delta"] for m in memory_measurements)
 
         benchmark.add_benchmark(
@@ -269,7 +299,10 @@ class TestPerformanceBenchmarks:
             actual_value=avg_memory_per_backtest,
             unit="MB",
             comparison="<=",
-            details={"total_growth": total_memory_growth, "measurements": memory_measurements}
+            details={
+                "total_growth": total_memory_growth,
+                "measurements": memory_measurements,
+            },
         )
 
         benchmark.add_benchmark(
@@ -278,16 +311,24 @@ class TestPerformanceBenchmarks:
             actual_value=max_memory_delta,
             unit="MB",
             comparison="<=",
-            details={"worst_case": memory_measurements[
-                next(i for i, m in enumerate(memory_measurements) if m["delta"] == max_memory_delta)
-            ]}
+            details={
+                "worst_case": memory_measurements[
+                    next(
+                        i
+                        for i, m in enumerate(memory_measurements)
+                        if m["delta"] == max_memory_delta
+                    )
+                ]
+            },
         )
 
-        logger.info(f"Memory Usage Benchmark Summary:\n"
-                   f"  • Total Growth: {total_memory_growth:.1f}MB\n"
-                   f"  • Avg per Backtest: {avg_memory_per_backtest:.1f}MB\n"
-                   f"  • Max per Backtest: {max_memory_delta:.1f}MB\n"
-                   f"  • Initial Memory: {initial_memory:.1f}MB")
+        logger.info(
+            f"Memory Usage Benchmark Summary:\n"
+            f"  • Total Growth: {total_memory_growth:.1f}MB\n"
+            f"  • Avg per Backtest: {avg_memory_per_backtest:.1f}MB\n"
+            f"  • Max per Backtest: {max_memory_delta:.1f}MB\n"
+            f"  • Initial Memory: {initial_memory:.1f}MB"
+        )
 
         return benchmark.summary()
 
@@ -309,9 +350,19 @@ class TestPerformanceBenchmarks:
                 cache_stats["hits"] += 1
                 return "cached_result"
 
-        with patch('maverick_mcp.core.cache.CacheManager.get', side_effect=mock_cache_get):
+        with patch(
+            "maverick_mcp.core.cache.CacheManager.get", side_effect=mock_cache_get
+        ):
             # Run multiple backtests with repeated data access
-            symbols = ["CACHE_A", "CACHE_B", "CACHE_A", "CACHE_B", "CACHE_A", "CACHE_C", "CACHE_A"]
+            symbols = [
+                "CACHE_A",
+                "CACHE_B",
+                "CACHE_A",
+                "CACHE_B",
+                "CACHE_A",
+                "CACHE_C",
+                "CACHE_A",
+            ]
 
             for symbol in symbols:
                 await engine.run_backtest(
@@ -325,7 +376,9 @@ class TestPerformanceBenchmarks:
         # Calculate cache hit rate
         total_cache_requests = cache_stats["total_requests"]
         cache_hits = cache_stats["hits"]
-        cache_hit_rate = (cache_hits / total_cache_requests * 100) if total_cache_requests > 0 else 0
+        cache_hit_rate = (
+            (cache_hits / total_cache_requests * 100) if total_cache_requests > 0 else 0
+        )
 
         benchmark.add_benchmark(
             test_name="cache_hit_rate",
@@ -337,14 +390,16 @@ class TestPerformanceBenchmarks:
                 "total_requests": total_cache_requests,
                 "hits": cache_hits,
                 "misses": cache_stats["misses"],
-            }
+            },
         )
 
-        logger.info(f"Cache Hit Rate Benchmark:\n"
-                   f"  • Total Cache Requests: {total_cache_requests}\n"
-                   f"  • Cache Hits: {cache_hits}\n"
-                   f"  • Cache Misses: {cache_stats['misses']}\n"
-                   f"  • Hit Rate: {cache_hit_rate:.1f}%")
+        logger.info(
+            f"Cache Hit Rate Benchmark:\n"
+            f"  • Total Cache Requests: {total_cache_requests}\n"
+            f"  • Cache Hits: {cache_hits}\n"
+            f"  • Cache Misses: {cache_stats['misses']}\n"
+            f"  • Hit Rate: {cache_hit_rate:.1f}%"
+        )
 
         return benchmark.summary()
 
@@ -364,10 +419,14 @@ class TestPerformanceBenchmarks:
             return benchmark_data_provider.get_stock_data(*args, **kwargs)
 
         # Test with many API calls
-        with patch.object(benchmark_data_provider, 'get_stock_data', side_effect=mock_api_call):
+        with patch.object(
+            benchmark_data_provider, "get_stock_data", side_effect=mock_api_call
+        ):
             engine = VectorBTEngine(data_provider=benchmark_data_provider)
 
-            test_symbols = [f"API_TEST_{i}" for i in range(50)]  # 50 symbols to test API reliability
+            test_symbols = [
+                f"API_TEST_{i}" for i in range(50)
+            ]  # 50 symbols to test API reliability
 
             successful_backtests = 0
             failed_backtests = 0
@@ -388,10 +447,14 @@ class TestPerformanceBenchmarks:
         # Calculate failure rates
         total_api_calls = api_stats["total_calls"]
         api_failures = api_stats["failures"]
-        api_failure_rate = (api_failures / total_api_calls * 100) if total_api_calls > 0 else 0
+        api_failure_rate = (
+            (api_failures / total_api_calls * 100) if total_api_calls > 0 else 0
+        )
 
         total_backtests = successful_backtests + failed_backtests
-        backtest_failure_rate = (failed_backtests / total_backtests * 100) if total_backtests > 0 else 0
+        backtest_failure_rate = (
+            (failed_backtests / total_backtests * 100) if total_backtests > 0 else 0
+        )
 
         benchmark.add_benchmark(
             test_name="api_failure_rate",
@@ -404,7 +467,7 @@ class TestPerformanceBenchmarks:
                 "api_failures": api_failures,
                 "successful_backtests": successful_backtests,
                 "failed_backtests": failed_backtests,
-            }
+            },
         )
 
         benchmark.add_benchmark(
@@ -413,18 +476,22 @@ class TestPerformanceBenchmarks:
             actual_value=100 - backtest_failure_rate,
             unit="%",
             comparison=">=",
-            details={"backtest_failure_rate": backtest_failure_rate}
+            details={"backtest_failure_rate": backtest_failure_rate},
         )
 
-        logger.info(f"API Reliability Benchmark:\n"
-                   f"  • Total API Calls: {total_api_calls}\n"
-                   f"  • API Failures: {api_failures}\n"
-                   f"  • API Failure Rate: {api_failure_rate:.3f}%\n"
-                   f"  • Backtest Success Rate: {100 - backtest_failure_rate:.2f}%")
+        logger.info(
+            f"API Reliability Benchmark:\n"
+            f"  • Total API Calls: {total_api_calls}\n"
+            f"  • API Failures: {api_failures}\n"
+            f"  • API Failure Rate: {api_failure_rate:.3f}%\n"
+            f"  • Backtest Success Rate: {100 - backtest_failure_rate:.2f}%"
+        )
 
         return benchmark.summary()
 
-    async def test_database_query_performance_benchmark(self, benchmark_data_provider, db_session):
+    async def test_database_query_performance_benchmark(
+        self, benchmark_data_provider, db_session
+    ):
         """Test: Database query performance < 100ms."""
         benchmark = BenchmarkTracker()
         engine = VectorBTEngine(data_provider=benchmark_data_provider)
@@ -481,7 +548,7 @@ class TestPerformanceBenchmarks:
             actual_value=avg_save_time,
             unit="ms",
             comparison="<=",
-            details={"individual_times": [t for _, t in save_times]}
+            details={"individual_times": [t for _, t in save_times]},
         )
 
         benchmark.add_benchmark(
@@ -498,7 +565,7 @@ class TestPerformanceBenchmarks:
             actual_value=avg_query_time,
             unit="ms",
             comparison="<=",
-            details={"individual_times": query_times}
+            details={"individual_times": query_times},
         )
 
         benchmark.add_benchmark(
@@ -515,15 +582,17 @@ class TestPerformanceBenchmarks:
             actual_value=bulk_query_time,
             unit="ms",
             comparison="<=",
-            details={"records_returned": len(bulk_results)}
+            details={"records_returned": len(bulk_results)},
         )
 
-        logger.info(f"Database Performance Benchmark:\n"
-                   f"  • Avg Save Time: {avg_save_time:.1f}ms\n"
-                   f"  • Max Save Time: {max_save_time:.1f}ms\n"
-                   f"  • Avg Query Time: {avg_query_time:.1f}ms\n"
-                   f"  • Max Query Time: {max_query_time:.1f}ms\n"
-                   f"  • Bulk Query Time: {bulk_query_time:.1f}ms")
+        logger.info(
+            f"Database Performance Benchmark:\n"
+            f"  • Avg Save Time: {avg_save_time:.1f}ms\n"
+            f"  • Max Save Time: {max_save_time:.1f}ms\n"
+            f"  • Avg Query Time: {avg_query_time:.1f}ms\n"
+            f"  • Max Query Time: {max_query_time:.1f}ms\n"
+            f"  • Bulk Query Time: {bulk_query_time:.1f}ms"
+        )
 
         return benchmark.summary()
 
@@ -574,7 +643,7 @@ class TestPerformanceBenchmarks:
             actual_value=sequential_throughput,
             unit="req/s",
             comparison=">=",
-            details={"execution_time": sequential_time, "requests": len(symbols)}
+            details={"execution_time": sequential_time, "requests": len(symbols)},
         )
 
         benchmark.add_benchmark(
@@ -583,7 +652,10 @@ class TestPerformanceBenchmarks:
             actual_value=concurrent_throughput,
             unit="req/s",
             comparison=">=",
-            details={"execution_time": concurrent_time, "requests": len(concurrent_symbols)}
+            details={
+                "execution_time": concurrent_time,
+                "requests": len(concurrent_symbols),
+            },
         )
 
         # Concurrency speedup
@@ -597,13 +669,15 @@ class TestPerformanceBenchmarks:
             details={
                 "sequential_throughput": sequential_throughput,
                 "concurrent_throughput": concurrent_throughput,
-            }
+            },
         )
 
-        logger.info(f"Throughput Benchmark:\n"
-                   f"  • Sequential: {sequential_throughput:.2f} req/s\n"
-                   f"  • Concurrent: {concurrent_throughput:.2f} req/s\n"
-                   f"  • Speedup: {speedup:.2f}x")
+        logger.info(
+            f"Throughput Benchmark:\n"
+            f"  • Sequential: {sequential_throughput:.2f} req/s\n"
+            f"  • Concurrent: {concurrent_throughput:.2f} req/s\n"
+            f"  • Speedup: {speedup:.2f}x"
+        )
 
         return benchmark.summary()
 
@@ -638,7 +712,7 @@ class TestPerformanceBenchmarks:
             actual_value=p50,
             unit="ms",
             comparison="<=",
-            details={"percentile": "50th"}
+            details={"percentile": "50th"},
         )
 
         benchmark.add_benchmark(
@@ -647,7 +721,7 @@ class TestPerformanceBenchmarks:
             actual_value=p95,
             unit="ms",
             comparison="<=",
-            details={"percentile": "95th"}
+            details={"percentile": "95th"},
         )
 
         benchmark.add_benchmark(
@@ -656,13 +730,13 @@ class TestPerformanceBenchmarks:
             actual_value=p99,
             unit="ms",
             comparison="<=",
-            details={"percentile": "99th"}
+            details={"percentile": "99th"},
         )
 
         # SLA compliance rate (percentage of requests under target)
         sla_target = 2000.0  # 2 seconds
         sla_compliant = sum(1 for t in response_times if t <= sla_target)
-        sla_compliance_rate = (sla_compliant / len(response_times) * 100)
+        sla_compliance_rate = sla_compliant / len(response_times) * 100
 
         benchmark.add_benchmark(
             test_name="sla_compliance_rate",
@@ -674,31 +748,51 @@ class TestPerformanceBenchmarks:
                 "sla_target_ms": sla_target,
                 "compliant_requests": sla_compliant,
                 "total_requests": len(response_times),
-            }
+            },
         )
 
-        logger.info(f"Response Time SLA Benchmark:\n"
-                   f"  • 50th Percentile: {p50:.1f}ms\n"
-                   f"  • 95th Percentile: {p95:.1f}ms\n"
-                   f"  • 99th Percentile: {p99:.1f}ms\n"
-                   f"  • SLA Compliance: {sla_compliance_rate:.1f}%")
+        logger.info(
+            f"Response Time SLA Benchmark:\n"
+            f"  • 50th Percentile: {p50:.1f}ms\n"
+            f"  • 95th Percentile: {p95:.1f}ms\n"
+            f"  • 99th Percentile: {p99:.1f}ms\n"
+            f"  • SLA Compliance: {sla_compliance_rate:.1f}%"
+        )
 
         return benchmark.summary()
 
-    async def test_comprehensive_benchmark_suite(self, benchmark_data_provider, db_session):
+    async def test_comprehensive_benchmark_suite(
+        self, benchmark_data_provider, db_session
+    ):
         """Run comprehensive benchmark suite and generate report."""
         logger.info("Running Comprehensive Benchmark Suite...")
 
         # Run all individual benchmarks
         benchmark_results = []
 
-        benchmark_results.append(await self.test_backtest_execution_time_benchmark(benchmark_data_provider))
-        benchmark_results.append(await self.test_memory_usage_benchmark(benchmark_data_provider))
-        benchmark_results.append(await self.test_cache_hit_rate_benchmark(benchmark_data_provider))
-        benchmark_results.append(await self.test_api_failure_rate_benchmark(benchmark_data_provider))
-        benchmark_results.append(await self.test_database_query_performance_benchmark(benchmark_data_provider, db_session))
-        benchmark_results.append(await self.test_throughput_benchmark(benchmark_data_provider))
-        benchmark_results.append(await self.test_response_time_sla_benchmark(benchmark_data_provider))
+        benchmark_results.append(
+            await self.test_backtest_execution_time_benchmark(benchmark_data_provider)
+        )
+        benchmark_results.append(
+            await self.test_memory_usage_benchmark(benchmark_data_provider)
+        )
+        benchmark_results.append(
+            await self.test_cache_hit_rate_benchmark(benchmark_data_provider)
+        )
+        benchmark_results.append(
+            await self.test_api_failure_rate_benchmark(benchmark_data_provider)
+        )
+        benchmark_results.append(
+            await self.test_database_query_performance_benchmark(
+                benchmark_data_provider, db_session
+            )
+        )
+        benchmark_results.append(
+            await self.test_throughput_benchmark(benchmark_data_provider)
+        )
+        benchmark_results.append(
+            await self.test_response_time_sla_benchmark(benchmark_data_provider)
+        )
 
         # Aggregate results
         total_tests = sum(r["total_tests"] for r in benchmark_results)
@@ -716,35 +810,43 @@ class TestPerformanceBenchmarks:
             },
             "benchmark_suites": benchmark_results,
             "critical_failures": [
-                result for suite in benchmark_results
+                result
+                for suite in benchmark_results
                 for result in suite["results"]
-                if not result.passed and result.margin > 0.2  # More than 20% over target
+                if not result.passed
+                and result.margin > 0.2  # More than 20% over target
             ],
         }
 
         logger.info(
-            f"\n{'='*60}\n"
+            f"\n{'=' * 60}\n"
             f"COMPREHENSIVE BENCHMARK REPORT\n"
-            f"{'='*60}\n"
+            f"{'=' * 60}\n"
             f"Total Tests: {total_tests}\n"
             f"Passed: {total_passed} ({overall_pass_rate:.1%})\n"
             f"Failed: {total_failed}\n"
-            f"{'='*60}\n"
+            f"{'=' * 60}\n"
         )
 
         # Assert overall benchmark success
-        assert overall_pass_rate >= 0.8, f"Overall benchmark pass rate too low: {overall_pass_rate:.1%}"
-        assert len(report["critical_failures"]) == 0, f"Critical benchmark failures detected: {len(report['critical_failures'])}"
+        assert overall_pass_rate >= 0.8, (
+            f"Overall benchmark pass rate too low: {overall_pass_rate:.1%}"
+        )
+        assert len(report["critical_failures"]) == 0, (
+            f"Critical benchmark failures detected: {len(report['critical_failures'])}"
+        )
 
         return report
 
 
 if __name__ == "__main__":
     # Run benchmark tests
-    pytest.main([
-        __file__,
-        "-v",
-        "--tb=short",
-        "--asyncio-mode=auto",
-        "--timeout=300",  # 5 minute timeout for benchmarks
-    ])
+    pytest.main(
+        [
+            __file__,
+            "-v",
+            "--tb=short",
+            "--asyncio-mode=auto",
+            "--timeout=300",  # 5 minute timeout for benchmarks
+        ]
+    )

@@ -1,4 +1,5 @@
 """Base classes and utilities for integration testing."""
+
 from __future__ import annotations
 
 import asyncio
@@ -36,11 +37,15 @@ class InMemoryPubSub:
 
     async def listen(self):  # pragma: no cover - simple async generator
         while self._active:
-            tasks = [asyncio.create_task(queue.get()) for queue in self._queues.values()]
+            tasks = [
+                asyncio.create_task(queue.get()) for queue in self._queues.values()
+            ]
             if not tasks:
                 await asyncio.sleep(0.01)
                 continue
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            done, pending = await asyncio.wait(
+                tasks, return_when=asyncio.FIRST_COMPLETED
+            )
             for task in pending:
                 task.cancel()
             for task in done:
@@ -55,7 +60,9 @@ class InMemoryRedis:
         self._data: dict[str, bytes] = {}
         self._hashes: dict[str, dict[str, str]] = defaultdict(dict)
         self._expiry: dict[str, float] = {}
-        self._pubsub_channels: dict[str, list[asyncio.Queue[dict[str, Any]]]] = defaultdict(list)
+        self._pubsub_channels: dict[str, list[asyncio.Queue[dict[str, Any]]]] = (
+            defaultdict(list)
+        )
 
     def _is_expired(self, key: str) -> bool:
         expiry = self._expiry.get(key)
@@ -68,10 +75,14 @@ class InMemoryRedis:
             return True
         return False
 
-    def register_subscriber(self, channel: str, queue: asyncio.Queue[dict[str, Any]]) -> None:
+    def register_subscriber(
+        self, channel: str, queue: asyncio.Queue[dict[str, Any]]
+    ) -> None:
         self._pubsub_channels[channel].append(queue)
 
-    def unregister_subscriber(self, channel: str, queue: asyncio.Queue[dict[str, Any]]) -> None:
+    def unregister_subscriber(
+        self, channel: str, queue: asyncio.Queue[dict[str, Any]]
+    ) -> None:
         if channel in self._pubsub_channels:
             try:
                 self._pubsub_channels[channel].remove(queue)
@@ -114,7 +125,9 @@ class InMemoryRedis:
             self._expiry.pop(key, None)
         return removed
 
-    async def scan(self, cursor: int, match: str | None = None, count: int = 100) -> tuple[int, list[str]]:
+    async def scan(
+        self, cursor: int, match: str | None = None, count: int = 100
+    ) -> tuple[int, list[str]]:
         keys = [key for key in self._data.keys() if not self._is_expired(key)]
         if match:
             keys = [key for key in keys if fnmatch.fnmatch(key, match)]
@@ -156,7 +169,9 @@ class InMemoryRedis:
     async def publish(self, channel: str, message: Any) -> None:
         encoded = self._encode(message)
         for queue in self._pubsub_channels.get(channel, []):
-            await queue.put({"type": "message", "channel": channel, "data": encoded.decode("utf-8")})
+            await queue.put(
+                {"type": "message", "channel": channel, "data": encoded.decode("utf-8")}
+            )
 
     def pubsub(self) -> InMemoryPubSub:
         return InMemoryPubSub(self)

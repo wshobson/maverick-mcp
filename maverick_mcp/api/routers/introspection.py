@@ -104,7 +104,8 @@ def register_introspection_tools(mcp: FastMCP) -> None:
         strategies = []  # Return as array
 
         # Traditional strategies
-        strategies.extend([
+        strategies.extend(
+            [
                 {
                     "name": "sma_cross",
                     "description": "Simple Moving Average Crossover",
@@ -273,10 +274,12 @@ def register_introspection_tools(mcp: FastMCP) -> None:
                     },
                     "example": "run_backtest(symbol='TSLA', strategy_type='volume_momentum')",
                 },
-            ])
+            ]
+        )
 
         # ML strategies
-        strategies.extend([
+        strategies.extend(
+            [
                 {
                     "name": "ml_predictor",
                     "description": "Machine Learning predictor using Random Forest",
@@ -372,7 +375,8 @@ def register_introspection_tools(mcp: FastMCP) -> None:
                     },
                     "example": "run_ml_strategy_backtest(symbol='GOOGL', strategy_type='adaptive')",
                 },
-            ])
+            ]
+        )
 
         return strategies  # Return array
 

@@ -645,7 +645,9 @@ async def get_market_overview() -> dict[str, Any]:
                 else (
                     "high"
                     if vix_value > 20
-                    else "moderate" if vix_value > 15 else "low"
+                    else "moderate"
+                    if vix_value > 15
+                    else "low"
                 )
             ),
         }
@@ -666,9 +668,9 @@ async def get_economic_calendar(days_ahead: int = 7) -> dict[str, Any]:
     """
     try:
         # Get economic calendar events (placeholder implementation)
-        events: list[dict[str, Any]] = (
-            []
-        )  # macro_provider doesn't have get_economic_calendar method
+        events: list[
+            dict[str, Any]
+        ] = []  # macro_provider doesn't have get_economic_calendar method
 
         return {
             "events": events,

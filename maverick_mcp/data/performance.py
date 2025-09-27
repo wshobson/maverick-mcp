@@ -315,9 +315,7 @@ class RequestCache:
 
         key_hash = hashlib.sha256(
             json.dumps(key_data, sort_keys=True, default=str).encode()
-        ).hexdigest()[
-            :16
-        ]  # Use first 16 chars for brevity
+        ).hexdigest()[:16]  # Use first 16 chars for brevity
 
         return f"cache:{prefix}:{key_hash}"
 
