@@ -143,7 +143,17 @@ echo -e "${GREEN}Backend started successfully on http://localhost:8003${NC}"
 echo -e "\n${GREEN}Development environment is running!${NC}"
 echo -e "${YELLOW}MCP Server:${NC} http://localhost:8003"
 echo -e "${YELLOW}Health Check:${NC} http://localhost:8003/health"
-echo -e "${YELLOW}MCP SSE Endpoint:${NC} http://localhost:8003/sse"
+
+# Show endpoint based on transport type
+if [ "$TRANSPORT" = "sse" ]; then
+    echo -e "${YELLOW}MCP SSE Endpoint:${NC} http://localhost:8003/sse/"
+elif [ "$TRANSPORT" = "streamable-http" ]; then
+    echo -e "${YELLOW}MCP HTTP Endpoint:${NC} http://localhost:8003/mcp"
+    echo -e "${YELLOW}Test with curl:${NC} curl -X POST http://localhost:8003/mcp"
+elif [ "$TRANSPORT" = "stdio" ]; then
+    echo -e "${YELLOW}MCP Transport:${NC} STDIO (no HTTP endpoint)"
+fi
+
 echo -e "${YELLOW}Logs:${NC} tail -f backend.log"
 
 if [ "$TOOLS_REGISTERED" = true ]; then
@@ -154,11 +164,16 @@ else
     echo -e "${YELLOW}Debug: Look for 'Successfully registered' or 'research tools' in logs${NC}"
 fi
 
-echo -e "\n${YELLOW}Claude Desktop Configuration (SSE - tested and stable):${NC}"
+echo -e "\n${YELLOW}Claude Desktop Configuration:${NC}"
 if [ "$TRANSPORT" = "sse" ]; then
-    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]}}}'
+    echo -e "${GREEN}SSE Transport (tested and stable):${NC}"
+    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]}}}'
 elif [ "$TRANSPORT" = "stdio" ]; then
+    echo -e "${GREEN}STDIO Transport (direct connection):${NC}"
     echo -e '{"mcpServers": {"maverick-mcp": {"command": "uv", "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"], "cwd": "'$(pwd)'"}}}'
+elif [ "$TRANSPORT" = "streamable-http" ]; then
+    echo -e "${GREEN}Streamable-HTTP Transport (for testing):${NC}"
+    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]}}}'
 else
     echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]}}}'
 fi
@@ -175,6 +190,12 @@ elif [ "$TRANSPORT" = "stdio" ]; then
     echo -e "  • No mcp-remote needed (direct Claude Desktop integration)"
     echo -e "  • No session management issues"
     echo -e "  • No timeout problems"
+elif [ "$TRANSPORT" = "streamable-http" ]; then
+    echo -e "  • Streamable-HTTP transport (FastMCP 2.0 standard)"
+    echo -e "  • Uses mcp-remote bridge for Claude Desktop"
+    echo -e "  • Ideal for testing with curl/Postman/REST clients"
+    echo -e "  • Good for debugging transport-specific issues"
+    echo -e "  • Alternative to SSE for compatibility testing"
 else
     echo -e "  • HTTP transport with mcp-remote bridge"
     echo -e "  • Alternative to SSE for compatibility"
