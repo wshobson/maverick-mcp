@@ -222,9 +222,6 @@ def register_research_tools(mcp: FastMCP) -> None:
     try:
         # Import all research tools from the consolidated research module
         from maverick_mcp.api.routers.research import (
-            CompanyResearchRequest,
-            ResearchRequest,
-            SentimentAnalysisRequest,
             analyze_market_sentiment,
             company_comprehensive_research,
             comprehensive_research,
@@ -255,7 +252,9 @@ def register_research_tools(mcp: FastMCP) -> None:
                 query=query,
                 persona=persona or "moderate",
                 research_scope=research_scope or "standard",
-                max_sources=min(max_sources or 25, 25),  # Increased cap due to adaptive timeout
+                max_sources=min(
+                    max_sources or 25, 25
+                ),  # Increased cap due to adaptive timeout
                 timeframe=timeframe or "1m",
             )
 
