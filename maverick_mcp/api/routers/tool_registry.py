@@ -233,7 +233,13 @@ def register_research_tools(mcp: FastMCP) -> None:
 
         # Register comprehensive research tool with all enhanced features
         @mcp.tool(name="research_comprehensive_research")
-        async def research_comprehensive(request: ResearchRequest) -> dict:
+        async def research_comprehensive(
+            query: str,
+            persona: str | None = "moderate",
+            research_scope: str | None = "standard",
+            max_sources: int | None = 10,
+            timeframe: str | None = "1m",
+        ) -> dict:
             """
             Perform comprehensive research on any financial topic using web search and AI analysis.
 
@@ -246,19 +252,19 @@ def register_research_tools(mcp: FastMCP) -> None:
             Perfect for researching stocks, sectors, market trends, company analysis.
             """
             return await comprehensive_research(
-                query=request.query,
-                persona=request.persona or "moderate",
-                research_scope=request.research_scope or "standard",
-                max_sources=min(
-                    request.max_sources or 25, 25
-                ),  # Increased cap due to adaptive timeout
-                timeframe=request.timeframe or "1m",
+                query=query,
+                persona=persona or "moderate",
+                research_scope=research_scope or "standard",
+                max_sources=min(max_sources or 25, 25),  # Increased cap due to adaptive timeout
+                timeframe=timeframe or "1m",
             )
 
         # Enhanced sentiment analysis (imported above)
         @mcp.tool(name="research_analyze_market_sentiment")
         async def analyze_market_sentiment_tool(
-            request: SentimentAnalysisRequest,
+            topic: str,
+            timeframe: str | None = "1w",
+            persona: str | None = "moderate",
         ) -> dict:
             """
             Analyze market sentiment for stocks, sectors, or market trends.
@@ -270,16 +276,18 @@ def register_research_tools(mcp: FastMCP) -> None:
             - Guaranteed responses
             """
             return await analyze_market_sentiment(
-                topic=request.topic,
-                timeframe=request.timeframe or "1w",
-                persona=request.persona or "moderate",
+                topic=topic,
+                timeframe=timeframe or "1w",
+                persona=persona or "moderate",
             )
 
         # Enhanced company research (imported above)
 
         @mcp.tool(name="research_company_comprehensive")
         async def research_company_comprehensive(
-            request: CompanyResearchRequest,
+            symbol: str,
+            include_competitive_analysis: bool = False,
+            persona: str | None = "moderate",
         ) -> dict:
             """
             Perform comprehensive company research and fundamental analysis.
@@ -292,10 +300,9 @@ def register_research_tools(mcp: FastMCP) -> None:
             - Guaranteed responses to Claude Desktop
             """
             return await company_comprehensive_research(
-                symbol=request.symbol,
-                include_competitive_analysis=request.include_competitive_analysis
-                or False,
-                persona=request.persona or "moderate",
+                symbol=symbol,
+                include_competitive_analysis=include_competitive_analysis or False,
+                persona=persona or "moderate",
             )
 
         @mcp.tool(name="research_search_financial_news")
