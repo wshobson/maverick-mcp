@@ -102,7 +102,10 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 
 ```bash
 # Start the MCP server
-make dev              # One command to start everything
+make dev              # Start with SSE transport (default, recommended)
+make dev-sse          # Start with SSE transport (same as dev)
+make dev-http         # Start with Streamable-HTTP transport (for testing/debugging)
+make dev-stdio        # Start with STDIO transport (direct connection)
 
 # Development
 make backend          # Start backend server only
@@ -130,6 +133,8 @@ make redis-start      # Start Redis (if using caching)
 
 # Quick shortcuts
 make d                # Alias for make dev
+make dh               # Alias for make dev-http
+make ds               # Alias for make dev-stdio
 make t                # Alias for make test
 make l                # Alias for make lint
 make c                # Alias for make check
@@ -471,22 +476,25 @@ All tools are organized into logical groups (35+ tools total):
 ### Running the Server
 
 ```bash
-# Development mode (recommended)
-make dev                    # Uses Makefile for full setup
+# Development mode (recommended - Makefile commands)
+make dev                    # SSE transport (default, recommended for Claude Desktop)
+make dev-http               # Streamable-HTTP transport (for testing with curl/Postman)
+make dev-stdio              # STDIO transport (direct connection)
 
-# Alternative direct commands
-# Streamable-HTTP transport (FastMCP 2.0 standard - use with mcp-remote)
-uv run python -m maverick_mcp.api.server --transport streamable-http --port 8003
-
-# SSE transport (direct connections only, not mcp-remote)
+# Alternative: Direct commands (manual)
 uv run python -m maverick_mcp.api.server --transport sse --port 8003
+uv run python -m maverick_mcp.api.server --transport streamable-http --port 8003
+uv run python -m maverick_mcp.api.server --transport stdio
 
-# STDIO transport (development)
-uv run python -m maverick_mcp.api.server  # Defaults to stdio
-
-# Script-based startup
-./scripts/dev.sh           # Includes additional setup
+# Script-based startup (with environment variable)
+./scripts/dev.sh                        # Defaults to SSE
+MAVERICK_TRANSPORT=streamable-http ./scripts/dev.sh
 ```
+
+**When to use each transport:**
+- **SSE** (`make dev` or `make dev-sse`): Best for Claude Desktop - tested and stable
+- **Streamable-HTTP** (`make dev-http`): Ideal for testing with curl/Postman, debugging transport issues
+- **STDIO** (`make dev-stdio`): Direct connection without network layer, good for development
 
 ### Testing
 

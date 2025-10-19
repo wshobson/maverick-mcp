@@ -1,13 +1,16 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
+.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
 
 # Default target
 help:
 	@echo "Maverick-MCP Development Commands:"
 	@echo ""
-	@echo "  make dev          - Start development environment (MCP server)"
+	@echo "  make dev          - Start development environment (SSE transport, default)"
+	@echo "  make dev-sse      - Start with SSE transport (same as dev)"
+	@echo "  make dev-http     - Start with Streamable-HTTP transport (for curl/testing)"
+	@echo "  make dev-stdio    - Start with STDIO transport (for direct connections)"
 	@echo "  make backend      - Start backend MCP server (dev mode)"
 	@echo "  make stop         - Stop all services"
 	@echo ""
@@ -44,8 +47,20 @@ help:
 
 # Development commands
 dev:
-	@echo "Starting Maverick-MCP development environment..."
+	@echo "Starting Maverick-MCP development environment (SSE transport)..."
 	@./scripts/dev.sh
+
+dev-sse:
+	@echo "Starting Maverick-MCP development environment (SSE transport)..."
+	@./scripts/dev.sh
+
+dev-http:
+	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
+	@MAVERICK_TRANSPORT=streamable-http ./scripts/dev.sh
+
+dev-stdio:
+	@echo "Starting Maverick-MCP development environment (STDIO transport)..."
+	@MAVERICK_TRANSPORT=stdio ./scripts/dev.sh
 
 backend:
 	@echo "Starting backend in development mode..."
@@ -194,6 +209,8 @@ redis-stop:
 
 # Quick shortcuts
 d: dev
+dh: dev-http
+ds: dev-stdio
 b: backend
 t: test
 l: lint
