@@ -26,15 +26,6 @@ from maverick_mcp.infrastructure.data_fetching import StockDataFetchingService
 from maverick_mcp.providers.stock_data import (
     StockDataProvider,
 )  # Kept for backward compatibility
-from maverick_mcp.validation.data import (
-    CachedPriceDataRequest,
-    ClearCacheRequest,
-    FetchStockDataRequest,
-    GetChartLinksRequest,
-    GetNewsRequest,
-    GetStockInfoRequest,
-    StockDataBatchRequest,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +36,11 @@ data_router: FastMCP = FastMCP("Data_Operations")
 executor = ThreadPoolExecutor(max_workers=10)
 
 
-def fetch_stock_data(request: FetchStockDataRequest) -> dict[str, Any]:
+def fetch_stock_data(
+    ticker: str,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
     """
     Fetch historical stock data for a given ticker symbol.
 
@@ -66,12 +61,12 @@ def fetch_stock_data(request: FetchStockDataRequest) -> dict[str, Any]:
         - index: Date index
 
     Examples:
-        >>> fetch_stock_data(FetchStockDataRequest(ticker="AAPL"))
-        >>> fetch_stock_data(FetchStockDataRequest(
+        >>> fetch_stock_data(ticker="AAPL")
+        >>> fetch_stock_data(
         ...     ticker="MSFT",
         ...     start_date="2024-01-01",
         ...     end_date="2024-12-31"
-        ... ))
+        ... )
     """
     try:
         # Create services with dependency injection
@@ -86,19 +81,23 @@ def fetch_stock_data(request: FetchStockDataRequest) -> dict[str, Any]:
             )
 
             data = stock_analysis_service.get_stock_data(
-                request.ticker, request.start_date, request.end_date
+                ticker, start_date, end_date
             )
             json_data = data.to_json(orient="split", date_format="iso")
             result: dict[str, Any] = json.loads(json_data) if json_data else {}
-            result["ticker"] = request.ticker
+            result["ticker"] = ticker
             result["record_count"] = len(data)
             return result
     except Exception as e:
-        logger.error(f"Error fetching stock data for {request.ticker}: {e}")
-        return {"error": str(e), "ticker": request.ticker}
+        logger.error(f"Error fetching stock data for {ticker}: {e}")
+        return {"error": str(e), "ticker": ticker}
 
 
-def fetch_stock_data_batch(request: StockDataBatchRequest) -> dict[str, Any]:
+def fetch_stock_data_batch(
+    tickers: list[str],
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict[str, Any]:
     """
     Fetch historical data for multiple tickers efficiently.
 
@@ -116,10 +115,10 @@ def fetch_stock_data_batch(request: StockDataBatchRequest) -> dict[str, Any]:
         Dictionary with ticker symbols as keys and data/errors as values
 
     Examples:
-        >>> fetch_stock_data_batch(StockDataBatchRequest(
+        >>> fetch_stock_data_batch(
         ...     tickers=["AAPL", "MSFT", "GOOGL"],
         ...     start_date="2024-01-01"
-        ... ))
+        ... )
     """
     results = {}
 
@@ -134,10 +133,10 @@ def fetch_stock_data_batch(request: StockDataBatchRequest) -> dict[str, Any]:
             db_session=session,
         )
 
-        for ticker in request.tickers:
+        for ticker in tickers:
             try:
                 data = stock_analysis_service.get_stock_data(
-                    ticker, request.start_date, request.end_date
+                    ticker, start_date, end_date
                 )
                 results[ticker] = {
                     "status": "success",
@@ -154,11 +153,11 @@ def fetch_stock_data_batch(request: StockDataBatchRequest) -> dict[str, Any]:
         "results": results,
         "success_count": sum(1 for r in results.values() if r["status"] == "success"),
         "error_count": sum(1 for r in results.values() if r["status"] == "error"),
-        "tickers": request.tickers,
+        "tickers": tickers,
     }
 
 
-def get_stock_info(request: GetStockInfoRequest) -> dict[str, Any]:
+def get_stock_info(ticker: str) -> dict[str, Any]:
     """
     Get detailed fundamental information about a stock.
 
@@ -178,11 +177,11 @@ def get_stock_info(request: GetStockInfoRequest) -> dict[str, Any]:
         # Use read-only context manager for automatic session management
         with get_db_session_read_only() as session:
             provider = StockDataProvider(db_session=session)
-            info = provider.get_stock_info(request.ticker)
+            info = provider.get_stock_info(ticker)
 
             # Extract key information
             return {
-                "ticker": request.ticker,
+                "ticker": ticker,
                 "company": {
                     "name": info.get("longName", info.get("shortName")),
                     "sector": info.get("sector"),
@@ -222,11 +221,15 @@ def get_stock_info(request: GetStockInfoRequest) -> dict[str, Any]:
                 },
             }
     except Exception as e:
-        logger.error(f"Error fetching stock info for {request.ticker}: {e}")
-        return {"error": str(e), "ticker": request.ticker}
+        logger.error(f"Error fetching stock info for {ticker}: {e}")
+        return {"error": str(e), "ticker": ticker}
 
 
-def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
+def get_news_sentiment(
+    ticker: str,
+    timeframe: str = "7d",
+    limit: int = 10,
+) -> dict[str, Any]:
     """
     Retrieve news sentiment analysis for a stock.
 
@@ -235,6 +238,8 @@ def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
 
     Args:
         ticker: The ticker symbol of the stock to analyze
+        timeframe: Time frame for news (1d, 7d, 30d, etc.)
+        limit: Maximum number of news articles to analyze
 
     Returns:
         Dictionary containing news sentiment analysis
@@ -247,7 +252,7 @@ def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
                 "External sentiment API not configured, providing basic response"
             )
             return {
-                "ticker": request.ticker,
+                "ticker": ticker,
                 "sentiment": "neutral",
                 "message": "External sentiment API not configured - configure EXTERNAL_DATA_API_KEY for enhanced sentiment analysis",
                 "status": "fallback_mode",
@@ -255,29 +260,29 @@ def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
                 "source": "fallback",
             }
 
-        url = f"{base_url}/sentiment/{request.ticker}"
+        url = f"{base_url}/sentiment/{ticker}"
         headers = {"X-API-KEY": api_key}
-        logger.info(f"Fetching sentiment for {request.ticker} from {url}")
+        logger.info(f"Fetching sentiment for {ticker} from {url}")
         resp = requests.get(url, headers=headers, timeout=10)
 
         if resp.status_code == 404:
             return {
-                "ticker": request.ticker,
+                "ticker": ticker,
                 "sentiment": "unavailable",
-                "message": f"No sentiment data available for {request.ticker}",
+                "message": f"No sentiment data available for {ticker}",
                 "status": "not_found",
             }
         elif resp.status_code == 401:
             return {
                 "error": "Invalid API key",
-                "ticker": request.ticker,
+                "ticker": ticker,
                 "sentiment": "unavailable",
                 "status": "unauthorized",
             }
         elif resp.status_code == 429:
             return {
                 "error": "Rate limit exceeded",
-                "ticker": request.ticker,
+                "ticker": ticker,
                 "sentiment": "unavailable",
                 "status": "rate_limited",
             }
@@ -288,30 +293,34 @@ def get_news_sentiment(request: GetNewsRequest) -> dict[str, Any]:
     except requests.exceptions.Timeout:
         return {
             "error": "Request timed out",
-            "ticker": request.ticker,
+            "ticker": ticker,
             "sentiment": "unavailable",
             "status": "timeout",
         }
     except requests.exceptions.ConnectionError:
         return {
             "error": "Connection error",
-            "ticker": request.ticker,
+            "ticker": ticker,
             "sentiment": "unavailable",
             "status": "connection_error",
         }
     except Exception as e:
         logger.error(
-            f"Error fetching sentiment from External API for {request.ticker}: {e}"
+            f"Error fetching sentiment from External API for {ticker}: {e}"
         )
         return {
             "error": str(e),
-            "ticker": request.ticker,
+            "ticker": ticker,
             "sentiment": "unavailable",
             "status": "error",
         }
 
 
-def get_cached_price_data(request: CachedPriceDataRequest) -> dict[str, Any]:
+def get_cached_price_data(
+    ticker: str,
+    start_date: str,
+    end_date: str | None = None,
+) -> dict[str, Any]:
     """
     Get cached price data directly from the database.
 
@@ -329,13 +338,13 @@ def get_cached_price_data(request: CachedPriceDataRequest) -> dict[str, Any]:
     try:
         with get_db_session_read_only() as session:
             df = PriceCache.get_price_data(
-                session, request.ticker, request.start_date, request.end_date
+                session, ticker, start_date, end_date
             )
 
             if df.empty:
                 return {
                     "status": "success",
-                    "ticker": request.ticker,
+                    "ticker": ticker,
                     "message": "No cached data found for the specified date range",
                     "data": [],
                 }
@@ -345,18 +354,18 @@ def get_cached_price_data(request: CachedPriceDataRequest) -> dict[str, Any]:
 
             return {
                 "status": "success",
-                "ticker": request.ticker,
-                "start_date": request.start_date,
-                "end_date": request.end_date or datetime.now(UTC).strftime("%Y-%m-%d"),
+                "ticker": ticker,
+                "start_date": start_date,
+                "end_date": end_date or datetime.now(UTC).strftime("%Y-%m-%d"),
                 "count": len(data),
                 "data": data,
             }
     except Exception as e:
-        logger.error(f"Error fetching cached price data for {request.ticker}: {str(e)}")
+        logger.error(f"Error fetching cached price data for {ticker}: {str(e)}")
         return {"error": str(e), "status": "error"}
 
 
-def get_chart_links(request: GetChartLinksRequest) -> dict[str, Any]:
+def get_chart_links(ticker: str) -> dict[str, Any]:
     """
     Provide links to various financial charting websites.
 
@@ -374,7 +383,6 @@ def get_chart_links(request: GetChartLinksRequest) -> dict[str, Any]:
         Dictionary containing links to various chart providers
     """
     try:
-        ticker = request.ticker
         links = {
             "trading_view": f"https://www.tradingview.com/symbols/{ticker}",
             "finviz": f"https://finviz.com/quote.ashx?t={ticker}",
@@ -390,11 +398,11 @@ def get_chart_links(request: GetChartLinksRequest) -> dict[str, Any]:
             "description": "External chart resources for detailed analysis",
         }
     except Exception as e:
-        logger.error(f"Error generating chart links for {request.ticker}: {e}")
+        logger.error(f"Error generating chart links for {ticker}: {e}")
         return {"error": str(e)}
 
 
-def clear_cache(request: ClearCacheRequest) -> dict[str, Any]:
+def clear_cache(ticker: str | None = None) -> dict[str, Any]:
     """
     Clear cached data for a specific ticker or all tickers.
 
@@ -410,10 +418,10 @@ def clear_cache(request: ClearCacheRequest) -> dict[str, Any]:
     try:
         from maverick_mcp.data.cache import clear_cache as cache_clear
 
-        if request.ticker:
-            pattern = f"stock:{request.ticker}:*"
+        if ticker:
+            pattern = f"stock:{ticker}:*"
             count = cache_clear(pattern)
-            message = f"Cleared cache for {request.ticker}"
+            message = f"Cleared cache for {ticker}"
         else:
             count = cache_clear()
             message = "Cleared all cache entries"

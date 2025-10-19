@@ -952,7 +952,11 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
 
     @mcp.tool()
     async def research_comprehensive_research(
-        request: ResearchRequest,
+        query: str,
+        persona: str | None = "moderate",
+        research_scope: str | None = "standard",
+        max_sources: int | None = 10,
+        timeframe: str | None = "1m",
     ) -> dict[str, Any]:
         """
         Perform comprehensive research on any financial topic using web search and AI analysis.
@@ -976,17 +980,17 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
         """
         # CRITICAL DEBUG: Log immediately when tool is called
         logger.error(
-            f"🚨 TOOL CALLED: research_comprehensive_research with query: {request.query[:50]}"
+            f"🚨 TOOL CALLED: research_comprehensive_research with query: {query[:50]}"
         )
 
         # Log tool invocation
         log_tool_invocation(
             "research_comprehensive_research",
             {
-                "query": request.query[:100],  # Truncate for logging
-                "persona": request.persona,
-                "research_scope": request.research_scope,
-                "max_sources": request.max_sources,
+                "query": query[:100],  # Truncate for logging
+                "persona": persona,
+                "research_scope": research_scope,
+                "max_sources": max_sources,
             },
         )
 
@@ -995,11 +999,11 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
         try:
             # Execute enhanced research
             result = await comprehensive_research(
-                query=request.query,
-                persona=request.persona or "moderate",
-                research_scope=request.research_scope or "standard",
-                max_sources=request.max_sources or 15,
-                timeframe=request.timeframe or "1m",
+                query=query,
+                persona=persona or "moderate",
+                research_scope=research_scope or "standard",
+                max_sources=max_sources or 15,
+                timeframe=timeframe or "1m",
             )
 
             # Calculate execution metrics
@@ -1026,19 +1030,21 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             logger.error(
                 f"Research error: {str(e)}",
                 exc_info=True,
-                extra={"query": request.query[:100]},
+                extra={"query": query[:100]},
             )
             return {
                 "success": False,
                 "error": f"Research failed: {str(e)}",
                 "error_type": type(e).__name__,
-                "query": request.query,
+                "query": query,
                 "timestamp": datetime.now().isoformat(),
             }
 
     @mcp.tool()
     async def research_company_comprehensive(
-        request: CompanyResearchRequest,
+        symbol: str,
+        include_competitive_analysis: bool = False,
+        persona: str | None = "moderate",
     ) -> dict[str, Any]:
         """
         Perform comprehensive research on a specific company.
@@ -1058,14 +1064,16 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             Company-specific research with financial insights
         """
         return await company_comprehensive_research(
-            symbol=request.symbol,
-            include_competitive_analysis=request.include_competitive_analysis,
-            persona=request.persona or "moderate",
+            symbol=symbol,
+            include_competitive_analysis=include_competitive_analysis,
+            persona=persona or "moderate",
         )
 
     @mcp.tool()
     async def research_analyze_market_sentiment(
-        request: SentimentAnalysisRequest,
+        topic: str,
+        timeframe: str | None = "1w",
+        persona: str | None = "moderate",
     ) -> dict[str, Any]:
         """
         Analyze market sentiment for a specific topic or sector.
@@ -1085,9 +1093,9 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             Sentiment analysis with market insights
         """
         return await analyze_market_sentiment(
-            topic=request.topic,
-            timeframe=request.timeframe or "1w",
-            persona=request.persona or "moderate",
+            topic=topic,
+            timeframe=timeframe or "1w",
+            persona=persona or "moderate",
         )
 
     return mcp
