@@ -135,6 +135,91 @@ from maverick_mcp.utils.tracing import initialize_tracing
 if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
     from maverick_mcp.infrastructure.connection_manager import MCPConnectionManager
 
+# Monkey-patch FastMCP's create_sse_app to register both /sse and /sse/ routes
+# This allows both paths to work without 307 redirects
+# Fixes the mcp-remote tool registration failure issue
+from fastmcp.server import http as fastmcp_http
+from starlette.middleware import Middleware
+from starlette.routing import BaseRoute, Route
+
+_original_create_sse_app = fastmcp_http.create_sse_app
+
+
+def _patched_create_sse_app(
+    server: Any,
+    message_path: str,
+    sse_path: str,
+    auth: Any | None = None,
+    debug: bool = False,
+    routes: list[BaseRoute] | None = None,
+    middleware: list[Middleware] | None = None,
+) -> Any:
+    """Patched version of create_sse_app that registers both /sse and /sse/ paths.
+
+    This prevents 307 redirects by registering both path variants explicitly,
+    fixing tool registration failures with mcp-remote that occurred when clients
+    used /sse instead of /sse/.
+    """
+    import sys
+
+    print(
+        f"🔧 Patched create_sse_app called with sse_path={sse_path}",
+        file=sys.stderr,
+        flush=True,
+    )
+
+    # Call the original create_sse_app function
+    app = _original_create_sse_app(
+        server=server,
+        message_path=message_path,
+        sse_path=sse_path,
+        auth=auth,
+        debug=debug,
+        routes=routes,
+        middleware=middleware,
+    )
+
+    # Register both path variants (with and without trailing slash)
+
+    # Find the SSE endpoint handler from the existing routes
+    sse_endpoint = None
+    for route in app.router.routes:
+        if isinstance(route, Route) and route.path == sse_path:
+            sse_endpoint = route.endpoint
+            break
+
+    if sse_endpoint:
+        # Determine the alternative path
+        if sse_path.endswith("/"):
+            alt_path = sse_path.rstrip("/")  # Remove trailing slash
+        else:
+            alt_path = sse_path + "/"  # Add trailing slash
+
+        # Register the alternative path
+        new_route = Route(
+            alt_path,
+            endpoint=sse_endpoint,
+            methods=["GET"],
+        )
+        app.router.routes.insert(0, new_route)
+        print(
+            f"✅ Registered SSE routes: {sse_path} AND {alt_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+    else:
+        print(
+            f"⚠️  Could not find SSE endpoint for {sse_path}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    return app
+
+
+# Apply the monkey-patch
+fastmcp_http.create_sse_app = _patched_create_sse_app
+
 
 class FastMCPProtocol(Protocol):
     """Protocol describing the FastMCP interface we rely upon."""
@@ -1018,4 +1103,5 @@ if __name__ == "__main__":
                 transport="sse",
                 port=args.port,
                 host=args.host,
+                path="/sse",  # No trailing slash - both /sse and /sse/ will work with the monkey-patch
             )

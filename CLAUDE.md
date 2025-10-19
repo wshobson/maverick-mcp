@@ -163,20 +163,19 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
      "mcpServers": {
        "maverick-mcp": {
          "command": "npx",
-         "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
+         "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
        }
      }
    }
    ```
 
-   > **CRITICAL**: Note the trailing slash in `/sse/` - this is REQUIRED to prevent 307 redirect issues that cause tools to disappear!
-
 **Why This Configuration Works Best**:
-- ✅ **Prevents Tool Disappearing**: Tools remain available throughout your session (trailing slash is critical!)
+- ✅ **Prevents Tool Disappearing**: Tools remain available throughout your session
 - ✅ **Stable Connection**: SSE transport provides consistent communication
 - ✅ **Session Persistence**: Maintains connection state for complex analysis workflows
 - ✅ **All 35+ Tools Available**: Reliable access to all financial and research tools
 - ✅ **Tested and Confirmed**: This exact configuration has been verified to work
+- ✅ **No Trailing Slash Issues**: Server automatically handles both `/sse` and `/sse/` paths
 
 #### Method B: HTTP Streamable Server with mcp-remote Bridge (Alternative)
    
@@ -246,15 +245,13 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
      "mcpServers": {
        "maverick-mcp": {
          "command": "npx",
-         "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
+         "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
        }
      }
    }
    ```
-   
-   > **CRITICAL**: Always include the trailing slash (`/sse/`) to prevent 307 redirects!
 
-**Important**: This exact configuration has been tested and confirmed to prevent the common issue where tools appear initially but then disappear from Claude Desktop.
+**Important**: This exact configuration has been tested and confirmed to prevent the common issue where tools appear initially but then disappear from Claude Desktop. The server now accepts both `/sse` and `/sse/` paths without redirects.
 
 **Restart Required:** Always restart Claude Desktop after config changes.
 
@@ -265,7 +262,7 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
 {
   "mcpServers": {
     "maverick-mcp": {
-      "url": "http://localhost:8003/sse/"
+      "url": "http://localhost:8003/sse"
     }
   }
 }
@@ -277,7 +274,7 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
 
 **SSE Transport (Recommended):**
 ```bash
-claude mcp add --transport sse maverick-mcp http://localhost:8003/sse/
+claude mcp add --transport sse maverick-mcp http://localhost:8003/sse
 ```
 
 **HTTP Transport (Alternative):**
@@ -297,7 +294,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 {
   "mcpServers": {
     "maverick-mcp": {
-      "url": "http://localhost:8003/sse/"
+      "url": "http://localhost:8003/sse"
     }
   }
 }
@@ -311,7 +308,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
       "transport": {
         "type": "stdio",
         "command": "npx",
-        "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
+        "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
       }
     }
   }
@@ -327,7 +324,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 {
   "mcpServers": {
     "maverick-mcp": {
-      "serverUrl": "http://localhost:8003/sse/"
+      "serverUrl": "http://localhost:8003/sse"
     }
   }
 }
@@ -339,7 +336,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
     }
   }
 }
@@ -352,7 +349,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 **Connection Architecture:**
 - **STDIO Mode (Optimal for Claude Desktop)**: Direct subprocess communication - fastest, most reliable
 - **Streamable-HTTP Endpoint**: `http://localhost:8003/` - For remote access via mcp-remote bridge
-- **SSE Endpoint**: `http://localhost:8003/sse/` - For other clients with native SSE support
+- **SSE Endpoint**: `http://localhost:8003/sse` - For other clients with native SSE support (accepts both `/sse` and `/sse/`)
 
 > **Key Finding**: Direct STDIO is the optimal transport for Claude Desktop. HTTP/SSE require the mcp-remote bridge tool, adding latency and complexity. SSE is particularly problematic as it's incompatible with mcp-remote (GET vs POST mismatch).
 
@@ -647,18 +644,17 @@ make migrate
 
 1. Verify server is running: `lsof -i :8003` (check if port 8003 is in use)
 2. Check `claude_desktop_config.json` syntax and correct port (8003)
-3. **Use the tested SSE configuration with trailing slash**: `http://localhost:8003/sse/` with mcp-remote
+3. **Use the tested SSE configuration**: `http://localhost:8003/sse` with mcp-remote
 4. Restart Claude Desktop completely
 5. Test with: "Get AAPL stock data"
 
 **Tools appearing then disappearing**:
 
-1. **CRITICAL FIX**: Ensure SSE endpoint has trailing slash: `http://localhost:8003/sse/`
-2. The 307 redirect from `/sse` to `/sse/` causes tool registration to fail
-3. **Use the recommended SSE configuration** (prevents this issue)
-4. Ensure you're using the exact configuration shown above with trailing slash
-5. **Avoid STDIO direct connections** for stable operation
-6. The SSE + mcp-remote setup with trailing slash has been tested and prevents tool disappearing
+1. **FIXED**: Server now accepts both `/sse` and `/sse/` without 307 redirects
+2. Use the recommended SSE configuration with mcp-remote bridge
+3. Ensure you're using the exact configuration shown above
+4. The SSE + mcp-remote setup has been tested and prevents tool disappearing
+5. **No trailing slash required**: Server automatically handles path normalization
 
 **Research Tool Issues**:
 

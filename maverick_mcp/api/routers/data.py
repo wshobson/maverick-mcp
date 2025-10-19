@@ -80,9 +80,7 @@ def fetch_stock_data(
                 db_session=session,
             )
 
-            data = stock_analysis_service.get_stock_data(
-                ticker, start_date, end_date
-            )
+            data = stock_analysis_service.get_stock_data(ticker, start_date, end_date)
             json_data = data.to_json(orient="split", date_format="iso")
             result: dict[str, Any] = json.loads(json_data) if json_data else {}
             result["ticker"] = ticker
@@ -305,9 +303,7 @@ def get_news_sentiment(
             "status": "connection_error",
         }
     except Exception as e:
-        logger.error(
-            f"Error fetching sentiment from External API for {ticker}: {e}"
-        )
+        logger.error(f"Error fetching sentiment from External API for {ticker}: {e}")
         return {
             "error": str(e),
             "ticker": ticker,
@@ -337,9 +333,7 @@ def get_cached_price_data(
     """
     try:
         with get_db_session_read_only() as session:
-            df = PriceCache.get_price_data(
-                session, ticker, start_date, end_date
-            )
+            df = PriceCache.get_price_data(session, ticker, start_date, end_date)
 
             if df.empty:
                 return {
