@@ -685,7 +685,7 @@ wheels = [
 
 [[package]]
 name = "finvizfinance"
-version = "1.1.1"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -693,8 +693,9 @@ dependencies = [
     { name = "pandas" },
     { name = "requests" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/71/99/4162e6dea52fecd8268a8af2c67e95d5912d5b957a86473986f1d6bc8b1e/finvizfinance-1.2.0.tar.gz", hash = "sha256:f3906fa899ccfa34e0e77fc449f8e5e3ba95d7b4f6b466ac4603fab793c193dd", size = 33084, upload-time = "2025-09-06T13:43:13.646Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f5/7e/87095950497dd09575892c325c670e75e9cae099c13d554e49af6c2517ba/finvizfinance-1.1.1-py3-none-any.whl", hash = "sha256:27d197b457d4a0673b39a8d21d2d7dd6e01b3e011d2aac3714865ac4ea64cb07", size = 44337, upload-time = "2025-07-04T14:28:37.136Z" },
+    { url = "https://files.pythonhosted.org/packages/95/30/abe2287023f9586523ab0cb9332dfcc1e44267cf2ab6708b5a59338729fe/finvizfinance-1.2.0-py3-none-any.whl", hash = "sha256:f7a53943108cf2e5554fc0d8cf8d39152aab1fbfc29fe3d971ea4e24583c1a8d", size = 44394, upload-time = "2025-09-06T13:43:11.967Z" },
 ]
 
 [[package]]
