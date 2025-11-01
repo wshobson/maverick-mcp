@@ -1701,6 +1701,101 @@ def bulk_insert_screening_data(
     return inserted_count
 
 
+# ============================================================================
+# Portfolio Management Models
+# ============================================================================
+
+
+class UserPortfolio(TimestampMixin, Base):
+    """
+    User portfolio for tracking investment holdings.
+
+    Follows personal-use design with single user_id="default" for the personal
+    MaverickMCP server. Stores portfolio metadata and relationships to positions.
+
+    Attributes:
+        id: Unique portfolio identifier (UUID)
+        user_id: User identifier (default: "default" for single-user)
+        name: Portfolio display name
+        positions: Relationship to PortfolioPosition records
+    """
+
+    __tablename__ = "mcp_portfolios"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id = Column(String(100), nullable=False, default="default", index=True)
+    name = Column(String(200), nullable=False, default="My Portfolio")
+
+    # Relationships
+    positions = relationship(
+        "PortfolioPosition",
+        back_populates="portfolio",
+        cascade="all, delete-orphan",
+        lazy="selectin",  # Efficient loading
+    )
+
+    # Indexes for queries
+    __table_args__ = (
+        Index("idx_portfolio_user", "user_id"),
+        UniqueConstraint("user_id", "name", name="uq_user_portfolio_name"),
+    )
+
+    def __repr__(self):
+        return f"<UserPortfolio(id={self.id}, name='{self.name}', positions={len(self.positions)})>"
+
+
+class PortfolioPosition(TimestampMixin, Base):
+    """
+    Individual position within a portfolio with cost basis tracking.
+
+    Stores position details with high-precision Decimal types for financial accuracy.
+    Uses average cost basis method for educational simplicity.
+
+    Attributes:
+        id: Unique position identifier (UUID)
+        portfolio_id: Foreign key to parent portfolio
+        ticker: Stock ticker symbol (e.g., "AAPL")
+        shares: Number of shares owned (supports fractional shares)
+        average_cost_basis: Average cost per share
+        total_cost: Total capital invested (shares × average_cost_basis)
+        purchase_date: Earliest purchase date for this position
+        notes: Optional user notes about the position
+    """
+
+    __tablename__ = "mcp_portfolio_positions"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    portfolio_id = Column(
+        Uuid, ForeignKey("mcp_portfolios.id", ondelete="CASCADE"), nullable=False
+    )
+
+    # Position details with financial precision
+    ticker = Column(String(20), nullable=False, index=True)
+    shares = Column(
+        Numeric(20, 8), nullable=False
+    )  # High precision for fractional shares
+    average_cost_basis = Column(
+        Numeric(12, 4), nullable=False
+    )  # 4 decimal places (cents)
+    total_cost = Column(Numeric(20, 4), nullable=False)  # Total capital invested
+    purchase_date = Column(DateTime(timezone=True), nullable=False)  # Earliest purchase
+    notes = Column(Text, nullable=True)  # Optional user notes
+
+    # Relationships
+    portfolio = relationship("UserPortfolio", back_populates="positions")
+
+    # Indexes for efficient queries
+    __table_args__ = (
+        Index("idx_position_portfolio", "portfolio_id"),
+        Index("idx_position_ticker", "ticker"),
+        Index("idx_position_portfolio_ticker", "portfolio_id", "ticker"),
+        UniqueConstraint("portfolio_id", "ticker", name="uq_portfolio_position_ticker"),
+    )
+
+    def __repr__(self):
+        return f"<PortfolioPosition(ticker='{self.ticker}', shares={self.shares}, cost_basis={self.average_cost_basis})>"
+
+
 # Auth models removed for personal use - no multi-user functionality needed
 
 # Initialize tables when module is imported
