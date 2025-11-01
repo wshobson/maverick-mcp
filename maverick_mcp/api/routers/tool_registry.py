@@ -95,11 +95,22 @@ def register_screening_tools(mcp: FastMCP) -> None:
 def register_portfolio_tools(mcp: FastMCP) -> None:
     """Register portfolio tools directly on main server"""
     from maverick_mcp.api.routers.portfolio import (
+        add_portfolio_position,
+        clear_my_portfolio,
         compare_tickers,
+        get_my_portfolio,
         portfolio_correlation_analysis,
+        remove_portfolio_position,
         risk_adjusted_analysis,
     )
 
+    # Portfolio management tools
+    mcp.tool(name="portfolio_add_position")(add_portfolio_position)
+    mcp.tool(name="portfolio_get_my_portfolio")(get_my_portfolio)
+    mcp.tool(name="portfolio_remove_position")(remove_portfolio_position)
+    mcp.tool(name="portfolio_clear_portfolio")(clear_my_portfolio)
+
+    # Portfolio analysis tools
     mcp.tool(name="portfolio_risk_adjusted_analysis")(risk_adjusted_analysis)
     mcp.tool(name="portfolio_compare_tickers")(compare_tickers)
     mcp.tool(name="portfolio_portfolio_correlation_analysis")(
