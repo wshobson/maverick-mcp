@@ -580,18 +580,20 @@ wheels = [
 
 [[package]]
 name = "exa-py"
-version = "1.15.6"
+version = "1.16.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "httpcore" },
     { name = "httpx" },
     { name = "openai" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "requests" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/91/4c/3eb7c6d80a5b6beb38752210f5c940c70f65464140db33ae261b2a4825bc/exa_py-1.15.6.tar.gz", hash = "sha256:67bb1c0902956b0e23325cc1f9ee990d21277d77b962a40c8902f5eda2407fff", size = 41185, upload-time = "2025-09-10T01:36:01.679Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/77/15/abbe4361f42416c1741d252821bdfffe0e1ad9b39655b04db417b79b0d55/exa_py-1.16.1.tar.gz", hash = "sha256:3cb371b8efd321881a8217070f16afdac5afbaa9229177f80d5c427e1a6dbd59", size = 41364, upload-time = "2025-10-09T21:09:08.23Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/92/9c/41f032ef35a44262dfe59eeaa4ee6448c9a86fd3b59dbb7448eec9953858/exa_py-1.15.6-py3-none-any.whl", hash = "sha256:8bdbe8d9548408f37b895eed7497046bed3e19a84b5f06bf23a540d4e26b636c", size = 56456, upload-time = "2025-09-10T01:36:00.097Z" },
+    { url = "https://files.pythonhosted.org/packages/95/28/5b871e0ac1b76e560f75226f70897cb3e7cb66022cfb58507d0e7d6217ca/exa_py-1.16.1-py3-none-any.whl", hash = "sha256:3b323ed32725b72110720306ea12da09161cfa9c8ac64797a9c0b66869741f27", size = 56631, upload-time = "2025-10-09T21:09:07.099Z" },
 ]
 
 [[package]]
