@@ -32,7 +32,10 @@ stock_provider = StockDataProvider()
 
 
 def risk_adjusted_analysis(
-    ticker: str, risk_level: float | str | None = 50.0
+    ticker: str,
+    risk_level: float | str | None = 50.0,
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
 ) -> dict[str, Any]:
     """
     Perform risk-adjusted stock analysis with position sizing.
@@ -49,15 +52,22 @@ def risk_adjusted_analysis(
     - Risk/reward ratio calculations
     - Confidence score based on technicals
 
+    **Portfolio Integration:** If you already own this stock, the analysis includes:
+    - Current position details (shares, cost basis, unrealized P&L)
+    - Position sizing relative to existing holdings
+    - Recommendations for averaging up/down
+
     The risk_level parameter (0-100) adjusts the analysis from conservative (low)
     to aggressive (high).
 
     Args:
         ticker: The ticker symbol to analyze
         risk_level: Risk tolerance from 0 (conservative) to 100 (aggressive)
+        user_id: User identifier (defaults to "default")
+        portfolio_name: Portfolio name (defaults to "My Portfolio")
 
     Returns:
-        Dictionary containing risk-adjusted analysis results
+        Dictionary containing risk-adjusted analysis results with optional position context
     """
     try:
         # Convert risk_level to float if it's a string
@@ -142,13 +152,70 @@ def risk_adjusted_analysis(
                 else "long-term",
             },
         }
+
+        # Check if user already owns this position
+        db: Session = next(get_db())
+        try:
+            portfolio = (
+                db.query(UserPortfolio)
+                .filter(
+                    UserPortfolio.user_id == user_id,
+                    UserPortfolio.name == portfolio_name,
+                )
+                .first()
+            )
+
+            if portfolio:
+                existing_position = next(
+                    (
+                        pos
+                        for pos in portfolio.positions
+                        if pos.ticker.upper() == ticker.upper()
+                    ),
+                    None,
+                )
+
+                if existing_position:
+                    # Calculate unrealized P&L
+                    unrealized_pnl = (
+                        current_price - float(existing_position.average_cost_basis)
+                    ) * float(existing_position.shares)
+                    unrealized_pnl_pct = (
+                        (current_price - float(existing_position.average_cost_basis))
+                        / float(existing_position.average_cost_basis)
+                    ) * 100
+
+                    analysis["existing_position"] = {
+                        "shares_owned": float(existing_position.shares),
+                        "average_cost_basis": float(
+                            existing_position.average_cost_basis
+                        ),
+                        "total_invested": float(existing_position.total_cost),
+                        "current_value": float(existing_position.shares)
+                        * current_price,
+                        "unrealized_pnl": round(unrealized_pnl, 2),
+                        "unrealized_pnl_pct": round(unrealized_pnl_pct, 2),
+                        "position_recommendation": "Consider averaging down"
+                        if current_price < float(existing_position.average_cost_basis)
+                        else "Consider taking partial profits"
+                        if unrealized_pnl_pct > 20
+                        else "Hold current position",
+                    }
+        finally:
+            db.close()
+
         return analysis
     except Exception as e:
         logger.error(f"Error performing risk analysis for {ticker}: {e}")
         return {"error": str(e)}
 
 
-def compare_tickers(tickers: list[str], days: int = 90) -> dict[str, Any]:
+def compare_tickers(
+    tickers: list[str] | None = None,
+    days: int = 90,
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
     """
     Compare multiple tickers using technical and fundamental metrics.
 
@@ -159,14 +226,56 @@ def compare_tickers(tickers: list[str], days: int = 90) -> dict[str, Any]:
     - Momentum strength ratings
     - Risk metrics
 
+    **Portfolio Integration:** If no tickers are provided, automatically compares
+    all positions in your portfolio, making it easy to see which holdings are
+    performing best.
+
     Args:
-        tickers: List of ticker symbols to compare (minimum 2)
+        tickers: List of ticker symbols to compare (minimum 2). If None, uses portfolio holdings.
         days: Number of days of historical data to analyze (default: 90)
+        user_id: User identifier (defaults to "default")
+        portfolio_name: Portfolio name (defaults to "My Portfolio")
 
     Returns:
-        Dictionary containing comparison results
+        Dictionary containing comparison results with optional portfolio context
+
+    Example:
+        >>> compare_tickers()  # Automatically compares all portfolio holdings
+        >>> compare_tickers(["AAPL", "MSFT", "GOOGL"])  # Manual comparison
     """
     try:
+        # Auto-fill tickers from portfolio if not provided
+        if tickers is None or len(tickers) == 0:
+            db: Session = next(get_db())
+            try:
+                # Get portfolio positions
+                portfolio = (
+                    db.query(UserPortfolio)
+                    .filter(
+                        UserPortfolio.user_id == user_id,
+                        UserPortfolio.name == portfolio_name,
+                    )
+                    .first()
+                )
+
+                if not portfolio or len(portfolio.positions) < 2:
+                    return {
+                        "error": "No portfolio found or insufficient positions for comparison",
+                        "details": "Please provide at least 2 tickers manually or add more positions to your portfolio",
+                        "status": "error",
+                    }
+
+                tickers = [pos.ticker for pos in portfolio.positions]
+                portfolio_context = {
+                    "using_portfolio": True,
+                    "portfolio_name": portfolio_name,
+                    "position_count": len(tickers),
+                }
+            finally:
+                db.close()
+        else:
+            portfolio_context = {"using_portfolio": False}
+
         if len(tickers) < 2:
             raise ValueError("At least two tickers are required for comparison")
 
@@ -259,20 +368,29 @@ def compare_tickers(tickers: list[str], days: int = 90) -> dict[str, Any]:
                 "trend_rank": trend_sorted.index(ticker) + 1,
             }
 
-        return {
+        response = {
             "comparison": results,
             "period_days": days,
             "as_of": datetime.now(UTC).isoformat(),
             "best_performer": perf_sorted[0],
             "strongest_trend": trend_sorted[0],
         }
+
+        # Add portfolio context if applicable
+        if portfolio_context["using_portfolio"]:
+            response["portfolio_context"] = portfolio_context
+
+        return response
     except Exception as e:
         logger.error(f"Error comparing tickers {tickers}: {str(e)}")
         return {"error": str(e), "status": "error"}
 
 
 def portfolio_correlation_analysis(
-    tickers: list[str], days: int = 252
+    tickers: list[str] | None = None,
+    days: int = 252,
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
 ) -> dict[str, Any]:
     """
     Analyze correlation between multiple securities.
@@ -287,14 +405,56 @@ def portfolio_correlation_analysis(
     - Negative correlations (natural hedges)
     - Overall portfolio correlation metrics
 
+    **Portfolio Integration:** If no tickers are provided, automatically analyzes
+    correlation between all positions in your portfolio, helping you understand
+    diversification and identify concentration risk.
+
     Args:
-        tickers: List of ticker symbols to analyze
+        tickers: List of ticker symbols to analyze. If None, uses portfolio holdings.
         days: Number of days for correlation calculation (default: 252 for 1 year)
+        user_id: User identifier (defaults to "default")
+        portfolio_name: Portfolio name (defaults to "My Portfolio")
 
     Returns:
-        Dictionary containing correlation analysis
+        Dictionary containing correlation analysis with optional portfolio context
+
+    Example:
+        >>> portfolio_correlation_analysis()  # Automatically analyzes portfolio
+        >>> portfolio_correlation_analysis(["AAPL", "MSFT", "GOOGL"])  # Manual analysis
     """
     try:
+        # Auto-fill tickers from portfolio if not provided
+        if tickers is None or len(tickers) == 0:
+            db: Session = next(get_db())
+            try:
+                # Get portfolio positions
+                portfolio = (
+                    db.query(UserPortfolio)
+                    .filter(
+                        UserPortfolio.user_id == user_id,
+                        UserPortfolio.name == portfolio_name,
+                    )
+                    .first()
+                )
+
+                if not portfolio or len(portfolio.positions) < 2:
+                    return {
+                        "error": "No portfolio found or insufficient positions for correlation analysis",
+                        "details": "Please provide at least 2 tickers manually or add more positions to your portfolio",
+                        "status": "error",
+                    }
+
+                tickers = [pos.ticker for pos in portfolio.positions]
+                portfolio_context = {
+                    "using_portfolio": True,
+                    "portfolio_name": portfolio_name,
+                    "position_count": len(tickers),
+                }
+            finally:
+                db.close()
+        else:
+            portfolio_context = {"using_portfolio": False}
+
         if len(tickers) < 2:
             raise ValueError("At least two tickers required for correlation analysis")
 
@@ -350,7 +510,7 @@ def portfolio_correlation_analysis(
         mask = correlation_matrix.values != 1  # Exclude diagonal
         avg_correlation = correlation_matrix.values[mask].mean()
 
-        return {
+        response = {
             "correlation_matrix": correlation_matrix.round(3).to_dict(),
             "average_portfolio_correlation": round(avg_correlation, 3),
             "high_correlation_pairs": high_correlation_pairs,
@@ -364,6 +524,12 @@ def portfolio_correlation_analysis(
             "period_days": days,
             "data_points": len(returns_df),
         }
+
+        # Add portfolio context if applicable
+        if portfolio_context["using_portfolio"]:
+            response["portfolio_context"] = portfolio_context
+
+        return response
 
     except Exception as e:
         logger.error(f"Error in correlation analysis: {str(e)}")
