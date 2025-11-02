@@ -869,6 +869,52 @@ def stock_info_resource(ticker: str) -> dict[str, Any]:
         db_session.close()
 
 
+@mcp.resource("portfolio://my-holdings")
+def portfolio_holdings_resource() -> dict[str, Any]:
+    """
+    Get your current portfolio holdings as an MCP resource.
+
+    This resource provides AI-enriched context about your portfolio for Claude to use
+    in conversations. It includes all positions with current prices and P&L calculations.
+
+    Returns:
+        Dictionary containing portfolio holdings with performance metrics
+    """
+    from maverick_mcp.api.routers.portfolio import get_my_portfolio
+
+    try:
+        # Get portfolio with current prices
+        portfolio_data = get_my_portfolio(
+            user_id="default",
+            portfolio_name="My Portfolio",
+            include_current_prices=True,
+        )
+
+        if portfolio_data.get("status") == "error":
+            return {
+                "error": portfolio_data.get("error", "Unknown error"),
+                "uri": "portfolio://my-holdings",
+                "description": "Error retrieving portfolio holdings",
+            }
+
+        # Add resource metadata
+        portfolio_data["uri"] = "portfolio://my-holdings"
+        portfolio_data["description"] = (
+            "Your current stock portfolio with live prices and P&L"
+        )
+        portfolio_data["mimeType"] = "application/json"
+
+        return portfolio_data
+
+    except Exception as e:
+        logger.error(f"Portfolio holdings resource failed: {e}")
+        return {
+            "error": str(e),
+            "uri": "portfolio://my-holdings",
+            "description": "Failed to retrieve portfolio holdings",
+        }
+
+
 # Main execution block
 if __name__ == "__main__":
     import asyncio
