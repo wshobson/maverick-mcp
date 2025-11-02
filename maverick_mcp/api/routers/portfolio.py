@@ -31,6 +31,36 @@ portfolio_router: FastMCP = FastMCP("Portfolio_Analysis")
 stock_provider = StockDataProvider()
 
 
+def _normalize_ticker(ticker: str) -> str:
+    """Normalize ticker symbol to uppercase and strip whitespace."""
+    return ticker.strip().upper()
+
+
+def _validate_ticker(ticker: str) -> tuple[bool, str | None]:
+    """
+    Validate ticker symbol format.
+
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not ticker or not ticker.strip():
+        return False, "Ticker symbol cannot be empty"
+
+    normalized = ticker.strip().upper()
+
+    # Basic validation: 1-5 alphanumeric characters
+    if not normalized.isalnum():
+        return (
+            False,
+            f"Invalid ticker symbol '{ticker}': must contain only letters and numbers",
+        )
+
+    if len(normalized) > 10:
+        return False, f"Invalid ticker symbol '{ticker}': too long (max 10 characters)"
+
+    return True, None
+
+
 def risk_adjusted_analysis(
     ticker: str,
     risk_level: float | str | None = 50.0,
@@ -463,12 +493,31 @@ def portfolio_correlation_analysis(
         start_date = end_date - timedelta(days=days)
 
         price_data = {}
+        failed_tickers = []
         for ticker in tickers:
-            df = stock_provider.get_stock_data(
-                ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
-            )
-            if not df.empty:
-                price_data[ticker] = df["close"]
+            try:
+                df = stock_provider.get_stock_data(
+                    ticker,
+                    start_date.strftime("%Y-%m-%d"),
+                    end_date.strftime("%Y-%m-%d"),
+                )
+                if not df.empty:
+                    price_data[ticker] = df["close"]
+                else:
+                    failed_tickers.append(ticker)
+            except Exception as e:
+                logger.warning(f"Failed to fetch data for {ticker}: {e}")
+                failed_tickers.append(ticker)
+
+        # Check if we have enough valid tickers
+        if len(price_data) < 2:
+            return {
+                "error": f"Insufficient valid price data (need 2+ tickers, got {len(price_data)})",
+                "details": f"Failed tickers: {', '.join(failed_tickers)}"
+                if failed_tickers
+                else "No tickers provided sufficient data",
+                "status": "error",
+            }
 
         # Create price DataFrame
         prices_df = pd.DataFrame(price_data)
@@ -476,8 +525,27 @@ def portfolio_correlation_analysis(
         # Calculate returns
         returns_df = prices_df.pct_change().dropna()
 
+        # Check for sufficient data points
+        if len(returns_df) < 30:
+            return {
+                "error": "Insufficient data points for correlation analysis",
+                "details": f"Need at least 30 data points, got {len(returns_df)}. Try increasing the days parameter.",
+                "status": "error",
+            }
+
         # Calculate correlation matrix
         correlation_matrix = returns_df.corr()
+
+        # Check for NaN/Inf values
+        if (
+            correlation_matrix.isnull().any().any()
+            or not correlation_matrix.applymap(lambda x: abs(x) <= 1.0).all().all()
+        ):
+            return {
+                "error": "Invalid correlation values detected",
+                "details": "Correlation matrix contains NaN or invalid values. This may indicate insufficient price variation.",
+                "status": "error",
+            }
 
         # Find highly correlated pairs
         high_correlation_pairs = []
@@ -572,12 +640,31 @@ def add_portfolio_position(
         >>> add_portfolio_position("AAPL", 10, 150.50, "2024-01-15", "Long-term hold")
     """
     try:
-        # Validate inputs
+        # Validate and normalize ticker
+        is_valid, error_msg = _validate_ticker(ticker)
+        if not is_valid:
+            return {"error": error_msg, "status": "error"}
+
+        ticker = _normalize_ticker(ticker)
+
+        # Validate shares
         if shares <= 0:
             return {"error": "Shares must be greater than zero", "status": "error"}
+        if shares > 1_000_000_000:  # Sanity check
+            return {
+                "error": "Shares value too large (max 1 billion shares)",
+                "status": "error",
+            }
+
+        # Validate purchase price
         if purchase_price <= 0:
             return {
                 "error": "Purchase price must be greater than zero",
+                "status": "error",
+            }
+        if purchase_price > 1_000_000:  # Sanity check
+            return {
+                "error": "Purchase price too large (max $1M per share)",
                 "status": "error",
             }
 
@@ -851,6 +938,21 @@ def remove_portfolio_position(
         >>> remove_portfolio_position("MSFT")     # Remove entire position
     """
     try:
+        # Validate and normalize ticker
+        is_valid, error_msg = _validate_ticker(ticker)
+        if not is_valid:
+            return {"error": error_msg, "status": "error"}
+
+        ticker = _normalize_ticker(ticker)
+
+        # Validate shares if provided
+        if shares is not None and shares <= 0:
+            return {
+                "error": "Shares to remove must be greater than zero",
+                "status": "error",
+            }
+
+        db: Session = next(get_db())
         if shares is not None and shares <= 0:
             return {"error": "Shares must be greater than zero", "status": "error"}
 
