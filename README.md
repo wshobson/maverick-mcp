@@ -300,7 +300,7 @@ The `mcp-remote` tool bridges the gap between STDIO-only clients (like Claude De
 
 ## Available Tools
 
-MaverickMCP provides 35+ financial analysis tools organized into focused categories, including advanced AI-powered research agents:
+MaverickMCP provides 39+ financial analysis tools organized into focused categories, including advanced AI-powered research agents:
 
 ### Development Commands
 
@@ -417,6 +417,20 @@ Once connected to Claude Desktop, you can use natural language to run backtests:
 "Get full technical analysis for the top 5 momentum stocks"
 ```
 
+### Portfolio Management Example (NEW)
+
+```
+"Add 10 shares of AAPL I bought at $150.50"
+
+"Show me my portfolio with current prices"
+
+"Compare my portfolio holdings"  # No tickers needed!
+
+"Analyze correlation in my portfolio"  # Auto-detects your positions
+
+"Remove 5 shares of MSFT"
+```
+
 ### Portfolio Optimization Example
 
 ```
@@ -429,7 +443,7 @@ Once connected to Claude Desktop, you can use natural language to run backtests:
 
 ## Tools
 
-MaverickMCP provides 35+ financial analysis tools organized by category, including advanced AI-powered research agents:
+MaverickMCP provides 39+ financial analysis tools organized by category, including advanced AI-powered research agents:
 
 ### Stock Data Tools
 
@@ -446,11 +460,31 @@ MaverickMCP provides 35+ financial analysis tools organized by category, includi
 - `get_full_technical_analysis` - Comprehensive technical analysis
 - `get_stock_chart_analysis` - Visual chart generation
 
-### Portfolio Tools
+### Portfolio Management Tools (NEW) - Personal Portfolio Tracking
 
-- `risk_adjusted_analysis` - Risk-based position sizing
-- `compare_tickers` - Side-by-side ticker comparison
-- `portfolio_correlation_analysis` - Correlation matrix analysis
+- `portfolio_add_position` - Add or update positions with automatic cost basis averaging
+- `portfolio_get_my_portfolio` - View portfolio with live P&L calculations
+- `portfolio_remove_position` - Remove partial or full positions
+- `portfolio_clear_portfolio` - Clear all positions with safety confirmation
+
+**Portfolio Features:**
+- **Persistent Storage**: Track your actual holdings with cost basis
+- **Automatic Averaging**: Cost basis updates automatically on repeat purchases
+- **Live P&L**: Real-time unrealized gains/losses on all positions
+- **Portfolio Resource**: `portfolio://my-holdings` provides AI context automatically
+- **Multi-Portfolio Support**: Track multiple portfolios (IRA, 401k, taxable, etc.)
+- **Fractional Shares**: Full support for partial share positions
+
+### Portfolio Analysis Tools
+
+- `risk_adjusted_analysis` - Risk-based position sizing with position awareness
+- `compare_tickers` - Side-by-side ticker comparison (auto-uses your portfolio)
+- `portfolio_correlation_analysis` - Correlation matrix analysis (auto-analyzes your holdings)
+
+**Smart Integration:**
+- All analysis tools auto-detect your portfolio positions
+- No need to manually enter tickers you already own
+- Position-aware recommendations (averaging up/down, profit taking)
 
 ### Stock Screening Tools (Pre-seeded with S&P 500)
 

@@ -12,7 +12,8 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 - Real-time and historical stock data access with intelligent caching
 - Advanced technical analysis tools (RSI, MACD, Bollinger Bands, etc.)
 - Multiple stock screening strategies (Maverick Bullish/Bearish, Supply/Demand Breakouts)
-- Portfolio optimization and correlation analysis
+- **Personal portfolio tracking with cost basis averaging and live P&L** (NEW)
+- Portfolio optimization and correlation analysis with auto-detection
 - Market and macroeconomic data integration
 - SQLAlchemy-based database integration with SQLite default (PostgreSQL optional)
 - Redis caching for high performance (optional)
@@ -403,7 +404,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 
 ## Available Tools
 
-All tools are organized into logical groups (35+ tools total):
+All tools are organized into logical groups (39+ tools total):
 
 ### Data Tools (`/data/*`) - S&P 500 Pre-seeded
 
@@ -442,11 +443,31 @@ All tools are organized into logical groups (35+ tools total):
 - **Content Filtering**: High-credibility source prioritization
 - **Error Recovery**: Circuit breakers and comprehensive error handling
 
-### Portfolio Analysis (`/portfolio/*`)
+### Portfolio Management (`/portfolio/*`) - Personal Holdings Tracking (NEW)
 
-- `optimize_portfolio` - Portfolio optimization
-- `analyze_portfolio_risk` - Risk assessment
-- `calculate_correlation_matrix` - Asset correlations
+- `portfolio_add_position` - Add or update positions with automatic cost basis averaging
+- `portfolio_get_my_portfolio` - View portfolio with live P&L calculations
+- `portfolio_remove_position` - Remove partial or full positions
+- `portfolio_clear_portfolio` - Clear all positions with safety confirmation
+
+**Key Features:**
+- Persistent storage with cost basis tracking (average cost method)
+- Live unrealized P&L calculations with real-time prices
+- Automatic cost averaging on repeat purchases
+- Support for fractional shares and high-precision decimals
+- Multi-portfolio support (track IRA, 401k, taxable separately)
+- Portfolio resource (`portfolio://my-holdings`) for AI context
+
+### Portfolio Analysis (`/portfolio/*`) - Intelligent Integration
+
+- `risk_adjusted_analysis` - Risk-based position sizing (shows your existing positions)
+- `compare_tickers` - Side-by-side comparison (auto-uses portfolio if no tickers provided)
+- `portfolio_correlation_analysis` - Correlation matrix (auto-analyzes your holdings)
+
+**Smart Features:**
+- Tools auto-detect your portfolio positions
+- Position-aware recommendations (averaging up/down, profit taking)
+- No manual ticker entry needed for portfolio analysis
 
 ### Backtesting (`/backtesting/*`) - VectorBT-Powered Strategy Testing
 
@@ -775,6 +796,7 @@ Once connected to Claude Desktop, test the backtesting framework:
 ## Additional Resources
 
 - **Architecture docs**: `docs/` directory
+- **Portfolio Guide**: `docs/PORTFOLIO.md` - Complete guide to portfolio features
 - **Test examples**: `tests/` directory
 - **Development tools**: `tools/` directory
 - **Example scripts**: `scripts/` directory
