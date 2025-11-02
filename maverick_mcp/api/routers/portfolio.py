@@ -827,9 +827,13 @@ def get_my_portfolio(
                 }
 
             # Convert to domain model for calculations
-            portfolio = Portfolio(name=portfolio_db.name)
+            portfolio = Portfolio(
+                portfolio_id=str(portfolio_db.id),
+                user_id=portfolio_db.user_id,
+                name=portfolio_db.name,
+            )
             for pos_db in positions:
-                portfolio = portfolio.add_position(
+                portfolio.add_position(
                     pos_db.ticker,
                     pos_db.shares,
                     pos_db.average_cost_basis,
@@ -849,7 +853,9 @@ def get_my_portfolio(
                             end_date=datetime.now(UTC).strftime("%Y-%m-%d"),
                         )
                         if not df.empty:
-                            current_prices[pos.ticker] = float(df["Close"].iloc[-1])
+                            current_prices[pos.ticker] = Decimal(
+                                str(df["Close"].iloc[-1])
+                            )
                     except Exception as e:
                         logger.warning(
                             f"Could not fetch price for {pos.ticker}: {str(e)}"
@@ -872,14 +878,20 @@ def get_my_portfolio(
 
                 # Add current price and P&L if available
                 if pos_db.ticker in current_prices:
-                    current_price = current_prices[pos_db.ticker]
+                    decimal_current_price = current_prices[pos_db.ticker]
+                    current_price = float(decimal_current_price)
+                    current_value = (
+                        pos_db.shares * decimal_current_price
+                    ).quantize(Decimal("0.01"))
+                    unrealized_gain_loss = (
+                        current_value - pos_db.total_cost
+                    ).quantize(Decimal("0.01"))
+
                     position_dict["current_price"] = current_price
-                    position_dict["current_value"] = (
-                        float(pos_db.shares) * current_price
+                    position_dict["current_value"] = float(current_value)
+                    position_dict["unrealized_gain_loss"] = float(
+                        unrealized_gain_loss
                     )
-                    position_dict["unrealized_gain_loss"] = position_dict[
-                        "current_value"
-                    ] - float(pos_db.total_cost)
                     position_dict["unrealized_gain_loss_percent"] = (
                         position_dict["unrealized_gain_loss"] / float(pos_db.total_cost)
                     ) * 100
