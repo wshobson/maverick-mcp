@@ -844,7 +844,7 @@ If you find MaverickMCP useful:
 
 Built for traders and investors. Happy Trading!
 
-[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/wshobson-maverick-mcp-badge.png)](https://mseep.ai/app/wshobson-maverick-mcp)
+[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/4678fb21-9034-4446-8628-6508f753d140)
 
 **Read the full build guide**: [How to Build an MCP Stock Analysis Server](https://sethhobson.com/2025/08/how-to-build-an-mcp-stock-analysis-server/)
 
