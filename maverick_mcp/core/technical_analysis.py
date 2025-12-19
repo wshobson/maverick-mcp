@@ -28,6 +28,27 @@ logging.basicConfig(
 logger = logging.getLogger("maverick_mcp.technical_analysis")
 
 
+def _get_column_case_insensitive(df: pd.DataFrame, column_name: str) -> str | None:
+    """
+    Get the actual column name from the dataframe in a case-insensitive way.
+
+    Args:
+        df: DataFrame to search
+        column_name: Name of the column to find (case-insensitive)
+
+    Returns:
+        The actual column name if found, None otherwise
+    """
+    if column_name in df.columns:
+        return column_name
+
+    column_name_lower = column_name.lower()
+    for col in df.columns:
+        if col.lower() == column_name_lower:
+            return col
+    return None
+
+
 def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
     Add technical indicators to the dataframe
@@ -682,12 +703,21 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     Returns:
         Series with ATR values
     """
-    # Ensure column names are lowercase
-    df_copy = df.copy()
-    df_copy.columns = [col.lower() for col in df_copy.columns]
+    # Optimized to avoid copying the entire dataframe
+    high_col = _get_column_case_insensitive(df, "high")
+    low_col = _get_column_case_insensitive(df, "low")
+    close_col = _get_column_case_insensitive(df, "close")
+
+    if not (high_col and low_col and close_col):
+        # Fallback to old method if columns are not found (unlikely if they exist)
+        # This preserves previous behavior for missing columns which might raise error later or handle it
+        logger.warning("Could not find High, Low, Close columns case-insensitively. Falling back to copy method.")
+        df_copy = df.copy()
+        df_copy.columns = [col.lower() for col in df_copy.columns]
+        return ta.atr(df_copy["high"], df_copy["low"], df_copy["close"], length=period)
 
     # Use pandas_ta to calculate ATR
-    atr = ta.atr(df_copy["high"], df_copy["low"], df_copy["close"], length=period)
+    atr = ta.atr(df[high_col], df[low_col], df[close_col], length=period)
 
     # Ensure we return a Series
     if isinstance(atr, pd.Series):
@@ -780,16 +810,18 @@ def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
     Returns:
         Series with RSI values
     """
-    # Handle both uppercase and lowercase column names
-    df_copy = df.copy()
-    df_copy.columns = [col.lower() for col in df_copy.columns]
+    # Optimized to avoid copying the entire dataframe
+    close_col = _get_column_case_insensitive(df, "close")
 
     # Ensure we have the required 'close' column
-    if "close" not in df_copy.columns:
+    if not close_col:
+        # Check if we should fallback or raise error immediately.
+        # Original code: copies, lowercases, then checks for "close".
+        # So if we can't find it case-insensitively, we can raise ValueError.
         raise ValueError("DataFrame must contain a 'close' or 'Close' column")
 
     # Use pandas_ta to calculate RSI
-    rsi = ta.rsi(df_copy["close"], length=period)
+    rsi = ta.rsi(df[close_col], length=period)
 
     # Ensure we return a Series
     if isinstance(rsi, pd.Series):
@@ -813,16 +845,15 @@ def calculate_sma(df: pd.DataFrame, period: int) -> pd.Series:
     Returns:
         Series with SMA values
     """
-    # Handle both uppercase and lowercase column names
-    df_copy = df.copy()
-    df_copy.columns = [col.lower() for col in df_copy.columns]
+    # Optimized to avoid copying the entire dataframe
+    close_col = _get_column_case_insensitive(df, "close")
 
     # Ensure we have the required 'close' column
-    if "close" not in df_copy.columns:
+    if not close_col:
         raise ValueError("DataFrame must contain a 'close' or 'Close' column")
 
     # Use pandas_ta to calculate SMA
-    sma = ta.sma(df_copy["close"], length=period)
+    sma = ta.sma(df[close_col], length=period)
 
     # Ensure we return a Series
     if isinstance(sma, pd.Series):
