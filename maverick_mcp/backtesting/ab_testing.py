@@ -509,7 +509,7 @@ class TrafficSplitter:
             # Hash user_id for consistent assignment
             import hashlib
 
-            hash_object = hashlib.md5(user_id.encode())
+            hash_object = hashlib.sha256(user_id.encode())
             hash_int = int(hash_object.hexdigest(), 16)
             rand_value = (hash_int % 10000) / 10000.0  # Normalize to [0, 1)
         else:
