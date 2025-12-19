@@ -540,7 +540,7 @@ Remember to:
         analysis_results = self._extract_enhanced_results(result)
 
         # Create same cache key as used in _check_enhanced_cache
-        query_hash = hashlib.md5(query.lower().encode()).hexdigest()[:8]
+        query_hash = hashlib.sha256(query.lower().encode()).hexdigest()[:8]
         cache_key = f"{screening_strategy}_{query_hash}"
 
         self.conversation_store.save_analysis(
@@ -557,7 +557,7 @@ Remember to:
     ) -> dict[str, Any] | None:
         """Check for cached analysis with strategy awareness."""
         # Create a hash of the query to use as cache key
-        query_hash = hashlib.md5(query.lower().encode()).hexdigest()[:8]
+        query_hash = hashlib.sha256(query.lower().encode()).hexdigest()[:8]
         cache_key = f"{strategy}_{query_hash}"
 
         cached = self.conversation_store.get_analysis(
