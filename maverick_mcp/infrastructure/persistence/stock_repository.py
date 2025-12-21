@@ -58,9 +58,16 @@ class StockDataProviderAdapter:
         """
         Async version of get_price_data.
 
-        Currently wraps the sync version, but can be optimized
-        with true async implementation later.
+        Uses the async provider implementation to avoid blocking the event loop,
+        enabling efficient parallel data fetching.
         """
-        # For now, just call the sync version
-        # In future, this could use async database queries
-        return self.get_price_data(symbol, start_date, end_date)
+        # Use the provider's async implementation to avoid blocking the event loop
+        # This allows parallel execution when fetching data for multiple stocks
+        df = await self.stock_provider.get_stock_data_async(
+            symbol, start_date, end_date
+        )
+
+        # Ensure column names are lowercase for consistency (same as sync version)
+        df.columns = df.columns.str.lower()
+
+        return df
