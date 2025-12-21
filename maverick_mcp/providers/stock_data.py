@@ -1092,12 +1092,97 @@ class EnhancedStockDataProvider:
             return None
 
     def get_all_realtime_data(self, symbols):
-        """Get all latest real-time data for multiple symbols."""
+        """
+        Get all latest real-time data for multiple symbols efficiently.
+        Optimized to use batch downloading to reduce network requests.
+        """
+        if not symbols:
+            return {}
+
         results = {}
-        for symbol in symbols:
-            data = self.get_realtime_data(symbol)
-            if data:
-                results[symbol] = data
+        try:
+            # Batch download 5 days of data to ensure we have previous close
+            # Using group_by='ticker' makes the structure predictable: Level 0 = Ticker, Level 1 = Price Type
+            batch_df = self._yf_pool.batch_download(
+                symbols=symbols, period="5d", interval="1d", group_by="ticker"
+            )
+
+            # Check if we got any data
+            if batch_df.empty:
+                logger.warning("Batch download returned empty DataFrame")
+                return {}
+
+            # Handle both MultiIndex (multiple symbols) and single symbol cases
+            is_multi_ticker = isinstance(batch_df.columns, pd.MultiIndex)
+
+            for symbol in symbols:
+                try:
+                    symbol_data = None
+
+                    if is_multi_ticker:
+                        if symbol in batch_df.columns:
+                            symbol_data = batch_df[symbol]
+                    elif len(symbols) == 1 and symbols[0] == symbol:
+                        # Single symbol case, columns are just price types
+                        symbol_data = batch_df
+
+                    if symbol_data is None or symbol_data.empty:
+                        logger.debug(f"No batch data for {symbol}, falling back to individual fetch")
+                        # Fallback to individual fetch
+                        data = self.get_realtime_data(symbol)
+                        if data:
+                            results[symbol] = data
+                        continue
+
+                    # Drop NaNs (e.g., if one stock has missing data for a day)
+                    symbol_data = symbol_data.dropna(how="all")
+
+                    if len(symbol_data) < 1:
+                        continue
+
+                    latest = symbol_data.iloc[-1]
+                    price = float(latest["Close"])
+                    volume = int(latest["Volume"])
+
+                    # Calculate change
+                    if len(symbol_data) > 1:
+                        prev_close = float(symbol_data.iloc[-2]["Close"])
+                        change = price - prev_close
+                        change_percent = (
+                            (change / prev_close) * 100 if prev_close != 0 else 0
+                        )
+                    else:
+                        change = 0.0
+                        change_percent = 0.0
+
+                    results[symbol] = {
+                        "symbol": symbol,
+                        "price": round(price, 2),
+                        "change": round(change, 2),
+                        "change_percent": round(change_percent, 2),
+                        "volume": volume,
+                        "timestamp": symbol_data.index[-1],
+                        "timestamp_display": symbol_data.index[-1].strftime(
+                            "%Y-%m-%d %H:%M:%S"
+                        ),
+                        "is_real_time": False,  # yfinance data has some delay
+                    }
+
+                except Exception as e:
+                    logger.error(f"Error processing batch data for {symbol}: {e}")
+                    # Try fallback
+                    data = self.get_realtime_data(symbol)
+                    if data:
+                        results[symbol] = data
+
+        except Exception as e:
+            logger.error(f"Batch download failed: {e}")
+            # Fallback to iterative approach
+            for symbol in symbols:
+                data = self.get_realtime_data(symbol)
+                if data:
+                    results[symbol] = data
+
         return results
 
     def is_market_open(self) -> bool:
