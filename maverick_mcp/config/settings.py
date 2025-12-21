@@ -7,6 +7,7 @@ through environment variables or a settings file.
 
 import logging
 import os
+import tempfile
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -46,7 +47,7 @@ class DatabaseSettings(BaseModel):
 class APISettings(BaseModel):
     """API configuration settings."""
 
-    host: str = Field(default="0.0.0.0", description="API host")
+    host: str = Field(default="127.0.0.1", description="API host")
     port: int = Field(default=8000, description="API port")
     debug: bool = Field(default=False, description="Debug mode")
     log_level: str = Field(default="info", description="Log level")
@@ -69,7 +70,8 @@ class DataProviderSettings(BaseModel):
     api_key: str | None = Field(default=None, description="API key for data provider")
     use_cache: bool = Field(default=True, description="Use cache for data")
     cache_dir: str = Field(
-        default="/tmp/maverick_mcp/cache", description="Cache directory"
+        default=os.path.join(tempfile.gettempdir(), "maverick_mcp", "cache"),
+        description="Cache directory",
     )
     cache_expiry: int = Field(default=86400, description="Cache expiry in seconds")
     rate_limit: int = Field(default=5, description="Rate limit per minute")
