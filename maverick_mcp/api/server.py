@@ -111,6 +111,13 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from fastapi import FastAPI
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
+from starlette.routing import BaseRoute, Route
+
+from maverick_mcp.api.middleware.rate_limiting_enhanced import (
+    EnhancedRateLimitMiddleware,
+    RateLimitConfig,
+)
 
 # Import tool registry for direct registration
 # This avoids Claude Desktop's issue with mounted router tool names
@@ -139,8 +146,6 @@ if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
 # This allows both paths to work without 307 redirects
 # Fixes the mcp-remote tool registration failure issue
 from fastmcp.server import http as fastmcp_http
-from starlette.middleware import Middleware
-from starlette.routing import BaseRoute, Route
 
 _original_create_sse_app = fastmcp_http.create_sse_app
 
@@ -349,13 +354,8 @@ register_all_router_tools(_fastmcp_instance)
 logger.info("Tools registered successfully")
 
 # Register monitoring and health endpoints directly with FastMCP
-from maverick_mcp.api.middleware.rate_limiting_enhanced import (
-    EnhancedRateLimitMiddleware,
-    RateLimitConfig,
-)
 from maverick_mcp.api.routers.health_enhanced import router as health_router
 from maverick_mcp.api.routers.monitoring import router as monitoring_router
-from starlette.middleware import Middleware
 
 # Add monitoring and health endpoints to the FastMCP app's FastAPI instance
 if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
