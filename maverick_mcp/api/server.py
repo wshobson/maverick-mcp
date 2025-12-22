@@ -111,6 +111,13 @@ from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from fastapi import FastAPI
 from fastmcp import FastMCP
+from starlette.middleware import Middleware
+from starlette.routing import BaseRoute, Route
+
+from maverick_mcp.api.middleware.rate_limiting_enhanced import (
+    EnhancedRateLimitMiddleware,
+    RateLimitConfig,
+)
 
 # Import tool registry for direct registration
 # This avoids Claude Desktop's issue with mounted router tool names
@@ -139,8 +146,6 @@ if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
 # This allows both paths to work without 307 redirects
 # Fixes the mcp-remote tool registration failure issue
 from fastmcp.server import http as fastmcp_http
-from starlette.middleware import Middleware
-from starlette.routing import BaseRoute, Route
 
 _original_create_sse_app = fastmcp_http.create_sse_app
 
@@ -357,6 +362,18 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
     mcp.fastapi_app.include_router(health_router, tags=["health"])
     logger.info("Monitoring and health endpoints registered with FastAPI application")
+
+# Add Enhanced Rate Limiting Middleware
+# Configure limits based on settings
+rate_limit_config = RateLimitConfig(
+    public_limit=settings.middleware.api_rate_limit_per_minute,
+    data_limit=settings.middleware.api_rate_limit_per_minute,
+    analysis_limit=max(
+        int(settings.middleware.api_rate_limit_per_minute / 2), 1
+    ),  # Analysis is more expensive
+)
+mcp.add_middleware(Middleware(EnhancedRateLimitMiddleware, config=rate_limit_config))
+logger.info("Enhanced Rate Limiting Middleware added to MCP server")
 
 # Initialize enhanced health monitoring system
 logger.info("Initializing enhanced health monitoring system...")
