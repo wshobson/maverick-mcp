@@ -497,9 +497,6 @@ class EnhancedStockDataProvider:
             # Ensure symbol is uppercase to match database
             symbol = symbol.upper()
 
-            # Prepare DataFrame for caching
-            cache_df = df.copy()
-
             # Ensure proper column names
             column_mapping = {
                 "Open": "open",
@@ -508,7 +505,8 @@ class EnhancedStockDataProvider:
                 "Close": "close",
                 "Volume": "volume",
             }
-            cache_df.rename(columns=column_mapping, inplace=True)
+            # Rename returns a new DataFrame, avoiding the need for an explicit copy first
+            cache_df = df.rename(columns=column_mapping)
 
             # Log DataFrame info for debugging
             logger.debug(
