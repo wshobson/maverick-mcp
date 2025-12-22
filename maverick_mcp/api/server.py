@@ -349,14 +349,31 @@ register_all_router_tools(_fastmcp_instance)
 logger.info("Tools registered successfully")
 
 # Register monitoring and health endpoints directly with FastMCP
+from maverick_mcp.api.middleware.rate_limiting_enhanced import (
+    EnhancedRateLimitMiddleware,
+    RateLimitConfig,
+)
 from maverick_mcp.api.routers.health_enhanced import router as health_router
 from maverick_mcp.api.routers.monitoring import router as monitoring_router
+from starlette.middleware import Middleware
 
 # Add monitoring and health endpoints to the FastMCP app's FastAPI instance
 if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
     mcp.fastapi_app.include_router(health_router, tags=["health"])
     logger.info("Monitoring and health endpoints registered with FastAPI application")
+
+# Add Enhanced Rate Limiting Middleware
+# Configure limits based on settings
+rate_limit_config = RateLimitConfig(
+    public_limit=settings.middleware.api_rate_limit_per_minute,
+    data_limit=settings.middleware.api_rate_limit_per_minute,
+    analysis_limit=max(
+        int(settings.middleware.api_rate_limit_per_minute / 2), 1
+    ),  # Analysis is more expensive
+)
+mcp.add_middleware(Middleware(EnhancedRateLimitMiddleware, config=rate_limit_config))
+logger.info("Enhanced Rate Limiting Middleware added to MCP server")
 
 # Initialize enhanced health monitoring system
 logger.info("Initializing enhanced health monitoring system...")
