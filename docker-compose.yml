@@ -2,7 +2,7 @@ services:
   backend:
     build: .
     ports:
-      - "8003:8003"
+      - "8003:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/maverick_mcp
       - REDIS_HOST=redis
@@ -17,7 +17,7 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # Server Configuration
       - API_HOST=0.0.0.0
-      - API_PORT=8003
+      - API_PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - ENVIRONMENT=${ENVIRONMENT:-production}
     volumes:
