@@ -5,7 +5,7 @@ All feature tracks are registered here. Use `/conductor:new-track` to create new
 | Status | Track ID | Title | Created | Updated |
 | ------ | -------- | ----- | ------- | ------- |
 | [x]    | [conductor-setup_20260205](./tracks/conductor-setup_20260205/index.md) | Conductor Setup | 2026-02-05 | 2026-02-05 |
-| [ ]    | [project-audit-modernization_20260205](./tracks/project-audit-modernization_20260205/index.md) | Project Audit & Modernization | 2026-02-05 | 2026-02-05 |
+| [x]    | [project-audit-modernization_20260205](./tracks/project-audit-modernization_20260205/index.md) | Project Audit & Modernization | 2026-02-05 | 2026-02-05 |
 
 <!-- Tracks registered by /conductor:new-track -->
 
