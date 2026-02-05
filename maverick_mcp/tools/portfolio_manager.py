@@ -10,16 +10,7 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
-from dotenv import load_dotenv
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.portfolio_manager")
-
-# Load environment variables
-load_dotenv()
 
 
 class PortfolioManager:

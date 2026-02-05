@@ -13,7 +13,6 @@ import pandas as pd
 import pandas_market_calendars as mcal
 import pytz
 import yfinance as yf
-from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -34,12 +33,6 @@ from maverick_mcp.utils.circuit_breaker_decorators import (
 from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
 
 # Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.stock_data")
 
 

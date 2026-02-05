@@ -20,19 +20,11 @@ from typing import Any, cast
 import msgpack
 import pandas as pd
 import redis
-from dotenv import load_dotenv
 
 from maverick_mcp.config.settings import get_settings
 
 # Import the new performance module for Redis connection pooling
 
-# Load environment variables
-load_dotenv()
-
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.cache")
 
 settings = get_settings()

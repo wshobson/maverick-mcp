@@ -21,10 +21,6 @@ import pandas_ta as ta
 
 from maverick_mcp.config.technical_constants import TECHNICAL_CONFIG
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.technical_analysis")
 
 
