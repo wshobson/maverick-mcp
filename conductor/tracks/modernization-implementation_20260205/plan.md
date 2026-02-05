@@ -9,7 +9,7 @@
 
 ### Tasks
 
-- [ ] Task 1.1: Add regression tests for “no stdout on import” and conditional SSE patching
+- [~] Task 1.1: Add regression tests for “no stdout on import” and conditional SSE patching
 - [ ] Task 1.2: Remove stdout prints from `maverick_mcp/api/server.py` (use logging)
 - [ ] Task 1.3: Centralize dotenv + logging setup; remove `load_dotenv()` and `logging.basicConfig()` from library modules
 

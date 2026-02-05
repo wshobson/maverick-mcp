@@ -102,6 +102,7 @@ warnings.filterwarnings(
 
 # ruff: noqa: E402 - Imports after warnings config for proper deprecation warning suppression
 import argparse
+import logging
 import json
 import sys
 import uuid
@@ -142,88 +143,69 @@ from maverick_mcp.utils.tracing import initialize_tracing
 if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
     from maverick_mcp.infrastructure.connection_manager import MCPConnectionManager
 
-# Monkey-patch FastMCP's create_sse_app to register both /sse and /sse/ routes
-# This allows both paths to work without 307 redirects
-# Fixes the mcp-remote tool registration failure issue
+# FastMCP SSE compatibility patch (mcp-remote trailing-slash redirect workaround)
+#
+# IMPORTANT: This must be applied only when running SSE transport, otherwise it
+# creates import-time global side effects (and slows tests).
 from fastmcp.server import http as fastmcp_http
 
-_original_create_sse_app = fastmcp_http.create_sse_app
 
-
-def _patched_create_sse_app(
-    server: Any,
-    message_path: str,
-    sse_path: str,
-    auth: Any | None = None,
-    debug: bool = False,
-    routes: list[BaseRoute] | None = None,
-    middleware: list[Middleware] | None = None,
-) -> Any:
-    """Patched version of create_sse_app that registers both /sse and /sse/ paths.
-
-    This prevents 307 redirects by registering both path variants explicitly,
-    fixing tool registration failures with mcp-remote that occurred when clients
-    used /sse instead of /sse/.
+def apply_sse_trailing_slash_patch() -> None:
     """
-    import sys
+    Patch FastMCP's `create_sse_app` so both `/sse` and `/sse/` routes are registered.
 
-    print(
-        f"🔧 Patched create_sse_app called with sse_path={sse_path}",
-        file=sys.stderr,
-        flush=True,
-    )
+    This prevents 307 redirects that can cause tool registration failures with mcp-remote.
+    The patch is idempotent and must be applied explicitly (typically when starting SSE).
+    """
+    if getattr(fastmcp_http.create_sse_app, "__name__", "") == "_patched_create_sse_app":
+        return
 
-    # Call the original create_sse_app function
-    app = _original_create_sse_app(
-        server=server,
-        message_path=message_path,
-        sse_path=sse_path,
-        auth=auth,
-        debug=debug,
-        routes=routes,
-        middleware=middleware,
-    )
+    original_create_sse_app = fastmcp_http.create_sse_app
+    patch_logger = logging.getLogger("maverick_mcp.server")
 
-    # Register both path variants (with and without trailing slash)
-
-    # Find the SSE endpoint handler from the existing routes
-    sse_endpoint = None
-    for route in app.router.routes:
-        if isinstance(route, Route) and route.path == sse_path:
-            sse_endpoint = route.endpoint
-            break
-
-    if sse_endpoint:
-        # Determine the alternative path
-        if sse_path.endswith("/"):
-            alt_path = sse_path.rstrip("/")  # Remove trailing slash
-        else:
-            alt_path = sse_path + "/"  # Add trailing slash
-
-        # Register the alternative path
-        new_route = Route(
-            alt_path,
-            endpoint=sse_endpoint,
-            methods=["GET"],
-        )
-        app.router.routes.insert(0, new_route)
-        print(
-            f"✅ Registered SSE routes: {sse_path} AND {alt_path}",
-            file=sys.stderr,
-            flush=True,
-        )
-    else:
-        print(
-            f"⚠️  Could not find SSE endpoint for {sse_path}",
-            file=sys.stderr,
-            flush=True,
+    def _patched_create_sse_app(
+        server: Any,
+        message_path: str,
+        sse_path: str,
+        auth: Any | None = None,
+        debug: bool = False,
+        routes: list[BaseRoute] | None = None,
+        middleware: list[Middleware] | None = None,
+    ) -> Any:
+        """Register both path variants for the SSE endpoint."""
+        app = original_create_sse_app(
+            server=server,
+            message_path=message_path,
+            sse_path=sse_path,
+            auth=auth,
+            debug=debug,
+            routes=routes,
+            middleware=middleware,
         )
 
-    return app
+        sse_endpoint = None
+        for route in app.router.routes:
+            if isinstance(route, Route) and route.path == sse_path:
+                sse_endpoint = route.endpoint
+                break
 
+        if not sse_endpoint:
+            patch_logger.warning("SSE patch: could not find SSE endpoint for %s", sse_path)
+            return app
 
-# Apply the monkey-patch
-fastmcp_http.create_sse_app = _patched_create_sse_app
+        alt_path = sse_path.rstrip("/") if sse_path.endswith("/") else sse_path + "/"
+        app.router.routes.insert(
+            0,
+            Route(
+                alt_path,
+                endpoint=sse_endpoint,
+                methods=["GET"],
+            ),
+        )
+        patch_logger.debug("SSE patch: registered both %s and %s", sse_path, alt_path)
+        return app
+
+    fastmcp_http.create_sse_app = _patched_create_sse_app
 
 
 class FastMCPProtocol(Protocol):
@@ -325,18 +307,16 @@ try:
     backtesting_collector = get_backtesting_metrics()
     logger.info("✅ Backtesting metrics system initialized successfully")
 
-    # Log metrics system capabilities
-    print("🎯 Enhanced Backtesting Metrics System Enabled")
-    print("   📊 Strategy performance tracking active")
-    print("   🔄 API rate limiting and failure monitoring enabled")
-    print("   💾 Resource usage monitoring configured")
-    print("   🚨 Anomaly detection and alerting ready")
-    print("   📈 Prometheus metrics available at /metrics")
-    print()
+    logger.info("Enhanced Backtesting Metrics System Enabled")
+    logger.info("  Strategy performance tracking active")
+    logger.info("  API rate limiting and failure monitoring enabled")
+    logger.info("  Resource usage monitoring configured")
+    logger.info("  Anomaly detection and alerting ready")
+    logger.info("  Prometheus metrics available at /metrics")
 
 except Exception as e:
     logger.warning(f"Failed to initialize backtesting metrics: {e}")
-    print("⚠️  Warning: Backtesting metrics system could not be initialized")
+    logger.warning("Backtesting metrics system could not be initialized")
 
 logger.info("Monitoring and observability systems initialized")
 
@@ -385,10 +365,10 @@ try:
     circuit_breaker_success = initialize_all_circuit_breakers()
     if circuit_breaker_success:
         logger.info("✅ Circuit breakers initialized for all external APIs")
-        print("🛡️  Enhanced Circuit Breaker Protection Enabled")
-        print("   🔄 yfinance, Tiingo, FRED, OpenRouter, Exa APIs protected")
-        print("   📊 Failure detection and automatic recovery active")
-        print("   🚨 Circuit breaker monitoring and alerting enabled")
+        logger.info("Enhanced Circuit Breaker Protection Enabled")
+        logger.info("  yfinance, Tiingo, FRED, OpenRouter, Exa APIs protected")
+        logger.info("  Failure detection and automatic recovery active")
+        logger.info("  Circuit breaker monitoring and alerting enabled")
     else:
         logger.warning("⚠️  Some circuit breakers failed to initialize")
 
@@ -396,20 +376,17 @@ try:
     health_monitor = get_health_monitor()
     logger.info("✅ Health monitoring system prepared")
 
-    print("🏥 Comprehensive Health Monitoring System Ready")
-    print("   📈 Real-time component health tracking")
-    print("   🔍 Database, cache, and external API monitoring")
-    print("   💾 Resource usage monitoring (CPU, memory, disk)")
-    print("   📊 Status dashboard with historical metrics")
-    print("   🚨 Automated alerting and recovery actions")
-    print(
-        "   🩺 Health endpoints: /health, /health/detailed, /health/ready, /health/live"
-    )
-    print()
+    logger.info("Comprehensive Health Monitoring System Ready")
+    logger.info("  Real-time component health tracking")
+    logger.info("  Database, cache, and external API monitoring")
+    logger.info("  Resource usage monitoring (CPU, memory, disk)")
+    logger.info("  Status dashboard with historical metrics")
+    logger.info("  Automated alerting and recovery actions")
+    logger.info("  Health endpoints: /health, /health/detailed, /health/ready, /health/live")
 
 except Exception as e:
     logger.warning(f"Failed to initialize enhanced health monitoring: {e}")
-    print("⚠️  Warning: Enhanced health monitoring could not be fully initialized")
+    logger.warning("Enhanced health monitoring could not be fully initialized")
 
 
 # Add enhanced health endpoint as a resource
