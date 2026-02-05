@@ -23,9 +23,9 @@ These are the first steps to execute when you begin implementation work:
 
 ### Tasks
 
-- [ ] Task 1.1: Confirm the “golden path” decision (transport + entrypoint)
-- [ ] Task 1.2: Identify and document what becomes “legacy”
-- [ ] Task 1.3: Produce a refactor sequencing plan (P0/P1/P2)
+- [x] Task 1.1: Confirm the “golden path” decision (transport + entrypoint) (c4c366a)
+- [x] Task 1.2: Identify and document what becomes “legacy” (c4c366a)
+- [x] Task 1.3: Produce a refactor sequencing plan (P0/P1/P2) (c4c366a)
 
 ## Phase 2: MCP/FastMCP Research (External)
 
