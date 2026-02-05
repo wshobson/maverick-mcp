@@ -102,20 +102,19 @@ warnings.filterwarnings(
 
 # ruff: noqa: E402 - Imports after warnings config for proper deprecation warning suppression
 import argparse
-import logging
 import json
+import logging
 import sys
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.routing import BaseRoute, Route
-
-from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -161,7 +160,10 @@ def apply_sse_trailing_slash_patch() -> None:
     This prevents 307 redirects that can cause tool registration failures with mcp-remote.
     The patch is idempotent and must be applied explicitly (typically when starting SSE).
     """
-    if getattr(fastmcp_http.create_sse_app, "__name__", "") == "_patched_create_sse_app":
+    if (
+        getattr(fastmcp_http.create_sse_app, "__name__", "")
+        == "_patched_create_sse_app"
+    ):
         return
 
     original_create_sse_app = fastmcp_http.create_sse_app
@@ -194,7 +196,9 @@ def apply_sse_trailing_slash_patch() -> None:
                 break
 
         if not sse_endpoint:
-            patch_logger.warning("SSE patch: could not find SSE endpoint for %s", sse_path)
+            patch_logger.warning(
+                "SSE patch: could not find SSE endpoint for %s", sse_path
+            )
             return app
 
         alt_path = sse_path.rstrip("/") if sse_path.endswith("/") else sse_path + "/"
@@ -217,6 +221,8 @@ class FastMCPProtocol(Protocol):
 
     fastapi_app: FastAPI | None
     dependencies: list[Any]
+
+    def add_middleware(self, middleware: Middleware) -> None: ...
 
     def resource(
         self, uri: str
@@ -386,7 +392,9 @@ try:
     logger.info("  Resource usage monitoring (CPU, memory, disk)")
     logger.info("  Status dashboard with historical metrics")
     logger.info("  Automated alerting and recovery actions")
-    logger.info("  Health endpoints: /health, /health/detailed, /health/ready, /health/live")
+    logger.info(
+        "  Health endpoints: /health, /health/detailed, /health/ready, /health/live"
+    )
 
 except Exception as e:
     logger.warning(f"Failed to initialize enhanced health monitoring: {e}")

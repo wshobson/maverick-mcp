@@ -1118,7 +1118,9 @@ class EnhancedStockDataProvider:
                         symbol_data = batch_df
 
                     if symbol_data is None or symbol_data.empty:
-                        logger.debug(f"No batch data for {symbol}, falling back to individual fetch")
+                        logger.debug(
+                            f"No batch data for {symbol}, falling back to individual fetch"
+                        )
                         # Fallback to individual fetch
                         data = self.get_realtime_data(symbol)
                         if data:
