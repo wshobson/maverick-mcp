@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class EstimationBasis(str, Enum):
+class EstimationBasis(StrEnum):
     """Describes how a tool estimate was derived."""
 
     EMPIRICAL = "empirical"
@@ -17,7 +17,7 @@ class EstimationBasis(str, Enum):
     SIMULATED = "simulated"
 
 
-class ToolComplexity(str, Enum):
+class ToolComplexity(StrEnum):
     """Qualitative complexity buckets used for monitoring and reporting."""
 
     SIMPLE = "simple"
@@ -112,7 +112,7 @@ class ToolEstimationConfig(BaseModel):
         default_factory=lambda: ToolEstimate(
             llm_calls=10,
             total_tokens=15000,
-            confidence=0.65,
+            confidence=0.6,
             based_on=EstimationBasis.CONSERVATIVE,
             complexity=ToolComplexity.PREMIUM,
             notes="Baseline premium orchestration",
@@ -131,7 +131,7 @@ class ToolEstimationConfig(BaseModel):
     tool_estimates: dict[str, ToolEstimate] = Field(default_factory=dict)
 
     def model_post_init(self, _context: Any) -> None:  # noqa: D401
-        if not self.tool_estimates:
+        if "tool_estimates" not in self.model_fields_set:
             self.tool_estimates = _build_default_estimates(self)
         else:
             normalised: dict[str, ToolEstimate] = {}
@@ -441,7 +441,7 @@ def _build_default_estimates(config: ToolEstimationConfig) -> dict[str, ToolEsti
         "analyze_market_with_agent": {
             "llm_calls": 10,
             "total_tokens": 14000,
-            "confidence": 0.65,
+            "confidence": 0.6,
             "based_on": EstimationBasis.CONSERVATIVE,
             "complexity": ToolComplexity.PREMIUM,
             "notes": "Multi-agent orchestration",

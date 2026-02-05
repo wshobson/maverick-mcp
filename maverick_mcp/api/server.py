@@ -266,7 +266,6 @@ logger_manager = get_logger_manager()
 _fastmcp_instance = FastMCP(
     name=settings.app_name,
 )
-_fastmcp_instance.dependencies = []
 mcp = cast(FastMCPProtocol, _fastmcp_instance)
 
 # Initialize connection manager for stability
@@ -401,8 +400,6 @@ except Exception as e:
     logger.warning("Enhanced health monitoring could not be fully initialized")
 
 
-# Add enhanced health endpoint as a resource
-@mcp.resource("health://")
 def health_resource() -> dict[str, Any]:
     """
     Enhanced comprehensive health check endpoint.
@@ -459,9 +456,10 @@ def health_resource() -> dict[str, Any]:
             "timestamp": datetime.now(UTC).isoformat(),
         }
 
+# Register enhanced health endpoint as a resource without replacing the callable.
+mcp.resource("health://")(health_resource)
 
 # Add status dashboard endpoint as a resource
-@mcp.resource("dashboard://")
 def status_dashboard_resource() -> dict[str, Any]:
     """
     Comprehensive status dashboard with real-time metrics.
@@ -501,6 +499,8 @@ def status_dashboard_resource() -> dict[str, Any]:
             "timestamp": datetime.now(UTC).isoformat(),
         }
 
+# Register status dashboard as a resource without replacing the callable.
+mcp.resource("dashboard://")(status_dashboard_resource)
 
 # Add performance dashboard endpoint as a resource (keep existing)
 @mcp.resource("performance://")

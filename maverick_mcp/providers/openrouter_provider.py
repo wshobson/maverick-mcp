@@ -5,7 +5,7 @@ with automatic model selection based on task requirements.
 """
 
 import logging
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from langchain_openai import ChatOpenAI
@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-class TaskType(str, Enum):
+class TaskType(StrEnum):
     """Task types for model selection."""
 
     # Analysis tasks

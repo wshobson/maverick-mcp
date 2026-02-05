@@ -53,6 +53,9 @@ class MaverickException(Exception):
 class ValidationError(MaverickException):
     """Raised when input validation fails."""
 
+    error_code = "VALIDATION_ERROR"
+    status_code = 422
+
 
 # Research and agent exceptions
 class ResearchError(MaverickException):

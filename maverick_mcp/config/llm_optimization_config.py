@@ -6,13 +6,13 @@ to prevent research agent timeouts while maintaining quality.
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from maverick_mcp.providers.openrouter_provider import TaskType
 
 
-class OptimizationMode(str, Enum):
+class OptimizationMode(StrEnum):
     """Optimization modes for different use cases."""
 
     EMERGENCY = "emergency"  # <20s - Ultra-fast, minimal quality
@@ -21,7 +21,7 @@ class OptimizationMode(str, Enum):
     COMPREHENSIVE = "comprehensive"  # 180s+ - Full quality, time permitting
 
 
-class ResearchComplexity(str, Enum):
+class ResearchComplexity(StrEnum):
     """Research complexity levels."""
 
     SIMPLE = "simple"  # Basic queries, single focus

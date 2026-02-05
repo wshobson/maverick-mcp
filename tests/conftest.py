@@ -13,6 +13,7 @@ os.environ["MAVERICK_TEST_ENV"] = "true"
 import asyncio
 import sys
 from collections.abc import AsyncGenerator, Generator
+from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -29,6 +30,58 @@ from maverick_mcp.api.api_server import create_api_app
 # Import all models to ensure they're registered with Base
 from maverick_mcp.data.models import get_db
 from maverick_mcp.database.base import Base
+
+
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """
+    Ensure tests in dedicated directories get proper markers so default `-m`
+    selection in `pyproject.toml` behaves as intended.
+    """
+    root = Path(str(config.rootpath)).resolve()
+
+    for item in items:
+        try:
+            rel = Path(str(item.path)).resolve().relative_to(root)
+        except Exception:
+            continue
+
+        if len(rel.parts) >= 2 and rel.parts[0] == "tests":
+            # Directory-based categorization
+            if rel.parts[1] == "integration":
+                item.add_marker(pytest.mark.integration)
+            elif rel.parts[1] == "performance":
+                item.add_marker(pytest.mark.slow)
+
+        # Filename-based categorization for root-level suites.
+        filename = rel.name
+        if filename.endswith("_integration.py"):
+            item.add_marker(pytest.mark.integration)
+        elif filename.endswith("_functional.py"):
+            item.add_marker(pytest.mark.slow)
+
+        # Known heavy or external-dependent suites (have dedicated make targets).
+        if filename in {
+            "test_agents_router_mcp.py",
+            "test_supervisor_agent.py",
+        }:
+            item.add_marker(pytest.mark.external)
+
+        if filename in {
+            "test_backtest_persistence.py",
+            "test_integration_simple.py",
+            "test_langgraph_workflow.py",
+            "test_ml_strategies.py",
+            "test_parallel_research_orchestrator.py",
+            "test_parallel_research_performance.py",
+            "test_production_validation.py",
+            "test_speed_optimization_validation.py",
+            "test_visualization.py",
+        }:
+            item.add_marker(pytest.mark.slow)
+
+        # Prefix-based categorization for legacy naming.
+        if filename.startswith("test_integration_"):
+            item.add_marker(pytest.mark.integration)
 
 
 # Container fixtures (session scope for efficiency)

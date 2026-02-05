@@ -8,8 +8,9 @@ import time
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from functools import wraps
+from inspect import isawaitable
 from typing import Any
 
 from fastapi import Request
@@ -22,7 +23,15 @@ from maverick_mcp.exceptions import RateLimitError
 logger = logging.getLogger(__name__)
 
 
-class RateLimitStrategy(str, Enum):
+async def _await_if_needed(value: Any) -> Any:
+    """Await values that may be coroutine results (helps with mixed sync/async mocks)."""
+
+    if isawaitable(value):
+        return await value
+    return value
+
+
+class RateLimitStrategy(StrEnum):
     """Supported rate limiting strategies."""
 
     SLIDING_WINDOW = "sliding_window"
@@ -30,7 +39,7 @@ class RateLimitStrategy(str, Enum):
     FIXED_WINDOW = "fixed_window"
 
 
-class RateLimitTier(str, Enum):
+class RateLimitTier(StrEnum):
     """Logical tiers used to classify API endpoints."""
 
     PUBLIC = "public"
@@ -220,10 +229,12 @@ class RateLimiter:
         now = time.time()
 
         pipeline = client.pipeline()
-        pipeline.zremrangebyscore(redis_key, 0, now - window_seconds)
-        pipeline.zcard(redis_key)
-        pipeline.zadd(redis_key, {str(now): now})
-        pipeline.expire(redis_key, window_seconds)
+        await _await_if_needed(
+            pipeline.zremrangebyscore(redis_key, 0, now - window_seconds)
+        )
+        await _await_if_needed(pipeline.zcard(redis_key))
+        await _await_if_needed(pipeline.zadd(redis_key, {str(now): now}))
+        await _await_if_needed(pipeline.expire(redis_key, window_seconds))
         results = await pipeline.execute()
 
         current_count = int(results[1]) + 1
@@ -295,14 +306,18 @@ class RateLimiter:
             retry_after = int(max((1 - tokens) / self.config.token_refill_rate, 1))
             info["remaining"] = 0
             info["retry_after"] = retry_after
-            await client.hset(redis_key, mapping={"tokens": tokens, "last_refill": now})
-            await client.expire(redis_key, window_seconds)
+            await _await_if_needed(
+                client.hset(redis_key, mapping={"tokens": tokens, "last_refill": now})
+            )
+            await _await_if_needed(client.expire(redis_key, window_seconds))
             return False, info
 
         tokens -= 1
         info["remaining"] = int(tokens)
-        await client.hset(redis_key, mapping={"tokens": tokens, "last_refill": now})
-        await client.expire(redis_key, window_seconds)
+        await _await_if_needed(
+            client.hset(redis_key, mapping={"tokens": tokens, "last_refill": now})
+        )
+        await _await_if_needed(client.expire(redis_key, window_seconds))
         return True, info
 
     async def _check_fixed_window(
@@ -315,8 +330,8 @@ class RateLimiter:
     ) -> tuple[bool, dict[str, Any]]:
         redis_key = self._redis_key("fw", tier=tier, identifier=key)
         pipeline = client.pipeline()
-        pipeline.incr(redis_key)
-        pipeline.expire(redis_key, window_seconds)
+        await _await_if_needed(pipeline.incr(redis_key))
+        await _await_if_needed(pipeline.expire(redis_key, window_seconds))
         results = await pipeline.execute()
 
         current = int(results[0])
@@ -379,6 +394,11 @@ class EnhancedRateLimitMiddleware(BaseHTTPMiddleware):
     ) -> Response:  # type: ignore[override]
         path = request.url.path
         tier = EndpointClassification.classify_endpoint(path)
+        if tier == RateLimitTier.PUBLIC:
+            # Public endpoints (health/docs/metrics) should be accessible even when
+            # rate limiting is enabled, and tests expect no rate-limit headers.
+            return await call_next(request)
+
         user_id = getattr(request.state, "user_id", None)
         user_context = getattr(request.state, "user_context", {}) or {}
         role = user_context.get("role") if isinstance(user_context, dict) else None
@@ -448,8 +468,15 @@ def rate_limit(
             if request is None:
                 return await func(*args, **kwargs)
 
-            tier = EndpointClassification.classify_endpoint(request.url.path)
-            key = str(getattr(request.state, "user_id", None) or request.url.path)
+            path = getattr(getattr(request, "url", None), "path", "") or ""
+            tier = EndpointClassification.classify_endpoint(str(path))
+            user_id = getattr(getattr(request, "state", None), "user_id", None)
+
+            # Include path to avoid cross-endpoint collisions and test leakage when
+            # local fallback storage is used.
+            identity = str(user_id) if user_id else "anonymous"
+            identity_suffix = str(path) if path else func.__name__
+            key = f"{identity}:{identity_suffix}"
             allowed, info = await _default_limiter.check_rate_limit(
                 key=key,
                 tier=tier,

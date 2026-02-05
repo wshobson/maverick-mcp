@@ -379,10 +379,13 @@ class MockStockScreener:
         """Get all mock screening recommendations."""
         self._log_call("get_all_screening_recommendations", {})
 
+        trending = await self.get_trending_recommendations()
         return {
             "maverick_stocks": await self.get_maverick_recommendations(),
             "maverick_bear_stocks": await self.get_maverick_bear_recommendations(),
-            "supply_demand_breakouts": await self.get_trending_recommendations(),
+            # Maintain both keys for compatibility across callers/tests.
+            "trending_stocks": trending,
+            "supply_demand_breakouts": trending,
         }
 
     def _generate_mock_maverick_recommendations(self) -> list[dict[str, Any]]:
