@@ -115,6 +115,10 @@ from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.routing import BaseRoute, Route
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from maverick_mcp.api.middleware.rate_limiting_enhanced import (
     EnhancedRateLimitMiddleware,
     RateLimitConfig,

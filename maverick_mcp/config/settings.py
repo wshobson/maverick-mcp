@@ -14,10 +14,6 @@ from pydantic import BaseModel, Field
 
 from maverick_mcp.config.constants import CONFIG
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.config")
 
 
