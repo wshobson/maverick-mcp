@@ -90,6 +90,7 @@ dev = [
     "greenlet>=3.0.0",
     "asyncpg>=0.30.0",
     "ruff>=0.11.10",
+    "pyright>=1.1.400",
     "bandit>=1.7.5",
     "safety>=3.0.0",
     "types-requests>=2.31.0",
@@ -160,9 +161,3 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
-
-[dependency-groups]
-dev = [
-    "testcontainers[postgres]>=4.10.0",
-]
-

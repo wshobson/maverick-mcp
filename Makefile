@@ -140,16 +140,16 @@ test-strategies:
 # Code quality commands
 lint:
 	@echo "Running linter..."
-	@uv run ruff check .
+	@uv run --extra dev ruff check .
 
 format:
 	@echo "Formatting code..."
-	@uv run ruff format .
-	@uv run ruff check . --fix
+	@uv run --extra dev ruff format .
+	@uv run --extra dev ruff check . --fix
 
 typecheck:
 	@echo "Running type checker..."
-	@uv run pyright
+	@uv run --extra dev pyright
 
 check: lint typecheck
 	@echo "All checks passed!"
