@@ -38,9 +38,9 @@ These are the first steps to execute when you begin implementation work:
 
 ### Tasks
 
-- [ ] Task 3.1: Define “safe wins” to do first (no behavior changes)
-- [ ] Task 3.2: Define an implementation track plan (TDD tasks + verification)
-- [ ] Task 3.3: Create an explicit deprecation plan for alternate paths
+- [x] Task 3.1: Define “safe wins” to do first (no behavior changes) (6778afb)
+- [x] Task 3.2: Define an implementation track plan (TDD tasks + verification) (6778afb)
+- [x] Task 3.3: Create an explicit deprecation plan for alternate paths (6778afb)
 
 ### Verification
 
