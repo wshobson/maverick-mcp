@@ -17,6 +17,7 @@ Navigation hub for project context.
 
 | Status | Track ID | Title | Progress |
 | ------ | -------- | ----- | -------- |
+| planning | [project-audit-modernization_20260205](./tracks/project-audit-modernization_20260205/index.md) | Project Audit & Modernization | 0/8 tasks |
 
 ## Getting Started
 
