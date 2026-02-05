@@ -1140,6 +1140,7 @@ if __name__ == "__main__":
                 host=args.host,
             )
         else:  # sse
+            apply_sse_trailing_slash_patch()
             logger.info(
                 f"Starting {settings.app_name} server with SSE transport on http://{args.host}:{args.port}"
             )
