@@ -14,7 +14,7 @@ import asyncio
 import time
 from datetime import datetime
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from langchain_core.language_models import BaseChatModel
@@ -25,6 +25,8 @@ from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.utils.parallel_research import (
     ParallelResearchConfig,
 )
+
+_ASYNC_MOCK_SENTINEL = AsyncMock
 
 
 class MockSearchProvider:

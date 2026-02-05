@@ -96,7 +96,7 @@ class RedisConnectionManager:
                 raise RuntimeError(msg)
 
             # Test connection
-            await client.ping()
+            await client.execute_command("PING")
 
             self._healthy = True
             self._initialized = True
@@ -150,7 +150,7 @@ class RedisConnectionManager:
 
         try:
             if self._client:
-                await self._client.ping()
+                await self._client.execute_command("PING")
                 self._healthy = True
                 logger.debug("Redis health check passed")
             else:
