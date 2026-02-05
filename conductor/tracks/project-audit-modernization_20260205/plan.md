@@ -31,8 +31,8 @@ These are the first steps to execute when you begin implementation work:
 
 ### Tasks
 
-- [ ] Task 2.1: Validate MCP transport guidance (spec/changelog) for this use case
-- [ ] Task 2.2: Validate FastMCP capabilities to leverage (background tasks, sampling)
+- [x] Task 2.1: Validate MCP transport guidance (spec/changelog) for this use case (ba98fce)
+- [x] Task 2.2: Validate FastMCP capabilities to leverage (background tasks, sampling) (ba98fce)
 
 ## Phase 3: Modernization Roadmap
 
