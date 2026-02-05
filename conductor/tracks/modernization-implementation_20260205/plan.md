@@ -17,8 +17,8 @@
 
 ### Tasks
 
-- [~] Task 2.1: Align `scripts/dev.sh` defaults (streamable-http + localhost; overrideable)
-- [~] Task 2.2: Align `Makefile` dev targets with new defaults
+- [x] Task 2.1: Align `scripts/dev.sh` defaults (streamable-http + localhost; overrideable) (18775f8)
+- [x] Task 2.2: Align `Makefile` dev targets with new defaults (18775f8)
 
 ### Verification
 
