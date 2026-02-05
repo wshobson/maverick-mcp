@@ -1,0 +1,57 @@
+{
+  "status": "complete",
+  "project_type": "brownfield",
+  "current_section": null,
+  "current_question": null,
+  "completed_sections": ["product", "guidelines", "tech_stack", "workflow", "styleguides"],
+  "answers": {
+    "project_name": "MaverickMCP",
+    "description": "Personal-use MCP server for Claude Desktop providing professional-grade stock analysis and technical indicators",
+    "problems": [
+      "Stock analysis workflows are fragmented across multiple tools and tabs",
+      "Repeatable screening and indicator analysis is time-consuming to reproduce manually",
+      "Portfolio tracking and performance context are often disconnected from analysis"
+    ],
+    "target_users": [
+      "Primary: repo owner using Claude Desktop for investing research",
+      "Secondary: advanced retail investors and technical-analysis oriented traders"
+    ],
+    "key_goals": [
+      "Fast, reliable stock analysis via stable MCP tools",
+      "Accurate and reproducible indicator and screening outputs",
+      "Practical portfolio visibility (positions, cost basis, P&L, correlations)",
+      "Graceful degradation when optional providers are unavailable"
+    ],
+    "voice_tone": "Direct and analytical",
+    "design_principles": [
+      "Correctness and transparency",
+      "Speed via caching (without surprises)",
+      "Deterministic, composable tools",
+      "Personal-use simplicity"
+    ],
+    "language": "Python 3.12",
+    "frontend": "None (Claude Desktop client)",
+    "backend": "FastMCP + FastAPI server transports",
+    "database": "SQLite default (PostgreSQL optional)",
+    "infrastructure": "Local dev via Makefile; Docker optional; Claude Desktop via mcp-remote bridge",
+    "tdd_policy": "Strict TDD for behavior changes",
+    "commit_strategy": "Squash per track",
+    "code_review": "Recommended for non-trivial changes",
+    "verification_checkpoints": "Verify at track completion",
+    "style_guides": ["Python"],
+    "incorporate_existing_config": true
+  },
+  "files_created": [
+    "conductor/index.md",
+    "conductor/product.md",
+    "conductor/product-guidelines.md",
+    "conductor/tech-stack.md",
+    "conductor/workflow.md",
+    "conductor/tracks.md",
+    "conductor/setup_state.json",
+    "conductor/code_styleguides/python.md"
+  ],
+  "started_at": "2026-02-05T00:00:00Z",
+  "last_updated": "2026-02-05T00:00:00Z"
+}
+

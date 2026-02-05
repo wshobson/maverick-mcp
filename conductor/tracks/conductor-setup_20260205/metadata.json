@@ -1,0 +1,18 @@
+{
+  "id": "conductor-setup_20260205",
+  "title": "Conductor Setup",
+  "type": "chore",
+  "status": "complete",
+  "created": "2026-02-05T00:00:00Z",
+  "updated": "2026-02-05T00:00:00Z",
+  "current_phase": 1,
+  "phases": {
+    "total": 1,
+    "completed": 1
+  },
+  "tasks": {
+    "total": 5,
+    "completed": 5
+  }
+}
+
