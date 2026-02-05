@@ -1,0 +1,17 @@
+{
+  "id": "modernization-implementation_20260205",
+  "title": "Modernization Implementation (Safe Wins)",
+  "type": "chore",
+  "status": "active",
+  "created": "2026-02-05T00:00:00Z",
+  "updated": "2026-02-05T00:00:00Z",
+  "current_phase": 1,
+  "phases": {
+    "total": 2,
+    "completed": 0
+  },
+  "tasks": {
+    "total": 5,
+    "completed": 0
+  }
+}
