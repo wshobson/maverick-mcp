@@ -3,7 +3,7 @@
 **Track ID:** modernization-implementation_20260205
 **Type:** Chore
 **Created:** 2026-02-05
-**Status:** Active
+**Status:** Completed
 
 ## Summary
 
@@ -17,8 +17,8 @@ Implement the P0 “safe wins” identified in `project-audit-modernization_2026
 
 ## Acceptance Criteria
 
-- [ ] STDIO “golden path” is safe: importing/starting the server does not write non-protocol output to stdout
-- [ ] SSE compatibility patch is applied only when SSE transport is used (no import-time monkey-patching)
-- [ ] Module-level `load_dotenv()` and `logging.basicConfig()` side effects are removed from library modules and centralized in the server bootstrap path
-- [ ] `make dev` / `scripts/dev.sh` defaults align with the golden path (streamable HTTP for HTTP dev, stdio for Claude Desktop)
-- [ ] Tests cover the above behaviors
+- [x] STDIO “golden path” is safe: importing/starting the server does not write non-protocol output to stdout
+- [x] SSE compatibility patch is applied only when SSE transport is used (no import-time monkey-patching)
+- [x] Module-level `load_dotenv()` and `logging.basicConfig()` side effects are removed from library modules and centralized in the server bootstrap path
+- [x] `make dev` / `scripts/dev.sh` defaults align with the golden path (streamable HTTP for HTTP dev, stdio for Claude Desktop)
+- [x] Tests cover the above behaviors
