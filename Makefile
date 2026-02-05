@@ -7,10 +7,10 @@
 help:
 	@echo "Maverick-MCP Development Commands:"
 	@echo ""
-	@echo "  make dev          - Start development environment (SSE transport, default)"
-	@echo "  make dev-sse      - Start with SSE transport (same as dev)"
-	@echo "  make dev-http     - Start with Streamable-HTTP transport (for curl/testing)"
-	@echo "  make dev-stdio    - Start with STDIO transport (for direct connections)"
+	@echo "  make dev          - Start development environment (Streamable-HTTP transport, default)"
+	@echo "  make dev-http     - Start with Streamable-HTTP transport (same as dev)"
+	@echo "  make dev-sse      - Start with SSE transport (debug/inspector use)"
+	@echo "  make dev-stdio    - Start with STDIO transport (recommended for Claude Desktop)"
 	@echo "  make backend      - Start backend MCP server (dev mode)"
 	@echo "  make stop         - Stop all services"
 	@echo ""
@@ -47,16 +47,16 @@ help:
 
 # Development commands
 dev:
-	@echo "Starting Maverick-MCP development environment (SSE transport)..."
-	@./scripts/dev.sh
-
-dev-sse:
-	@echo "Starting Maverick-MCP development environment (SSE transport)..."
+	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
 	@./scripts/dev.sh
 
 dev-http:
 	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
-	@MAVERICK_TRANSPORT=streamable-http ./scripts/dev.sh
+	@./scripts/dev.sh
+
+dev-sse:
+	@echo "Starting Maverick-MCP development environment (SSE transport)..."
+	@MAVERICK_TRANSPORT=sse ./scripts/dev.sh
 
 dev-stdio:
 	@echo "Starting Maverick-MCP development environment (STDIO transport)..."
@@ -140,16 +140,16 @@ test-strategies:
 # Code quality commands
 lint:
 	@echo "Running linter..."
-	@uv run ruff check .
+	@uv run --extra dev ruff check .
 
 format:
 	@echo "Formatting code..."
-	@uv run ruff format .
-	@uv run ruff check . --fix
+	@uv run --extra dev ruff format .
+	@uv run --extra dev ruff check . --fix
 
 typecheck:
 	@echo "Running type checker..."
-	@uv run pyright
+	@uv run --extra dev pyright
 
 check: lint typecheck
 	@echo "All checks passed!"

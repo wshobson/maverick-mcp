@@ -13,16 +13,32 @@ NC='\033[0m' # No Color
 
 echo -e "${GREEN}Starting Maverick-MCP Development Environment${NC}"
 
-# Kill any existing processes on port 8003 to avoid conflicts
-echo -e "${YELLOW}Checking for existing processes on port 8003...${NC}"
-EXISTING_PID=$(lsof -ti:8003 2>/dev/null || true)
+# Move to repo root early so `.env` can influence defaults
+cd "$(dirname "$0")/.."
+echo -e "${YELLOW}Current directory: $(pwd)${NC}"
+
+# Source .env if it exists
+if [ -f .env ]; then
+    source .env
+fi
+
+# Golden path defaults:
+# - Streamable HTTP for local HTTP dev (localhost-only by default)
+# - STDIO for Claude Desktop (use `make dev-stdio` or set MAVERICK_TRANSPORT=stdio)
+TRANSPORT=${MAVERICK_TRANSPORT:-streamable-http}
+HOST=${MAVERICK_HOST:-127.0.0.1}
+PORT=${MAVERICK_PORT:-8003}
+
+# Kill any existing processes on the port to avoid conflicts
+echo -e "${YELLOW}Checking for existing processes on port ${PORT}...${NC}"
+EXISTING_PID=$(lsof -ti:${PORT} 2>/dev/null || true)
 if [ ! -z "$EXISTING_PID" ]; then
-    echo -e "${YELLOW}Found existing process(es) on port 8003: $EXISTING_PID${NC}"
+    echo -e "${YELLOW}Found existing process(es) on port ${PORT}: $EXISTING_PID${NC}"
     echo -e "${YELLOW}Killing existing processes...${NC}"
     kill -9 $EXISTING_PID 2>/dev/null || true
     sleep 1
 else
-    echo -e "${GREEN}No existing processes found on port 8003${NC}"
+    echo -e "${GREEN}No existing processes found on port ${PORT}${NC}"
 fi
 
 # Check if Redis is running
@@ -53,13 +69,6 @@ trap cleanup EXIT INT TERM
 
 # Start backend
 echo -e "${YELLOW}Starting backend MCP server...${NC}"
-cd "$(dirname "$0")/.."
-echo -e "${YELLOW}Current directory: $(pwd)${NC}"
-
-# Source .env if it exists
-if [ -f .env ]; then
-    source .env
-fi
 
 # Check if uv is available (more relevant than python since we use uv run)
 if ! command -v uv &> /dev/null; then
@@ -77,16 +86,14 @@ if [ -z "$EXA_API_KEY" ] && [ -z "$TAVILY_API_KEY" ]; then
     echo -e "${RED}Warning: Neither EXA_API_KEY nor TAVILY_API_KEY set - research tools may be limited${NC}"
 fi
 
-# Choose transport based on environment variable or default to SSE for reliability
-TRANSPORT=${MAVERICK_TRANSPORT:-sse}
-echo -e "${YELLOW}Starting backend with: uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host 0.0.0.0 --port 8003${NC}"
-echo -e "${YELLOW}Transport: ${TRANSPORT} (recommended for Claude Desktop stability)${NC}"
+echo -e "${YELLOW}Starting backend with: uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host ${HOST} --port ${PORT}${NC}"
+echo -e "${YELLOW}Transport: ${TRANSPORT}${NC}"
 
 # Run backend with FastMCP in development mode (show real-time output)
 echo -e "${YELLOW}Starting server with real-time output...${NC}"
 # Set PYTHONWARNINGS to suppress websockets deprecation warnings from uvicorn
 PYTHONWARNINGS="ignore::DeprecationWarning:websockets.*,ignore::DeprecationWarning:uvicorn.*" \
-uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host 0.0.0.0 --port 8003 2>&1 | tee backend.log &
+uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host ${HOST} --port ${PORT} 2>&1 | tee backend.log &
 BACKEND_PID=$!
 echo -e "${YELLOW}Backend PID: $BACKEND_PID${NC}"
 
@@ -103,7 +110,7 @@ for i in {1..45}; do
     fi
     
     # Check if port is open
-    if nc -z localhost 8003 2>/dev/null || curl -s http://localhost:8003/health >/dev/null 2>&1; then
+    if nc -z localhost ${PORT} 2>/dev/null || curl -s http://localhost:${PORT}/health >/dev/null 2>&1; then
         if [ "$TOOLS_REGISTERED" = false ]; then
             echo -e "${GREEN}Backend port is open, checking for tool registration...${NC}"
             
@@ -137,19 +144,19 @@ else
     echo -e "${YELLOW}Backend appears to be running but tool registration status unclear${NC}"
 fi
 
-echo -e "${GREEN}Backend started successfully on http://localhost:8003${NC}"
+echo -e "${GREEN}Backend started successfully on http://localhost:${PORT}${NC}"
 
 # Show information
 echo -e "\n${GREEN}Development environment is running!${NC}"
-echo -e "${YELLOW}MCP Server:${NC} http://localhost:8003"
-echo -e "${YELLOW}Health Check:${NC} http://localhost:8003/health"
+echo -e "${YELLOW}MCP Server:${NC} http://localhost:${PORT}"
+echo -e "${YELLOW}Health Check:${NC} http://localhost:${PORT}/health"
 
 # Show endpoint based on transport type
 if [ "$TRANSPORT" = "sse" ]; then
-    echo -e "${YELLOW}MCP SSE Endpoint:${NC} http://localhost:8003/sse/"
+    echo -e "${YELLOW}MCP SSE Endpoint:${NC} http://localhost:${PORT}/sse"
 elif [ "$TRANSPORT" = "streamable-http" ]; then
-    echo -e "${YELLOW}MCP HTTP Endpoint:${NC} http://localhost:8003/mcp"
-    echo -e "${YELLOW}Test with curl:${NC} curl -X POST http://localhost:8003/mcp"
+    echo -e "${YELLOW}MCP HTTP Endpoint:${NC} http://localhost:${PORT}/mcp"
+    echo -e "${YELLOW}Test with curl:${NC} curl -X POST http://localhost:${PORT}/mcp"
 elif [ "$TRANSPORT" = "stdio" ]; then
     echo -e "${YELLOW}MCP Transport:${NC} STDIO (no HTTP endpoint)"
 fi
@@ -166,25 +173,22 @@ fi
 
 echo -e "\n${YELLOW}Claude Desktop Configuration:${NC}"
 if [ "$TRANSPORT" = "sse" ]; then
-    echo -e "${GREEN}SSE Transport (tested and stable):${NC}"
-    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]}}}'
+    echo -e "${GREEN}SSE Transport (debug/inspector use):${NC}"
+    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:'${PORT}'/sse"]}}}'
 elif [ "$TRANSPORT" = "stdio" ]; then
-    echo -e "${GREEN}STDIO Transport (direct connection):${NC}"
+    echo -e "${GREEN}STDIO Transport (recommended):${NC}"
     echo -e '{"mcpServers": {"maverick-mcp": {"command": "uv", "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"], "cwd": "'$(pwd)'"}}}'
 elif [ "$TRANSPORT" = "streamable-http" ]; then
-    echo -e "${GREEN}Streamable-HTTP Transport (for testing):${NC}"
-    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]}}}'
+    echo -e "${GREEN}Streamable-HTTP Transport (mcp-remote bridge):${NC}"
+    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:'${PORT}'/mcp"]}}}'
 else
-    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:8003/mcp"]}}}'
+    echo -e '{"mcpServers": {"maverick-mcp": {"command": "npx", "args": ["-y", "mcp-remote", "http://localhost:'${PORT}'/mcp"]}}}'
 fi
 
 echo -e "\n${YELLOW}Connection Stability Features:${NC}"
 if [ "$TRANSPORT" = "sse" ]; then
-    echo -e "  • SSE transport (tested and stable for Claude Desktop)"
-    echo -e "  • Uses mcp-remote bridge for reliable connection"
-    echo -e "  • Prevents tools from disappearing"
-    echo -e "  • Persistent connection with session management"
-    echo -e "  • Adaptive timeout system for research tools"
+    echo -e "  • SSE transport (debug/inspector use)"
+    echo -e "  • Uses mcp-remote bridge"
 elif [ "$TRANSPORT" = "stdio" ]; then
     echo -e "  • Direct STDIO transport (no network layer)"
     echo -e "  • No mcp-remote needed (direct Claude Desktop integration)"

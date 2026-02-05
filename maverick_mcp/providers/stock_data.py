@@ -13,7 +13,6 @@ import pandas as pd
 import pandas_market_calendars as mcal
 import pytz
 import yfinance as yf
-from dotenv import load_dotenv
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -34,12 +33,6 @@ from maverick_mcp.utils.circuit_breaker_decorators import (
 from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
 
 # Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.stock_data")
 
 
@@ -845,6 +838,20 @@ class EnhancedStockDataProvider:
             if should_close:
                 session.close()
 
+    def get_trending_recommendations(
+        self, limit: int = 20, min_momentum_score: float | None = None
+    ) -> list[dict]:
+        """
+        Backwards-compatible alias for supply/demand breakout screening.
+
+        Older callers/tests refer to "trending" recommendations; the underlying
+        dataset is maintained in ``SupplyDemandBreakoutStocks``.
+        """
+
+        return self.get_supply_demand_breakout_recommendations(
+            limit=limit, min_momentum_score=min_momentum_score
+        )
+
     def get_all_screening_recommendations(self) -> dict[str, list[dict]]:
         """
         Get all screening recommendations in one call.
@@ -1125,7 +1132,9 @@ class EnhancedStockDataProvider:
                         symbol_data = batch_df
 
                     if symbol_data is None or symbol_data.empty:
-                        logger.debug(f"No batch data for {symbol}, falling back to individual fetch")
+                        logger.debug(
+                            f"No batch data for {symbol}, falling back to individual fetch"
+                        )
                         # Fallback to individual fetch
                         data = self.get_realtime_data(symbol)
                         if data:

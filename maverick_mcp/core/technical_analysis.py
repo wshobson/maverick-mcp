@@ -21,10 +21,6 @@ import pandas_ta as ta
 
 from maverick_mcp.config.technical_constants import TECHNICAL_CONFIG
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.technical_analysis")
 
 
@@ -711,7 +707,9 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     if not (high_col and low_col and close_col):
         # Fallback to old method if columns are not found (unlikely if they exist)
         # This preserves previous behavior for missing columns which might raise error later or handle it
-        logger.warning("Could not find High, Low, Close columns case-insensitively. Falling back to copy method.")
+        logger.warning(
+            "Could not find High, Low, Close columns case-insensitively. Falling back to copy method."
+        )
         df_copy = df.copy()
         df_copy.columns = [col.lower() for col in df_copy.columns]
         return ta.atr(df_copy["high"], df_copy["low"], df_copy["close"], length=period)
