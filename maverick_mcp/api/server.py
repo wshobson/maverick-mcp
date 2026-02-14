@@ -372,8 +372,14 @@ rate_limit_config = RateLimitConfig(
         int(settings.middleware.api_rate_limit_per_minute / 2), 1
     ),  # Analysis is more expensive
 )
-mcp.add_middleware(Middleware(EnhancedRateLimitMiddleware, config=rate_limit_config))
-logger.info("Enhanced Rate Limiting Middleware added to MCP server")
+# EnhancedRateLimitMiddleware is a Starlette ASGI middleware, so it must be added
+# to the FastAPI app (HTTP layer), not to the FastMCP instance (MCP protocol layer).
+# FastMCP's add_middleware expects fastmcp.server.middleware.Middleware subclasses.
+if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
+    mcp.fastapi_app.add_middleware(EnhancedRateLimitMiddleware, config=rate_limit_config)
+    logger.info("Enhanced Rate Limiting Middleware added to FastAPI application")
+else:
+    logger.warning("Rate limiting middleware not added (no FastAPI app available)")
 
 # Initialize enhanced health monitoring system
 logger.info("Initializing enhanced health monitoring system...")
