@@ -2,7 +2,7 @@ services:
   backend:
     build: .
     ports:
-      - "8003:8003"
+      - "8003:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/maverick_mcp
       - REDIS_HOST=redis
