@@ -363,8 +363,8 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(health_router, tags=["health"])
     logger.info("Monitoring and health endpoints registered with FastAPI application")
 
-# Add Enhanced Rate Limiting Middleware
-# Configure limits based on settings
+# Add Enhanced Rate Limiting Middleware to FastAPI app (not to MCP server directly,
+# since Starlette BaseHTTPMiddleware is incompatible with FastMCP's middleware chain)
 rate_limit_config = RateLimitConfig(
     public_limit=settings.middleware.api_rate_limit_per_minute,
     data_limit=settings.middleware.api_rate_limit_per_minute,
@@ -372,8 +372,11 @@ rate_limit_config = RateLimitConfig(
         int(settings.middleware.api_rate_limit_per_minute / 2), 1
     ),  # Analysis is more expensive
 )
-mcp.add_middleware(Middleware(EnhancedRateLimitMiddleware, config=rate_limit_config))
-logger.info("Enhanced Rate Limiting Middleware added to MCP server")
+if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
+    mcp.fastapi_app.add_middleware(EnhancedRateLimitMiddleware, config=rate_limit_config)
+    logger.info("Enhanced Rate Limiting Middleware added to FastAPI application")
+else:
+    logger.info("Rate limiting middleware skipped (no FastAPI app available)")
 
 # Initialize enhanced health monitoring system
 logger.info("Initializing enhanced health monitoring system...")
@@ -414,7 +417,7 @@ except Exception as e:
 
 # Add enhanced health endpoint as a resource
 @mcp.resource("health://")
-def health_resource() -> dict[str, Any]:
+def health_resource() -> str:
     """
     Enhanced comprehensive health check endpoint.
 
@@ -458,22 +461,22 @@ def health_resource() -> dict[str, Any]:
             }
         )
 
-        return health_status
+        return json.dumps(health_status)
 
     except Exception as e:
         logger.error(f"Health resource check failed: {e}")
-        return {
+        return json.dumps({
             "status": "unhealthy",
             "service": settings.app_name,
             "version": "1.0.0",
             "error": str(e),
             "timestamp": datetime.now(UTC).isoformat(),
-        }
+        })
 
 
 # Add status dashboard endpoint as a resource
 @mcp.resource("dashboard://")
-def status_dashboard_resource() -> dict[str, Any]:
+def status_dashboard_resource() -> str:
     """
     Comprehensive status dashboard with real-time metrics.
 
@@ -502,20 +505,20 @@ def status_dashboard_resource() -> dict[str, Any]:
             else:
                 asyncio.set_event_loop(None)
 
-        return dashboard_data
+        return json.dumps(dashboard_data, default=str)
 
     except Exception as e:
         logger.error(f"Dashboard resource failed: {e}")
-        return {
+        return json.dumps({
             "error": "Failed to generate dashboard",
             "message": str(e),
             "timestamp": datetime.now(UTC).isoformat(),
-        }
+        })
 
 
 # Add performance dashboard endpoint as a resource (keep existing)
 @mcp.resource("performance://")
-def performance_dashboard() -> dict[str, Any]:
+def performance_dashboard() -> str:
     """
     Performance metrics dashboard showing backtesting system health.
 
@@ -536,14 +539,14 @@ def performance_dashboard() -> dict[str, Any]:
             }
         )
 
-        return dashboard_metrics
+        return json.dumps(dashboard_metrics, default=str)
     except Exception as e:
         logger.error(f"Failed to generate performance dashboard: {e}", exc_info=True)
-        return {
+        return json.dumps({
             "error": "Failed to generate performance dashboard",
             "message": str(e),
             "timestamp": datetime.now(UTC).isoformat(),
-        }
+        })
 
 
 # Prompts for Trading and Investing
@@ -1237,40 +1240,38 @@ async def run_backtest(
 
 # Resources (public access)
 @mcp.resource("stock://{ticker}")
-def stock_resource(ticker: str) -> Any:
+def stock_resource(ticker: str) -> str:
     """Get the latest stock data for a given ticker"""
     db_session = next(get_db())
     try:
         provider = StockDataProvider(db_session=db_session)
         df = provider.get_stock_data(ticker)
-        payload = cast(str, df.to_json(orient="split", date_format="iso"))
-        return json.loads(payload)
+        return cast(str, df.to_json(orient="split", date_format="iso"))
     finally:
         db_session.close()
 
 
 @mcp.resource("stock://{ticker}/{start_date}/{end_date}")
-def stock_resource_with_dates(ticker: str, start_date: str, end_date: str) -> Any:
+def stock_resource_with_dates(ticker: str, start_date: str, end_date: str) -> str:
     """Get stock data for a given ticker and date range"""
     db_session = next(get_db())
     try:
         provider = StockDataProvider(db_session=db_session)
         df = provider.get_stock_data(ticker, start_date, end_date)
-        payload = cast(str, df.to_json(orient="split", date_format="iso"))
-        return json.loads(payload)
+        return cast(str, df.to_json(orient="split", date_format="iso"))
     finally:
         db_session.close()
 
 
 @mcp.resource("stock_info://{ticker}")
-def stock_info_resource(ticker: str) -> dict[str, Any]:
+def stock_info_resource(ticker: str) -> str:
     """Get detailed information about a stock"""
     db_session = next(get_db())
     try:
         provider = StockDataProvider(db_session=db_session)
         info = provider.get_stock_info(ticker)
         # Convert any non-serializable objects to strings
-        return {
+        cleaned = {
             k: (
                 str(v)
                 if not isinstance(
@@ -1280,12 +1281,13 @@ def stock_info_resource(ticker: str) -> dict[str, Any]:
             )
             for k, v in info.items()
         }
+        return json.dumps(cleaned)
     finally:
         db_session.close()
 
 
 @mcp.resource("portfolio://my-holdings")
-def portfolio_holdings_resource() -> dict[str, Any]:
+def portfolio_holdings_resource() -> str:
     """
     Get your current portfolio holdings as an MCP resource.
 
@@ -1293,7 +1295,7 @@ def portfolio_holdings_resource() -> dict[str, Any]:
     in conversations. It includes all positions with current prices and P&L calculations.
 
     Returns:
-        Dictionary containing portfolio holdings with performance metrics
+        JSON string containing portfolio holdings with performance metrics
     """
     from maverick_mcp.api.routers.portfolio import get_my_portfolio
 
@@ -1306,11 +1308,11 @@ def portfolio_holdings_resource() -> dict[str, Any]:
         )
 
         if portfolio_data.get("status") == "error":
-            return {
+            return json.dumps({
                 "error": portfolio_data.get("error", "Unknown error"),
                 "uri": "portfolio://my-holdings",
                 "description": "Error retrieving portfolio holdings",
-            }
+            })
 
         # Add resource metadata
         portfolio_data["uri"] = "portfolio://my-holdings"
@@ -1319,15 +1321,15 @@ def portfolio_holdings_resource() -> dict[str, Any]:
         )
         portfolio_data["mimeType"] = "application/json"
 
-        return portfolio_data
+        return json.dumps(portfolio_data)
 
     except Exception as e:
         logger.error(f"Portfolio holdings resource failed: {e}")
-        return {
+        return json.dumps({
             "error": str(e),
             "uri": "portfolio://my-holdings",
             "description": "Failed to retrieve portfolio holdings",
-        }
+        })
 
 
 # Main execution block
