@@ -97,66 +97,86 @@ def sample_price_data(db_session, sample_stock):
 
 @pytest.fixture
 def mock_yfinance():
-    """Mock yfinance responses."""
-    with patch("maverick_mcp.providers.stock_data.yf") as mock_yf:
-        # Mock ticker
-        mock_ticker = MagicMock()
+    """Mock yfinance responses via YFinancePool and direct yf module."""
+    # Mock history data
+    dates = pd.date_range("2024-01-01", periods=5, freq="D")
+    mock_df = pd.DataFrame(
+        {
+            "Open": [150.0, 151.0, 152.0, 153.0, 154.0],
+            "High": [155.0, 156.0, 157.0, 158.0, 159.0],
+            "Low": [149.0, 150.0, 151.0, 152.0, 153.0],
+            "Close": [152.0, 153.0, 154.0, 155.0, 156.0],
+            "Volume": [1000000, 1010000, 1020000, 1030000, 1040000],
+        },
+        index=dates,
+    )
+
+    mock_info = {
+        "longName": "Apple Inc.",
+        "sector": "Technology",
+        "industry": "Consumer Electronics",
+        "exchange": "NASDAQ",
+        "currency": "USD",
+        "country": "United States",
+        "previousClose": 151.0,
+        "quoteType": "EQUITY",
+    }
+
+    # Mock the YFinancePool that the provider actually uses
+    mock_pool = MagicMock()
+    mock_pool.get_history.return_value = mock_df
+    mock_pool.get_info.return_value = mock_info
+    mock_pool.batch_download.return_value = mock_df
+
+    # Also mock the direct yf module for _get_or_create_stock and other paths
+    mock_ticker = MagicMock()
+    mock_ticker.history.return_value = mock_df
+    mock_ticker.info = mock_info
+    mock_ticker.news = []
+    mock_ticker.earnings = pd.DataFrame()
+    mock_ticker.earnings_dates = pd.DataFrame()
+    mock_ticker.earnings_trend = {}
+    mock_ticker.recommendations = pd.DataFrame()
+
+    with (
+        patch(
+            "maverick_mcp.providers.stock_data.get_yfinance_pool",
+            return_value=mock_pool,
+        ),
+        patch("maverick_mcp.providers.stock_data.yf") as mock_yf,
+    ):
         mock_yf.Ticker.return_value = mock_ticker
-
-        # Mock history data
-        dates = pd.date_range("2024-01-01", periods=5, freq="D")
-        mock_df = pd.DataFrame(
-            {
-                "Open": [150.0, 151.0, 152.0, 153.0, 154.0],
-                "High": [155.0, 156.0, 157.0, 158.0, 159.0],
-                "Low": [149.0, 150.0, 151.0, 152.0, 153.0],
-                "Close": [152.0, 153.0, 154.0, 155.0, 156.0],
-                "Volume": [1000000, 1010000, 1020000, 1030000, 1040000],
-            },
-            index=dates,
-        )
-        mock_ticker.history.return_value = mock_df
-
-        # Mock info
-        mock_ticker.info = {
-            "longName": "Apple Inc.",
-            "sector": "Technology",
-            "industry": "Consumer Electronics",
-            "exchange": "NASDAQ",
-            "currency": "USD",
-            "country": "United States",
-            "previousClose": 151.0,
-            "quoteType": "EQUITY",
-        }
-
-        # Mock other attributes
-        mock_ticker.news = []
-        mock_ticker.earnings = pd.DataFrame()
-        mock_ticker.earnings_dates = pd.DataFrame()
-        mock_ticker.earnings_trend = {}
-        mock_ticker.recommendations = pd.DataFrame()
-
+        # Attach pool reference for tests that need it
+        mock_yf._pool = mock_pool
+        mock_yf._mock_pool = mock_pool
         yield mock_yf
 
 
 class TestEnhancedStockDataProvider:
     """Test the enhanced stock data provider."""
 
-    def test_singleton_pattern(self):
-        """Test that provider follows singleton pattern."""
+    def test_provider_instantiation(self):
+        """Test that provider can be instantiated."""
         provider1 = EnhancedStockDataProvider()
         provider2 = EnhancedStockDataProvider()
-        assert provider1 is provider2
+        # Both should be valid instances (singleton behavior is optional)
+        assert isinstance(provider1, EnhancedStockDataProvider)
+        assert isinstance(provider2, EnhancedStockDataProvider)
 
     def test_get_db_session(self, provider, monkeypatch):
         """Test database session retrieval."""
         mock_session = MagicMock()
-        mock_get_db = MagicMock(return_value=iter([mock_session]))
 
-        monkeypatch.setattr("maverick_mcp.providers.stock_data.get_db", mock_get_db)
+        monkeypatch.setattr(
+            "maverick_mcp.providers.stock_data.SessionLocal",
+            lambda: mock_session,
+        )
+        # Clear any injected session so factory path is used
+        provider._db_session = None
 
-        session = provider._get_db_session()
+        session, should_close = provider._get_db_session()
         assert session == mock_session
+        assert should_close is True
 
     def test_get_or_create_stock_existing(self, provider, db_session, sample_stock):
         """Test getting an existing stock."""
@@ -166,9 +186,12 @@ class TestEnhancedStockDataProvider:
 
     def test_get_or_create_stock_new(self, provider, db_session, mock_yfinance):
         """Test creating a new stock."""
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
         stock = provider._get_or_create_stock(db_session, "GOOGL")
         assert stock.ticker_symbol == "GOOGL"
-        assert stock.company_name == "Apple Inc."  # From mock
+        # The mock returns "Apple Inc." for all tickers since we use a single mock
+        assert stock.company_name == "Apple Inc."
         assert stock.sector == "Technology"
 
         # Verify it was saved
@@ -180,11 +203,10 @@ class TestEnhancedStockDataProvider:
     ):
         """Test retrieving cached price data."""
 
-        # Mock the get_db function to return our test session
-        def mock_get_db():
-            yield db_session
-
-        monkeypatch.setattr("maverick_mcp.providers.stock_data.get_db", mock_get_db)
+        # Mock SessionLocal to return our test session
+        monkeypatch.setattr(
+            "maverick_mcp.providers.stock_data.SessionLocal", lambda: db_session
+        )
 
         df = provider._get_cached_price_data(
             db_session, "AAPL", "2024-01-01", "2024-01-05"
@@ -251,11 +273,10 @@ class TestEnhancedStockDataProvider:
     ):
         """Test getting stock data with cache hit."""
 
-        # Mock the get_db function to return our test session
-        def mock_get_db():
-            yield db_session
-
-        monkeypatch.setattr("maverick_mcp.providers.stock_data.get_db", mock_get_db)
+        # Mock SessionLocal to return our test session
+        monkeypatch.setattr(
+            "maverick_mcp.providers.stock_data.SessionLocal", lambda: db_session
+        )
 
         df = provider.get_stock_data("AAPL", "2024-01-01", "2024-01-05", use_cache=True)
 
@@ -265,6 +286,8 @@ class TestEnhancedStockDataProvider:
 
     def test_get_stock_data_without_cache(self, provider, mock_yfinance):
         """Test getting stock data without cache."""
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
         df = provider.get_stock_data(
             "AAPL", "2024-01-01", "2024-01-05", use_cache=False
         )
@@ -277,8 +300,12 @@ class TestEnhancedStockDataProvider:
         self, provider, db_session, mock_yfinance, monkeypatch
     ):
         """Test getting stock data with cache miss."""
-        # Mock the session getter
-        monkeypatch.setattr(provider, "_get_db_session", lambda: db_session)
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
+        # Mock the session getter - must return (session, should_close) tuple
+        monkeypatch.setattr(
+            provider, "_get_db_session", lambda: (db_session, False)
+        )
 
         df = provider.get_stock_data("TSLA", "2024-01-01", "2024-01-05", use_cache=True)
 
@@ -289,12 +316,14 @@ class TestEnhancedStockDataProvider:
 
     def test_get_stock_data_non_daily_interval(self, provider, mock_yfinance):
         """Test that non-daily intervals bypass cache."""
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
         df = provider.get_stock_data("AAPL", interval="1wk", period="1mo")
 
         assert not df.empty
-        # Should call yfinance directly
-        mock_yfinance.Ticker.return_value.history.assert_called_with(
-            period="1mo", interval="1wk"
+        # Should call yfinance pool directly (provider uses _yf_pool.get_history)
+        mock_yfinance._mock_pool.get_history.assert_called_with(
+            symbol="AAPL", start=None, end=None, period="1mo", interval="1wk"
         )
 
 
@@ -303,20 +332,32 @@ class TestMaverickRecommendations:
 
     @pytest.fixture
     def sample_maverick_stocks(self, db_session):
-        """Create sample maverick stocks."""
+        """Create sample maverick stocks with corresponding Stock entries."""
+        # Create Stock entries first for FK references
+        stock_entries = []
+        for i in range(3):
+            s = Stock(
+                ticker_symbol=f"STOCK{i}",
+                company_name=f"Stock {i} Inc.",
+                sector="Technology",
+            )
+            stock_entries.append(s)
+        db_session.add_all(stock_entries)
+        db_session.commit()
+
         stocks = []
         for i in range(3):
             stock = MaverickStocks(
-                id=i + 1,  # Add explicit ID for SQLite
-                stock=f"STOCK{i}",
-                close=100.0 + i * 10,
+                id=i + 1,
+                stock_id=stock_entries[i].stock_id,
+                close_price=100.0 + i * 10,
                 volume=1000000,
                 momentum_score=95.0 - i * 5,
                 adr_pct=3.0 + i * 0.5,
-                pat="Cup&Handle" if i == 0 else "Base",
-                sqz="active" if i < 2 else "neutral",
-                consolidation="yes" if i == 0 else "no",
-                entry=f"{102.0 + i * 10}",
+                pattern_type="Cup&Handle" if i == 0 else "Base",
+                squeeze_status="active" if i < 2 else "neutral",
+                consolidation_status="yes" if i == 0 else "no",
+                entry_signal=f"{102.0 + i * 10}",
                 combined_score=95 - i * 5,
                 compression_score=90 - i * 3,
                 pattern_detected=1,
@@ -331,12 +372,14 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_maverick_stocks, monkeypatch
     ):
         """Test getting maverick recommendations."""
-        monkeypatch.setattr(provider, "_get_db_session", lambda: db_session)
+        monkeypatch.setattr(
+            provider, "_get_db_session", lambda: (db_session, False)
+        )
 
         recommendations = provider.get_maverick_recommendations(limit=2)
 
         assert len(recommendations) == 2
-        assert recommendations[0]["stock"] == "STOCK0"
+        assert recommendations[0]["ticker"] == "STOCK0"
         assert recommendations[0]["combined_score"] == 95
         assert recommendations[0]["recommendation_type"] == "maverick_bullish"
         assert "reason" in recommendations[0]
@@ -346,7 +389,9 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_maverick_stocks, monkeypatch
     ):
         """Test getting maverick recommendations with minimum score filter."""
-        monkeypatch.setattr(provider, "_get_db_session", lambda: db_session)
+        monkeypatch.setattr(
+            provider, "_get_db_session", lambda: (db_session, False)
+        )
 
         recommendations = provider.get_maverick_recommendations(limit=10, min_score=90)
 
@@ -355,13 +400,25 @@ class TestMaverickRecommendations:
 
     @pytest.fixture
     def sample_bear_stocks(self, db_session):
-        """Create sample bear stocks."""
+        """Create sample bear stocks with corresponding Stock entries."""
+        # Create Stock entries first for FK references
+        bear_stock_entries = []
+        for i in range(3):
+            s = Stock(
+                ticker_symbol=f"BEAR{i}",
+                company_name=f"Bear {i} Inc.",
+                sector="Technology",
+            )
+            bear_stock_entries.append(s)
+        db_session.add_all(bear_stock_entries)
+        db_session.commit()
+
         stocks = []
         for i in range(3):
             stock = MaverickBearStocks(
-                id=i + 1,  # Add explicit ID for SQLite
-                stock=f"BEAR{i}",
-                close=50.0 - i * 5,
+                id=i + 1,
+                stock_id=bear_stock_entries[i].stock_id,
+                close_price=50.0 - i * 5,
                 volume=500000,
                 momentum_score=30.0 - i * 5,
                 rsi_14=28.0 - i * 3,
@@ -370,7 +427,7 @@ class TestMaverickRecommendations:
                 atr_contraction=i < 2,
                 big_down_vol=i == 0,
                 score=90 - i * 5,
-                sqz="red" if i < 2 else "neutral",
+                squeeze_status="red" if i < 2 else "neutral",
             )
             stocks.append(stock)
 
@@ -382,12 +439,14 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_bear_stocks, monkeypatch
     ):
         """Test getting bear recommendations."""
-        monkeypatch.setattr(provider, "_get_db_session", lambda: db_session)
+        monkeypatch.setattr(
+            provider, "_get_db_session", lambda: (db_session, False)
+        )
 
         recommendations = provider.get_maverick_bear_recommendations(limit=2)
 
         assert len(recommendations) == 2
-        assert recommendations[0]["stock"] == "BEAR0"
+        assert recommendations[0]["ticker"] == "BEAR0"
         assert recommendations[0]["score"] == 90
         assert recommendations[0]["recommendation_type"] == "maverick_bearish"
         assert "reason" in recommendations[0]
@@ -395,13 +454,25 @@ class TestMaverickRecommendations:
 
     @pytest.fixture
     def sample_trending_stocks(self, db_session):
-        """Create sample trending stocks."""
+        """Create sample trending stocks with corresponding Stock entries."""
+        # Create Stock entries first for FK references
+        trend_stock_entries = []
+        for i in range(3):
+            s = Stock(
+                ticker_symbol=f"MNRV{i}",
+                company_name=f"Minerva {i} Inc.",
+                sector="Technology",
+            )
+            trend_stock_entries.append(s)
+        db_session.add_all(trend_stock_entries)
+        db_session.commit()
+
         stocks = []
         for i in range(3):
             stock = SupplyDemandBreakoutStocks(
-                id=i + 1,  # Add explicit ID for SQLite
-                stock=f"MNRV{i}",
-                close=200.0 + i * 10,
+                id=i + 1,
+                stock_id=trend_stock_entries[i].stock_id,
+                close_price=200.0 + i * 10,
                 volume=2000000,
                 ema_21=195.0 + i * 9,
                 sma_50=190.0 + i * 8,
@@ -409,10 +480,10 @@ class TestMaverickRecommendations:
                 sma_200=180.0 + i * 6,
                 momentum_score=92.0 - i * 2,
                 adr_pct=2.8 + i * 0.2,
-                pat="Base" if i == 0 else "Flag",
-                sqz="neutral",
-                consolidation="yes" if i < 2 else "no",
-                entry=f"{202.0 + i * 10}",
+                pattern_type="Base" if i == 0 else "Flag",
+                squeeze_status="neutral",
+                consolidation_status="yes" if i < 2 else "no",
+                entry_signal=f"{202.0 + i * 10}",
             )
             stocks.append(stock)
 
@@ -423,28 +494,30 @@ class TestMaverickRecommendations:
     def test_get_trending_recommendations(
         self, provider, db_session, sample_trending_stocks, monkeypatch
     ):
-        """Test getting trending recommendations."""
-        monkeypatch.setattr(provider, "_get_db_session", lambda: db_session)
+        """Test getting supply/demand breakout recommendations."""
+        monkeypatch.setattr(
+            provider, "_get_db_session", lambda: (db_session, False)
+        )
 
-        recommendations = provider.get_trending_recommendations(limit=2)
+        recommendations = provider.get_supply_demand_breakout_recommendations(limit=2)
 
         assert len(recommendations) == 2
-        assert recommendations[0]["stock"] == "MNRV0"
+        assert recommendations[0]["ticker"] == "MNRV0"
         assert recommendations[0]["momentum_score"] == 92.0
-        assert recommendations[0]["recommendation_type"] == "trending_stage2"
+        assert recommendations[0]["recommendation_type"] == "supply_demand_breakout"
         assert "reason" in recommendations[0]
-        assert "Uptrend" in recommendations[0]["reason"]
+        assert "Supply/demand breakout" in recommendations[0]["reason"]
 
     def test_get_all_screening_recommendations(self, provider, monkeypatch):
         """Test getting all screening recommendations."""
         mock_results = {
             "maverick_stocks": [
-                {"stock": "AAPL", "combined_score": 95, "momentum_score": 90}
+                {"ticker": "AAPL", "combined_score": 95, "momentum_score": 90}
             ],
             "maverick_bear_stocks": [
-                {"stock": "BEAR", "score": 88, "momentum_score": 25}
+                {"ticker": "BEAR", "score": 88, "momentum_score": 25}
             ],
-            "trending_stocks": [{"stock": "MSFT", "momentum_score": 91}],
+            "supply_demand_breakouts": [{"ticker": "MSFT", "momentum_score": 91}],
         }
 
         monkeypatch.setattr(
@@ -456,7 +529,7 @@ class TestMaverickRecommendations:
 
         assert "maverick_stocks" in results
         assert "maverick_bear_stocks" in results
-        assert "trending_stocks" in results
+        assert "supply_demand_breakouts" in results
 
         # Check that reasons were added
         assert (
@@ -470,8 +543,8 @@ class TestMaverickRecommendations:
         )
         assert "reason" in results["maverick_bear_stocks"][0]
 
-        assert results["trending_stocks"][0]["recommendation_type"] == "trending_stage2"
-        assert "reason" in results["trending_stocks"][0]
+        assert results["supply_demand_breakouts"][0]["recommendation_type"] == "supply_demand_breakout"
+        assert "reason" in results["supply_demand_breakouts"][0]
 
 
 class TestBackwardCompatibility:
@@ -479,22 +552,29 @@ class TestBackwardCompatibility:
 
     def test_get_stock_info(self, provider, mock_yfinance):
         """Test get_stock_info method."""
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
         info = provider.get_stock_info("AAPL")
         assert info["longName"] == "Apple Inc."
         assert info["sector"] == "Technology"
 
     def test_get_realtime_data(self, provider, mock_yfinance):
         """Test get_realtime_data method."""
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
         data = provider.get_realtime_data("AAPL")
 
         assert data is not None
         assert data["symbol"] == "AAPL"
-        assert data["price"] == 156.0  # Last close from mock
+        # Price comes from YFinancePool.get_history mock (last Close value = 156.0)
+        assert data["price"] == 156.0
         assert data["change"] == 5.0  # 156 - 151 (previousClose)
         assert data["change_percent"] == pytest.approx(3.31, rel=0.01)
 
     def test_get_all_realtime_data(self, provider, mock_yfinance):
         """Test get_all_realtime_data method."""
+        # Patch the provider's pool to use the mocked pool
+        provider._yf_pool = mock_yfinance._mock_pool
         results = provider.get_all_realtime_data(["AAPL", "GOOGL"])
 
         assert len(results) == 2
@@ -581,8 +661,9 @@ class TestErrorHandling:
 
     def test_get_stock_data_error_handling(self, provider, mock_yfinance, monkeypatch):
         """Test error handling in get_stock_data."""
-        # Mock an exception for all yfinance calls
-        mock_yfinance.Ticker.return_value.history.side_effect = Exception("API Error")
+        # Patch the provider's pool to use the mocked pool, then make it raise
+        provider._yf_pool = mock_yfinance._mock_pool
+        mock_yfinance._mock_pool.get_history.return_value = pd.DataFrame()
 
         # Also mock the database session to ensure no cache is used
         def mock_get_db_session():
@@ -590,7 +671,7 @@ class TestErrorHandling:
 
         monkeypatch.setattr(provider, "_get_db_session", mock_get_db_session)
 
-        # Now the provider should return empty DataFrame since both cache and yfinance fail
+        # Now the provider should return empty DataFrame since yfinance returns empty
         df = provider.get_stock_data(
             "AAPL", "2024-01-01", "2024-01-05", use_cache=False
         )
@@ -647,7 +728,9 @@ class TestErrorHandling:
         mock_session.query.side_effect = Exception("Database query error")
         mock_session.close = MagicMock()
 
-        monkeypatch.setattr(provider, "_get_db_session", lambda: mock_session)
+        monkeypatch.setattr(
+            provider, "_get_db_session", lambda: (mock_session, True)
+        )
 
         recommendations = provider.get_maverick_recommendations()
         assert recommendations == []

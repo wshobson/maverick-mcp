@@ -161,8 +161,8 @@ async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]
         return {
             "ticker": ticker,
             "current_price": float(current_price),
-            "support_levels": sorted(support),
-            "resistance_levels": sorted(resistance),
+            "support_levels": [float(x) for x in sorted(support)],
+            "resistance_levels": [float(x) for x in sorted(resistance)],
         }
     except Exception as e:
         logger.error(f"Error in support/resistance analysis for {ticker}: {str(e)}")

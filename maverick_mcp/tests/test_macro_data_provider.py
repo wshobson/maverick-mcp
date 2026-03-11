@@ -94,7 +94,7 @@ class TestMacroDataProvider(unittest.TestCase):
     def test_get_gdp_growth_rate(self):
         """Test GDP growth rate fetching."""
         mock_data = pd.Series(
-            [2.5, 2.8], index=pd.date_range(end=datetime.now(), periods=2, freq="Q")
+            [2.5, 2.8], index=pd.date_range(start="2024-01-01", periods=2, freq="QE")
         )
 
         with patch.object(self.provider.fred, "get_series") as mock_get_series:
@@ -120,7 +120,7 @@ class TestMacroDataProvider(unittest.TestCase):
         """Test unemployment rate fetching."""
         mock_data = pd.Series(
             [3.5, 3.6, 3.7],
-            index=pd.date_range(end=datetime.now(), periods=3, freq="M"),
+            index=pd.date_range(start="2024-01-01", periods=3, freq="ME"),
         )
 
         with patch.object(self.provider.fred, "get_series") as mock_get_series:
@@ -135,7 +135,7 @@ class TestMacroDataProvider(unittest.TestCase):
     def test_get_inflation_rate(self):
         """Test inflation rate calculation."""
         # Create CPI data for 24 months
-        dates = pd.date_range(end=datetime.now(), periods=24, freq="MS")
+        dates = pd.date_range(start="2022-01-01", periods=24, freq="MS")
         cpi_values = [100 + i * 0.2 for i in range(24)]  # Gradual increase
         mock_data = pd.Series(cpi_values, index=dates)
 
@@ -153,7 +153,7 @@ class TestMacroDataProvider(unittest.TestCase):
     def test_get_inflation_rate_insufficient_data(self):
         """Test inflation rate with insufficient data."""
         # Only 6 months of data (need 13+ for YoY)
-        dates = pd.date_range(end=datetime.now(), periods=6, freq="MS")
+        dates = pd.date_range(start="2024-01-01", periods=6, freq="MS")
         mock_data = pd.Series([100, 101, 102, 103, 104, 105], index=dates)
 
         with patch.object(self.provider.fred, "get_series") as mock_get_series:
