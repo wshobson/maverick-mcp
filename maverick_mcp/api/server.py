@@ -837,6 +837,404 @@ async def get_mcp_connection_status() -> dict[str, Any]:
         }
 
 
+# ============================================================================
+# Additional Stock Analysis Tools (Phases 1-4)
+# These expose existing router functions as simple-named MCP tools
+# ============================================================================
+
+# --- Phase 1: Core Analysis & Screening ---
+
+
+@mcp.tool()
+async def get_rsi_analysis(
+    ticker: str, period: int = 14, days: int = 365
+) -> dict[str, Any]:
+    """Get RSI analysis with overbought/oversold signals.
+
+    Args:
+        ticker: Stock ticker symbol (e.g. 'AAPL')
+        period: RSI period (default 14)
+        days: Number of days of historical data (default 365)
+    """
+    from maverick_mcp.api.routers.technical import get_rsi_analysis as _fn
+
+    return await _fn(ticker, period, days)
+
+
+@mcp.tool()
+async def get_macd_analysis(
+    ticker: str,
+    fast_period: int = 12,
+    slow_period: int = 26,
+    signal_period: int = 9,
+    days: int = 365,
+) -> dict[str, Any]:
+    """Get MACD crossover signals and divergence analysis.
+
+    Args:
+        ticker: Stock ticker symbol
+        fast_period: Fast EMA period (default 12)
+        slow_period: Slow EMA period (default 26)
+        signal_period: Signal line period (default 9)
+        days: Number of days of historical data (default 365)
+    """
+    from maverick_mcp.api.routers.technical import get_macd_analysis as _fn
+
+    return await _fn(ticker, fast_period, slow_period, signal_period, days)
+
+
+@mcp.tool()
+async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]:
+    """Get key support and resistance price levels.
+
+    Args:
+        ticker: Stock ticker symbol
+        days: Number of days of historical data to analyze (default 365)
+    """
+    from maverick_mcp.api.routers.technical import get_support_resistance as _fn
+
+    return await _fn(ticker, days)
+
+
+@mcp.tool()
+async def get_maverick_stocks(limit: int = 20) -> dict[str, Any]:
+    """Screen S&P 500 for bullish momentum setups.
+
+    EDUCATIONAL USE ONLY - not investment advice.
+
+    Args:
+        limit: Maximum number of stocks to return (default 20)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.screening import get_maverick_stocks as _fn
+
+    return await asyncio.to_thread(_fn, limit)
+
+
+@mcp.tool()
+async def get_my_portfolio(include_current_prices: bool = True) -> dict[str, Any]:
+    """Get all portfolio positions with live P&L calculations.
+
+    Args:
+        include_current_prices: Include real-time prices and P&L (default True)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.portfolio import get_my_portfolio as _fn
+
+    return await asyncio.to_thread(
+        _fn,
+        user_id="default",
+        portfolio_name="My Portfolio",
+        include_current_prices=include_current_prices,
+    )
+
+
+# --- Phase 2: Technical Suite & Screening ---
+
+
+@mcp.tool()
+async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str, Any]:
+    """Full technical analysis: RSI, MACD, Bollinger Bands, SMA/EMA, volume, S/R levels.
+
+    Args:
+        ticker: Stock ticker symbol
+        days: Number of days of historical data (default 365)
+    """
+    from maverick_mcp.api.routers.technical_enhanced import (
+        get_full_technical_analysis_enhanced,
+    )
+    from maverick_mcp.validation.technical import TechnicalAnalysisRequest
+
+    request = TechnicalAnalysisRequest(ticker=ticker, days=days)
+    return await get_full_technical_analysis_enhanced(request)
+
+
+@mcp.tool()
+async def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
+    """Screen for bearish/short setup candidates from S&P 500.
+
+    EDUCATIONAL USE ONLY - not investment advice.
+
+    Args:
+        limit: Maximum number of stocks to return (default 20)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.screening import get_maverick_bear_stocks as _fn
+
+    return await asyncio.to_thread(_fn, limit)
+
+
+@mcp.tool()
+async def get_supply_demand_breakouts(
+    limit: int = 20, filter_moving_averages: bool = False
+) -> dict[str, Any]:
+    """Screen for accumulation/breakout patterns in S&P 500.
+
+    Args:
+        limit: Maximum number of stocks to return (default 20)
+        filter_moving_averages: Only show stocks above key moving averages (default False)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.screening import get_supply_demand_breakouts as _fn
+
+    return await asyncio.to_thread(_fn, limit, filter_moving_averages)
+
+
+@mcp.tool()
+async def get_all_screening_recommendations() -> dict[str, Any]:
+    """Run all screening strategies and return combined results.
+
+    Returns bullish, bearish, and breakout candidates in a single response.
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.screening import (
+        get_all_screening_recommendations as _fn,
+    )
+
+    return await asyncio.to_thread(_fn)
+
+
+# --- Phase 3: Portfolio Management ---
+
+
+@mcp.tool()
+async def add_portfolio_position(
+    ticker: str,
+    shares: float,
+    purchase_price: float,
+    purchase_date: str | None = None,
+    notes: str | None = None,
+) -> dict[str, Any]:
+    """Add a position to your portfolio with automatic cost basis averaging.
+
+    Args:
+        ticker: Stock ticker symbol
+        shares: Number of shares purchased
+        purchase_price: Price per share at purchase
+        purchase_date: Date of purchase (YYYY-MM-DD format, optional)
+        notes: Optional notes about the position
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.portfolio import add_portfolio_position as _fn
+
+    return await asyncio.to_thread(
+        _fn,
+        ticker=ticker,
+        shares=shares,
+        purchase_price=purchase_price,
+        purchase_date=purchase_date,
+        notes=notes,
+        user_id="default",
+        portfolio_name="My Portfolio",
+    )
+
+
+@mcp.tool()
+async def remove_portfolio_position(
+    ticker: str, shares: float | None = None
+) -> dict[str, Any]:
+    """Remove or reduce a portfolio position.
+
+    Args:
+        ticker: Stock ticker symbol
+        shares: Number of shares to remove (None = remove entire position)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.portfolio import remove_portfolio_position as _fn
+
+    return await asyncio.to_thread(
+        _fn,
+        ticker=ticker,
+        shares=shares,
+        user_id="default",
+        portfolio_name="My Portfolio",
+    )
+
+
+@mcp.tool()
+async def portfolio_correlation_analysis(days: int = 252) -> dict[str, Any]:
+    """Analyze correlation between all portfolio holdings.
+
+    Auto-detects your portfolio positions. No need to specify tickers.
+
+    Args:
+        days: Number of trading days for correlation window (default 252 = ~1 year)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.portfolio import (
+        portfolio_correlation_analysis as _fn,
+    )
+
+    return await asyncio.to_thread(
+        _fn,
+        tickers=None,
+        days=days,
+        user_id="default",
+        portfolio_name="My Portfolio",
+    )
+
+
+@mcp.tool()
+async def compare_tickers(
+    tickers: list[str] | None = None, days: int = 90
+) -> dict[str, Any]:
+    """Compare stocks side-by-side with technical metrics.
+
+    If no tickers provided, automatically compares all portfolio holdings.
+
+    Args:
+        tickers: List of ticker symbols to compare (optional, auto-uses portfolio)
+        days: Number of days for comparison period (default 90)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.portfolio import compare_tickers as _fn
+
+    return await asyncio.to_thread(
+        _fn,
+        tickers=tickers,
+        days=days,
+        user_id="default",
+        portfolio_name="My Portfolio",
+    )
+
+
+@mcp.tool()
+async def risk_adjusted_analysis(
+    ticker: str, risk_level: float = 50.0
+) -> dict[str, Any]:
+    """ATR-based position sizing and risk analysis with portfolio context.
+
+    Shows existing portfolio position if you hold this stock.
+
+    Args:
+        ticker: Stock ticker symbol
+        risk_level: Risk tolerance 0-100 (default 50.0, higher = more aggressive)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.portfolio import risk_adjusted_analysis as _fn
+
+    return await asyncio.to_thread(
+        _fn,
+        ticker=ticker,
+        risk_level=risk_level,
+        user_id="default",
+        portfolio_name="My Portfolio",
+    )
+
+
+# --- Phase 4: Data & Research ---
+
+
+@mcp.tool()
+async def fetch_stock_data(
+    ticker: str, start_date: str | None = None, end_date: str | None = None
+) -> dict[str, Any]:
+    """Fetch historical OHLCV price data for a stock.
+
+    Args:
+        ticker: Stock ticker symbol
+        start_date: Start date (YYYY-MM-DD format, optional)
+        end_date: End date (YYYY-MM-DD format, optional)
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.data import fetch_stock_data as _fn
+
+    return await asyncio.to_thread(_fn, ticker, start_date, end_date)
+
+
+@mcp.tool()
+async def get_stock_info(ticker: str) -> dict[str, Any]:
+    """Get fundamental data: market cap, P/E ratio, sector, industry, and more.
+
+    Args:
+        ticker: Stock ticker symbol
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.data import get_stock_info as _fn
+
+    return await asyncio.to_thread(_fn, ticker)
+
+
+@mcp.tool()
+async def get_news_sentiment(
+    ticker: str, timeframe: str = "7d", limit: int = 10
+) -> dict[str, Any]:
+    """Get news sentiment analysis for a stock.
+
+    Uses Tiingo News API or LLM-based analysis with fallback.
+
+    Args:
+        ticker: Stock ticker symbol
+        timeframe: Time frame for news (1d, 7d, 30d)
+        limit: Maximum number of articles to analyze (default 10)
+    """
+    from maverick_mcp.api.routers.news_sentiment_enhanced import (
+        get_news_sentiment_enhanced as _fn,
+    )
+
+    return await _fn(ticker, timeframe, limit)
+
+
+@mcp.tool()
+async def run_backtest(
+    symbol: str,
+    strategy: str = "sma_cross",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    initial_capital: float = 10000.0,
+) -> dict[str, Any]:
+    """Run a VectorBT backtest on a stock with a given strategy.
+
+    EDUCATIONAL USE ONLY - not investment advice.
+
+    Available strategies: sma_cross, rsi, macd, bollinger, momentum, breakout,
+    mean_reversion, stochastic, adaptive_ml, ensemble, regime_aware.
+
+    Args:
+        symbol: Stock ticker symbol
+        strategy: Strategy name (default 'sma_cross')
+        start_date: Backtest start date YYYY-MM-DD (default: 1 year ago)
+        end_date: Backtest end date YYYY-MM-DD (default: today)
+        initial_capital: Starting capital in USD (default 10000)
+    """
+    from datetime import timedelta
+
+    from maverick_mcp.api.routers.backtesting import convert_numpy_types
+    from maverick_mcp.backtesting import BacktestAnalyzer, VectorBTEngine
+    from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
+
+    if not end_date:
+        end_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    if not start_date:
+        start_date = (datetime.now(UTC) - timedelta(days=365)).strftime("%Y-%m-%d")
+
+    parameters = dict(STRATEGY_TEMPLATES.get(strategy, {}).get("parameters", {}))
+    engine = VectorBTEngine()
+    results = await engine.run_backtest(
+        symbol=symbol,
+        strategy_type=strategy,
+        parameters=parameters,
+        start_date=start_date,
+        end_date=end_date,
+        initial_capital=initial_capital,
+    )
+    analyzer = BacktestAnalyzer()
+    results["analysis"] = analyzer.analyze(results)
+    return convert_numpy_types(results)
+
+
 # Resources (public access)
 @mcp.resource("stock://{ticker}")
 def stock_resource(ticker: str) -> Any:
