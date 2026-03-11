@@ -880,18 +880,16 @@ def get_my_portfolio(
                 if pos_db.ticker in current_prices:
                     decimal_current_price = current_prices[pos_db.ticker]
                     current_price = float(decimal_current_price)
-                    current_value = (
-                        pos_db.shares * decimal_current_price
-                    ).quantize(Decimal("0.01"))
-                    unrealized_gain_loss = (
-                        current_value - pos_db.total_cost
-                    ).quantize(Decimal("0.01"))
+                    current_value = (pos_db.shares * decimal_current_price).quantize(
+                        Decimal("0.01")
+                    )
+                    unrealized_gain_loss = (current_value - pos_db.total_cost).quantize(
+                        Decimal("0.01")
+                    )
 
                     position_dict["current_price"] = current_price
                     position_dict["current_value"] = float(current_value)
-                    position_dict["unrealized_gain_loss"] = float(
-                        unrealized_gain_loss
-                    )
+                    position_dict["unrealized_gain_loss"] = float(unrealized_gain_loss)
                     position_dict["unrealized_gain_loss_percent"] = (
                         position_dict["unrealized_gain_loss"] / float(pos_db.total_cost)
                     ) * 100

@@ -230,8 +230,9 @@ class RateLimitConfig(BaseModel):
     )
 
     enabled: bool = Field(
-        default_factory=lambda: os.getenv("RATE_LIMITING_ENABLED", "true").lower()
-        == "true",
+        default_factory=lambda: (
+            os.getenv("RATE_LIMITING_ENABLED", "true").lower() == "true"
+        ),
         description="Enable rate limiting",
     )
 

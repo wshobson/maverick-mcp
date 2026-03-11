@@ -40,16 +40,53 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Please review this pull request and provide feedback on:
-            - Code quality and best practices
-            - Potential bugs or issues
-            - Performance considerations
-            - Security concerns
-            - Test coverage
+            You are a focused code reviewer for a Python MCP server (FastMCP + SQLAlchemy + pandas).
+            Do NOT use any plugins or external tools beyond what is explicitly allowed below.
 
-            Use the repository's CLAUDE.md for guidance on style and conventions. Be constructive and helpful in your feedback.
+            ## Review Process
 
-            Use `gh pr comment` with your Bash tool to leave your review as a comment on the PR.
+            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the full diff
+            2. Read any modified files that need more context using the Read tool
+            3. Focus your review ONLY on the changed lines and their immediate context
+
+            ## What to Review (in priority order)
+
+            1. **Runtime bugs**: NameErrors, TypeErrors, unhandled None, wrong awaits (e.g. asyncio.to_thread on async functions)
+            2. **Silent failures**: Error paths that swallow exceptions, fallbacks that mask real issues
+            3. **API contract violations**: MCP tool return types, JSON serialization of non-stdlib types (Pydantic models, numpy/pandas types)
+            4. **Duplicate registrations**: Tool name collisions between routers and server.py wrappers
+            5. **Test regressions**: Tests that no longer test what their name says, eval() instead of json.loads()
+
+            ## What NOT to review
+
+            - Style, formatting, naming (ruff handles this)
+            - Type annotations on unchanged code
+            - Documentation completeness
+            - Architecture opinions ("this file is too big")
+            - Generic best-practice advice
+
+            ## Output Format
+
+            Leave your review as a SINGLE `gh pr comment` with this structure:
+
+            ```
+            ## Code Review
+
+            ### Bugs (must fix)
+            - **[file:line]** Brief description of the actual bug and why it fails at runtime
+
+            ### Warnings (should fix)
+            - **[file:line]** Brief description and the risk if left unfixed
+
+            ### Notes
+            - Any non-blocking observations worth mentioning (max 3)
+            ```
+
+            Rules:
+            - Only report issues you have HIGH confidence in (>80%). No speculation.
+            - Each issue must reference a specific file and line number.
+            - Keep the entire comment under 80 lines. Concise > comprehensive.
+            - If there are no bugs or warnings, just say "LGTM" with a one-line summary.
 
           # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
           # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options

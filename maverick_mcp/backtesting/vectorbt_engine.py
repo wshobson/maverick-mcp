@@ -569,26 +569,30 @@ class VectorBTEngine(BatchProcessingMixin):
             if hasattr(portfolio.trades, "losing")
             else 0,
             "avg_win": safe_float_metric(
-                lambda: portfolio.trades.winning.pnl.mean()
-                if hasattr(portfolio.trades, "winning")
-                and portfolio.trades.winning.count() > 0
-                else None
+                lambda: (
+                    portfolio.trades.winning.pnl.mean()
+                    if hasattr(portfolio.trades, "winning")
+                    and portfolio.trades.winning.count() > 0
+                    else None
+                )
             ),
             "avg_loss": safe_float_metric(
-                lambda: portfolio.trades.losing.pnl.mean()
-                if hasattr(portfolio.trades, "losing")
-                and portfolio.trades.losing.count() > 0
-                else None
+                lambda: (
+                    portfolio.trades.losing.pnl.mean()
+                    if hasattr(portfolio.trades, "losing")
+                    and portfolio.trades.losing.count() > 0
+                    else None
+                )
             ),
             "best_trade": safe_float_metric(
-                lambda: portfolio.trades.pnl.max()
-                if portfolio.trades.count() > 0
-                else None
+                lambda: (
+                    portfolio.trades.pnl.max() if portfolio.trades.count() > 0 else None
+                )
             ),
             "worst_trade": safe_float_metric(
-                lambda: portfolio.trades.pnl.min()
-                if portfolio.trades.count() > 0
-                else None
+                lambda: (
+                    portfolio.trades.pnl.min() if portfolio.trades.count() > 0 else None
+                )
             ),
             "avg_duration": safe_float_metric(lambda: portfolio.trades.duration.mean()),
             "kelly_criterion": self._calculate_kelly(portfolio),

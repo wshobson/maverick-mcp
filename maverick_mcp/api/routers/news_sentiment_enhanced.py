@@ -73,14 +73,14 @@ async def get_news_sentiment_enhanced(
         # Step 1: Try Tiingo News API
         tool_logger.step("tiingo_check", f"Checking Tiingo News API for {ticker}")
 
+        # Calculate date range from timeframe (needed by both Tiingo and fallback paths)
+        end_date = datetime.now()
+        days = int(timeframe.rstrip("d")) if timeframe.endswith("d") else 7
+        start_date = end_date - timedelta(days=days)
+
         tiingo_client = get_tiingo_client()
         if tiingo_client:
             try:
-                # Calculate date range from timeframe
-                end_date = datetime.now()
-                days = int(timeframe.rstrip("d")) if timeframe.endswith("d") else 7
-                start_date = end_date - timedelta(days=days)
-
                 tool_logger.step(
                     "tiingo_fetch", f"Fetching news from Tiingo for {ticker}"
                 )

@@ -373,7 +373,9 @@ rate_limit_config = RateLimitConfig(
     ),  # Analysis is more expensive
 )
 if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
-    mcp.fastapi_app.add_middleware(EnhancedRateLimitMiddleware, config=rate_limit_config)
+    mcp.fastapi_app.add_middleware(
+        EnhancedRateLimitMiddleware, config=rate_limit_config
+    )
     logger.info("Enhanced Rate Limiting Middleware added to FastAPI application")
 else:
     logger.info("Rate limiting middleware skipped (no FastAPI app available)")
@@ -461,17 +463,22 @@ def health_resource() -> str:
             }
         )
 
-        return json.dumps(health_status)
+        return json.dumps(
+            health_status,
+            default=lambda o: o.model_dump() if hasattr(o, "model_dump") else str(o),
+        )
 
     except Exception as e:
         logger.error(f"Health resource check failed: {e}")
-        return json.dumps({
-            "status": "unhealthy",
-            "service": settings.app_name,
-            "version": "1.0.0",
-            "error": str(e),
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        return json.dumps(
+            {
+                "status": "unhealthy",
+                "service": settings.app_name,
+                "version": "1.0.0",
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
 
 # Add status dashboard endpoint as a resource
@@ -509,11 +516,13 @@ def status_dashboard_resource() -> str:
 
     except Exception as e:
         logger.error(f"Dashboard resource failed: {e}")
-        return json.dumps({
-            "error": "Failed to generate dashboard",
-            "message": str(e),
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        return json.dumps(
+            {
+                "error": "Failed to generate dashboard",
+                "message": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
 
 # Add performance dashboard endpoint as a resource (keep existing)
@@ -542,11 +551,13 @@ def performance_dashboard() -> str:
         return json.dumps(dashboard_metrics, default=str)
     except Exception as e:
         logger.error(f"Failed to generate performance dashboard: {e}", exc_info=True)
-        return json.dumps({
-            "error": "Failed to generate performance dashboard",
-            "message": str(e),
-            "timestamp": datetime.now(UTC).isoformat(),
-        })
+        return json.dumps(
+            {
+                "error": "Failed to generate performance dashboard",
+                "message": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+        )
 
 
 # Prompts for Trading and Investing
@@ -1190,52 +1201,7 @@ async def get_news_sentiment(
     return await _fn(ticker, timeframe, limit)
 
 
-@mcp.tool()
-async def run_backtest(
-    symbol: str,
-    strategy: str = "sma_cross",
-    start_date: str | None = None,
-    end_date: str | None = None,
-    initial_capital: float = 10000.0,
-) -> dict[str, Any]:
-    """Run a VectorBT backtest on a stock with a given strategy.
-
-    EDUCATIONAL USE ONLY - not investment advice.
-
-    Available strategies: sma_cross, rsi, macd, bollinger, momentum, breakout,
-    mean_reversion, stochastic, adaptive_ml, ensemble, regime_aware.
-
-    Args:
-        symbol: Stock ticker symbol
-        strategy: Strategy name (default 'sma_cross')
-        start_date: Backtest start date YYYY-MM-DD (default: 1 year ago)
-        end_date: Backtest end date YYYY-MM-DD (default: today)
-        initial_capital: Starting capital in USD (default 10000)
-    """
-    from datetime import timedelta
-
-    from maverick_mcp.api.routers.backtesting import convert_numpy_types
-    from maverick_mcp.backtesting import BacktestAnalyzer, VectorBTEngine
-    from maverick_mcp.backtesting.strategies import STRATEGY_TEMPLATES
-
-    if not end_date:
-        end_date = datetime.now(UTC).strftime("%Y-%m-%d")
-    if not start_date:
-        start_date = (datetime.now(UTC) - timedelta(days=365)).strftime("%Y-%m-%d")
-
-    parameters = dict(STRATEGY_TEMPLATES.get(strategy, {}).get("parameters", {}))
-    engine = VectorBTEngine()
-    results = await engine.run_backtest(
-        symbol=symbol,
-        strategy_type=strategy,
-        parameters=parameters,
-        start_date=start_date,
-        end_date=end_date,
-        initial_capital=initial_capital,
-    )
-    analyzer = BacktestAnalyzer()
-    results["analysis"] = analyzer.analyze(results)
-    return convert_numpy_types(results)
+# run_backtest is already registered via setup_backtesting_tools() in tool_registry.py
 
 
 # Resources (public access)
@@ -1308,11 +1274,13 @@ def portfolio_holdings_resource() -> str:
         )
 
         if portfolio_data.get("status") == "error":
-            return json.dumps({
-                "error": portfolio_data.get("error", "Unknown error"),
-                "uri": "portfolio://my-holdings",
-                "description": "Error retrieving portfolio holdings",
-            })
+            return json.dumps(
+                {
+                    "error": portfolio_data.get("error", "Unknown error"),
+                    "uri": "portfolio://my-holdings",
+                    "description": "Error retrieving portfolio holdings",
+                }
+            )
 
         # Add resource metadata
         portfolio_data["uri"] = "portfolio://my-holdings"
@@ -1325,11 +1293,13 @@ def portfolio_holdings_resource() -> str:
 
     except Exception as e:
         logger.error(f"Portfolio holdings resource failed: {e}")
-        return json.dumps({
-            "error": str(e),
-            "uri": "portfolio://my-holdings",
-            "description": "Failed to retrieve portfolio holdings",
-        })
+        return json.dumps(
+            {
+                "error": str(e),
+                "uri": "portfolio://my-holdings",
+                "description": "Failed to retrieve portfolio holdings",
+            }
+        )
 
 
 # Main execution block

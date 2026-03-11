@@ -10,13 +10,13 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status enumeration."""
 
     HEALTHY = "healthy"

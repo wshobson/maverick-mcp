@@ -11,7 +11,7 @@ This module tests all public MCP tools exposed by the server including:
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd

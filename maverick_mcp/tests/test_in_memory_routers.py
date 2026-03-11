@@ -175,9 +175,7 @@ class TestTechnicalRouter:
             dates = pd.date_range(end="2024-01-31", periods=30)
             prices = pd.DataFrame(
                 {
-                    "Close": [
-                        100 + (i % 5) - 2 for i in range(30)
-                    ],
+                    "Close": [100 + (i % 5) - 2 for i in range(30)],
                     "High": [101 + (i % 5) - 2 for i in range(30)],
                     "Low": [99 + (i % 5) - 2 for i in range(30)],
                     "Open": [100 + (i % 5) - 2 for i in range(30)],
@@ -298,9 +296,7 @@ class TestScreeningRouter:
                 data["stocks"][0]["combined_score"]
                 > data["stocks"][1]["combined_score"]
             )
-            assert all(
-                stock["combined_score"] > 0 for stock in data["stocks"]
-            )
+            assert all(stock["combined_score"] > 0 for stock in data["stocks"])
 
     @pytest.mark.asyncio
     async def test_trending_screening(self, screening_db):
@@ -316,10 +312,11 @@ class TestScreeningRouter:
 
             assert "stocks" in data
             assert len(data["stocks"]) == 1  # Only GOOGL
-            assert data["stocks"][0].get("stock") == "GOOGL" or data["stocks"][0].get("ticker") == "GOOGL"
             assert (
-                data["stocks"][0]["momentum_score"] > 0
+                data["stocks"][0].get("stock") == "GOOGL"
+                or data["stocks"][0].get("ticker") == "GOOGL"
             )
+            assert data["stocks"][0]["momentum_score"] > 0
 
     @pytest.mark.asyncio
     async def test_all_screenings(self, screening_db):
@@ -431,7 +428,9 @@ class TestPortfolioRouter:
                 import json
 
                 # Handle NaN values in response
-                result_text = result.content[0].text.replace("NaN", "null").replace("'", '"')
+                result_text = (
+                    result.content[0].text.replace("NaN", "null").replace("'", '"')
+                )
                 data = json.loads(result_text)
 
                 assert "correlation_matrix" in data or "error" in data
@@ -471,9 +470,7 @@ class TestDataRouter:
             mock_redis_client.return_value = cache_instance
 
             async with Client(mcp) as client:
-                result = await client.call_tool(
-                    "data_clear_cache", {"ticker": "AAPL"}
-                )
+                result = await client.call_tool("data_clear_cache", {"ticker": "AAPL"})
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None

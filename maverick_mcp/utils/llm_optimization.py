@@ -15,7 +15,7 @@ import logging
 import re
 import time
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -33,7 +33,7 @@ from maverick_mcp.utils.orchestration_logging import (
 logger = logging.getLogger(__name__)
 
 
-class ResearchPhase(str, Enum):
+class ResearchPhase(StrEnum):
     """Research phases for token allocation."""
 
     SEARCH = "search"

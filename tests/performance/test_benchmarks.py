@@ -20,7 +20,7 @@ import statistics
 import time
 from dataclasses import dataclass
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
 import pandas as pd
@@ -151,6 +151,9 @@ class TestPerformanceBenchmarks:
             )
 
         provider.get_stock_data.side_effect = generate_benchmark_data
+        provider.get_stock_data_async = AsyncMock(
+            side_effect=lambda symbol, **kwargs: generate_benchmark_data(symbol)
+        )
         return provider
 
     async def test_backtest_execution_time_benchmark(self, benchmark_data_provider):

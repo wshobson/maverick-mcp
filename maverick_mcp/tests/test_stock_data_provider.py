@@ -141,7 +141,7 @@ class TestStockDataProvider(unittest.TestCase):
 
         # get_stock_info has no try/except and uses circuit breaker with use_fallback=False,
         # so the exception propagates to the caller.
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             self.provider.get_stock_info("INVALID")
 
     @patch("maverick_mcp.providers.stock_data.yf.Ticker")
@@ -151,7 +151,7 @@ class TestStockDataProvider(unittest.TestCase):
 
         # get_stock_info just does: return self._yf_pool.get_info(symbol)
         # No error handling, so exception should propagate
-        with self.assertRaises(Exception):
+        with self.assertRaises(Exception):  # noqa: B017
             self.provider.get_stock_info("INVALID")
 
     def test_get_realtime_data(self):
@@ -183,7 +183,9 @@ class TestStockDataProvider(unittest.TestCase):
         arrays = {}
         for sym in symbols:
             for col in ["Open", "High", "Low", "Close", "Volume"]:
-                arrays[(sym, col)] = [100.0 + i for i in range(5)] if col != "Volume" else [1500000] * 5
+                arrays[(sym, col)] = (
+                    [100.0 + i for i in range(5)] if col != "Volume" else [1500000] * 5
+                )
 
         multi_idx = pd.MultiIndex.from_tuples(arrays.keys())
         batch_df = pd.DataFrame(arrays, index=dates, columns=multi_idx)
@@ -382,9 +384,7 @@ class TestStockDataProvider(unittest.TestCase):
     def test_provider_instantiation(self):
         """Test that StockDataProvider can be instantiated."""
         with (
-            patch(
-                "maverick_mcp.providers.stock_data.get_yfinance_pool"
-            ),
+            patch("maverick_mcp.providers.stock_data.get_yfinance_pool"),
             patch.object(
                 StockDataProvider,
                 "_test_db_connection",
