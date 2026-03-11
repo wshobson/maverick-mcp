@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class EstimationBasis(str, Enum):
+class EstimationBasis(StrEnum):
     """Describes how a tool estimate was derived."""
 
     EMPIRICAL = "empirical"
@@ -17,7 +17,7 @@ class EstimationBasis(str, Enum):
     SIMULATED = "simulated"
 
 
-class ToolComplexity(str, Enum):
+class ToolComplexity(StrEnum):
     """Qualitative complexity buckets used for monitoring and reporting."""
 
     SIMPLE = "simple"

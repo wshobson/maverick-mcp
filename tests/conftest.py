@@ -35,18 +35,24 @@ from maverick_mcp.database.base import Base
 @pytest.fixture(scope="session")
 def postgres_container():
     """Create a PostgreSQL test container for the test session."""
-    with PostgresContainer("postgres:15-alpine") as postgres:
-        postgres.with_env("POSTGRES_PASSWORD", "test")
-        postgres.with_env("POSTGRES_USER", "test")
-        postgres.with_env("POSTGRES_DB", "test")
-        yield postgres
+    try:
+        with PostgresContainer("postgres:15-alpine") as postgres:
+            postgres.with_env("POSTGRES_PASSWORD", "test")
+            postgres.with_env("POSTGRES_USER", "test")
+            postgres.with_env("POSTGRES_DB", "test")
+            yield postgres
+    except Exception:
+        pytest.skip("Docker not available - skipping container-based tests")
 
 
 @pytest.fixture(scope="session")
 def redis_container():
     """Create a Redis test container for the test session."""
-    with RedisContainer("redis:7-alpine") as redis:
-        yield redis
+    try:
+        with RedisContainer("redis:7-alpine") as redis:
+            yield redis
+    except Exception:
+        pytest.skip("Docker not available - skipping container-based tests")
 
 
 # Database setup fixtures
@@ -109,7 +115,7 @@ def db_session(engine) -> Generator[Session, None, None]:
 
 
 # Environment setup
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def setup_test_env(database_url: str, redis_url: str):
     """Set up test environment variables."""
     os.environ["DATABASE_URL"] = database_url

@@ -303,9 +303,7 @@ class TestEnhancedStockDataProvider:
         # Patch the provider's pool to use the mocked pool
         provider._yf_pool = mock_yfinance._mock_pool
         # Mock the session getter - must return (session, should_close) tuple
-        monkeypatch.setattr(
-            provider, "_get_db_session", lambda: (db_session, False)
-        )
+        monkeypatch.setattr(provider, "_get_db_session", lambda: (db_session, False))
 
         df = provider.get_stock_data("TSLA", "2024-01-01", "2024-01-05", use_cache=True)
 
@@ -372,9 +370,7 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_maverick_stocks, monkeypatch
     ):
         """Test getting maverick recommendations."""
-        monkeypatch.setattr(
-            provider, "_get_db_session", lambda: (db_session, False)
-        )
+        monkeypatch.setattr(provider, "_get_db_session", lambda: (db_session, False))
 
         recommendations = provider.get_maverick_recommendations(limit=2)
 
@@ -389,9 +385,7 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_maverick_stocks, monkeypatch
     ):
         """Test getting maverick recommendations with minimum score filter."""
-        monkeypatch.setattr(
-            provider, "_get_db_session", lambda: (db_session, False)
-        )
+        monkeypatch.setattr(provider, "_get_db_session", lambda: (db_session, False))
 
         recommendations = provider.get_maverick_recommendations(limit=10, min_score=90)
 
@@ -439,9 +433,7 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_bear_stocks, monkeypatch
     ):
         """Test getting bear recommendations."""
-        monkeypatch.setattr(
-            provider, "_get_db_session", lambda: (db_session, False)
-        )
+        monkeypatch.setattr(provider, "_get_db_session", lambda: (db_session, False))
 
         recommendations = provider.get_maverick_bear_recommendations(limit=2)
 
@@ -495,9 +487,7 @@ class TestMaverickRecommendations:
         self, provider, db_session, sample_trending_stocks, monkeypatch
     ):
         """Test getting supply/demand breakout recommendations."""
-        monkeypatch.setattr(
-            provider, "_get_db_session", lambda: (db_session, False)
-        )
+        monkeypatch.setattr(provider, "_get_db_session", lambda: (db_session, False))
 
         recommendations = provider.get_supply_demand_breakout_recommendations(limit=2)
 
@@ -543,7 +533,10 @@ class TestMaverickRecommendations:
         )
         assert "reason" in results["maverick_bear_stocks"][0]
 
-        assert results["supply_demand_breakouts"][0]["recommendation_type"] == "supply_demand_breakout"
+        assert (
+            results["supply_demand_breakouts"][0]["recommendation_type"]
+            == "supply_demand_breakout"
+        )
         assert "reason" in results["supply_demand_breakouts"][0]
 
 
@@ -728,9 +721,7 @@ class TestErrorHandling:
         mock_session.query.side_effect = Exception("Database query error")
         mock_session.close = MagicMock()
 
-        monkeypatch.setattr(
-            provider, "_get_db_session", lambda: (mock_session, True)
-        )
+        monkeypatch.setattr(provider, "_get_db_session", lambda: (mock_session, True))
 
         recommendations = provider.get_maverick_recommendations()
         assert recommendations == []

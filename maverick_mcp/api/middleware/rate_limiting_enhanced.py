@@ -8,7 +8,7 @@ import time
 from collections import defaultdict, deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from functools import wraps
 from typing import Any
 
@@ -22,7 +22,7 @@ from maverick_mcp.exceptions import RateLimitError
 logger = logging.getLogger(__name__)
 
 
-class RateLimitStrategy(str, Enum):
+class RateLimitStrategy(StrEnum):
     """Supported rate limiting strategies."""
 
     SLIDING_WINDOW = "sliding_window"
@@ -30,7 +30,7 @@ class RateLimitStrategy(str, Enum):
     FIXED_WINDOW = "fixed_window"
 
 
-class RateLimitTier(str, Enum):
+class RateLimitTier(StrEnum):
     """Logical tiers used to classify API endpoints."""
 
     PUBLIC = "public"

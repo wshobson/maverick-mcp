@@ -765,8 +765,9 @@ class DatabaseConfig(BaseModel):
         description="Redis socket connection timeout in seconds",
     )
     redis_retry_on_timeout: bool = Field(
-        default_factory=lambda: os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower()
-        == "true",
+        default_factory=lambda: (
+            os.getenv("REDIS_RETRY_ON_TIMEOUT", "true").lower() == "true"
+        ),
         description="Retry Redis operations on timeout",
     )
 
