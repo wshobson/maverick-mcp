@@ -129,8 +129,8 @@ class TestMacroDataProvider(unittest.TestCase):
             result = self.provider.get_unemployment_rate()
 
             self.assertIsInstance(result, dict)
-            self.assertEqual(result["current"], 3.7)
-            self.assertEqual(result["previous"], 3.6)
+            self.assertEqual(result["current"], mock_data.iloc[-1])
+            self.assertEqual(result["previous"], mock_data.iloc[-2])
 
     def test_get_inflation_rate(self):
         """Test inflation rate calculation."""

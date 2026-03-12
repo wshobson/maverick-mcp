@@ -466,8 +466,10 @@ def health_resource() -> str:
             }
         )
 
+
 # Register enhanced health endpoint as a resource without replacing the callable.
 mcp.resource("health://")(health_resource)
+
 
 # Add status dashboard endpoint as a resource
 def status_dashboard_resource() -> str:
@@ -511,8 +513,10 @@ def status_dashboard_resource() -> str:
             }
         )
 
+
 # Register status dashboard as a resource without replacing the callable.
 mcp.resource("dashboard://")(status_dashboard_resource)
+
 
 # Add performance dashboard endpoint as a resource (keep existing)
 @mcp.resource("performance://")

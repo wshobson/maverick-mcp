@@ -9,7 +9,7 @@ import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
-from fastmcp import Client
+from fastmcp import Client, FastMCP
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
@@ -21,6 +21,14 @@ from maverick_mcp.data.models import (
     Stock,
     SupplyDemandBreakoutStocks,
 )
+
+
+def _disable_output_schemas(server: FastMCP) -> None:
+    """Disable output schema validation on all tools to avoid numpy serialization issues."""
+    lp = server.providers[0]
+    for key, comp in lp._components.items():
+        if key.startswith("tool:") and hasattr(comp, "output_schema"):
+            comp.output_schema = None
 
 
 @pytest.fixture

@@ -3,6 +3,9 @@ Pytest configuration for MaverickMCP integration testing.
 
 This module sets up test containers for PostgreSQL and Redis to enable
 real integration testing without mocking database or cache dependencies.
+
+Container fixtures gracefully skip when Docker is not available, so unit
+tests that don't require Docker can run without failures.
 """
 
 # Set test environment before any other imports
@@ -10,7 +13,6 @@ import os
 
 os.environ["MAVERICK_TEST_ENV"] = "true"
 
-import asyncio
 import sys
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
@@ -32,7 +34,23 @@ from maverick_mcp.data.models import get_db
 from maverick_mcp.database.base import Base
 
 
-def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+def _is_docker_error(exc: Exception) -> bool:
+    """Check if an exception is caused by Docker not being available."""
+    exc_type_module = getattr(type(exc), "__module__", "")
+    exc_type_name = type(exc).__name__
+    exc_str = str(exc).lower()
+    return (
+        "docker" in exc_type_module.lower()
+        or "docker" in exc_type_name.lower()
+        or "docker" in exc_str
+        or "connection refused" in exc_str
+        or "testcontainers" in exc_str
+    )
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
     """
     Ensure tests in dedicated directories get proper markers so default `-m`
     selection in `pyproject.toml` behaves as intended.
@@ -87,25 +105,37 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
 # Container fixtures (session scope for efficiency)
 @pytest.fixture(scope="session")
 def postgres_container():
-    """Create a PostgreSQL test container for the test session."""
+    """Create a PostgreSQL test container for the test session.
+
+    Skips gracefully when Docker is not available so that non-Docker tests
+    are not blocked.
+    """
     try:
         with PostgresContainer("postgres:15-alpine") as postgres:
             postgres.with_env("POSTGRES_PASSWORD", "test")
             postgres.with_env("POSTGRES_USER", "test")
             postgres.with_env("POSTGRES_DB", "test")
             yield postgres
-    except Exception:
-        pytest.skip("Docker not available - skipping container-based tests")
+    except Exception as exc:
+        if _is_docker_error(exc):
+            pytest.skip(f"Docker not available for testcontainers: {exc}")
+        raise
 
 
 @pytest.fixture(scope="session")
 def redis_container():
-    """Create a Redis test container for the test session."""
+    """Create a Redis test container for the test session.
+
+    Skips gracefully when Docker is not available so that non-Docker tests
+    are not blocked.
+    """
     try:
         with RedisContainer("redis:7-alpine") as redis:
             yield redis
-    except Exception:
-        pytest.skip("Docker not available - skipping container-based tests")
+    except Exception as exc:
+        if _is_docker_error(exc):
+            pytest.skip(f"Docker not available for testcontainers: {exc}")
+        raise
 
 
 # Database setup fixtures
@@ -167,12 +197,10 @@ def db_session(engine) -> Generator[Session, None, None]:
         session.close()
 
 
-# Environment setup
-@pytest.fixture(scope="session")
-def setup_test_env(database_url: str, redis_url: str):
-    """Set up test environment variables."""
-    os.environ["DATABASE_URL"] = database_url
-    os.environ["REDIS_URL"] = redis_url
+# Base environment setup (autouse - sets non-Docker env vars for ALL tests)
+@pytest.fixture(scope="session", autouse=True)
+def setup_base_test_env():
+    """Set up base test environment variables that don't require Docker."""
     os.environ["ENVIRONMENT"] = "test"
     os.environ["AUTH_ENABLED"] = "true"
     os.environ["LOG_LEVEL"] = "INFO"
@@ -218,6 +246,22 @@ bQIDAQAB
     # Clean up (optional)
 
 
+# Docker-dependent environment setup (NOT autouse - only for integration tests)
+@pytest.fixture(scope="session")
+def setup_test_env(database_url: str, redis_url: str):
+    """Set up Docker-dependent environment variables.
+
+    This fixture is NOT autouse. Only tests that explicitly request it (or
+    transitively depend on Docker fixtures) will trigger container startup.
+    """
+    os.environ["DATABASE_URL"] = database_url
+    os.environ["REDIS_URL"] = redis_url
+    yield
+    # Clean up
+    os.environ.pop("DATABASE_URL", None)
+    os.environ.pop("REDIS_URL", None)
+
+
 # FastAPI test client fixtures
 @pytest.fixture(scope="function")
 async def app(db_session: Session):
@@ -261,15 +305,6 @@ async def auth_headers(client: AsyncClient, test_user):
     """Get authentication headers for a test user (disabled for personal use)."""
     # Auth disabled for personal use - return empty headers
     return {}
-
-
-# Event loop configuration for async tests
-@pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 # Mock fixtures for external APIs

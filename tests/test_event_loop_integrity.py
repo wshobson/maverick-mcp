@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 import pytest
@@ -40,9 +41,9 @@ def test_health_resource_restores_event_loop(monkeypatch: pytest.MonkeyPatch) ->
         _stub_health,
     )
 
-    result = health_resource()
+    result = json.loads(health_resource())
     assert result["status"] == "healthy"
-    second_result = health_resource()
+    second_result = json.loads(health_resource())
     assert second_result["status"] == "healthy"
 
     _assert_loop_clean()
@@ -59,9 +60,9 @@ def test_status_dashboard_restores_event_loop(monkeypatch: pytest.MonkeyPatch) -
         _stub_dashboard,
     )
 
-    result = status_dashboard_resource()
+    result = json.loads(status_dashboard_resource())
     assert result["status"] == "ok"
-    again = status_dashboard_resource()
+    again = json.loads(status_dashboard_resource())
     assert again["status"] == "ok"
 
     _assert_loop_clean()

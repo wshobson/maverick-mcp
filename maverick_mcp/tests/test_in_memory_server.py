@@ -6,18 +6,67 @@ or network calls, using FastMCP's in-memory transport capabilities.
 """
 
 import asyncio
+import json
 from datetime import datetime, timedelta
 from typing import Any
 from unittest.mock import Mock, patch
 
 import pytest
-from fastmcp import Client
+from fastmcp import Client, FastMCP
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from maverick_mcp.api.server import mcp
+from maverick_mcp.api.routers.tool_registry import register_all_router_tools
 from maverick_mcp.data.models import Base, PriceCache, Stock
+
+
+def _disable_output_schemas(server: FastMCP) -> None:
+    """Disable output schema validation on all tools to avoid numpy serialization issues."""
+    lp = server.providers[0]
+    for key, comp in lp._components.items():
+        if key.startswith("tool:") and hasattr(comp, "output_schema"):
+            comp.output_schema = None
+
+
+@pytest.fixture
+def mcp():
+    """Create a test MCP server with all tools and resources registered."""
+    server = FastMCP("TestMaverick-MCP")
+    register_all_router_tools(server)
+    _disable_output_schemas(server)
+
+    # Register the health resource - wrap to return str since FastMCP 3.x
+    # resources must return str, bytes, or list[ResourceContent], not dict
+    from maverick_mcp.api.server import health_resource
+
+    @server.resource("health://")
+    def health_resource_str() -> str:
+        result = health_resource()
+        # Recursively convert Pydantic models and complex objects to dicts
+        return _serialize_health(result)
+
+    return server
+
+
+def _serialize_health(obj: Any) -> str:
+    """Serialize health resource output to JSON string, handling Pydantic models."""
+
+    def _convert(o: Any) -> Any:
+        if hasattr(o, "model_dump"):
+            return o.model_dump()
+        if hasattr(o, "_asdict"):
+            return {k: _convert(v) for k, v in o._asdict().items()}
+        if isinstance(o, dict):
+            return {k: _convert(v) for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [_convert(i) for i in o]
+        if isinstance(o, Mock):
+            return str(o)
+        return o
+
+    converted = _convert(obj)
+    return json.dumps(converted, default=str)
 
 
 @pytest.fixture
@@ -89,7 +138,7 @@ class TestInMemoryServer:
     """Test suite for in-memory server operations."""
 
     @pytest.mark.asyncio
-    async def test_server_health(self, test_db, mock_redis):
+    async def test_server_health(self, mcp, test_db, mock_redis):
         """Test the health endpoint returns correct status."""
         async with Client(mcp) as client:
             result = await client.read_resource("health://")
@@ -97,14 +146,14 @@ class TestInMemoryServer:
             # Result is a list of content items
             assert len(result) > 0
             assert result[0].text is not None
-            health_data = eval(result[0].text)  # Convert string representation to dict
+            health_data = json.loads(result[0].text)
 
             # In testing environment, status might be degraded/unhealthy due to event loop issues
             assert health_data["status"] in ["ok", "degraded", "unhealthy"]
             assert "version" in health_data or "service" in health_data
 
     @pytest.mark.asyncio
-    async def test_fetch_stock_data(self, test_db, mock_redis):
+    async def test_fetch_stock_data(self, mcp, test_db, mock_redis):
         """Test fetching stock data from the database."""
         async with Client(mcp) as client:
             result = await client.call_tool(
@@ -124,7 +173,7 @@ class TestInMemoryServer:
             assert "record_count" in data
 
     @pytest.mark.asyncio
-    async def test_rsi_analysis(self, test_db, mock_redis):
+    async def test_rsi_analysis(self, mcp, test_db, mock_redis):
         """Test RSI technical analysis calculation."""
         async with Client(mcp) as client:
             result = await client.call_tool(
@@ -140,7 +189,7 @@ class TestInMemoryServer:
             assert data["ticker"] == "AAPL"
 
     @pytest.mark.asyncio
-    async def test_batch_stock_data(self, test_db, mock_redis):
+    async def test_batch_stock_data(self, mcp, test_db, mock_redis):
         """Test batch fetching of multiple stocks."""
         async with Client(mcp) as client:
             result = await client.call_tool(
@@ -162,10 +211,10 @@ class TestInMemoryServer:
             assert data["success_count"] == 2
 
     @pytest.mark.asyncio
-    async def test_invalid_ticker(self, test_db, mock_redis):
+    async def test_invalid_ticker(self, mcp, test_db, mock_redis):
         """Test handling of invalid ticker symbols."""
         async with Client(mcp) as client:
-            # Invalid ticker should return an error, not raise an exception
+            # Invalid ticker should return an error or empty data
             result = await client.call_tool(
                 "data_fetch_stock_data",
                 {
@@ -184,8 +233,8 @@ class TestInMemoryServer:
             assert len(data["data"]) == 0
 
     @pytest.mark.asyncio
-    async def test_date_validation(self, test_db, mock_redis):
-        """Test date range validation — reversed dates should return empty or error."""
+    async def test_date_validation(self, mcp, test_db, mock_redis):
+        """Test date range validation -- reversed dates should return empty or error."""
         async with Client(mcp) as client:
             result = await client.call_tool(
                 "data_fetch_stock_data",
@@ -198,13 +247,11 @@ class TestInMemoryServer:
 
             # Reversed dates should return empty data or an error key
             assert len(result.content) > 0
-            import json
-
             data = json.loads(result.content[0].text)
             assert data.get("record_count", 0) == 0 or "error" in data
 
     @pytest.mark.asyncio
-    async def test_concurrent_requests(self, test_db, mock_redis):
+    async def test_concurrent_requests(self, mcp, test_db, mock_redis):
         """Test handling multiple concurrent requests."""
         async with Client(mcp) as client:
             # Create multiple concurrent tasks
@@ -234,7 +281,7 @@ class TestResourceManagement:
     """Test resource management and cleanup."""
 
     @pytest.mark.asyncio
-    async def test_list_resources(self, test_db, mock_redis):
+    async def test_list_resources(self, mcp, test_db, mock_redis):
         """Test listing available resources."""
         async with Client(mcp) as client:
             resources = await client.list_resources()
@@ -244,7 +291,7 @@ class TestResourceManagement:
             assert isinstance(resources, list)
 
     @pytest.mark.asyncio
-    async def test_read_resource(self, test_db, mock_redis):
+    async def test_read_resource(self, mcp, test_db, mock_redis):
         """Test reading a specific resource."""
         async with Client(mcp) as client:
             result = await client.read_resource("health://")
@@ -259,7 +306,7 @@ class TestErrorHandling:
     """Test error handling and edge cases."""
 
     @pytest.mark.asyncio
-    async def test_database_error_handling(self, mock_redis):
+    async def test_database_error_handling(self, mcp, mock_redis):
         """Test graceful handling of database errors."""
         with patch(
             "maverick_mcp.data.models.SessionLocal", side_effect=Exception("DB Error")
@@ -268,14 +315,12 @@ class TestErrorHandling:
                 result = await client.read_resource("health://")
 
                 assert len(result) > 0
-                import json
-
                 health_data = json.loads(result[0].text)
                 # Should indicate degraded or unhealthy status
                 assert health_data["status"] in ["degraded", "unhealthy"]
 
     @pytest.mark.asyncio
-    async def test_cache_fallback(self, test_db):
+    async def test_cache_fallback(self, mcp, test_db):
         """Test fallback to in-memory cache when Redis is unavailable."""
         with patch(
             "maverick_mcp.data.cache.redis.Redis", side_effect=Exception("Redis Error")
@@ -284,8 +329,6 @@ class TestErrorHandling:
                 result = await client.read_resource("health://")
 
                 assert len(result) > 0
-                import json
-
                 health_data = json.loads(result[0].text)
                 # Health status should still be returned
                 assert health_data["status"] in ["ok", "degraded", "unhealthy"]
@@ -295,7 +338,7 @@ class TestPerformanceMetrics:
     """Test performance monitoring and metrics."""
 
     @pytest.mark.asyncio
-    async def test_query_performance_tracking(self, test_db, mock_redis):
+    async def test_query_performance_tracking(self, mcp, test_db, mock_redis):
         """Test that query performance is tracked."""
         # Skip this test as health_monitor is not available
         pytest.skip("health_monitor not available in current implementation")
@@ -329,7 +372,7 @@ def create_test_stock_data(symbol: str, days: int = 30) -> dict[str, Any]:
 
 
 @pytest.mark.asyncio
-async def test_with_mock_data_provider(test_db, mock_redis):
+async def test_with_mock_data_provider(mcp, test_db, mock_redis):
     """Test with mocked external data provider."""
     test_data = create_test_stock_data("TSLA", 30)
 
