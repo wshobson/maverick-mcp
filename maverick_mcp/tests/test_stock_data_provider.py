@@ -1,5 +1,8 @@
 """
 Tests for the StockDataProvider class.
+
+Updated to match the current EnhancedStockDataProvider which uses a YFinancePool
+connection pool instead of direct yfinance.Ticker calls.
 """
 
 import unittest

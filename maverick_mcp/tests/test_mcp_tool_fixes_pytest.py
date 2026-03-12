@@ -148,7 +148,7 @@ def test_llm_configuration_compatibility():
 
     Validates:
     - LLM can be created successfully
-    - Temperature and streaming settings are compatible with gpt-5-mini
+    - Temperature and streaming settings are compatible with OpenRouter models
     - LLM can handle basic queries without errors
     """
     from maverick_mcp.providers.llm_factory import get_llm
@@ -158,14 +158,19 @@ def test_llm_configuration_compatibility():
     assert llm is not None, "LLM should be created successfully"
 
     # Test basic query to ensure configuration is working
+    # get_llm() uses OpenRouter (primary), OpenAI (fallback), or Anthropic (fallback)
+    openrouter_key = os.getenv("OPENROUTER_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
-    if openai_key:
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    if openrouter_key or openai_key or anthropic_key:
         response = llm.invoke("What is 2+2?")
         assert response is not None, "LLM should return a response"
         assert hasattr(response, "content"), "Response should have content attribute"
         assert "4" in response.content, "LLM should correctly answer 2+2=4"
     else:
-        pytest.skip("OPENAI_API_KEY required for LLM test")
+        pytest.skip(
+            "OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY required for LLM test"
+        )
 
 
 @pytest.mark.integration

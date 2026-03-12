@@ -103,10 +103,10 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 
 ```bash
 # Start the MCP server
-make dev              # Start with SSE transport (default, recommended)
-make dev-sse          # Start with SSE transport (same as dev)
-make dev-http         # Start with Streamable-HTTP transport (for testing/debugging)
-make dev-stdio        # Start with STDIO transport (direct connection)
+make dev              # Start with Streamable-HTTP transport (default)
+make dev-http         # Start with Streamable-HTTP transport (same as dev)
+make dev-sse          # Start with SSE transport (debug/inspector use)
+make dev-stdio        # Start with STDIO transport (recommended for Claude Desktop)
 
 # Development
 make backend          # Start backend server only
@@ -145,44 +145,38 @@ make c                # Alias for make check
 
 ### Connection Methods
 
-**✅ RECOMMENDED**: Claude Desktop works best with the **SSE endpoint via mcp-remote bridge**. This configuration has been tested and **prevents tools from disappearing** after initial connection.
+**✅ RECOMMENDED**: Claude Desktop works best with **STDIO transport** (`make dev-stdio`) for direct subprocess communication, or via **Streamable-HTTP with mcp-remote bridge** (`make dev` + mcp-remote).
 
-#### Method A: SSE Server with mcp-remote Bridge (Recommended - Stable)
+#### Method A: STDIO Transport (Recommended - Most Reliable)
 
-This is the **tested and proven method for Claude Desktop** - provides stable tool registration:
+Direct subprocess communication — fastest and most reliable for Claude Desktop:
 
-1. **Start the SSE server**:
-   ```bash
-   make dev  # Runs SSE server on port 8003
-   ```
-
-2. **Configure with mcp-remote bridge**:
+1. **Configure Claude Desktop**:
    Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
    ```json
    {
      "mcpServers": {
        "maverick-mcp": {
-         "command": "npx",
-         "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
+         "command": "uv",
+         "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"]
        }
      }
    }
    ```
 
 **Why This Configuration Works Best**:
-- ✅ **Prevents Tool Disappearing**: Tools remain available throughout your session
-- ✅ **Stable Connection**: SSE transport provides consistent communication
-- ✅ **Session Persistence**: Maintains connection state for complex analysis workflows
+- ✅ **No Network Layer**: Direct subprocess communication, no ports to manage
+- ✅ **STDIO-Safe**: Server emits no stdout outside JSON-RPC protocol
 - ✅ **All 35+ Tools Available**: Reliable access to all financial and research tools
-- ✅ **Tested and Confirmed**: This exact configuration has been verified to work
-- ✅ **No Trailing Slash Issues**: Server automatically handles both `/sse` and `/sse/` paths
+- ✅ **No mcp-remote Needed**: No bridge dependency
+- ✅ **Fastest**: Zero network overhead
 
-#### Method B: HTTP Streamable Server with mcp-remote Bridge (Alternative)
-   
-1. **Start the HTTP Streamable server**:
+#### Method B: Streamable-HTTP Server with mcp-remote Bridge (Alternative)
+
+1. **Start the server**:
    ```bash
-   make dev  # Runs HTTP streamable server on port 8003
+   make dev  # Runs Streamable-HTTP server on port 8003
    ```
 
 2. **Configure with mcp-remote bridge**:
@@ -200,12 +194,35 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
    ```
 
 **Benefits**:
-- ✅ Uses HTTP Streamable transport
-- ✅ Alternative to SSE endpoint
+- ✅ Uses Streamable-HTTP transport (modern MCP standard)
 - ✅ Supports remote access
+- ✅ Server binds to localhost (127.0.0.1) by default for security
 
-#### Method C: Remote via Claude.ai (Alternative)
-   
+#### Method C: SSE Server with mcp-remote Bridge (Legacy)
+
+SSE transport is available for clients that require it, but Streamable-HTTP is preferred:
+
+1. **Start the SSE server**:
+   ```bash
+   make dev-sse  # Runs SSE server on port 8003
+   ```
+
+2. **Configure with mcp-remote bridge**:
+   Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+   ```json
+   {
+     "mcpServers": {
+       "maverick-mcp": {
+         "command": "npx",
+         "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
+       }
+     }
+   }
+   ```
+
+#### Method D: Remote via Claude.ai (Alternative)
+
    For native remote server support, use [Claude.ai web interface](https://claude.ai/settings/integrations) instead of Claude Desktop.
 
 3. **Restart Claude Desktop** and test with: "Show me technical analysis for AAPL"
@@ -218,7 +235,7 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
 
 | MCP Client           | STDIO | HTTP | SSE | Optimal Method                                |
 |----------------------|-------|------|-----|-----------------------------------------------|
-| **Claude Desktop**   | ❌    | ❌   | ✅  | **SSE via mcp-remote** (stable, tested)      |
+| **Claude Desktop**   | ✅    | ❌   | ❌  | **STDIO** (direct, fastest) or HTTP via mcp-remote |
 | **Cursor IDE**       | ✅    | ❌   | ✅  | SSE and STDIO supported                       |
 | **Claude Code CLI**  | ✅    | ✅   | ✅  | All transports supported                      |
 | **Continue.dev**     | ✅    | ❌   | ✅  | SSE and STDIO supported                       |
@@ -226,18 +243,32 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
 
 #### Claude Desktop (Most Commonly Used)
 
-**✅ TESTED CONFIGURATION**: Use SSE endpoint with mcp-remote bridge - prevents tools from disappearing and ensures stable connection.
+**✅ RECOMMENDED**: Use STDIO transport for the most reliable Claude Desktop experience.
 
 **Configuration Location:**
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
 
-**SSE Connection with mcp-remote (Tested and Stable):**
+**STDIO Connection (Recommended):**
+
+Configure Claude Desktop:
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "maverick_mcp.api.server", "--transport", "stdio"]
+    }
+  }
+}
+```
+
+**Streamable-HTTP via mcp-remote (Alternative):**
 
 1. Start the server:
    ```bash
-   make dev  # Starts SSE server on port 8003
+   make dev  # Starts Streamable-HTTP server on port 8003
    ```
 
 2. Configure Claude Desktop:
@@ -246,13 +277,11 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
      "mcpServers": {
        "maverick-mcp": {
          "command": "npx",
-         "args": ["-y", "mcp-remote", "http://localhost:8003/sse"]
+         "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
        }
      }
    }
    ```
-
-**Important**: This exact configuration has been tested and confirmed to prevent the common issue where tools appear initially but then disappear from Claude Desktop. The server now accepts both `/sse` and `/sse/` paths without redirects.
 
 **Restart Required:** Always restart Claude Desktop after config changes.
 
@@ -273,17 +302,17 @@ This is the **tested and proven method for Claude Desktop** - provides stable to
 
 #### Claude Code CLI - Full Transport Support
 
-**SSE Transport (Recommended):**
-```bash
-claude mcp add --transport sse maverick-mcp http://localhost:8003/sse
-```
-
-**HTTP Transport (Alternative):**
+**HTTP Transport (Recommended):**
 ```bash
 claude mcp add --transport http maverick-mcp http://localhost:8003/mcp/
 ```
 
-**STDIO Transport (Development only):**
+**SSE Transport (Alternative):**
+```bash
+claude mcp add --transport sse maverick-mcp http://localhost:8003/sse
+```
+
+**STDIO Transport (Direct):**
 ```bash
 claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
 ```
@@ -348,14 +377,14 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 ### How It Works
 
 **Connection Architecture:**
-- **STDIO Mode (Optimal for Claude Desktop)**: Direct subprocess communication - fastest, most reliable
-- **Streamable-HTTP Endpoint**: `http://localhost:8003/` - For remote access via mcp-remote bridge
-- **SSE Endpoint**: `http://localhost:8003/sse` - For other clients with native SSE support (accepts both `/sse` and `/sse/`)
+- **STDIO Mode (Recommended for Claude Desktop)**: Direct subprocess communication - fastest, most reliable
+- **Streamable-HTTP Endpoint**: `http://localhost:8003/mcp/` - Default dev transport, for remote access or mcp-remote bridge
+- **SSE Endpoint**: `http://localhost:8003/sse` - For clients with native SSE support (accepts both `/sse` and `/sse/`)
 
-> **Key Finding**: Direct STDIO is the optimal transport for Claude Desktop. HTTP/SSE require the mcp-remote bridge tool, adding latency and complexity. SSE is particularly problematic as it's incompatible with mcp-remote (GET vs POST mismatch).
+> **Key Finding**: Direct STDIO is the optimal transport for Claude Desktop. Streamable-HTTP via mcp-remote is a good alternative for remote access. The server binds to `127.0.0.1` by default for security.
 
 **Transport Limitations by Client:**
-- **Claude Desktop**: STDIO-only, cannot directly connect to HTTP/SSE
+- **Claude Desktop**: Supports STDIO natively; HTTP/SSE require mcp-remote bridge
 - **Most Other Clients**: Support STDIO + SSE (but not HTTP)
 - **Claude Code CLI**: Full transport support (STDIO, HTTP, SSE)
 
@@ -366,10 +395,10 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 - **Installation**: `npx mcp-remote <server-url>`
 
 **Key Transport Facts:**
-- **STDIO**: All clients support this for local connections
-- **HTTP**: Only Claude Code CLI supports direct HTTP connections
-- **SSE**: Cursor, Continue.dev, Windsurf support direct SSE connections  
-- **Claude Desktop Limitation**: Cannot connect to HTTP/SSE without mcp-remote bridge
+- **STDIO**: All clients support this for local connections (recommended for Claude Desktop)
+- **Streamable-HTTP**: Default dev server transport (`make dev`), preferred over SSE
+- **SSE**: Available via `make dev-sse` for clients that need it
+- **Claude Desktop**: Use STDIO directly, or HTTP/SSE via mcp-remote bridge
 
 **Alternatives for Remote Access:**
 - Use Claude.ai web interface for native remote server support (no mcp-remote needed)
@@ -495,24 +524,25 @@ All tools are organized into logical groups (39+ tools total):
 
 ```bash
 # Development mode (recommended - Makefile commands)
-make dev                    # SSE transport (default, recommended for Claude Desktop)
-make dev-http               # Streamable-HTTP transport (for testing with curl/Postman)
-make dev-stdio              # STDIO transport (direct connection)
+make dev                    # Streamable-HTTP transport (default)
+make dev-http               # Streamable-HTTP transport (same as dev)
+make dev-sse                # SSE transport (debug/inspector use)
+make dev-stdio              # STDIO transport (recommended for Claude Desktop)
 
 # Alternative: Direct commands (manual)
-uv run python -m maverick_mcp.api.server --transport sse --port 8003
 uv run python -m maverick_mcp.api.server --transport streamable-http --port 8003
+uv run python -m maverick_mcp.api.server --transport sse --port 8003
 uv run python -m maverick_mcp.api.server --transport stdio
 
 # Script-based startup (with environment variable)
-./scripts/dev.sh                        # Defaults to SSE
-MAVERICK_TRANSPORT=streamable-http ./scripts/dev.sh
+./scripts/dev.sh                        # Defaults to streamable-http
+MAVERICK_TRANSPORT=sse ./scripts/dev.sh
 ```
 
 **When to use each transport:**
-- **SSE** (`make dev` or `make dev-sse`): Best for Claude Desktop - tested and stable
-- **Streamable-HTTP** (`make dev-http`): Ideal for testing with curl/Postman, debugging transport issues
-- **STDIO** (`make dev-stdio`): Direct connection without network layer, good for development
+- **Streamable-HTTP** (`make dev`): Default for development, testing with curl/Postman
+- **SSE** (`make dev-sse`): For MCP Inspector or clients requiring SSE
+- **STDIO** (`make dev-stdio`): Recommended for Claude Desktop - direct, fastest, no network layer
 
 ### Testing
 
@@ -665,17 +695,16 @@ make migrate
 
 1. Verify server is running: `lsof -i :8003` (check if port 8003 is in use)
 2. Check `claude_desktop_config.json` syntax and correct port (8003)
-3. **Use the tested SSE configuration**: `http://localhost:8003/sse` with mcp-remote
+3. **Use STDIO transport** or Streamable-HTTP with mcp-remote (`http://localhost:8003/mcp/`)
 4. Restart Claude Desktop completely
 5. Test with: "Get AAPL stock data"
 
 **Tools appearing then disappearing**:
 
-1. **FIXED**: Server now accepts both `/sse` and `/sse/` without 307 redirects
-2. Use the recommended SSE configuration with mcp-remote bridge
+1. **Best fix**: Switch to STDIO transport (no network issues possible)
+2. If using HTTP/SSE: server accepts both `/sse` and `/sse/` without 307 redirects
 3. Ensure you're using the exact configuration shown above
-4. The SSE + mcp-remote setup has been tested and prevents tool disappearing
-5. **No trailing slash required**: Server automatically handles path normalization
+4. Server binds to `127.0.0.1` by default — use `MAVERICK_HOST=0.0.0.0` for remote access
 
 **Research Tool Issues**:
 

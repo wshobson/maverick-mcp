@@ -14,6 +14,7 @@ This test suite covers:
 import asyncio
 import time
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -24,6 +25,8 @@ from maverick_mcp.utils.parallel_research import (
     ResearchTask,
     TaskDistributionEngine,
 )
+
+_ASYNC_MOCK_SENTINEL = AsyncMock
 
 
 class TestParallelResearchConfig:

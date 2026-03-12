@@ -112,7 +112,7 @@ class ToolEstimationConfig(BaseModel):
         default_factory=lambda: ToolEstimate(
             llm_calls=10,
             total_tokens=15000,
-            confidence=0.65,
+            confidence=0.6,
             based_on=EstimationBasis.CONSERVATIVE,
             complexity=ToolComplexity.PREMIUM,
             notes="Baseline premium orchestration",
@@ -131,7 +131,7 @@ class ToolEstimationConfig(BaseModel):
     tool_estimates: dict[str, ToolEstimate] = Field(default_factory=dict)
 
     def model_post_init(self, _context: Any) -> None:  # noqa: D401
-        if not self.tool_estimates:
+        if "tool_estimates" not in self.model_fields_set:
             self.tool_estimates = _build_default_estimates(self)
         else:
             normalised: dict[str, ToolEstimate] = {}
@@ -441,7 +441,7 @@ def _build_default_estimates(config: ToolEstimationConfig) -> dict[str, ToolEsti
         "analyze_market_with_agent": {
             "llm_calls": 10,
             "total_tokens": 14000,
-            "confidence": 0.65,
+            "confidence": 0.6,
             "based_on": EstimationBasis.CONSERVATIVE,
             "complexity": ToolComplexity.PREMIUM,
             "notes": "Multi-agent orchestration",

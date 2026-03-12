@@ -9,6 +9,7 @@ Provides structured logging for research agent orchestration with:
 - Resource usage monitoring
 """
 
+import asyncio
 import functools
 import logging
 import time
@@ -144,7 +145,7 @@ def log_method_call(
 
                 # Log successful completion
                 duration = time.time() - start_time
-                timing_str = f" | duration: {duration:.3f}s" if include_timing else ""
+                timing_str = f" | duration:{duration:.3f}s" if include_timing else ""
 
                 # Include result summary if available
                 result_summary = ""
@@ -165,7 +166,7 @@ def log_method_call(
             except Exception as e:
                 # Log error
                 duration = time.time() - start_time
-                timing_str = f" | duration: {duration:.3f}s" if include_timing else ""
+                timing_str = f" | duration:{duration:.3f}s" if include_timing else ""
                 logger.error(f"❌ ERROR {func.__name__}{timing_str} | error: {str(e)}")
                 raise
 
@@ -194,18 +195,31 @@ def log_method_call(
                 result = func(*args, **kwargs)
 
                 duration = time.time() - start_time
-                timing_str = f" | duration: {duration:.3f}s" if include_timing else ""
-                logger.info(f"✅ SUCCESS {func.__name__}{timing_str}")
+                timing_str = f" | duration:{duration:.3f}s" if include_timing else ""
+
+                result_summary = ""
+                if isinstance(result, dict):
+                    if "execution_mode" in result:
+                        result_summary += f" | mode: {result['execution_mode']}"
+                    if "research_confidence" in result:
+                        result_summary += (
+                            f" | confidence: {result['research_confidence']:.2f}"
+                        )
+                    if "parallel_execution_stats" in result:
+                        stats = result["parallel_execution_stats"]
+                        result_summary += f" | tasks: {stats.get('successful_tasks', 0)}/{stats.get('total_tasks', 0)}"
+
+                logger.info(f"✅ SUCCESS {func.__name__}{timing_str}{result_summary}")
                 return result
 
             except Exception as e:
                 duration = time.time() - start_time
-                timing_str = f" | duration: {duration:.3f}s" if include_timing else ""
+                timing_str = f" | duration:{duration:.3f}s" if include_timing else ""
                 logger.error(f"❌ ERROR {func.__name__}{timing_str} | error: {str(e)}")
                 raise
 
         # Return appropriate wrapper based on function type
-        if hasattr(func, "_is_coroutine") or "async" in str(func):
+        if asyncio.iscoroutinefunction(func):
             return async_wrapper
         else:
             return sync_wrapper

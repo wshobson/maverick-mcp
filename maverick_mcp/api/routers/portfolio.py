@@ -539,7 +539,7 @@ def portfolio_correlation_analysis(
         # Check for NaN/Inf values
         if (
             correlation_matrix.isnull().any().any()
-            or not correlation_matrix.applymap(lambda x: abs(x) <= 1.0).all().all()
+            or not correlation_matrix.map(lambda x: abs(x) <= 1.0).all().all()
         ):
             return {
                 "error": "Invalid correlation values detected",

@@ -17,10 +17,6 @@ import plotly.subplots as sp
 
 from maverick_mcp.config.plotly_config import setup_plotly
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.visualization")
 
 # Configure Plotly to use modern defaults and suppress warnings

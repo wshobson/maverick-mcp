@@ -14,7 +14,6 @@ from typing import Any, cast
 import pandas as pd
 import requests
 import yfinance as yf
-from dotenv import load_dotenv
 from finvizfinance.screener.overview import Overview
 from requests.adapters import HTTPAdapter, Retry
 from tiingo import TiingoClient
@@ -23,13 +22,6 @@ from maverick_mcp.utils.circuit_breaker_decorators import (
     with_market_data_circuit_breaker,
 )
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.market_data")
 
 # Initialize Tiingo client

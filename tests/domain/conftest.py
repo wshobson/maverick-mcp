@@ -52,8 +52,14 @@ def db_session():
     pytest.skip("Domain tests don't require database sessions")
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def setup_test_env():
+    """Domain tests don't need Docker-dependent environment setup."""
+    yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_base_test_env():
     """Minimal test environment setup for domain tests."""
     os.environ["ENVIRONMENT"] = "test"
     os.environ["LOG_LEVEL"] = "INFO"

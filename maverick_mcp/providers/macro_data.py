@@ -8,20 +8,12 @@ import os
 from datetime import UTC, datetime, timedelta
 
 import pandas as pd
-from dotenv import load_dotenv
 from sklearn.preprocessing import MinMaxScaler
 
 from maverick_mcp.utils.circuit_breaker_decorators import (
     with_economic_data_circuit_breaker,
 )
 
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
 logger = logging.getLogger("maverick_mcp.macro_data")
 
 # Configuration
