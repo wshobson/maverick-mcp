@@ -1155,3 +1155,111 @@ class CacheManager:
         results.update(existing)
 
         return results
+
+
+# ---------------------------------------------------------------------------
+# Agent session persistence helpers
+# ---------------------------------------------------------------------------
+
+_AGENT_SESSION_PREFIX = "agent_session:"
+_AGENT_SESSION_TTL = 86400  # 24 hours
+
+# In-memory fallback for agent sessions when Redis is unavailable
+_agent_session_memory: dict[str, dict[str, Any]] = {}
+
+
+def save_agent_session(
+    session_id: str, state: dict[str, Any], ttl: int = _AGENT_SESSION_TTL
+) -> bool:
+    """Persist agent session config to Redis (or in-memory fallback).
+
+    Args:
+        session_id: Unique session identifier (e.g. "market:moderate")
+        state: JSON-serializable dict of agent config / session metadata
+        ttl: Time-to-live in seconds (default 24 h)
+
+    Returns:
+        True if saved successfully
+    """
+    key = f"{_AGENT_SESSION_PREFIX}{session_id}"
+
+    # Try Redis first
+    redis_client = get_redis_client()
+    if redis_client:
+        try:
+            payload = json.dumps(state, default=_json_default)
+            redis_client.setex(key, ttl, payload)
+            logger.debug(f"Saved agent session to Redis: {session_id}")
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to save agent session to Redis: {e}")
+
+    # Fallback to in-memory
+    _agent_session_memory[session_id] = {
+        "data": state,
+        "expiry": time.time() + ttl,
+    }
+    logger.debug(f"Saved agent session to memory: {session_id}")
+    return True
+
+
+def load_agent_session(session_id: str) -> dict[str, Any] | None:
+    """Load agent session config from Redis (or in-memory fallback).
+
+    Args:
+        session_id: Unique session identifier
+
+    Returns:
+        Session state dict or None if not found / expired
+    """
+    key = f"{_AGENT_SESSION_PREFIX}{session_id}"
+
+    # Try Redis first
+    redis_client = get_redis_client()
+    if redis_client:
+        try:
+            data = redis_client.get(key)
+            if data:
+                decoded = data.decode("utf-8") if isinstance(data, bytes) else data
+                result: dict[str, Any] = json.loads(decoded)
+                logger.debug(f"Loaded agent session from Redis: {session_id}")
+                return result
+        except Exception as e:
+            logger.warning(f"Failed to load agent session from Redis: {e}")
+
+    # Fallback to in-memory
+    entry = _agent_session_memory.get(session_id)
+    if entry:
+        if entry["expiry"] > time.time():
+            logger.debug(f"Loaded agent session from memory: {session_id}")
+            return entry["data"]
+        else:
+            del _agent_session_memory[session_id]
+
+    return None
+
+
+def delete_agent_session(session_id: str) -> bool:
+    """Remove an agent session from storage.
+
+    Args:
+        session_id: Unique session identifier
+
+    Returns:
+        True if deleted
+    """
+    key = f"{_AGENT_SESSION_PREFIX}{session_id}"
+    deleted = False
+
+    redis_client = get_redis_client()
+    if redis_client:
+        try:
+            deleted = bool(redis_client.delete(key))
+        except Exception as e:
+            logger.warning(f"Failed to delete agent session from Redis: {e}")
+
+    if session_id in _agent_session_memory:
+        del _agent_session_memory[session_id]
+        deleted = True
+
+    return deleted

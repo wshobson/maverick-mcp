@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 screening_router: FastMCP = FastMCP("Stock_Screening")
 
 
-def get_maverick_stocks(limit: int = 20) -> dict[str, Any]:
+def get_maverick_stocks(limit: int = 20, regime_filter: bool = True) -> dict[str, Any]:
     """
     Get top Maverick stocks from the screening results.
 
@@ -30,8 +30,12 @@ def get_maverick_stocks(limit: int = 20) -> dict[str, Any]:
     - Momentum characteristics
     - Strong combined scores
 
+    When regime_filter is True (default), auto-detects market regime via SPY
+    and filters results accordingly (suppresses bullish signals in bear markets).
+
     Args:
         limit: Maximum number of stocks to return (default: 20)
+        regime_filter: Auto-detect regime and filter results (default: True)
 
     Returns:
         Dictionary containing Maverick stock screening results
@@ -41,14 +45,44 @@ def get_maverick_stocks(limit: int = 20) -> dict[str, Any]:
 
         with SessionLocal() as session:
             stocks = MaverickStocks.get_top_stocks(session, limit=limit)
+            stock_dicts = [stock.to_dict() for stock in stocks]
 
-            return {
+            result = {
                 "status": "success",
-                "count": len(stocks),
-                "stocks": [stock.to_dict() for stock in stocks],
+                "count": len(stock_dicts),
+                "stocks": stock_dicts,
                 "screening_type": "maverick_bullish",
                 "description": "High momentum stocks with bullish technical setups",
             }
+
+            if regime_filter:
+                try:
+                    from maverick_mcp.core.regime_gate import (
+                        apply_regime_filter,
+                        get_current_regime,
+                    )
+
+                    regime = get_current_regime()
+                    filtered_stocks, regime_context = apply_regime_filter(
+                        stock_dicts, regime, "maverick_bullish"
+                    )
+                    result["stocks"] = filtered_stocks
+                    result["count"] = len(filtered_stocks)
+                    result["current_regime"] = regime_context
+                except Exception as e:
+                    logger.warning(
+                        f"Regime detection failed, returning unfiltered: {e}"
+                    )
+
+            # Enrich with EARS scores
+            try:
+                from maverick_mcp.core.relative_strength import enrich_stocks_with_ears
+
+                result["stocks"] = enrich_stocks_with_ears(result["stocks"])
+            except Exception as e:
+                logger.warning(f"EARS enrichment failed: {e}")
+
+            return result
     except Exception as e:
         logger.error(f"Error fetching Maverick stocks: {str(e)}")
         return {"error": str(e), "status": "error"}
@@ -93,7 +127,9 @@ def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
 
 
 def get_supply_demand_breakouts(
-    limit: int = 20, filter_moving_averages: bool = False
+    limit: int = 20,
+    filter_moving_averages: bool = False,
+    regime_filter: bool = True,
 ) -> dict[str, Any]:
     """
     Get stocks showing supply/demand breakout patterns from accumulation.
@@ -104,9 +140,13 @@ def get_supply_demand_breakouts(
     - Strong momentum strength showing institutional interest
     - Market structure indicating supply absorption and demand dominance
 
+    When regime_filter is True (default), auto-detects market regime via SPY
+    and filters results accordingly.
+
     Args:
         limit: Maximum number of stocks to return (default: 20)
         filter_moving_averages: If True, only return stocks above all moving averages
+        regime_filter: Auto-detect regime and filter results (default: True)
 
     Returns:
         Dictionary containing supply/demand breakout screening results
@@ -122,13 +162,44 @@ def get_supply_demand_breakouts(
             else:
                 stocks = SupplyDemandBreakoutStocks.get_top_stocks(session, limit=limit)
 
-            return {
+            stock_dicts = [stock.to_dict() for stock in stocks]
+
+            result = {
                 "status": "success",
-                "count": len(stocks),
-                "stocks": [stock.to_dict() for stock in stocks],
+                "count": len(stock_dicts),
+                "stocks": stock_dicts,
                 "screening_type": "supply_demand_breakout",
                 "description": "Stocks breaking out from accumulation with strong demand dynamics",
             }
+
+            if regime_filter:
+                try:
+                    from maverick_mcp.core.regime_gate import (
+                        apply_regime_filter,
+                        get_current_regime,
+                    )
+
+                    regime = get_current_regime()
+                    filtered_stocks, regime_context = apply_regime_filter(
+                        stock_dicts, regime, "supply_demand_breakout"
+                    )
+                    result["stocks"] = filtered_stocks
+                    result["count"] = len(filtered_stocks)
+                    result["current_regime"] = regime_context
+                except Exception as e:
+                    logger.warning(
+                        f"Regime detection failed, returning unfiltered: {e}"
+                    )
+
+            # Enrich with EARS scores
+            try:
+                from maverick_mcp.core.relative_strength import enrich_stocks_with_ears
+
+                result["stocks"] = enrich_stocks_with_ears(result["stocks"])
+            except Exception as e:
+                logger.warning(f"EARS enrichment failed: {e}")
+
+            return result
     except Exception as e:
         logger.error(f"Error fetching supply/demand breakout stocks: {str(e)}")
         return {"error": str(e), "status": "error"}

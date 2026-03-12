@@ -120,6 +120,8 @@ def setup_backtesting_tools(mcp):
         threshold: str | float | None = None,
         z_score_threshold: str | float | None = None,
         breakout_factor: str | float | None = None,
+        persist: bool = False,
+        mtf_confirm: bool = False,
     ) -> dict[str, Any]:
         """Run a VectorBT backtest with specified strategy and parameters.
 
@@ -130,6 +132,8 @@ def setup_backtesting_tools(mcp):
             end_date: End date (YYYY-MM-DD), defaults to today
             initial_capital: Starting capital for backtest
             Strategy-specific parameters passed as individual arguments (e.g., fast_period=10, slow_period=20)
+            persist: If True, save results to database for later retrieval and comparison
+            mtf_confirm: If True, run on daily and weekly bars and return confluence score
 
         Returns:
             Comprehensive backtest results including metrics, trades, and analysis
@@ -192,15 +196,25 @@ def setup_backtesting_tools(mcp):
         # Initialize engine
         engine = VectorBTEngine()
 
-        # Run backtest
-        results = await engine.run_backtest(
-            symbol=symbol,
-            strategy_type=strategy,
-            parameters=parameters,
-            start_date=start_date,
-            end_date=end_date,
-            initial_capital=initial_capital,
-        )
+        # Run backtest (with optional multi-timeframe confirmation)
+        if mtf_confirm:
+            results = await engine.run_backtest_mtf(
+                symbol=symbol,
+                strategy_type=strategy,
+                parameters=parameters,
+                start_date=start_date,
+                end_date=end_date,
+                initial_capital=initial_capital,
+            )
+        else:
+            results = await engine.run_backtest(
+                symbol=symbol,
+                strategy_type=strategy,
+                parameters=parameters,
+                start_date=start_date,
+                end_date=end_date,
+                initial_capital=initial_capital,
+            )
 
         # Analyze results
         analyzer = BacktestAnalyzer()
@@ -225,6 +239,23 @@ def setup_backtesting_tools(mcp):
 
             # Set correlation context for downstream operations
             CorrelationIDGenerator.set_correlation_id()
+
+        # Persist results if requested
+        if persist:
+            try:
+                from maverick_mcp.backtesting.persistence import (
+                    BacktestPersistenceManager,
+                )
+
+                with BacktestPersistenceManager() as pm:
+                    backtest_id = pm.save_backtest_result(results)
+                    results["persisted"] = True
+                    results["backtest_id"] = backtest_id
+                    logger.info(f"Persisted backtest result: {backtest_id}")
+            except Exception as e:
+                logger.warning(f"Failed to persist backtest result: {e}")
+                results["persisted"] = False
+                results["persist_error"] = str(e)
 
         return results
 
@@ -1302,3 +1333,252 @@ def setup_backtesting_tools(mcp):
 
         except Exception as e:
             return {"error": f"Ensemble creation failed: {str(e)}"}
+
+    @mcp.tool()
+    async def get_backtest_history(
+        ctx: Context,
+        symbol: str,
+        strategy: str | None = None,
+        limit: int = 10,
+    ) -> dict[str, Any]:
+        """Get historical backtest results for a symbol from the database.
+
+        Requires prior backtests run with persist=True. Enables comparison
+        of current vs prior runs and strategy performance tracking over time.
+
+        Args:
+            symbol: Stock symbol to look up
+            strategy: Optional strategy type filter
+            limit: Maximum number of results (default: 10)
+
+        Returns:
+            List of historical backtest results with key metrics
+        """
+        try:
+            from maverick_mcp.backtesting.persistence import (
+                BacktestPersistenceManager,
+            )
+
+            with BacktestPersistenceManager() as pm:
+                backtests = pm.get_backtests_by_symbol(
+                    symbol=symbol, strategy_type=strategy, limit=limit
+                )
+
+                if not backtests:
+                    return {
+                        "status": "empty",
+                        "message": f"No persisted backtests found for {symbol.upper()}"
+                        + (f" with strategy '{strategy}'" if strategy else ""),
+                        "hint": "Run a backtest with persist=True to save results",
+                    }
+
+                results = []
+                for bt in backtests:
+                    results.append(
+                        {
+                            "backtest_id": str(bt.backtest_id),
+                            "symbol": bt.symbol,
+                            "strategy": bt.strategy_type,
+                            "date": bt.backtest_date.isoformat()
+                            if bt.backtest_date
+                            else None,
+                            "period": f"{bt.start_date} to {bt.end_date}"
+                            if bt.start_date and bt.end_date
+                            else None,
+                            "metrics": {
+                                "total_return": float(bt.total_return)
+                                if bt.total_return
+                                else None,
+                                "sharpe_ratio": float(bt.sharpe_ratio)
+                                if bt.sharpe_ratio
+                                else None,
+                                "max_drawdown": float(bt.max_drawdown)
+                                if bt.max_drawdown
+                                else None,
+                                "win_rate": float(bt.win_rate) if bt.win_rate else None,
+                                "total_trades": bt.total_trades,
+                                "profit_factor": float(bt.profit_factor)
+                                if bt.profit_factor
+                                else None,
+                            },
+                            "parameters": bt.parameters,
+                        }
+                    )
+
+                return {
+                    "status": "success",
+                    "symbol": symbol.upper(),
+                    "count": len(results),
+                    "backtests": results,
+                }
+
+        except Exception as e:
+            return {"error": f"Failed to retrieve backtest history: {str(e)}"}
+
+    @mcp.tool()
+    async def get_kelly_position_size(
+        ctx: Context,
+        symbol: str,
+        strategy: str = "sma_cross",
+        account_size: float = 100000.0,
+    ) -> dict[str, Any]:
+        """Get Kelly criterion position size recommendation based on backtest statistics.
+
+        Uses win_rate and avg_win/avg_loss from the last 100 trades to recommend
+        optimal position size. Returns both full Kelly and half-Kelly (recommended).
+
+        Args:
+            symbol: Stock ticker symbol
+            strategy: Strategy type to base sizing on (default: sma_cross)
+            account_size: Total account size in dollars (default: 100000)
+
+        Returns:
+            Dictionary containing Kelly criterion analysis and position sizing
+        """
+        from datetime import datetime, timedelta
+
+        try:
+            win_rate = None
+            avg_win = None
+            avg_loss = None
+            data_source = None
+
+            # Try to get stats from persisted backtests first
+            try:
+                from maverick_mcp.backtesting.persistence import (
+                    BacktestPersistenceManager,
+                )
+
+                with BacktestPersistenceManager() as pm:
+                    backtests = pm.get_backtests_by_symbol(
+                        symbol=symbol, strategy_type=strategy, limit=1
+                    )
+                    if backtests:
+                        bt = backtests[0]
+                        if bt.win_rate and bt.average_win and bt.average_loss:
+                            win_rate = float(bt.win_rate)
+                            avg_win = float(bt.average_win)
+                            avg_loss = abs(float(bt.average_loss))
+                            data_source = "persisted_backtest"
+            except Exception:
+                pass
+
+            # If no persisted data, run a fresh backtest
+            if win_rate is None:
+                engine = VectorBTEngine()
+                end_date = datetime.now().strftime("%Y-%m-%d")
+                start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
+
+                if strategy in STRATEGY_TEMPLATES:
+                    parameters = dict(STRATEGY_TEMPLATES[strategy]["parameters"])
+                else:
+                    parameters = {}
+
+                results = await engine.run_backtest(
+                    symbol=symbol,
+                    strategy_type=strategy,
+                    parameters=parameters,
+                    start_date=start_date,
+                    end_date=end_date,
+                    initial_capital=account_size,
+                )
+
+                metrics = results.get("metrics", {})
+                win_rate = metrics.get("win_rate")
+                avg_win = metrics.get("avg_win")
+                avg_loss = metrics.get("avg_loss")
+                if avg_loss is not None:
+                    avg_loss = abs(avg_loss)
+                data_source = "fresh_backtest"
+
+            # Validate we have the required data
+            if (
+                win_rate is None
+                or avg_win is None
+                or avg_loss is None
+                or avg_loss == 0
+                or avg_win == 0
+            ):
+                return {
+                    "error": "Insufficient trade data to calculate Kelly criterion",
+                    "details": {
+                        "win_rate": win_rate,
+                        "avg_win": avg_win,
+                        "avg_loss": avg_loss,
+                    },
+                    "hint": "The strategy may not have generated enough trades",
+                }
+
+            # Kelly formula: f* = (p * b - q) / b
+            # where p = win_rate, q = 1-p, b = avg_win/avg_loss
+            p = win_rate
+            q = 1.0 - p
+            b = avg_win / avg_loss
+
+            kelly_full = (p * b - q) / b
+            kelly_half = kelly_full / 2.0
+
+            # Clamp to reasonable bounds
+            kelly_full = max(0.0, min(kelly_full, 1.0))
+            kelly_half = max(0.0, min(kelly_half, 0.5))
+
+            # Get current price for share calculation
+            from maverick_mcp.providers.stock_data import StockDataProvider
+
+            provider = StockDataProvider()
+            df = provider.get_stock_data(
+                symbol,
+                start_date=(datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),
+                end_date=datetime.now().strftime("%Y-%m-%d"),
+            )
+            current_price = float(df["Close"].iloc[-1]) if not df.empty else None
+
+            position_value_full = account_size * kelly_full
+            position_value_half = account_size * kelly_half
+
+            result = {
+                "symbol": symbol.upper(),
+                "strategy": strategy,
+                "account_size": account_size,
+                "kelly_criterion": {
+                    "full_kelly": round(kelly_full, 4),
+                    "half_kelly_recommended": round(kelly_half, 4),
+                    "position_value_full": round(position_value_full, 2),
+                    "position_value_half": round(position_value_half, 2),
+                },
+                "underlying_stats": {
+                    "win_rate": round(p, 4),
+                    "avg_win": round(avg_win, 4),
+                    "avg_loss": round(avg_loss, 4),
+                    "win_loss_ratio": round(b, 4),
+                },
+                "data_source": data_source,
+            }
+
+            if current_price:
+                result["position_sizing"] = {
+                    "current_price": round(current_price, 2),
+                    "shares_full_kelly": int(position_value_full / current_price),
+                    "shares_half_kelly": int(position_value_half / current_price),
+                }
+
+            if kelly_full <= 0:
+                result["recommendation"] = (
+                    "Kelly criterion is zero or negative — this strategy has "
+                    "negative expected value. Do not allocate capital."
+                )
+            elif kelly_half > 0.25:
+                result["recommendation"] = (
+                    f"Half-Kelly suggests {kelly_half:.1%} allocation. "
+                    "This is aggressive — consider further reducing for safety."
+                )
+            else:
+                result["recommendation"] = (
+                    f"Half-Kelly recommends {kelly_half:.1%} of account "
+                    f"(${position_value_half:,.0f}) in {symbol.upper()}."
+                )
+
+            return convert_numpy_types(result)
+
+        except Exception as e:
+            return {"error": f"Kelly criterion calculation failed: {str(e)}"}

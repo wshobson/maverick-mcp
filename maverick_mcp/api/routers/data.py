@@ -424,3 +424,83 @@ def clear_cache(ticker: str | None = None) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
         return {"error": str(e), "status": "error"}
+
+
+def warm_cache(
+    symbols: list[str] | None = None,
+    days: int = 365,
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
+    """Pre-fetch OHLCV data for watchlist symbols to warm the cache.
+
+    Designed to be called before market open (e.g., 6:30 AM ET via scheduled
+    task) so first queries of the day are instant.
+
+    If no symbols provided, warms cache for all portfolio holdings.
+
+    Args:
+        symbols: List of ticker symbols to warm (optional)
+        days: Days of historical data to fetch (default: 365)
+        user_id: User identifier for portfolio lookup
+        portfolio_name: Portfolio name for auto-detection
+
+    Returns:
+        Dictionary with warm-up statistics
+    """
+    import time
+
+    start_time = time.time()
+
+    # Auto-detect from portfolio if no symbols provided
+    if not symbols:
+        try:
+            from maverick_mcp.data.models import UserPortfolio, get_db
+
+            db = next(get_db())
+            try:
+                portfolio = (
+                    db.query(UserPortfolio)
+                    .filter_by(user_id=user_id, name=portfolio_name)
+                    .first()
+                )
+                if portfolio:
+                    symbols = [pos.ticker for pos in portfolio.positions]
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Failed to load portfolio for cache warm-up: {e}")
+
+    if not symbols:
+        return {
+            "status": "empty",
+            "message": "No symbols to warm — provide symbols or add portfolio positions",
+        }
+
+    provider = StockDataProvider()
+    from datetime import timedelta
+
+    end_date = datetime.now(UTC).strftime("%Y-%m-%d")
+    start_date = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
+
+    results = {"warmed": [], "failed": [], "already_cached": []}
+
+    for symbol in symbols:
+        try:
+            provider.get_stock_data(symbol, start_date, end_date)
+            results["warmed"].append(symbol)
+        except Exception as e:
+            logger.warning(f"Cache warm-up failed for {symbol}: {e}")
+            results["failed"].append({"symbol": symbol, "error": str(e)})
+
+    elapsed_ms = round((time.time() - start_time) * 1000)
+
+    return {
+        "status": "success",
+        "symbols_requested": len(symbols),
+        "symbols_warmed": len(results["warmed"]),
+        "symbols_failed": len(results["failed"]),
+        "warmed": results["warmed"],
+        "failed": results["failed"],
+        "elapsed_ms": elapsed_ms,
+    }

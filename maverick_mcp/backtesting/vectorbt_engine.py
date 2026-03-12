@@ -1311,3 +1311,138 @@ class VectorBTEngine(BatchProcessingMixin):
         exits = exits.fillna(False)
 
         return entries, exits
+
+    async def run_backtest_mtf(
+        self,
+        symbol: str,
+        strategy_type: str,
+        parameters: dict[str, Any],
+        start_date: str,
+        end_date: str,
+        initial_capital: float = 10000.0,
+    ) -> dict[str, Any]:
+        """Run multi-timeframe backtest on daily and weekly bars.
+
+        Runs the same strategy on both daily and weekly data, then computes
+        a confluence score based on signal agreement.
+
+        Args:
+            symbol: Stock symbol
+            strategy_type: Strategy type
+            parameters: Strategy parameters
+            start_date: Start date (YYYY-MM-DD)
+            end_date: End date (YYYY-MM-DD)
+            initial_capital: Starting capital
+
+        Returns:
+            Dict with daily_result, weekly_result, confluence_score, and detail
+        """
+        # Run daily backtest
+        daily_result = await self.run_backtest(
+            symbol=symbol,
+            strategy_type=strategy_type,
+            parameters=parameters,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital,
+        )
+
+        # Get daily data and resample to weekly
+        data = await self.get_historical_data(symbol, start_date, end_date)
+
+        weekly_data = pd.DataFrame()
+        weekly_data["Open"] = data["Open"].resample("W").first()
+        weekly_data["High"] = data["High"].resample("W").max()
+        weekly_data["Low"] = data["Low"].resample("W").min()
+        weekly_data["Close"] = data["Close"].resample("W").last()
+        weekly_data["Volume"] = data["Volume"].resample("W").sum()
+        weekly_data = weekly_data.dropna()
+
+        if len(weekly_data) < 20:
+            return {
+                "daily_result": daily_result,
+                "weekly_result": None,
+                "mtf_analysis": {
+                    "confluence_score": None,
+                    "error": "Insufficient weekly data (need 20+ weeks)",
+                },
+            }
+
+        # Generate weekly signals
+        weekly_entries, weekly_exits = self._generate_signals(
+            weekly_data, strategy_type, parameters
+        )
+
+        # Check last signal state for each timeframe
+        daily_entries, daily_exits = self._generate_signals(
+            data, strategy_type, parameters
+        )
+
+        # Determine current signal state
+        daily_last_entry = bool(daily_entries.iloc[-1]) if len(daily_entries) > 0 else False
+        daily_last_exit = bool(daily_exits.iloc[-1]) if len(daily_exits) > 0 else False
+        weekly_last_entry = bool(weekly_entries.iloc[-1]) if len(weekly_entries) > 0 else False
+        weekly_last_exit = bool(weekly_exits.iloc[-1]) if len(weekly_exits) > 0 else False
+
+        # Look at recent signal bias (last 5 bars)
+        def signal_bias(entries: pd.Series, exits: pd.Series, window: int = 5) -> str:
+            recent_entries = entries.iloc[-window:].sum()
+            recent_exits = exits.iloc[-window:].sum()
+            if recent_entries > recent_exits:
+                return "bullish"
+            elif recent_exits > recent_entries:
+                return "bearish"
+            return "neutral"
+
+        daily_bias = signal_bias(daily_entries, daily_exits)
+        weekly_bias = signal_bias(weekly_entries, weekly_exits)
+
+        # Compute confluence score
+        bias_map = {"bullish": 1, "neutral": 0, "bearish": -1}
+        daily_score = bias_map[daily_bias]
+        weekly_score = bias_map[weekly_bias]
+
+        if daily_score == weekly_score and daily_score != 0:
+            confluence_score = 100
+        elif daily_score == weekly_score == 0:
+            confluence_score = 50
+        elif daily_score * weekly_score > 0:
+            confluence_score = 75
+        elif daily_score == 0 or weekly_score == 0:
+            confluence_score = 50
+        else:
+            confluence_score = 0
+
+        # Build weekly metrics summary
+        try:
+            close = weekly_data["Close"]
+            weekly_portfolio = vbt.Portfolio.from_signals(
+                close,
+                entries=weekly_entries,
+                exits=weekly_exits,
+                init_cash=initial_capital,
+                fees=0.001,
+            )
+            weekly_metrics = {
+                "total_return": float(weekly_portfolio.total_return()),
+                "total_trades": int(weekly_portfolio.trades.count()),
+            }
+        except Exception:
+            weekly_metrics = {"total_return": None, "total_trades": None}
+
+        return {
+            **daily_result,
+            "mtf_analysis": {
+                "confluence_score": confluence_score,
+                "daily_bias": daily_bias,
+                "weekly_bias": weekly_bias,
+                "weekly_metrics": weekly_metrics,
+                "interpretation": (
+                    "Strong confluence — both timeframes agree"
+                    if confluence_score >= 75
+                    else "Mixed signals — timeframes disagree"
+                    if confluence_score <= 25
+                    else "Neutral — no clear multi-timeframe signal"
+                ),
+            },
+        }

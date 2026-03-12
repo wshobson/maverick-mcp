@@ -21,20 +21,56 @@ logger = logging.getLogger(__name__)
 agents_router: FastMCP = FastMCP("Financial_Analysis_Agents")
 
 
-# Cache for agent instances to avoid recreation
-_agent_cache: dict[str, Any] = {}
+class AgentSessionManager:
+    """Manages agent instances with Redis-backed session persistence.
 
+    Agent objects live in-process memory (they hold LLM connections that can't
+    be serialized), but their *configuration* (type, persona, creation time) is
+    persisted to Redis so that sessions survive server restarts.  On restart
+    the agent is transparently re-created from the stored config.
+    """
 
-def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
-    """Get or create an agent instance with caching."""
-    cache_key = f"{agent_type}:{persona}"
+    def __init__(self) -> None:
+        self._instances: dict[str, Any] = {}
 
-    if cache_key not in _agent_cache:
-        # Import task-aware LLM factory
+    def get_or_create(self, agent_type: str, persona: str = "moderate") -> Any:
+        """Return a cached agent, re-creating from persisted config if needed."""
+        cache_key = f"{agent_type}:{persona}"
+
+        if cache_key in self._instances:
+            return self._instances[cache_key]
+
+        # Check Redis / in-memory session store for prior config
+        from maverick_mcp.data.cache import load_agent_session
+
+        session = load_agent_session(cache_key)
+        # Even if a session exists we still need to create the live object
+        # (LLM connections aren't serializable).  The session merely proves
+        # the user had this agent active before a restart.
+
+        agent = self._create_agent(agent_type, persona)
+        self._instances[cache_key] = agent
+
+        # Persist config so it survives restarts
+        from maverick_mcp.data.cache import save_agent_session
+
+        save_agent_session(
+            cache_key,
+            {
+                "agent_type": agent_type,
+                "persona": persona,
+                "restored": session is not None,
+            },
+        )
+
+        return agent
+
+    @staticmethod
+    def _create_agent(agent_type: str, persona: str) -> Any:
+        """Instantiate a fresh agent of the requested type."""
         from maverick_mcp.providers.llm_factory import get_llm
         from maverick_mcp.providers.openrouter_provider import TaskType
 
-        # Map agent types to task types for optimal model selection
         task_mapping = {
             "market": TaskType.MARKET_ANALYSIS,
             "technical": TaskType.TECHNICAL_ANALYSIS,
@@ -43,41 +79,41 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
         }
 
         task_type = task_mapping.get(agent_type, TaskType.GENERAL)
-
-        # Get optimized LLM for this task
         llm = get_llm(task_type=task_type)
 
-        # Create agent based on type
         if agent_type == "market":
-            _agent_cache[cache_key] = MarketAnalysisAgent(
-                llm=llm, persona=persona, ttl_hours=1
-            )
-        elif agent_type == "supervisor":
-            # Create mock agents for supervisor
-            agents = {
-                "market": get_or_create_agent("market", persona),
-                "technical": None,  # Would be actual technical agent in full implementation
-            }
-            _agent_cache[cache_key] = SupervisorAgent(
-                llm=llm, agents=agents, persona=persona, ttl_hours=1
-            )
-        elif agent_type == "deep_research":
-            # Get web search API keys from environment
-            exa_api_key = os.getenv("EXA_API_KEY")
+            return MarketAnalysisAgent(llm=llm, persona=persona, ttl_hours=1)
 
+        if agent_type == "supervisor":
+            # Reuse singleton manager for sub-agents
+            market_agent = _agent_manager.get_or_create("market", persona)
+            agents = {
+                "market": market_agent,
+                "technical": None,
+            }
+            return SupervisorAgent(llm=llm, agents=agents, persona=persona, ttl_hours=1)
+
+        if agent_type == "deep_research":
+            exa_api_key = os.getenv("EXA_API_KEY")
             agent = DeepResearchAgent(
                 llm=llm,
                 persona=persona,
                 ttl_hours=1,
                 exa_api_key=exa_api_key,
             )
-            # Mark for initialization - will be initialized on first use
             agent._needs_initialization = True
-            _agent_cache[cache_key] = agent
-        else:
-            raise ValueError(f"Unknown agent type: {agent_type}")
+            return agent
 
-    return _agent_cache[cache_key]
+        raise ValueError(f"Unknown agent type: {agent_type}")
+
+
+# Singleton manager instance
+_agent_manager = AgentSessionManager()
+
+
+def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
+    """Get or create an agent instance with Redis-backed session persistence."""
+    return _agent_manager.get_or_create(agent_type, persona)
 
 
 async def analyze_market_with_agent(
@@ -86,6 +122,7 @@ async def analyze_market_with_agent(
     screening_strategy: str = "momentum",
     max_results: int = 20,
     session_id: str | None = None,
+    structured_output: bool = False,
 ) -> dict[str, Any]:
     """
     Analyze market using LangGraph agent with persona-aware recommendations.
@@ -99,6 +136,7 @@ async def analyze_market_with_agent(
         screening_strategy: Strategy to use (momentum, maverick, supply_demand_breakout)
         max_results: Maximum number of results
         session_id: Optional session ID for conversation continuity
+        structured_output: If True, return JSON with fields: signals[], risk_level, regime, top_picks[]
 
     Returns:
         Persona-adjusted market analysis with recommendations
@@ -113,21 +151,59 @@ async def analyze_market_with_agent(
         # Get or create agent
         agent = get_or_create_agent("market", persona)
 
+        # Augment query with structured output instructions if requested
+        effective_query = query
+        if structured_output:
+            from maverick_mcp.validation.agent_schemas import STRUCTURED_OUTPUT_PROMPT
+
+            effective_query = f"{query}\n\n{STRUCTURED_OUTPUT_PROMPT}"
+
         # Run analysis
         result = await agent.analyze_market(
-            query=query,
+            query=effective_query,
             session_id=session_id,
             screening_strategy=screening_strategy,
             max_results=max_results,
         )
 
-        return {
+        response = {
             "status": "success",
             "agent_type": "market_analysis",
             "persona": persona,
             "session_id": session_id,
             **result,
         }
+
+        # Parse structured output if requested
+        if structured_output:
+            try:
+                import json
+
+                from maverick_mcp.validation.agent_schemas import (
+                    StructuredMarketAnalysis,
+                )
+
+                # Try to extract JSON from agent response
+                raw_text = result.get("analysis", result.get("response", ""))
+                if isinstance(raw_text, str):
+                    # Find JSON in response (may be wrapped in markdown)
+                    json_start = raw_text.find("{")
+                    json_end = raw_text.rfind("}") + 1
+                    if json_start >= 0 and json_end > json_start:
+                        json_str = raw_text[json_start:json_end]
+                        parsed = json.loads(json_str)
+                        structured = StructuredMarketAnalysis(**parsed)
+                        response["structured"] = structured.model_dump()
+                    else:
+                        response["structured_error"] = "No JSON found in agent response"
+                elif isinstance(raw_text, dict):
+                    structured = StructuredMarketAnalysis(**raw_text)
+                    response["structured"] = structured.model_dump()
+            except Exception as e:
+                logger.warning(f"Failed to parse structured output: {e}")
+                response["structured_error"] = str(e)
+
+        return response
 
     except Exception as e:
         logger.error(f"Error in market agent analysis: {str(e)}")

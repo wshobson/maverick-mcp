@@ -51,6 +51,7 @@ dependencies = [
     "numba>=0.60.0",
     "scikit-learn>=1.6.1",
     "scipy>=1.15.3",
+    "riskfolio-lib>=6.0.0",
     "pytz>=2024.1",
     # Security (basic cryptography for data security)
     "cryptography>=42.0.0",

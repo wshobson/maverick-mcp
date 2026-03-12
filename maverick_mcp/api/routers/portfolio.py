@@ -1116,3 +1116,69 @@ def clear_my_portfolio(
     except Exception as e:
         logger.error(f"Error clearing portfolio: {str(e)}")
         return {"error": str(e), "status": "error"}
+
+
+def optimize_portfolio_hrp(
+    symbols: list[str] | None = None,
+    days: int = 252,
+    risk_measure: str = "MV",
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
+    """Optimize portfolio allocation using Hierarchical Risk Parity (HRP).
+
+    HRP builds a hierarchical tree of asset clusters and allocates risk
+    top-down, producing diversified weights without requiring return estimates.
+
+    If no symbols provided, automatically uses portfolio holdings.
+
+    Args:
+        symbols: List of ticker symbols (minimum 2). If None, uses portfolio.
+        days: Number of trading days for analysis (default: 252 ~ 1 year)
+        risk_measure: Risk measure ('MV' for variance, 'CVaR', 'CDaR')
+        user_id: User identifier for portfolio auto-detection
+        portfolio_name: Portfolio name for auto-detection
+
+    Returns:
+        Dictionary containing HRP weights, metrics, and equal-weight comparison
+    """
+    try:
+        # Auto-fill from portfolio if no symbols provided
+        if symbols is None or len(symbols) == 0:
+            db: Session = next(get_db())
+            try:
+                portfolio = (
+                    db.query(UserPortfolio)
+                    .filter_by(user_id=user_id, name=portfolio_name)
+                    .first()
+                )
+                if not portfolio or len(portfolio.positions) < 2:
+                    return {
+                        "error": "No portfolio found or fewer than 2 positions",
+                        "details": "Provide at least 2 symbols or add more portfolio positions",
+                        "status": "error",
+                    }
+                symbols = [pos.ticker for pos in portfolio.positions]
+                portfolio_context = {
+                    "using_portfolio": True,
+                    "portfolio_name": portfolio_name,
+                }
+            finally:
+                db.close()
+        else:
+            portfolio_context = {"using_portfolio": False}
+
+        from maverick_mcp.core.portfolio_optimization import optimize_hrp
+
+        result = optimize_hrp(symbols=symbols, days=days, risk_measure=risk_measure)
+
+        if result.get("status") == "success" and portfolio_context.get(
+            "using_portfolio"
+        ):
+            result["portfolio_context"] = portfolio_context
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Error in HRP optimization: {str(e)}")
+        return {"error": str(e), "status": "error"}

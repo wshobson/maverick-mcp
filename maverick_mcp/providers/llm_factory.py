@@ -57,6 +57,25 @@ def get_llm(
             model_override=model_override,
         )
 
+    # For sentiment/quick tasks, prefer Anthropic Haiku directly if available
+    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    if anthropic_api_key and task_type in (
+        TaskType.SENTIMENT_ANALYSIS,
+        TaskType.QUICK_ANSWER,
+        TaskType.QUERY_CLASSIFICATION,
+    ):
+        try:
+            from langchain_anthropic import ChatAnthropic
+
+            logger.info("Using Anthropic Haiku directly for fast sentiment task")
+            return ChatAnthropic(
+                model="claude-3-5-haiku-20241022",
+                temperature=0.2,
+                max_tokens=1024,
+            )
+        except ImportError:
+            pass
+
     # Fallback to OpenAI
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if openai_api_key:
@@ -68,14 +87,13 @@ def get_llm(
         except ImportError:
             pass
 
-    # Fallback to Anthropic
-    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    # Fallback to Anthropic (general tasks)
     if anthropic_api_key:
         logger.info("Falling back to Anthropic API")
         try:
             from langchain_anthropic import ChatAnthropic
 
-            return ChatAnthropic(model="claude-3-sonnet-20240229", temperature=0.3)
+            return ChatAnthropic(model="claude-3-5-haiku-20241022", temperature=0.3)
         except ImportError:
             pass
 
