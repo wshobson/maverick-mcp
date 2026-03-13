@@ -8,9 +8,10 @@ through environment variables or a settings file.
 import logging
 import os
 import tempfile
+import warnings
 from decimal import Decimal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr, model_validator
 
 from maverick_mcp.config.constants import CONFIG
 
@@ -23,11 +24,17 @@ class DatabaseSettings(BaseModel):
     host: str = Field(default="localhost", description="Database host")
     port: int = Field(default=5432, description="Database port")
     username: str = Field(default="postgres", description="Database username")
-    password: str = Field(default="", description="Database password")
+    password: SecretStr = Field(
+        default_factory=lambda: SecretStr(""), description="Database password"
+    )
     database: str = Field(default="maverick_mcp", description="Database name")
     max_connections: int = Field(
         default=10, description="Maximum number of connections"
     )
+
+    def get_password(self) -> str:
+        """Get the database password as a plain string."""
+        return self.password.get_secret_value()
 
     @property
     def url(self) -> str:
@@ -54,17 +61,42 @@ class APISettings(BaseModel):
     )
 
     # Web search API key
-    exa_api_key: str | None = Field(
-        default_factory=lambda: os.getenv("EXA_API_KEY"),
+    exa_api_key: SecretStr | None = Field(
+        default_factory=lambda: (
+            SecretStr(v) if (v := os.getenv("EXA_API_KEY")) else None
+        ),
         description="Exa API key",
     )
+
+    def get_exa_api_key(self) -> str | None:
+        """Get the Exa API key as a plain string for API client usage."""
+        return self.exa_api_key.get_secret_value() if self.exa_api_key else None
+
+    @model_validator(mode="after")
+    def warn_on_public_binding(self) -> "APISettings":
+        """Warn if binding to a public address without explicit opt-in."""
+        if self.host in ("0.0.0.0", "::"):
+            warnings.warn(
+                f"Server binding to {self.host} (publicly accessible). "
+                "Set MAVERICK_HOST=127.0.0.1 for local-only access.",
+                UserWarning,
+                stacklevel=2,
+            )
+        return self
 
 
 class DataProviderSettings(BaseModel):
     """Data provider configuration settings."""
 
-    api_key: str | None = Field(default=None, description="API key for data provider")
+    api_key: SecretStr | None = Field(
+        default=None, description="API key for data provider"
+    )
     use_cache: bool = Field(default=True, description="Use cache for data")
+
+    def get_api_key(self) -> str | None:
+        """Get the API key as a plain string for API client usage."""
+        return self.api_key.get_secret_value() if self.api_key else None
+
     cache_dir: str = Field(
         default=os.path.join(tempfile.gettempdir(), "maverick_mcp", "cache"),
         description="Cache directory",
@@ -101,8 +133,10 @@ class RedisSettings(BaseModel):
         default_factory=lambda: CONFIG["redis"]["username"],
         description="Redis username",
     )
-    password: str | None = Field(
-        default_factory=lambda: CONFIG["redis"]["password"],
+    password: SecretStr | None = Field(
+        default_factory=lambda: (
+            SecretStr(v) if (v := CONFIG["redis"]["password"]) else None
+        ),
         description="Redis password",
     )
     ssl: bool = Field(
@@ -110,15 +144,20 @@ class RedisSettings(BaseModel):
         description="Use SSL for Redis connection",
     )
 
+    def get_password(self) -> str | None:
+        """Get the Redis password as a plain string."""
+        return self.password.get_secret_value() if self.password else None
+
     @property
     def url(self) -> str:
         """Get Redis URL string."""
         scheme = "rediss" if self.ssl else "redis"
         auth = ""
-        if self.username and self.password:
-            auth = f"{self.username}:{self.password}@"
-        elif self.password:
-            auth = f":{self.password}@"
+        password = self.get_password()
+        if self.username and password:
+            auth = f"{self.username}:{password}@"
+        elif password:
+            auth = f":{password}@"
         return f"{scheme}://{auth}{self.host}:{self.port}/{self.db}"
 
 
@@ -126,10 +165,16 @@ class ResearchSettings(BaseModel):
     """Research and web search configuration settings."""
 
     # API key for web search provider
-    exa_api_key: str | None = Field(
-        default_factory=lambda: os.getenv("EXA_API_KEY"),
+    exa_api_key: SecretStr | None = Field(
+        default_factory=lambda: (
+            SecretStr(v) if (v := os.getenv("EXA_API_KEY")) else None
+        ),
         description="Exa API key for web search",
     )
+
+    def get_exa_api_key(self) -> str | None:
+        """Get the Exa API key as a plain string for API client usage."""
+        return self.exa_api_key.get_secret_value() if self.exa_api_key else None
 
     # Research parameters
     default_max_sources: int = Field(
@@ -177,8 +222,43 @@ class ResearchSettings(BaseModel):
 
     @property
     def api_keys(self) -> dict[str, str | None]:
-        """Get API keys as dictionary."""
-        return {"exa_api_key": self.exa_api_key}
+        """Get API keys as dictionary (plain strings for API client usage)."""
+        return {"exa_api_key": self.get_exa_api_key()}
+
+
+class VectorStoreSettings(BaseModel):
+    """Vector store configuration settings for research caching."""
+
+    enabled: bool = Field(
+        default_factory=lambda: (
+            os.getenv("MAVERICK_RESEARCH_CACHE_ENABLED", "true").lower() == "true"
+        ),
+        description="Enable research vector store caching",
+    )
+    storage_path: str = Field(
+        default_factory=lambda: os.getenv(
+            "MAVERICK_VECTOR_STORE_PATH", "data/research_vectors"
+        ),
+        description="Storage path for vector store data",
+    )
+    max_age_days: int = Field(
+        default_factory=lambda: int(
+            os.getenv("MAVERICK_RESEARCH_CACHE_MAX_AGE_DAYS", "30")
+        ),
+        description="Maximum age in days for cached research",
+    )
+    temporal_half_life_days: int = Field(
+        default=14,
+        description="Half-life in days for temporal decay scoring",
+    )
+    dedup_threshold: float = Field(
+        default=0.9,
+        description="Similarity threshold for deduplication (0.0 to 1.0)",
+    )
+    default_top_k: int = Field(
+        default=5,
+        description="Default number of results to return from similarity search",
+    )
 
 
 class DataLimitsConfig(BaseModel):
@@ -262,14 +342,20 @@ class DataLimitsConfig(BaseModel):
 class ExternalDataSettings(BaseModel):
     """External data API configuration settings."""
 
-    api_key: str | None = Field(
-        default_factory=lambda: os.getenv("EXTERNAL_DATA_API_KEY"),
+    api_key: SecretStr | None = Field(
+        default_factory=lambda: (
+            SecretStr(v) if (v := os.getenv("EXTERNAL_DATA_API_KEY")) else None
+        ),
         description="API key for external data API",
     )
     base_url: str = Field(
         default="https://external-data-api.com",
         description="Base URL for external data API",
     )
+
+    def get_api_key(self) -> str | None:
+        """Get the API key as a plain string for API client usage."""
+        return self.api_key.get_secret_value() if self.api_key else None
 
 
 class EmailSettings(BaseModel):
@@ -279,8 +365,8 @@ class EmailSettings(BaseModel):
         default_factory=lambda: os.getenv("EMAIL_ENABLED", "true").lower() == "true",
         description="Enable email sending",
     )
-    mailgun_api_key: str = Field(
-        default_factory=lambda: os.getenv("MAILGUN_API_KEY", ""),
+    mailgun_api_key: SecretStr = Field(
+        default_factory=lambda: SecretStr(os.getenv("MAILGUN_API_KEY", "")),
         description="Mailgun API key",
     )
     mailgun_domain: str = Field(
@@ -299,6 +385,10 @@ class EmailSettings(BaseModel):
         default_factory=lambda: os.getenv("EMAIL_SUPPORT", "support@localhost"),
         description="Support email address",
     )
+
+    def get_mailgun_api_key(self) -> str:
+        """Get the Mailgun API key as a plain string for API client usage."""
+        return self.mailgun_api_key.get_secret_value()
 
 
 class FinancialConfig(BaseModel):
@@ -768,6 +858,21 @@ class DatabaseConfig(BaseModel):
     )
 
 
+class CostControlConfig(BaseModel):
+    """LLM cost control and budget enforcement settings."""
+
+    max_cost_per_request: float = Field(
+        default_factory=lambda: float(
+            os.getenv("MAVERICK_MAX_COST_PER_REQUEST", "1.00")
+        ),
+        description="Maximum LLM cost per logical request in USD",
+    )
+    max_daily_cost: float = Field(
+        default_factory=lambda: float(os.getenv("MAVERICK_MAX_DAILY_COST", "50.00")),
+        description="Maximum daily LLM cost in USD",
+    )
+
+
 class MiddlewareConfig(BaseModel):
     """Middleware and request handling configuration settings."""
 
@@ -844,6 +949,23 @@ class ValidationConfig(BaseModel):
     )
 
 
+class MemoryConfig(BaseModel):
+    """Memory and checkpoint persistence configuration settings."""
+
+    memory_db_path: str = Field(
+        default_factory=lambda: os.getenv(
+            "MAVERICK_MEMORY_DB_PATH", "data/memory_store.db"
+        ),
+        description="Path to the SQLite database for persistent memory stores",
+    )
+    checkpoint_db_path: str = Field(
+        default_factory=lambda: os.getenv(
+            "MAVERICK_CHECKPOINT_DB_PATH", "data/checkpoints.db"
+        ),
+        description="Path to the SQLite database for LangGraph checkpoints",
+    )
+
+
 class Settings(BaseModel):
     """Main application settings."""
 
@@ -875,6 +997,10 @@ class Settings(BaseModel):
     research: ResearchSettings = Field(
         default_factory=ResearchSettings, description="Research settings"
     )
+    vector_store: VectorStoreSettings = Field(
+        default_factory=VectorStoreSettings,
+        description="Vector store settings for research caching",
+    )
     data_limits: DataLimitsConfig = Field(
         default_factory=DataLimitsConfig, description="Data limits settings"
     )
@@ -902,6 +1028,12 @@ class Settings(BaseModel):
     )
     validation: ValidationConfig = Field(
         default_factory=ValidationConfig, description="Validation settings"
+    )
+    cost_control: CostControlConfig = Field(
+        default_factory=CostControlConfig, description="LLM cost control settings"
+    )
+    memory: MemoryConfig = Field(
+        default_factory=MemoryConfig, description="Memory persistence settings"
     )
 
 

@@ -1798,6 +1798,123 @@ class PortfolioPosition(TimestampMixin, Base):
 
 # Auth models removed for personal use - no multi-user functionality needed
 
+
+# ============================================================================
+# Decision Audit Trail Models
+# ============================================================================
+
+
+class DecisionLog(Base, TimestampMixin):
+    """
+    Audit trail for agent decision-making in the supervisor workflow.
+
+    Captures key decision points: query classification, agent routing,
+    model selection, token usage, cost estimates, and outcome status.
+    Designed for lightweight, non-blocking writes that never crash the main flow.
+
+    Attributes:
+        id: Auto-incrementing primary key
+        timestamp: When the decision was made (UTC)
+        session_id: LangGraph session/thread identifier
+        request_id: Unique identifier for the originating request
+        query_text: The user query that triggered the decision
+        query_classification: Classification category (e.g., "technical_analysis")
+        routing_decision: Which agent(s) were selected (JSON list)
+        models_used: LLM model IDs used during processing (JSON list)
+        tokens_input: Total input tokens consumed
+        tokens_output: Total output tokens generated
+        estimated_cost_usd: Estimated cost in USD
+        confidence_score: Final confidence score (0.0-1.0)
+        response_summary: Truncated summary of the response
+        duration_ms: Total wall-clock duration in milliseconds
+        status: Outcome status (success, error, timeout)
+    """
+
+    __tablename__ = "mcp_decision_log"
+    __table_args__ = (
+        Index("mcp_decision_log_timestamp_idx", "timestamp"),
+        Index("mcp_decision_log_session_id_idx", "session_id"),
+        Index("mcp_decision_log_request_id_idx", "request_id"),
+        Index("mcp_decision_log_status_idx", "status"),
+        Index("mcp_decision_log_error_category_idx", "error_category"),
+    )
+
+    id = Column(get_primary_key_type(), primary_key=True, autoincrement=True)
+    timestamp = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        index=True,
+    )
+    session_id = Column(String(255), nullable=True, index=True)
+    request_id = Column(String(255), nullable=True, index=True)
+    query_text = Column(Text, nullable=True)
+    query_classification = Column(String(100), nullable=True)
+    routing_decision = Column(JSON, nullable=True)  # List of agent names
+    models_used = Column(JSON, nullable=True)  # List of model IDs
+    tokens_input = Column(Integer, nullable=True, default=0)
+    tokens_output = Column(Integer, nullable=True, default=0)
+    estimated_cost_usd = Column(Numeric(10, 6), nullable=True, default=0)
+    confidence_score = Column(Numeric(5, 4), nullable=True, default=0)
+    response_summary = Column(Text, nullable=True)
+    duration_ms = Column(Integer, nullable=True, default=0)
+    status = Column(
+        String(20), nullable=False, default="success"
+    )  # success, error, timeout
+    error_category = Column(
+        String(50), nullable=True, index=True
+    )  # transient/permanent/rate_limited/upstream/internal
+
+    def __repr__(self):
+        return (
+            f"<DecisionLog(id={self.id}, session={self.session_id}, "
+            f"classification={self.query_classification}, status={self.status})>"
+        )
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "session_id": self.session_id,
+            "request_id": self.request_id,
+            "query_text": self.query_text,
+            "query_classification": self.query_classification,
+            "routing_decision": self.routing_decision,
+            "models_used": self.models_used,
+            "tokens_input": self.tokens_input,
+            "tokens_output": self.tokens_output,
+            "estimated_cost_usd": float(self.estimated_cost_usd)
+            if self.estimated_cost_usd
+            else 0.0,
+            "confidence_score": float(self.confidence_score)
+            if self.confidence_score
+            else 0.0,
+            "response_summary": self.response_summary,
+            "duration_ms": self.duration_ms,
+            "status": self.status,
+            "error_category": self.error_category,
+        }
+
+    @classmethod
+    def get_recent(cls, session: Session, limit: int = 50) -> Sequence[DecisionLog]:
+        """Get most recent decision log entries."""
+        return session.query(cls).order_by(cls.timestamp.desc()).limit(limit).all()
+
+    @classmethod
+    def get_by_session(
+        cls, session: Session, session_id: str, limit: int = 50
+    ) -> Sequence[DecisionLog]:
+        """Get decision log entries for a specific session."""
+        return (
+            session.query(cls)
+            .filter(cls.session_id == session_id)
+            .order_by(cls.timestamp.desc())
+            .limit(limit)
+            .all()
+        )
+
+
 # Initialize tables when module is imported
 if __name__ == "__main__":
     logger.info("Creating database tables...")

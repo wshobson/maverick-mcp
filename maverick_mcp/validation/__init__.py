@@ -60,6 +60,12 @@ from .responses import (
     success_response,
     validation_error_response,
 )
+from .sanitization import (
+    sanitize_portfolio_name,
+    sanitize_text_input,
+    sanitize_ticker,
+    sanitize_tickers,
+)
 from .screening import (
     CustomScreeningRequest,
     MaverickScreeningRequest,
@@ -130,4 +136,9 @@ __all__ = [
     "SupportResistanceRequest",
     "TechnicalAnalysisRequest",
     "StockChartRequest",
+    # Input sanitization
+    "sanitize_ticker",
+    "sanitize_tickers",
+    "sanitize_text_input",
+    "sanitize_portfolio_name",
 ]
