@@ -807,12 +807,8 @@ def get_my_portfolio(
                     "total_invested": 0.0,
                 }
 
-            # Get all positions
-            positions = (
-                db.query(PortfolioPosition)
-                .filter_by(portfolio_id=portfolio_db.id)
-                .all()
-            )
+            # Positions already loaded via selectin relationship
+            positions = portfolio_db.positions
 
             if not positions:
                 return {

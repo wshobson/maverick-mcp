@@ -18,6 +18,7 @@ from tiingo import TiingoClient
 
 from maverick_mcp.api.middleware.mcp_logging import get_tool_logger
 from maverick_mcp.config.settings import get_settings
+from maverick_mcp.core.sentiment_analyzer import FinBERTAnalyzer
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -100,15 +101,26 @@ async def get_news_sentiment_enhanced(
                 )
 
                 if news_articles:
-                    tool_logger.step(
-                        "llm_analysis",
-                        f"Analyzing {len(news_articles)} articles with LLM",
-                    )
-
-                    # Analyze sentiment using LLM
-                    sentiment_result = await _analyze_news_sentiment_with_llm(
-                        news_articles, ticker, tool_logger
-                    )
+                    # Try FinBERT first (local, fast, no API cost)
+                    analyzer = FinBERTAnalyzer.get_instance()
+                    if analyzer:
+                        tool_logger.step(
+                            "finbert_analysis",
+                            f"Analyzing {len(news_articles)} articles with FinBERT (local)",
+                        )
+                        sentiment_result = _analyze_with_finbert(
+                            analyzer, news_articles
+                        )
+                        source = "finbert_local"
+                    else:
+                        tool_logger.step(
+                            "llm_analysis",
+                            f"Analyzing {len(news_articles)} articles with LLM",
+                        )
+                        sentiment_result = await _analyze_news_sentiment_with_llm(
+                            news_articles, ticker, tool_logger
+                        )
+                        source = "tiingo_news_with_llm_analysis"
 
                     tool_logger.complete(
                         f"Tiingo news sentiment analysis completed for {ticker}"
@@ -118,13 +130,15 @@ async def get_news_sentiment_enhanced(
                         "ticker": ticker,
                         "sentiment": sentiment_result["overall_sentiment"],
                         "confidence": sentiment_result["confidence"],
-                        "source": "tiingo_news_with_llm_analysis",
+                        "source": source,
                         "status": "success",
                         "analysis": {
                             "articles_analyzed": len(news_articles),
                             "sentiment_breakdown": sentiment_result["breakdown"],
-                            "key_themes": sentiment_result["themes"],
-                            "recent_headlines": sentiment_result["headlines"][:3],
+                            "key_themes": sentiment_result.get("themes", []),
+                            "recent_headlines": sentiment_result.get("headlines", [])[
+                                :3
+                            ],
                         },
                         "timeframe": timeframe,
                         "request_id": request_id,
@@ -189,6 +203,37 @@ async def get_news_sentiment_enhanced(
     except Exception as e:
         tool_logger.error("sentiment_error", e, f"Sentiment analysis failed: {str(e)}")
         return _provide_basic_sentiment_fallback(ticker, request_id, str(e))
+
+
+def _analyze_with_finbert(
+    analyzer: FinBERTAnalyzer,
+    news_articles: list,
+) -> dict[str, Any]:
+    """Analyze news sentiment using local FinBERT model."""
+    texts = [
+        f"{a.get('title', '')} {a.get('description', '')[:200] if a.get('description') else ''}"
+        for a in news_articles[:10]
+    ]
+    result = analyzer.analyze_sentiment(texts)
+    return {
+        "overall_sentiment": result["overall_sentiment"],
+        "confidence": result["confidence"],
+        "breakdown": result["breakdown"],
+        "themes": _extract_themes_from_articles(news_articles),
+        "headlines": [a.get("title", "") for a in news_articles[:3]],
+    }
+
+
+def _extract_themes_from_articles(news_articles: list) -> list[str]:
+    """Extract simple theme labels from article metadata."""
+    themes: list[str] = []
+    for article in news_articles[:5]:
+        source = article.get("source", "")
+        if source and source not in themes:
+            themes.append(source)
+        if len(themes) >= 3:
+            break
+    return themes or ["Market activity", "Company news", "Industry trends"]
 
 
 async def _analyze_news_sentiment_with_llm(
@@ -279,9 +324,20 @@ Response format:
 
 
 def _basic_news_analysis(news_articles: list) -> dict[str, Any]:
-    """Basic sentiment analysis without LLM."""
+    """Basic sentiment analysis — FinBERT if available, else keywords."""
+    # Try FinBERT first (fast, accurate)
+    analyzer = FinBERTAnalyzer.get_instance()
+    if analyzer and news_articles:
+        texts = [
+            f"{a.get('title', '')} {a.get('description', '')[:200] if a.get('description') else ''}"
+            for a in news_articles[:10]
+        ]
+        result = analyzer.analyze_sentiment(texts)
+        result["themes"] = _extract_themes_from_articles(news_articles)
+        result["headlines"] = [a.get("title", "") for a in news_articles[:3]]
+        return result
 
-    # Simple keyword-based sentiment
+    # Fallback: simple keyword-based sentiment
     positive_keywords = [
         "gain",
         "rise",

@@ -277,9 +277,16 @@ exits = (returns < -{momentum_threshold}) | (volume < avg_volume * 0.8)
             "update_frequency": [1, 5, 10, 20],
         },
         "code": """
-# Online Learning Strategy (ML-based)
-# Uses streaming updates to adapt to market conditions
-# Implements SGD classifier with technical features
+from maverick_mcp.backtesting.strategies.ml.adaptive import OnlineLearningStrategy
+
+strategy = OnlineLearningStrategy(
+    model_type="sgd",
+    update_frequency={update_frequency},
+    feature_window={lookback},
+    confidence_threshold=0.6,
+    parameters=params,
+)
+entries, exits = strategy.generate_signals(data)
 """,
     },
     "regime_aware": {
@@ -296,9 +303,24 @@ exits = (returns < -{momentum_threshold}) | (volume < avg_volume * 0.8)
             "threshold": [0.01, 0.02, 0.05],
         },
         "code": """
-# Regime-Aware Strategy
-# Detects market regime and switches between strategies
-# Uses volatility and trend strength indicators
+from maverick_mcp.backtesting.strategies.ml.regime_aware import (
+    MarketRegimeDetector,
+    RegimeAwareStrategy,
+)
+
+detector = MarketRegimeDetector(
+    method="hmm",
+    n_regimes=3,
+    lookback_period={regime_window},
+)
+# Create regime-specific sub-strategies for bear/sideways/bull
+strategy = RegimeAwareStrategy(
+    regime_strategies=regime_strategies,
+    regime_detector=detector,
+    switch_threshold={threshold},
+    parameters=params,
+)
+entries, exits = strategy.generate_signals(data)
 """,
     },
     "ensemble": {
@@ -316,9 +338,17 @@ exits = (returns < -{momentum_threshold}) | (volume < avg_volume * 0.8)
             "rsi_period": [7, 14, 21],
         },
         "code": """
-# Ensemble Strategy
-# Combines SMA, RSI, and MACD signals
-# Uses voting or weighted average for final signal
+from maverick_mcp.backtesting.strategies.ml.ensemble import StrategyEnsemble
+
+# Create base strategies (SMA, RSI, Momentum)
+ensemble = StrategyEnsemble(
+    strategies=base_strategies,
+    weighting_method="performance",
+    lookback_period=50,
+    rebalance_frequency=20,
+    parameters=params,
+)
+entries, exits = ensemble.generate_signals(data)
 """,
     },
 }

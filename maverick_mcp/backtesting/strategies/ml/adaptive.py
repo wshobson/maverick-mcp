@@ -715,6 +715,106 @@ class OnlineLearningStrategy(Strategy):
 
         return info
 
+    def extract_features_enhanced(self, data: DataFrame, end_idx: int) -> np.ndarray:
+        """Extract features using FeatureExtractor for richer signal generation.
+
+        Falls back to inline extract_features() on failure.
+
+        Args:
+            data: Price data
+            end_idx: End index for feature calculation
+
+        Returns:
+            Feature array
+        """
+        try:
+            from maverick_mcp.backtesting.strategies.ml.feature_engineering import (
+                FeatureExtractor,
+            )
+
+            extractor = FeatureExtractor()
+            window_data = data.iloc[: end_idx + 1].copy()
+            features_df = extractor.extract_all_features(window_data)
+
+            if features_df is None or features_df.empty:
+                return self.extract_features(data, end_idx)
+
+            # Get the last row as feature vector
+            last_row = features_df.iloc[-1]
+            feature_array = last_row.values.astype(float)
+
+            # Clean NaN/inf
+            feature_array = np.nan_to_num(
+                feature_array, nan=0.0, posinf=1.0, neginf=-1.0
+            )
+
+            return feature_array
+        except Exception as e:
+            logger.debug(f"Enhanced feature extraction failed, using inline: {e}")
+            return self.extract_features(data, end_idx)
+
+    def save_trained_model(self, model_id: str | None = None) -> bool:
+        """Persist the current trained model via ModelManager.
+
+        Args:
+            model_id: Identifier for the model. Defaults to 'online_learning_{model_type}'.
+
+        Returns:
+            True if saved successfully.
+        """
+        if not self.is_trained or self.model is None:
+            logger.warning("Cannot save: model is not trained")
+            return False
+
+        try:
+            from datetime import datetime
+
+            from maverick_mcp.backtesting.model_manager import ModelManager
+
+            manager = ModelManager()
+            model_id = model_id or f"online_learning_{self.model_type}"
+            version = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            return manager.save_model(
+                model_id=model_id,
+                version=version,
+                model=self.model,
+                scaler=self.scaler,
+                metadata=self.get_model_info(),
+            )
+        except Exception as e:
+            logger.error(f"Failed to save model: {e}")
+            return False
+
+    def load_trained_model(self, model_id: str | None = None) -> bool:
+        """Load a previously trained model from ModelManager.
+
+        Args:
+            model_id: Identifier for the model. Defaults to 'online_learning_{model_type}'.
+
+        Returns:
+            True if loaded successfully.
+        """
+        try:
+            from maverick_mcp.backtesting.model_manager import ModelManager
+
+            manager = ModelManager()
+            model_id = model_id or f"online_learning_{self.model_type}"
+            model_version = manager.load_model(model_id)
+
+            if model_version and model_version.model is not None:
+                self.model = model_version.model
+                if model_version.scaler is not None:
+                    self.scaler = model_version.scaler
+                self.is_trained = True
+                self.is_initial_trained = True
+                logger.info(f"Loaded model {model_id} version {model_version.version}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"Failed to load model: {e}")
+            return False
+
 
 class HybridAdaptiveStrategy(AdaptiveStrategy):
     """Hybrid strategy combining parameter adaptation with online learning."""

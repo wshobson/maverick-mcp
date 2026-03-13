@@ -598,6 +598,31 @@ class VectorBTEngine(BatchProcessingMixin):
             "kelly_criterion": self._calculate_kelly(portfolio),
             "recovery_factor": self._calculate_recovery_factor(portfolio),
             "risk_reward_ratio": self._calculate_risk_reward(portfolio),
+            # Risk metrics
+            "volatility": safe_float_metric(
+                lambda: float(portfolio.returns().std() * np.sqrt(252))
+            ),
+            "downside_volatility": safe_float_metric(
+                lambda: float(
+                    portfolio.returns()[portfolio.returns() < 0].std() * np.sqrt(252)
+                )
+            ),
+            "max_drawdown_duration": self._calculate_max_dd_duration(portfolio),
+            "final_value": safe_float_metric(lambda: float(portfolio.value().iloc[-1])),
+            "peak_value": safe_float_metric(lambda: float(portfolio.value().max())),
+            # Advanced risk metrics
+            "var_95": safe_float_metric(
+                lambda: float(np.percentile(portfolio.returns().dropna(), 5))
+            ),
+            "cvar_95": safe_float_metric(lambda: self._calculate_cvar(portfolio)),
+            "ulcer_index": safe_float_metric(
+                lambda: self._calculate_ulcer_index(portfolio)
+            ),
+            # Trade streaks
+            "max_consecutive_wins": self._calculate_max_streak(portfolio, winning=True),
+            "max_consecutive_losses": self._calculate_max_streak(
+                portfolio, winning=False
+            ),
         }
 
     def _extract_trades(self, portfolio: vbt.Portfolio) -> list:
@@ -940,6 +965,60 @@ class VectorBTEngine(BatchProcessingMixin):
         except (ZeroDivisionError, ValueError, TypeError):
             return 0.0
 
+    def _calculate_max_dd_duration(self, portfolio: vbt.Portfolio) -> int:
+        """Calculate maximum drawdown duration in days."""
+        try:
+            dd = portfolio.drawdown()
+            if dd is None or len(dd) == 0:
+                return 0
+            in_dd = dd < 0
+            if not in_dd.any():
+                return 0
+            # Find consecutive drawdown periods
+            groups = (~in_dd).cumsum()
+            dd_lengths = in_dd.groupby(groups).sum()
+            return int(dd_lengths.max()) if len(dd_lengths) > 0 else 0
+        except Exception:
+            return 0
+
+    def _calculate_cvar(self, portfolio: vbt.Portfolio) -> float:
+        """Calculate Conditional Value at Risk (Expected Shortfall) at 95%."""
+        returns = portfolio.returns().dropna()
+        if len(returns) == 0:
+            return 0.0
+        var_threshold = np.percentile(returns, 5)
+        tail_returns = returns[returns <= var_threshold]
+        return float(tail_returns.mean()) if len(tail_returns) > 0 else 0.0
+
+    def _calculate_ulcer_index(self, portfolio: vbt.Portfolio) -> float:
+        """Calculate Ulcer Index: sqrt(mean(drawdown_pct^2))."""
+        try:
+            dd = portfolio.drawdown()
+            if dd is None or len(dd) == 0:
+                return 0.0
+            dd_values = dd.values
+            return float(np.sqrt(np.mean(dd_values**2)))
+        except Exception:
+            return 0.0
+
+    def _calculate_max_streak(self, portfolio: vbt.Portfolio, winning: bool) -> int:
+        """Calculate maximum consecutive winning or losing trades."""
+        try:
+            if portfolio.trades.count() == 0:
+                return 0
+            records = portfolio.trades.records_readable
+            if len(records) == 0:
+                return 0
+            pnl = records["PnL"].values
+            target = pnl > 0 if winning else pnl < 0
+            max_streak = current = 0
+            for t in target:
+                current = current + 1 if t else 0
+                max_streak = max(max_streak, current)
+            return max_streak
+        except Exception:
+            return 0
+
     @with_structured_logging(
         "optimize_parameters",
         include_performance=True,
@@ -1190,98 +1269,293 @@ class VectorBTEngine(BatchProcessingMixin):
     def _online_learning_signals(
         self, data: DataFrame, params: dict[str, Any]
     ) -> tuple[Series, Series]:
-        """Generate online learning ML strategy signals.
+        """Generate signals using OnlineLearningStrategy with SGD classifier.
 
-        Simple implementation using momentum with adaptive thresholds.
+        Falls back to simple momentum-based signals if ML strategy fails.
         """
+        try:
+            from maverick_mcp.backtesting.strategies.ml.adaptive import (
+                OnlineLearningStrategy,
+            )
+
+            strategy = OnlineLearningStrategy(
+                model_type=params.get("model_type", "sgd"),
+                update_frequency=params.get("update_frequency", 10),
+                feature_window=params.get("lookback", 20),
+                confidence_threshold=params.get("confidence_threshold", 0.6),
+                initial_training_period=params.get("initial_training_period", 200),
+                parameters=params,
+            )
+            entries, exits = strategy.generate_signals(data)
+            logger.info("OnlineLearningStrategy (SGD) generated signals successfully")
+            return entries.fillna(False), exits.fillna(False)
+        except Exception as e:
+            logger.warning(
+                f"OnlineLearningStrategy failed, falling back to simple: {e}"
+            )
+            return self._online_learning_signals_simple(data, params)
+
+    def _online_learning_signals_simple(
+        self, data: DataFrame, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Simple fallback: momentum with adaptive thresholds."""
         lookback = params.get("lookback", 20)
         learning_rate = params.get("learning_rate", 0.01)
 
         close = data["close"]
         returns = close.pct_change(lookback)
 
-        # Adaptive threshold based on rolling statistics
         rolling_mean = returns.rolling(window=lookback).mean()
         rolling_std = returns.rolling(window=lookback).std()
 
-        # Dynamic entry/exit thresholds
         entry_threshold = rolling_mean + learning_rate * rolling_std
         exit_threshold = rolling_mean - learning_rate * rolling_std
 
-        # Generate signals
-        entries = returns > entry_threshold
-        exits = returns < exit_threshold
-
-        # Fill NaN values
-        entries = entries.fillna(False)
-        exits = exits.fillna(False)
+        entries = (returns > entry_threshold).fillna(False)
+        exits = (returns < exit_threshold).fillna(False)
 
         return entries, exits
 
     def _regime_aware_signals(
         self, data: DataFrame, params: dict[str, Any]
     ) -> tuple[Series, Series]:
-        """Generate regime-aware strategy signals.
+        """Generate signals using RegimeAwareStrategy with HMM detection.
 
-        Detects market regime and applies appropriate strategy.
+        Falls back to simple regime detection if ML strategy fails.
         """
+        try:
+            from maverick_mcp.backtesting.strategies.ml.regime_aware import (
+                MarketRegimeDetector,
+                RegimeAwareStrategy,
+            )
+
+            # Create sub-strategies for each regime
+            regime_strategies = self._create_regime_sub_strategies(params)
+
+            detector = MarketRegimeDetector(
+                method=params.get("method", "hmm"),
+                n_regimes=params.get("n_regimes", 3),
+                lookback_period=params.get("regime_window", 50),
+            )
+
+            strategy = RegimeAwareStrategy(
+                regime_strategies=regime_strategies,
+                regime_detector=detector,
+                switch_threshold=params.get("switch_threshold", 0.7),
+                min_regime_duration=params.get("min_regime_duration", 5),
+                parameters=params,
+            )
+            entries, exits = strategy.generate_signals(data)
+            logger.info("RegimeAwareStrategy (HMM) generated signals successfully")
+            return entries.fillna(False), exits.fillna(False)
+        except Exception as e:
+            logger.warning(f"RegimeAwareStrategy failed, falling back to simple: {e}")
+            return self._regime_aware_signals_simple(data, params)
+
+    def _create_regime_sub_strategies(self, params: dict[str, Any]) -> dict:
+        """Create sub-strategies for each market regime.
+
+        Returns:
+            Dict mapping regime labels (0=bear, 1=sideways, 2=bull) to Strategy instances.
+        """
+        from maverick_mcp.backtesting.strategies.base import Strategy
+
+        class SimpleSignalStrategy(Strategy):
+            """Lightweight strategy wrapper for regime sub-strategies."""
+
+            def __init__(
+                self,
+                strategy_name: str,
+                signal_fn,
+                parameters: dict[str, Any] | None = None,
+            ):
+                super().__init__(parameters)
+                self._name = strategy_name
+                self._signal_fn = signal_fn
+
+            @property
+            def name(self) -> str:
+                return self._name
+
+            @property
+            def description(self) -> str:
+                return f"Simple {self._name} strategy"
+
+            def generate_signals(self, data: DataFrame) -> tuple[Series, Series]:
+                return self._signal_fn(data)
+
+        def _mean_reversion_fn(data: DataFrame) -> tuple[Series, Series]:
+            close = data["close"]
+            sma = close.rolling(window=20).mean()
+            std = close.rolling(window=20).std()
+            entries = (close < sma - 2 * std).fillna(False)
+            exits = (close > sma).fillna(False)
+            return entries, exits
+
+        def _trend_following_fn(data: DataFrame) -> tuple[Series, Series]:
+            close = data["close"]
+            fast = close.rolling(window=10).mean()
+            slow = close.rolling(window=30).mean()
+            entries = ((fast > slow) & (fast.shift(1) <= slow.shift(1))).fillna(False)
+            exits = ((fast < slow) & (fast.shift(1) >= slow.shift(1))).fillna(False)
+            return entries, exits
+
+        def _momentum_fn(data: DataFrame) -> tuple[Series, Series]:
+            close = data["close"]
+            mom = close.pct_change(20)
+            entries = (mom > 0.03).fillna(False)
+            exits = (mom < -0.03).fillna(False)
+            return entries, exits
+
+        return {
+            0: SimpleSignalStrategy("MeanReversion", _mean_reversion_fn, params),
+            1: SimpleSignalStrategy("RangeTrading", _mean_reversion_fn, params),
+            2: SimpleSignalStrategy("TrendFollowing", _trend_following_fn, params),
+        }
+
+    def _regime_aware_signals_simple(
+        self, data: DataFrame, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Simple fallback: volatility-based regime detection."""
         regime_window = params.get("regime_window", 50)
         threshold = params.get("threshold", 0.02)
 
         close = data["close"]
-
-        # Calculate regime indicators
         returns = close.pct_change()
         volatility = returns.rolling(window=regime_window).std()
         trend_strength = close.rolling(window=regime_window).apply(
-            lambda x: (x[-1] - x[0]) / x[0] if x[0] != 0 else 0
+            lambda x: (x.iloc[-1] - x.iloc[0]) / x.iloc[0] if x.iloc[0] != 0 else 0,
+            raw=False,
         )
 
-        # Determine regime: trending vs ranging
         is_trending = abs(trend_strength) > threshold
 
-        # Trend following signals
         sma_short = close.rolling(window=regime_window // 2).mean()
         sma_long = close.rolling(window=regime_window).mean()
         trend_entries = (close > sma_long) & (sma_short > sma_long)
         trend_exits = (close < sma_long) & (sma_short < sma_long)
 
-        # Mean reversion signals
         bb_upper = sma_long + 2 * volatility
         bb_lower = sma_long - 2 * volatility
         reversion_entries = close < bb_lower
         reversion_exits = close > bb_upper
 
-        # Combine based on regime
-        entries = (is_trending & trend_entries) | (~is_trending & reversion_entries)
-        exits = (is_trending & trend_exits) | (~is_trending & reversion_exits)
-
-        # Fill NaN values
-        entries = entries.fillna(False)
-        exits = exits.fillna(False)
+        entries = (
+            (is_trending & trend_entries) | (~is_trending & reversion_entries)
+        ).fillna(False)
+        exits = ((is_trending & trend_exits) | (~is_trending & reversion_exits)).fillna(
+            False
+        )
 
         return entries, exits
 
     def _ensemble_signals(
         self, data: DataFrame, params: dict[str, Any]
     ) -> tuple[Series, Series]:
-        """Generate ensemble strategy signals.
+        """Generate signals using StrategyEnsemble with dynamic weighting.
 
-        Combines multiple strategies with voting.
+        Falls back to simple voting-based ensemble if ML strategy fails.
         """
+        try:
+            from maverick_mcp.backtesting.strategies.ml.ensemble import (
+                StrategyEnsemble,
+            )
+
+            base_strategies = self._create_ensemble_base_strategies(params)
+            strategy = StrategyEnsemble(
+                strategies=base_strategies,
+                weighting_method=params.get("weight_method", "performance"),
+                lookback_period=params.get("lookback_period", 50),
+                rebalance_frequency=params.get("rebalance_frequency", 20),
+                parameters=params,
+            )
+            entries, exits = strategy.generate_signals(data)
+            logger.info("StrategyEnsemble generated signals successfully")
+            return entries.fillna(False), exits.fillna(False)
+        except Exception as e:
+            logger.warning(f"StrategyEnsemble failed, falling back to simple: {e}")
+            return self._ensemble_signals_simple(data, params)
+
+    def _create_ensemble_base_strategies(self, params: dict[str, Any]) -> list:
+        """Create base strategies for the ensemble."""
+        from maverick_mcp.backtesting.strategies.base import Strategy
+
+        fast_period = params.get("fast_period", 10)
+        slow_period = params.get("slow_period", 20)
+        rsi_period = params.get("rsi_period", 14)
+
+        class SMAStrategy(Strategy):
+            @property
+            def name(self) -> str:
+                return "SMA_Crossover"
+
+            @property
+            def description(self) -> str:
+                return "SMA crossover strategy"
+
+            def generate_signals(self, data: DataFrame) -> tuple[Series, Series]:
+                close = data["close"]
+                fast = close.rolling(window=fast_period).mean()
+                slow = close.rolling(window=slow_period).mean()
+                entries = ((fast > slow) & (fast.shift(1) <= slow.shift(1))).fillna(
+                    False
+                )
+                exits = ((fast < slow) & (fast.shift(1) >= slow.shift(1))).fillna(False)
+                return entries, exits
+
+        class RSIStrategy(Strategy):
+            @property
+            def name(self) -> str:
+                return "RSI"
+
+            @property
+            def description(self) -> str:
+                return "RSI oversold/overbought strategy"
+
+            def generate_signals(self, data: DataFrame) -> tuple[Series, Series]:
+                close = data["close"]
+                delta = close.diff()
+                gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
+                rs = gain / loss.replace(0, 1e-10)
+                rsi = 100 - (100 / (1 + rs))
+                entries = ((rsi < 30) & (rsi.shift(1) >= 30)).fillna(False)
+                exits = ((rsi > 70) & (rsi.shift(1) <= 70)).fillna(False)
+                return entries, exits
+
+        class MomentumStrategy(Strategy):
+            @property
+            def name(self) -> str:
+                return "Momentum"
+
+            @property
+            def description(self) -> str:
+                return "Price momentum strategy"
+
+            def generate_signals(self, data: DataFrame) -> tuple[Series, Series]:
+                close = data["close"]
+                momentum = close.pct_change(20)
+                entries = (momentum > 0.05).fillna(False)
+                exits = (momentum < -0.05).fillna(False)
+                return entries, exits
+
+        return [SMAStrategy(params), RSIStrategy(params), MomentumStrategy(params)]
+
+    def _ensemble_signals_simple(
+        self, data: DataFrame, params: dict[str, Any]
+    ) -> tuple[Series, Series]:
+        """Simple fallback: majority voting from SMA, RSI, and momentum."""
         fast_period = params.get("fast_period", 10)
         slow_period = params.get("slow_period", 20)
         rsi_period = params.get("rsi_period", 14)
 
         close = data["close"]
 
-        # Strategy 1: SMA Crossover
         fast_sma = close.rolling(window=fast_period).mean()
         slow_sma = close.rolling(window=slow_period).mean()
         sma_entries = (fast_sma > slow_sma) & (fast_sma.shift(1) <= slow_sma.shift(1))
         sma_exits = (fast_sma < slow_sma) & (fast_sma.shift(1) >= slow_sma.shift(1))
 
-        # Strategy 2: RSI
         delta = close.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=rsi_period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=rsi_period).mean()
@@ -1290,12 +1564,10 @@ class VectorBTEngine(BatchProcessingMixin):
         rsi_entries = (rsi < 30) & (rsi.shift(1) >= 30)
         rsi_exits = (rsi > 70) & (rsi.shift(1) <= 70)
 
-        # Strategy 3: Momentum
         momentum = close.pct_change(20)
         mom_entries = momentum > 0.05
         mom_exits = momentum < -0.05
 
-        # Ensemble voting - at least 2 out of 3 strategies agree
         entry_votes = (
             sma_entries.astype(int) + rsi_entries.astype(int) + mom_entries.astype(int)
         )
@@ -1303,12 +1575,8 @@ class VectorBTEngine(BatchProcessingMixin):
             sma_exits.astype(int) + rsi_exits.astype(int) + mom_exits.astype(int)
         )
 
-        entries = entry_votes >= 2
-        exits = exit_votes >= 2
-
-        # Fill NaN values
-        entries = entries.fillna(False)
-        exits = exits.fillna(False)
+        entries = (entry_votes >= 2).fillna(False)
+        exits = (exit_votes >= 2).fillna(False)
 
         return entries, exits
 
@@ -1379,10 +1647,16 @@ class VectorBTEngine(BatchProcessingMixin):
         )
 
         # Determine current signal state
-        daily_last_entry = bool(daily_entries.iloc[-1]) if len(daily_entries) > 0 else False
-        daily_last_exit = bool(daily_exits.iloc[-1]) if len(daily_exits) > 0 else False
-        weekly_last_entry = bool(weekly_entries.iloc[-1]) if len(weekly_entries) > 0 else False
-        weekly_last_exit = bool(weekly_exits.iloc[-1]) if len(weekly_exits) > 0 else False
+        _daily_last_entry = (
+            bool(daily_entries.iloc[-1]) if len(daily_entries) > 0 else False
+        )
+        _daily_last_exit = bool(daily_exits.iloc[-1]) if len(daily_exits) > 0 else False
+        _weekly_last_entry = (
+            bool(weekly_entries.iloc[-1]) if len(weekly_entries) > 0 else False
+        )
+        _weekly_last_exit = (
+            bool(weekly_exits.iloc[-1]) if len(weekly_exits) > 0 else False
+        )
 
         # Look at recent signal bias (last 5 bars)
         def signal_bias(entries: pd.Series, exits: pd.Series, window: int = 5) -> str:

@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
+.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check ci pre-commit-install migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -153,6 +153,16 @@ typecheck:
 
 check: lint typecheck
 	@echo "All checks passed!"
+
+ci:
+	@echo "Running CI checks locally..."
+	@uv run ruff check .
+	@uv run ruff format --check .
+	@uv run pytest -v --tb=short
+
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	@uv run pre-commit install
 
 # Utility commands
 tail-log:

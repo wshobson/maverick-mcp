@@ -832,6 +832,37 @@ def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
         return pd.Series(dtype=float, index=df.index)
 
 
+def calculate_vwap(df: pd.DataFrame) -> pd.Series:
+    """
+    Calculate Volume Weighted Average Price (VWAP).
+
+    VWAP is most meaningful for intraday data where cumulative calculations
+    reset each trading day. For daily data it provides a running average
+    weighted by volume.
+
+    Args:
+        df: DataFrame with high, low, close, and volume columns.
+
+    Returns:
+        Series with VWAP values.
+    """
+    high_col = _get_column_case_insensitive(df, "high")
+    low_col = _get_column_case_insensitive(df, "low")
+    close_col = _get_column_case_insensitive(df, "close")
+    volume_col = _get_column_case_insensitive(df, "volume")
+
+    if not all([high_col, low_col, close_col, volume_col]):
+        return pd.Series(dtype=float, index=df.index)
+
+    typical_price = (df[high_col] + df[low_col] + df[close_col]) / 3
+    cumulative_tp_vol = (typical_price * df[volume_col]).cumsum()
+    cumulative_vol = df[volume_col].cumsum()
+
+    # Avoid division by zero
+    vwap = cumulative_tp_vol / cumulative_vol.replace(0, np.nan)
+    return vwap
+
+
 def calculate_sma(df: pd.DataFrame, period: int) -> pd.Series:
     """
     Calculate Simple Moving Average (SMA) for the given dataframe.

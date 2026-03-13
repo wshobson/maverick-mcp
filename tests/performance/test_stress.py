@@ -12,10 +12,20 @@ This test suite covers:
 - System stability under extreme conditions
 """
 
+import sys
+
+import pytest
+
+if sys.platform == "win32":
+    pytest.skip(
+        "stress tests require Unix (resource module not available on Windows)",
+        allow_module_level=True,
+    )
+
 import asyncio
 import gc
 import logging
-import resource
+import resource  # Unix-only — guarded by platform check above
 import threading
 import time
 from dataclasses import dataclass

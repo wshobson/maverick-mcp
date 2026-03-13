@@ -7,12 +7,12 @@ stock data, news, fundamentals, and caching operations.
 Updated to use separated services following Single Responsibility Principle.
 """
 
-import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 
+import pandas as pd
 import requests
 import requests.exceptions
 from fastmcp import FastMCP
@@ -36,10 +36,33 @@ data_router: FastMCP = FastMCP("Data_Operations")
 executor = ThreadPoolExecutor(max_workers=10)
 
 
+def shutdown_executor() -> None:
+    """Shut down the module-level thread pool executor."""
+    executor.shutdown(wait=False)
+
+
+def _dataframe_to_split_dict(df: pd.DataFrame) -> dict[str, Any]:
+    """Convert DataFrame to split-orient dict with ISO date strings.
+
+    Avoids the serialize-then-deserialize round-trip of
+    ``df.to_json() → json.loads()``.
+    """
+    if df.empty:
+        return {}
+    result: dict[str, Any] = df.to_dict(orient="split")
+    # Convert DatetimeIndex to ISO strings (matches to_json date_format="iso")
+    result["index"] = [
+        idx.isoformat() if hasattr(idx, "isoformat") else str(idx)
+        for idx in result["index"]
+    ]
+    return result
+
+
 def fetch_stock_data(
     ticker: str,
     start_date: str | None = None,
     end_date: str | None = None,
+    interval: str = "1d",
 ) -> dict[str, Any]:
     """
     Fetch historical stock data for a given ticker symbol.
@@ -53,6 +76,8 @@ def fetch_stock_data(
         ticker: The ticker symbol of the stock (e.g., AAPL, MSFT)
         start_date: Start date for data in YYYY-MM-DD format (default: 1 year ago)
         end_date: End date for data in YYYY-MM-DD format (default: today)
+        interval: Data interval - "1m", "5m", "15m", "30m", "1h", "1d", "1wk", "1mo"
+                  (default: "1d"). Intraday intervals fetch fresh from yfinance.
 
     Returns:
         Dictionary containing the stock data in JSON format with:
@@ -67,6 +92,7 @@ def fetch_stock_data(
         ...     start_date="2024-01-01",
         ...     end_date="2024-12-31"
         ... )
+        >>> fetch_stock_data(ticker="AAPL", interval="5m")
     """
     try:
         # Create services with dependency injection
@@ -80,10 +106,12 @@ def fetch_stock_data(
                 db_session=session,
             )
 
-            data = stock_analysis_service.get_stock_data(ticker, start_date, end_date)
-            json_data = data.to_json(orient="split", date_format="iso")
-            result: dict[str, Any] = json.loads(json_data) if json_data else {}
+            data = stock_analysis_service.get_stock_data(
+                ticker, start_date, end_date, interval=interval
+            )
+            result: dict[str, Any] = _dataframe_to_split_dict(data)
             result["ticker"] = ticker
+            result["interval"] = interval
             result["record_count"] = len(data)
             return result
     except Exception as e:
@@ -138,9 +166,7 @@ def fetch_stock_data_batch(
                 )
                 results[ticker] = {
                     "status": "success",
-                    "data": json.loads(
-                        data.to_json(orient="split", date_format="iso") or "{}"
-                    ),
+                    "data": _dataframe_to_split_dict(data),
                     "record_count": len(data),
                 }
             except Exception as e:
@@ -217,9 +243,72 @@ def get_stock_info(ticker: str) -> dict[str, Any]:
                     "52_week_high": info.get("fiftyTwoWeekHigh"),
                     "52_week_low": info.get("fiftyTwoWeekLow"),
                 },
+                "earnings": {
+                    "trailing_eps": info.get("trailingEps"),
+                    "forward_eps": info.get("forwardEps"),
+                    "earnings_growth": info.get("earningsGrowth"),
+                    "revenue_growth": info.get("revenueGrowth"),
+                },
+                "balance_sheet": {
+                    "total_debt": info.get("totalDebt"),
+                    "debt_to_equity": info.get("debtToEquity"),
+                    "current_ratio": info.get("currentRatio"),
+                    "free_cashflow": info.get("freeCashflow"),
+                },
+                "dividends": {
+                    "dividend_yield": info.get("dividendYield"),
+                    "payout_ratio": info.get("payoutRatio"),
+                },
             }
     except Exception as e:
         logger.error(f"Error fetching stock info for {ticker}: {e}")
+        return {"error": str(e), "ticker": ticker}
+
+
+def get_fundamental_analysis(ticker: str) -> dict[str, Any]:
+    """
+    Get comprehensive fundamental analysis for a stock.
+
+    Provides earnings analysis, valuation assessment, financial health,
+    and a composite fundamental score with letter grade.
+
+    Args:
+        ticker: Stock ticker symbol
+
+    Returns:
+        Dictionary containing fundamental analysis with scores and grade
+    """
+    try:
+        from maverick_mcp.core.fundamental_analysis import (
+            compute_fundamental_score,
+            get_earnings_analysis,
+            get_financial_health,
+            get_valuation_assessment,
+        )
+
+        with get_db_session_read_only() as session:
+            provider = StockDataProvider(db_session=session)
+            info = provider.get_stock_info(ticker)
+
+            scores = compute_fundamental_score(info)
+            earnings = get_earnings_analysis(info)
+            valuation = get_valuation_assessment(info)
+            health = get_financial_health(info)
+
+            return {
+                "ticker": ticker,
+                "company_name": info.get("longName", info.get("shortName")),
+                "sector": info.get("sector"),
+                "industry": info.get("industry"),
+                "fundamental_score": scores["fundamental_score"],
+                "grade": scores["grade"],
+                "scores": scores,
+                "earnings": earnings,
+                "valuation": valuation,
+                "financial_health": health,
+            }
+    except Exception as e:
+        logger.error(f"Error computing fundamental analysis for {ticker}: {e}")
         return {"error": str(e), "ticker": ticker}
 
 
@@ -504,3 +593,148 @@ def warm_cache(
         "failed": results["failed"],
         "elapsed_ms": elapsed_ms,
     }
+
+
+def check_watchlist_alerts(
+    tickers: list[str] | None = None,
+    conditions: list[str] | None = None,
+    rsi_overbought: float = 70.0,
+    rsi_oversold: float = 30.0,
+    volume_spike_multiplier: float = 2.0,
+    trailing_stop_pct: float = 5.0,
+) -> dict[str, Any]:
+    """Check technical alert conditions for specified tickers or portfolio.
+
+    Evaluates multiple technical conditions and returns any triggered alerts.
+    If no tickers are provided, automatically checks all portfolio positions.
+
+    DISCLAIMER: Alerts are for educational purposes only and do not
+    constitute investment advice.
+
+    Supported conditions: rsi_overbought, rsi_oversold, macd_bullish_cross,
+    macd_bearish_cross, price_above_resistance, price_below_support,
+    volume_spike, bollinger_squeeze, trailing_stop.
+
+    Args:
+        tickers: List of ticker symbols to check (optional, auto-uses portfolio)
+        conditions: Specific conditions to check (optional, checks all by default)
+        rsi_overbought: RSI overbought threshold (default 70)
+        rsi_oversold: RSI oversold threshold (default 30)
+        volume_spike_multiplier: Volume spike threshold multiplier (default 2.0)
+        trailing_stop_pct: Trailing stop drop percentage (default 5.0)
+
+    Returns:
+        Dictionary with alert results per ticker and summary counts
+    """
+    from maverick_mcp.core.watchlist_monitor import (
+        check_alerts_for_ticker,
+        check_portfolio_alerts,
+    )
+
+    try:
+        if tickers:
+            # Check specific tickers
+            results = []
+            total_alerts = 0
+            for ticker in tickers:
+                result = check_alerts_for_ticker(
+                    ticker,
+                    conditions=conditions,
+                    rsi_overbought=rsi_overbought,
+                    rsi_oversold=rsi_oversold,
+                    volume_spike_multiplier=volume_spike_multiplier,
+                    trailing_stop_pct=trailing_stop_pct,
+                )
+                results.append(result)
+                total_alerts += result.get("alert_count", 0)
+
+            results.sort(key=lambda r: r.get("alert_count", 0), reverse=True)
+            return {
+                "status": "ok",
+                "tickers_checked": len(tickers),
+                "total_alerts": total_alerts,
+                "results": results,
+            }
+        else:
+            # Auto-detect from portfolio
+            return check_portfolio_alerts(
+                conditions=conditions,
+                rsi_overbought=rsi_overbought,
+                rsi_oversold=rsi_oversold,
+                volume_spike_multiplier=volume_spike_multiplier,
+                trailing_stop_pct=trailing_stop_pct,
+            )
+    except Exception as e:
+        logger.error(f"Error checking watchlist alerts: {e}")
+        return {"error": str(e), "status": "error"}
+
+
+def get_intraday_summary(
+    ticker: str,
+    interval: str = "5m",
+) -> dict[str, Any]:
+    """Get intraday price summary with VWAP for a single ticker.
+
+    Fetches recent intraday data and calculates VWAP, day range,
+    and volume profile. Best used during market hours.
+
+    Args:
+        ticker: Stock ticker symbol
+        interval: Intraday interval - "1m", "5m", "15m", "30m", "1h"
+                  (default: "5m")
+
+    Returns:
+        Dictionary with current price, VWAP, day range, and volume stats
+    """
+    from maverick_mcp.core.technical_analysis import calculate_vwap
+
+    try:
+        provider = StockDataProvider()
+        df = provider.get_stock_data(ticker, period="1d", interval=interval)
+
+        if df is None or df.empty:
+            return {
+                "ticker": ticker,
+                "status": "error",
+                "message": f"No intraday data available for {ticker}",
+            }
+
+        current_price = float(df["close"].iloc[-1])
+        day_open = float(df["open"].iloc[0])
+        day_high = float(df["high"].max())
+        day_low = float(df["low"].min())
+        total_volume = int(df["volume"].sum())
+
+        # Calculate VWAP
+        vwap_series = calculate_vwap(df)
+        current_vwap = float(vwap_series.iloc[-1]) if not vwap_series.empty else None
+
+        # Price vs VWAP
+        vwap_signal = None
+        if current_vwap:
+            if current_price > current_vwap:
+                vwap_signal = "above_vwap (bullish)"
+            else:
+                vwap_signal = "below_vwap (bearish)"
+
+        return {
+            "ticker": ticker.upper(),
+            "interval": interval,
+            "status": "ok",
+            "current_price": round(current_price, 2),
+            "vwap": round(current_vwap, 2) if current_vwap else None,
+            "vwap_signal": vwap_signal,
+            "day_open": round(day_open, 2),
+            "day_high": round(day_high, 2),
+            "day_low": round(day_low, 2),
+            "day_range": round(day_high - day_low, 2),
+            "change_from_open": round(current_price - day_open, 2),
+            "change_pct": round(((current_price - day_open) / day_open) * 100, 2)
+            if day_open > 0
+            else 0.0,
+            "total_volume": total_volume,
+            "bar_count": len(df),
+        }
+    except Exception as e:
+        logger.error(f"Error getting intraday summary for {ticker}: {e}")
+        return {"error": str(e), "ticker": ticker, "status": "error"}

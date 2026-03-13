@@ -121,11 +121,14 @@ def register_portfolio_tools(mcp: FastMCP) -> None:
 def register_data_tools(mcp: FastMCP) -> None:
     """Register data tools directly on main server"""
     from maverick_mcp.api.routers.data import (
+        check_watchlist_alerts,
         clear_cache,
         fetch_stock_data,
         fetch_stock_data_batch,
         get_cached_price_data,
         get_chart_links,
+        get_fundamental_analysis,
+        get_intraday_summary,
         get_stock_info,
     )
 
@@ -160,9 +163,12 @@ def register_data_tools(mcp: FastMCP) -> None:
         """
         return await get_news_sentiment_enhanced(ticker, timeframe, limit)
 
+    mcp.tool(name="data_get_fundamental_analysis")(get_fundamental_analysis)
     mcp.tool(name="data_get_cached_price_data")(get_cached_price_data)
     mcp.tool(name="data_get_chart_links")(get_chart_links)
     mcp.tool(name="data_clear_cache")(clear_cache)
+    mcp.tool(name="data_check_watchlist_alerts")(check_watchlist_alerts)
+    mcp.tool(name="data_get_intraday_summary")(get_intraday_summary)
 
 
 def register_performance_tools(mcp: FastMCP) -> None:
@@ -391,6 +397,48 @@ def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
         logger.error(f"✗ Failed to register introspection tools: {e}")
 
 
+def register_options_tools(mcp: FastMCP) -> None:
+    """Register options analysis tools directly on main server"""
+    from maverick_mcp.api.routers.options import (
+        analyze_options_strategy,
+        calculate_option_greeks,
+        get_iv_analysis,
+        get_options_chain,
+        get_unusual_options_activity,
+        hedge_portfolio,
+        price_option,
+    )
+
+    mcp.tool(name="options_get_chain")(get_options_chain)
+    mcp.tool(name="options_calculate_greeks")(calculate_option_greeks)
+    mcp.tool(name="options_iv_analysis")(get_iv_analysis)
+    mcp.tool(name="options_price_option")(price_option)
+    mcp.tool(name="options_analyze_strategy")(analyze_options_strategy)
+    mcp.tool(name="options_unusual_activity")(get_unusual_options_activity)
+    mcp.tool(name="options_hedge_portfolio")(hedge_portfolio)
+
+
+def register_streaming_tools(mcp: FastMCP) -> None:
+    """Register real-time price streaming tools directly on main server"""
+    from maverick_mcp.streaming.tools import (
+        get_price_snapshot,
+        get_stream_status,
+        set_poll_interval,
+        start_price_stream,
+        stop_price_stream,
+        subscribe,
+        unsubscribe,
+    )
+
+    mcp.tool(name="streaming_start_price_stream")(start_price_stream)
+    mcp.tool(name="streaming_stop_price_stream")(stop_price_stream)
+    mcp.tool(name="streaming_subscribe")(subscribe)
+    mcp.tool(name="streaming_unsubscribe")(unsubscribe)
+    mcp.tool(name="streaming_get_stream_status")(get_stream_status)
+    mcp.tool(name="streaming_set_poll_interval")(set_poll_interval)
+    mcp.tool(name="streaming_get_price_snapshot")(get_price_snapshot)
+
+
 def register_all_router_tools(mcp: FastMCP) -> None:
     """Register all router tools directly on the main server"""
     logger.info("Starting tool registration process...")
@@ -453,6 +501,20 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     # Register backtesting tools
     register_backtesting_tools(mcp)
 
+    # Register options analysis tools
+    try:
+        register_options_tools(mcp)
+        logger.info("✓ Options analysis tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register options tools: {e}")
+
+    # Register streaming tools
+    try:
+        register_streaming_tools(mcp)
+        logger.info("✓ Streaming tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register streaming tools: {e}")
+
     # Register MCP prompts and resources for introspection
     register_mcp_prompts_and_resources(mcp)
 
@@ -467,5 +529,6 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     logger.info("   • Research and analysis tools")
     logger.info("   • Health monitoring tools")
     logger.info("   • Backtesting system tools")
+    logger.info("   • Options analysis tools")
     logger.info("   • MCP prompts for introspection")
     logger.info("   • Introspection and discovery tools")

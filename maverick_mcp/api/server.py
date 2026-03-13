@@ -352,6 +352,12 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(health_router, tags=["health"])
     logger.info("Monitoring and health endpoints registered with FastAPI application")
 
+    # Mount WebSocket endpoint for real-time price streaming
+    from maverick_mcp.streaming.websocket_handler import websocket_prices
+
+    mcp.fastapi_app.add_api_websocket_route("/ws/prices", websocket_prices)
+    logger.info("WebSocket price streaming endpoint registered at /ws/prices")
+
 # Add Enhanced Rate Limiting Middleware to FastAPI app (not to MCP server directly,
 # since Starlette BaseHTTPMiddleware is incompatible with FastMCP's middleware chain)
 rate_limit_config = RateLimitConfig(
@@ -1295,6 +1301,20 @@ def portfolio_holdings_resource() -> str:
         )
 
 
+@mcp.resource("watchlist://streaming-alerts")
+def streaming_alerts_resource() -> str:
+    """Current streaming alert state for all subscribed tickers.
+
+    Returns the real-time alert state tracked by the price streaming
+    service, including which tickers are being monitored and any active
+    alert conditions detected during the most recent evaluation cycle.
+    """
+    from maverick_mcp.streaming.price_stream_manager import PriceStreamManager
+
+    manager = PriceStreamManager.get_instance()
+    return json.dumps(manager.get_alert_state())
+
+
 # Main execution block
 if __name__ == "__main__":
     import asyncio
@@ -1503,6 +1523,33 @@ if __name__ == "__main__":
                 logger.error(f"Error closing Redis: {e}")
 
         shutdown_handler.register_cleanup(close_cache)
+
+        # Register data router executor cleanup
+        def cleanup_data_executor():
+            """Shut down data router thread pool executor."""
+            from maverick_mcp.api.routers.data import shutdown_executor
+
+            try:
+                shutdown_executor()
+                logger.info("Data router executor shut down")
+            except Exception as e:
+                logger.error(f"Error shutting down data executor: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_data_executor)
+
+        # Register price stream cleanup
+        async def cleanup_price_stream():
+            """Stop the real-time price streaming service."""
+            from maverick_mcp.streaming.price_stream_manager import PriceStreamManager
+
+            try:
+                manager = PriceStreamManager.get_instance()
+                await manager.stop()
+                logger.info("Price stream manager stopped")
+            except Exception as e:
+                logger.error(f"Error stopping price stream: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_price_stream)
 
         # Run with the appropriate transport
         if args.transport == "stdio":

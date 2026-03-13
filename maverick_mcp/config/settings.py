@@ -9,6 +9,7 @@ import logging
 import os
 import tempfile
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -882,7 +883,7 @@ class Settings(BaseModel):
         default_factory=AgentConfig, description="Agent settings"
     )
     validation: ValidationConfig = Field(
-        default_factory=FinancialConfig, description="Financial calculation settings"
+        default_factory=ValidationConfig, description="Validation settings"
     )
     performance: PerformanceConfig = Field(
         default_factory=PerformanceConfig, description="Performance settings"
@@ -891,18 +892,25 @@ class Settings(BaseModel):
     provider: ProviderConfig = Field(
         default_factory=ProviderConfig, description="Provider configuration"
     )
-    agent: AgentConfig = Field(
-        default_factory=AgentConfig, description="Agent configuration"
-    )
     db: DatabaseConfig = Field(
         default_factory=DatabaseConfig, description="Database connection settings"
     )
     middleware: MiddlewareConfig = Field(
         default_factory=MiddlewareConfig, description="Middleware settings"
     )
-    validation: ValidationConfig = Field(
-        default_factory=ValidationConfig, description="Validation settings"
+
+    # Lazy import to avoid circular dependency at module load
+    streaming: Any = Field(
+        default=None,
+        description="Streaming settings (loaded lazily from StreamingConfig)",
     )
+
+    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+        """Lazily initialise the streaming config after all fields are set."""
+        if self.streaming is None:
+            from maverick_mcp.streaming.config import StreamingConfig
+
+            object.__setattr__(self, "streaming", StreamingConfig())
 
 
 def load_settings_from_environment() -> Settings:

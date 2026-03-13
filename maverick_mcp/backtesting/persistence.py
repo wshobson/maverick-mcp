@@ -107,7 +107,7 @@ class BacktestPersistenceManager:
                 parameters=parameters,
                 # Performance metrics
                 total_return=self._safe_decimal(metrics.get("total_return")),
-                annualized_return=self._safe_decimal(metrics.get("annualized_return")),
+                annualized_return=self._safe_decimal(metrics.get("annual_return")),
                 sharpe_ratio=self._safe_decimal(metrics.get("sharpe_ratio")),
                 sortino_ratio=self._safe_decimal(metrics.get("sortino_ratio")),
                 calmar_ratio=self._safe_decimal(metrics.get("calmar_ratio")),
@@ -125,16 +125,28 @@ class BacktestPersistenceManager:
                 win_rate=self._safe_decimal(metrics.get("win_rate")),
                 # P&L statistics
                 profit_factor=self._safe_decimal(metrics.get("profit_factor")),
-                average_win=self._safe_decimal(metrics.get("average_win")),
-                average_loss=self._safe_decimal(metrics.get("average_loss")),
-                largest_win=self._safe_decimal(metrics.get("largest_win")),
-                largest_loss=self._safe_decimal(metrics.get("largest_loss")),
+                average_win=self._safe_decimal(metrics.get("avg_win")),
+                average_loss=self._safe_decimal(metrics.get("avg_loss")),
+                largest_win=self._safe_decimal(metrics.get("best_trade")),
+                largest_loss=self._safe_decimal(metrics.get("worst_trade")),
                 # Portfolio values
                 final_portfolio_value=self._safe_decimal(metrics.get("final_value")),
                 peak_portfolio_value=self._safe_decimal(metrics.get("peak_value")),
                 # Market analysis
                 beta=self._safe_decimal(metrics.get("beta")),
                 alpha=self._safe_decimal(metrics.get("alpha")),
+                # Advanced risk metrics
+                var_95=self._safe_decimal(metrics.get("var_95")),
+                cvar_95=self._safe_decimal(metrics.get("cvar_95")),
+                ulcer_index=self._safe_decimal(metrics.get("ulcer_index")),
+                # Strategy quality metrics
+                expectancy=self._safe_decimal(metrics.get("expectancy")),
+                kelly_criterion=self._safe_decimal(metrics.get("kelly_criterion")),
+                recovery_factor=self._safe_decimal(metrics.get("recovery_factor")),
+                risk_reward_ratio=self._safe_decimal(metrics.get("risk_reward_ratio")),
+                # Trade streaks
+                max_consecutive_wins=metrics.get("max_consecutive_wins"),
+                max_consecutive_losses=metrics.get("max_consecutive_losses"),
                 # Time series data
                 equity_curve=vectorbt_results.get("equity_curve"),
                 drawdown_series=vectorbt_results.get("drawdown_series"),

@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 screening_router: FastMCP = FastMCP("Stock_Screening")
 
 
-def get_maverick_stocks(limit: int = 20, regime_filter: bool = True) -> dict[str, Any]:
+def get_maverick_stocks(
+    limit: int = 20,
+    regime_filter: bool = True,
+    min_fundamental_score: int | None = None,
+) -> dict[str, Any]:
     """
     Get top Maverick stocks from the screening results.
 
@@ -33,9 +37,14 @@ def get_maverick_stocks(limit: int = 20, regime_filter: bool = True) -> dict[str
     When regime_filter is True (default), auto-detects market regime via SPY
     and filters results accordingly (suppresses bullish signals in bear markets).
 
+    When min_fundamental_score is set, filters out stocks whose fundamental
+    quality score is below the threshold (0-100). This adds a yfinance API call
+    per stock to compute the score.
+
     Args:
         limit: Maximum number of stocks to return (default: 20)
         regime_filter: Auto-detect regime and filter results (default: True)
+        min_fundamental_score: Minimum fundamental score (0-100) to include
 
     Returns:
         Dictionary containing Maverick stock screening results
@@ -81,6 +90,46 @@ def get_maverick_stocks(limit: int = 20, regime_filter: bool = True) -> dict[str
                 result["stocks"] = enrich_stocks_with_ears(result["stocks"])
             except Exception as e:
                 logger.warning(f"EARS enrichment failed: {e}")
+
+            # Filter by fundamental score if requested
+            if min_fundamental_score is not None:
+                try:
+                    from maverick_mcp.core.fundamental_analysis import (
+                        compute_fundamental_score,
+                    )
+                    from maverick_mcp.data.session_management import (
+                        get_db_session_read_only,
+                    )
+                    from maverick_mcp.providers.stock_data import StockDataProvider
+
+                    with get_db_session_read_only() as fund_session:
+                        provider = StockDataProvider(db_session=fund_session)
+                        filtered = []
+                        for stock in result["stocks"]:
+                            ticker = stock.get("ticker") or stock.get(
+                                "ticker_symbol", ""
+                            )
+                            try:
+                                info = provider.get_stock_info(ticker)
+                                scores = compute_fundamental_score(info)
+                                stock["fundamental_score"] = scores["fundamental_score"]
+                                stock["fundamental_grade"] = scores["grade"]
+                                if scores["fundamental_score"] >= min_fundamental_score:
+                                    filtered.append(stock)
+                            except Exception as ticker_err:
+                                logger.warning(
+                                    f"Fundamental scoring failed for {ticker}: "
+                                    f"{ticker_err}"
+                                )
+                                stock["fundamental_score"] = None
+                                stock["fundamental_grade"] = None
+                                filtered.append(stock)
+                        result["stocks"] = filtered
+                        result["count"] = len(filtered)
+                        result["fundamental_filter_applied"] = True
+                        result["min_fundamental_score"] = min_fundamental_score
+                except Exception as e:
+                    logger.warning(f"Fundamental filtering failed: {e}")
 
             return result
     except Exception as e:

@@ -3,7 +3,7 @@ name = "maverick_mcp"
 version = "0.1.0"
 description = "Personal-use MCP server for Claude Desktop providing professional-grade stock analysis and technical indicators"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12"
 dependencies = [
     # Core MCP and server dependencies
     "fastmcp>=2.7.0",
@@ -62,9 +62,11 @@ dependencies = [
     "prometheus-client>=0.21.1",
     # Trading
     "fredapi>=0.5.2",
-    "pandas-datareader>=0.10.0",
     "pandas-market-calendars>=5.1.0",
     "tiingo>=0.16.1",
+    # Options analysis
+    "blackscholes>=0.1.2",
+    "OptionsPricerLib>=0.1.0",
     # Visualization (essential only)
     "matplotlib>=3.10.3",
     "plotly>=5.0.0",
@@ -97,6 +99,15 @@ dev = [
     "types-requests>=2.31.0",
     "types-pytz>=2024.1.0",
     "ty>=0.0.1a19",
+    "pre-commit>=4.0.0",
+]
+ml = [
+    "transformers>=4.40.0",
+    "torch>=2.0.0",
+]
+options = [
+    "blackscholes>=0.1.2",
+    "OptionsPricerLib>=0.1.0",
 ]
 
 [build-system]

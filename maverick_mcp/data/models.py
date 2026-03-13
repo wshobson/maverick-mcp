@@ -1076,6 +1076,21 @@ class BacktestResult(Base, TimestampMixin):
     beta = Column(Numeric(8, 4))  # Market beta
     alpha = Column(Numeric(8, 4))  # Alpha vs market
 
+    # Advanced Risk Metrics
+    var_95 = Column(Numeric(8, 6))  # Value at Risk (95%)
+    cvar_95 = Column(Numeric(8, 6))  # Conditional VaR (Expected Shortfall)
+    ulcer_index = Column(Numeric(8, 6))  # Ulcer Index
+
+    # Strategy Quality Metrics
+    expectancy = Column(Numeric(12, 4))  # Expected value per trade
+    kelly_criterion = Column(Numeric(8, 6))  # Kelly fraction
+    recovery_factor = Column(Numeric(8, 4))  # Return / Max Drawdown
+    risk_reward_ratio = Column(Numeric(8, 4))  # Avg Win / Avg Loss
+
+    # Trade Streaks
+    max_consecutive_wins = Column(Integer)
+    max_consecutive_losses = Column(Integer)
+
     # Time series data (stored as JSON for efficient queries)
     equity_curve = Column(JSON)  # Daily portfolio values
     drawdown_series = Column(JSON)  # Daily drawdown values
