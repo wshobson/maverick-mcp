@@ -504,26 +504,9 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
         # Give in-flight requests a brief window to complete
         await _asyncio.sleep(2)
 
-        # Close database connections
-        try:
-            from maverick_mcp.data.models import close_async_db_connections, engine
-
-            await close_async_db_connections()
-            engine.dispose()
-            logger.info("Database connections closed during shutdown")
-        except Exception as e:
-            logger.error(f"Error closing database connections: {e}")
-
-        # Close Redis connections
-        try:
-            from maverick_mcp.data.cache import get_redis_client
-
-            redis_client = get_redis_client()
-            if redis_client:
-                redis_client.close()
-                logger.info("Redis connections closed during shutdown")
-        except Exception as e:
-            logger.error(f"Error closing Redis connections: {e}")
+        # NOTE: Database and Redis cleanup is handled by the registered
+        # shutdown_handler callbacks (cleanup_database, close_cache) below.
+        # Only mark shutdown state and drain here to avoid double-dispose.
 
         logger.info("ASGI shutdown cleanup complete")
 

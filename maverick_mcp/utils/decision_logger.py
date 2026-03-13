@@ -49,11 +49,9 @@ def _ensure_table_exists() -> None:
             _table_ensured = True
             logger.debug("DecisionLog table ensured")
         except Exception:
-            # Mark as ensured anyway to avoid retrying on every call.
-            # The table likely already exists or the full schema migration
-            # will handle it.
-            _table_ensured = True
-            logger.debug("DecisionLog table check skipped or failed", exc_info=True)
+            # Leave _table_ensured False so the next call retries.
+            # This handles transient DB failures during startup.
+            logger.debug("DecisionLog table check failed; will retry", exc_info=True)
 
 
 class DecisionLogger:

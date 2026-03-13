@@ -346,7 +346,21 @@ class CostTrackingLLM:
         self._llm = llm
         self._model_id = model_id
         self._provider = provider
-        self._request_id = request_id or str(uuid.uuid4())
+        # Store explicit request_id; generate per-call IDs when None
+        self._request_id = request_id
+
+    @property
+    def __class__(self):
+        """Report the wrapped LLM's class so isinstance() checks pass.
+
+        LangGraph helpers like create_react_agent use
+        ``isinstance(model, BaseChatModel)`` to select code paths.
+        """
+        return self._llm.__class__
+
+    def _get_request_id(self) -> str:
+        """Return the explicit request_id or generate a fresh one per call."""
+        return self._request_id or str(uuid.uuid4())
 
     # ------------------------------------------------------------------
     # Async call wrappers
@@ -354,16 +368,16 @@ class CostTrackingLLM:
 
     async def ainvoke(self, *args: Any, **kwargs: Any) -> Any:
         """Async invoke with pre-call budget check and post-call cost recording."""
-        await self._pre_call_budget_check()
+        rid = await self._pre_call_budget_check()
         response = await self._llm.ainvoke(*args, **kwargs)
-        await self._post_call_record(response)
+        await self._post_call_record(response, request_id=rid)
         return response
 
     async def agenerate(self, *args: Any, **kwargs: Any) -> Any:
         """Async generate with pre-call budget check and post-call cost recording."""
-        await self._pre_call_budget_check()
+        rid = await self._pre_call_budget_check()
         response = await self._llm.agenerate(*args, **kwargs)
-        await self._post_call_record_generation(response)
+        await self._post_call_record_generation(response, request_id=rid)
         return response
 
     # ------------------------------------------------------------------
@@ -389,30 +403,32 @@ class CostTrackingLLM:
     def bind_tools(self, *args: Any, **kwargs: Any) -> CostTrackingLLM:
         """Bind tools and return a new CostTrackingLLM wrapping the result."""
         bound = self._llm.bind_tools(*args, **kwargs)
-        wrapper = CostTrackingLLM(
+        return CostTrackingLLM(
             llm=bound,
             model_id=self._model_id,
             provider=self._provider,
-            request_id=self._request_id,
+            request_id=self._request_id,  # Preserve explicit ID if set
         )
-        return wrapper
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    async def _pre_call_budget_check(self) -> None:
+    async def _pre_call_budget_check(self, request_id: str | None = None) -> str:
         """Estimate cost and check budget before an LLM call.
 
         Raises ``BudgetExceededError`` if the budget would be exceeded.
         All other errors are logged and swallowed.
+
+        Returns the request_id used (generated if not provided).
         """
+        rid = request_id or self._get_request_id()
         try:
             await self._provider.check_and_record_cost(
                 model_id=self._model_id,
                 estimated_input_tokens=self._DEFAULT_ESTIMATED_INPUT_TOKENS,
                 estimated_output_tokens=self._DEFAULT_ESTIMATED_OUTPUT_TOKENS,
-                request_id=self._request_id,
+                request_id=rid,
             )
         except BudgetExceededError:
             raise
@@ -422,9 +438,11 @@ class CostTrackingLLM:
                 self._model_id,
                 exc_info=True,
             )
+        return rid
 
-    async def _post_call_record(self, response: Any) -> None:
+    async def _post_call_record(self, response: Any, request_id: str | None = None) -> None:
         """Record actual token usage from an AIMessage response."""
+        rid = request_id or self._get_request_id()
         try:
             input_tokens, output_tokens = self._extract_token_usage(response)
             if input_tokens or output_tokens:
@@ -432,7 +450,7 @@ class CostTrackingLLM:
                     model_id=self._model_id,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
-                    request_id=self._request_id,
+                    request_id=rid,
                 )
         except Exception:
             logger.debug(
@@ -441,8 +459,9 @@ class CostTrackingLLM:
                 exc_info=True,
             )
 
-    async def _post_call_record_generation(self, response: Any) -> None:
+    async def _post_call_record_generation(self, response: Any, request_id: str | None = None) -> None:
         """Record actual token usage from a generate() LLMResult response."""
+        rid = request_id or self._get_request_id()
         try:
             input_tokens, output_tokens = self._extract_generation_token_usage(response)
             if input_tokens or output_tokens:
@@ -450,7 +469,7 @@ class CostTrackingLLM:
                     model_id=self._model_id,
                     input_tokens=input_tokens,
                     output_tokens=output_tokens,
-                    request_id=self._request_id,
+                    request_id=rid,
                 )
         except Exception:
             logger.debug(

@@ -243,7 +243,7 @@ def get_news_sentiment(
         Dictionary containing news sentiment analysis
     """
     try:
-        api_key = settings.external_data.api_key
+        api_key = settings.external_data.get_api_key()
         base_url = settings.external_data.base_url
         if not api_key:
             logger.info(
