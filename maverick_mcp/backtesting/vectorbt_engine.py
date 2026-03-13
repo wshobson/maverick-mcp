@@ -1,6 +1,7 @@
 """VectorBT backtesting engine implementation with memory management and structured logging."""
 
 import gc
+import itertools
 from typing import Any
 
 import numpy as np
@@ -979,8 +980,12 @@ class VectorBTEngine(BatchProcessingMixin):
             # Fetch data once
             data = await self.get_historical_data(symbol, start_date, end_date)
 
-            # Create parameter combinations
-            param_combos = vbt.utils.params.create_param_combs(param_grid)
+            # Create parameter combinations as list of dicts
+            param_keys = list(param_grid.keys())
+            param_combos = [
+                dict(zip(param_keys, vals, strict=False))
+                for vals in itertools.product(*param_grid.values())
+            ]
             total_combos = len(param_combos)
 
             logger.info(
