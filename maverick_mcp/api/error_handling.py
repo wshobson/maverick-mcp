@@ -250,6 +250,10 @@ class ErrorHandler:
             log_data["context"] = context
 
         # Log at appropriate level
+        # SECURITY NOTE: exc_info=True includes full stack traces which may
+        # contain API keys or credentials in local variables. Acceptable for
+        # personal-use server where logs stay local. For production/shared
+        # environments, consider exc_info=False or a sanitising log formatter.
         log_level = error_info["log_level"]
         if log_level == "error":
             logger.error(

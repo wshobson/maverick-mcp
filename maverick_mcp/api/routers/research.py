@@ -106,26 +106,34 @@ def get_research_agent(
             query, research_scope, timeout_budget, max_sources
         )
 
-        agent = DeepResearchAgent(
-            llm=adaptive_llm,
-            persona="moderate",
-            max_sources=max_sources,
-            research_depth=research_scope,
-            exa_api_key=settings.research.exa_api_key,
-        )
+        try:
+            agent = DeepResearchAgent(
+                llm=adaptive_llm,
+                persona="moderate",
+                max_sources=max_sources,
+                research_depth=research_scope,
+                exa_api_key=settings.research.exa_api_key,
+            )
+        except Exception:
+            logger.error("Failed to initialize DeepResearchAgent (credentials redacted)")
+            raise RuntimeError("Agent initialization failed") from None
         # Mark for initialization - will be initialized on first use
         agent._needs_initialization = True
         return agent
 
     # Use singleton for standard requests
     if research_agent is None:
-        research_agent = DeepResearchAgent(
-            llm=llm,
-            persona="moderate",
-            max_sources=25,  # Reduced for faster execution
-            research_depth="standard",  # Reduced depth for speed
-            exa_api_key=settings.research.exa_api_key,
-        )
+        try:
+            research_agent = DeepResearchAgent(
+                llm=llm,
+                persona="moderate",
+                max_sources=25,  # Reduced for faster execution
+                research_depth="standard",  # Reduced depth for speed
+                exa_api_key=settings.research.exa_api_key,
+            )
+        except Exception:
+            logger.error("Failed to initialize DeepResearchAgent (credentials redacted)")
+            raise RuntimeError("Agent initialization failed") from None
         # Mark for initialization - will be initialized on first use
         research_agent._needs_initialization = True
     return research_agent

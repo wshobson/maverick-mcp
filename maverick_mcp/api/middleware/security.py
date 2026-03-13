@@ -24,6 +24,15 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; "
+            "connect-src 'self'; frame-src 'none'; object-src 'none'; "
+            "base-uri 'self'; form-action 'self'"
+        )
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), microphone=(), camera=(), usb=(), magnetometer=()"
+        )
 
         return response
 

@@ -7,6 +7,7 @@ through environment variables or a settings file.
 
 import logging
 import os
+import re
 import tempfile
 from decimal import Decimal
 from typing import Any
@@ -16,6 +17,16 @@ from pydantic import BaseModel, Field
 from maverick_mcp.config.constants import CONFIG
 
 logger = logging.getLogger("maverick_mcp.config")
+
+
+def mask_url(url: str) -> str:
+    """Mask credentials in a connection URL for safe logging.
+
+    Replaces passwords in URLs like ``redis://:secret@host`` or
+    ``postgresql://user:secret@host`` with ``***`` so URLs can be
+    safely included in logs and error messages.
+    """
+    return re.sub(r"(://[^:]*:)[^@]+(@)", r"\1***\2", url)
 
 
 class DatabaseSettings(BaseModel):
@@ -39,6 +50,11 @@ class DatabaseSettings(BaseModel):
             return env_url
         # Default to SQLite for development
         return "sqlite:///maverick_mcp.db"
+
+    @property
+    def masked_url(self) -> str:
+        """Get database URL with credentials masked for safe logging."""
+        return mask_url(self.url)
 
 
 class APISettings(BaseModel):
@@ -121,6 +137,11 @@ class RedisSettings(BaseModel):
         elif self.password:
             auth = f":{self.password}@"
         return f"{scheme}://{auth}{self.host}:{self.port}/{self.db}"
+
+    @property
+    def masked_url(self) -> str:
+        """Get Redis URL with credentials masked for safe logging."""
+        return mask_url(self.url)
 
 
 class ResearchSettings(BaseModel):

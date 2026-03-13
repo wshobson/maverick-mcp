@@ -5,6 +5,7 @@ Cache Management Service - Responsible only for cache operations.
 import logging
 
 import pandas as pd
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from maverick_mcp.data.models import (
@@ -311,7 +312,7 @@ class CacheManagementService:
             session, should_close = self._get_db_session()
             try:
                 # Test basic database connectivity
-                result = session.execute("SELECT 1")
+                result = session.execute(text("SELECT 1"))
                 result.fetchone()
 
                 # Get basic cache statistics

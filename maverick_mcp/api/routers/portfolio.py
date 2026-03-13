@@ -8,6 +8,7 @@ This module contains all portfolio-related tools including:
 """
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -23,6 +24,9 @@ from maverick_mcp.providers.stock_data import StockDataProvider
 from maverick_mcp.utils.stock_helpers import get_stock_dataframe
 
 logger = logging.getLogger(__name__)
+
+# Ticker validation pattern — matches validation/base.py TickerSymbol
+_TICKER_RE = re.compile(r"^[A-Z0-9\-\.]{1,10}$")
 
 # Create the portfolio router
 portfolio_router: FastMCP = FastMCP("Portfolio_Analysis")
@@ -48,11 +52,11 @@ def _validate_ticker(ticker: str) -> tuple[bool, str | None]:
 
     normalized = ticker.strip().upper()
 
-    # Basic validation: 1-5 alphanumeric characters
-    if not normalized.isalnum():
+    # Validate format: letters, numbers, dots, and hyphens (e.g. BRK.B, BF-A)
+    if not _TICKER_RE.match(normalized):
         return (
             False,
-            f"Invalid ticker symbol '{ticker}': must contain only letters and numbers",
+            f"Invalid ticker symbol '{ticker}': must contain only letters, numbers, dots, and hyphens",
         )
 
     if len(normalized) > 10:

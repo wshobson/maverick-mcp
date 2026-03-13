@@ -95,12 +95,16 @@ class AgentSessionManager:
 
         if agent_type == "deep_research":
             exa_api_key = os.getenv("EXA_API_KEY")
-            agent = DeepResearchAgent(
-                llm=llm,
-                persona=persona,
-                ttl_hours=1,
-                exa_api_key=exa_api_key,
-            )
+            try:
+                agent = DeepResearchAgent(
+                    llm=llm,
+                    persona=persona,
+                    ttl_hours=1,
+                    exa_api_key=exa_api_key,
+                )
+            except Exception:
+                logger.error("Failed to initialize DeepResearchAgent (credentials redacted)")
+                raise RuntimeError("Agent initialization failed") from None
             agent._needs_initialization = True
             return agent
 

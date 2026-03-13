@@ -9,6 +9,8 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from sqlalchemy import text
+
 from maverick_mcp.config.settings import settings
 from maverick_mcp.data.session_management import get_db_session
 
@@ -57,7 +59,7 @@ class HealthChecker:
         try:
             with get_db_session() as session:
                 # Simple query to test connection
-                result = session.execute("SELECT 1 as test").fetchone()
+                result = session.execute(text("SELECT 1 as test")).fetchone()
                 if result and result[0] == 1:
                     return {
                         "status": HealthStatus.HEALTHY,
