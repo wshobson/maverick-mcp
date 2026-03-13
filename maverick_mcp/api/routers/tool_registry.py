@@ -418,6 +418,33 @@ def register_options_tools(mcp: FastMCP) -> None:
     mcp.tool(name="options_hedge_portfolio")(hedge_portfolio)
 
 
+def register_finnhub_tools(mcp: FastMCP) -> None:
+    """Register Finnhub alternative data tools directly on main server"""
+    from maverick_mcp.api.routers.finnhub import (
+        get_finnhub_analyst_recommendations,
+        get_finnhub_company_news,
+        get_finnhub_company_peers,
+        get_finnhub_earnings_calendar,
+        get_finnhub_earnings_surprises,
+        get_finnhub_economic_calendar,
+        get_finnhub_institutional_ownership,
+        get_finnhub_market_news,
+    )
+
+    mcp.tool(name="finnhub_company_news")(get_finnhub_company_news)
+    mcp.tool(name="finnhub_earnings_calendar")(get_finnhub_earnings_calendar)
+    mcp.tool(name="finnhub_earnings_surprises")(get_finnhub_earnings_surprises)
+    mcp.tool(name="finnhub_analyst_recommendations")(
+        get_finnhub_analyst_recommendations
+    )
+    mcp.tool(name="finnhub_institutional_ownership")(
+        get_finnhub_institutional_ownership
+    )
+    mcp.tool(name="finnhub_company_peers")(get_finnhub_company_peers)
+    mcp.tool(name="finnhub_economic_calendar")(get_finnhub_economic_calendar)
+    mcp.tool(name="finnhub_market_news")(get_finnhub_market_news)
+
+
 def register_streaming_tools(mcp: FastMCP) -> None:
     """Register real-time price streaming tools directly on main server"""
     from maverick_mcp.streaming.tools import (
@@ -508,6 +535,13 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     except Exception as e:
         logger.error(f"✗ Failed to register options tools: {e}")
 
+    # Register Finnhub alternative data tools
+    try:
+        register_finnhub_tools(mcp)
+        logger.info("✓ Finnhub alternative data tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register Finnhub tools: {e}")
+
     # Register streaming tools
     try:
         register_streaming_tools(mcp)
@@ -530,5 +564,6 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     logger.info("   • Health monitoring tools")
     logger.info("   • Backtesting system tools")
     logger.info("   • Options analysis tools")
+    logger.info("   • Finnhub alternative data tools")
     logger.info("   • MCP prompts for introspection")
     logger.info("   • Introspection and discovery tools")

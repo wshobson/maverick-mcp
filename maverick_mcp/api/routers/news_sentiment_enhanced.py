@@ -163,7 +163,83 @@ async def get_news_sentiment_enhanced(
                 else:
                     tool_logger.step("tiingo_error", f"Tiingo error: {str(e)}")
 
-        # Step 2: Fallback to research-based sentiment
+        # Step 2: Try Finnhub company news as fallback source
+        tool_logger.step("finnhub_check", "Trying Finnhub company news as fallback")
+        try:
+            from maverick_mcp.providers.finnhub_data import FinnhubDataProvider
+
+            finnhub_provider = FinnhubDataProvider()
+            if finnhub_provider._api_available():
+                finnhub_news = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        finnhub_provider.get_company_news,
+                        ticker,
+                        start_date.strftime("%Y-%m-%d"),
+                        end_date.strftime("%Y-%m-%d"),
+                    ),
+                    timeout=10.0,
+                )
+                if finnhub_news:
+                    # Convert Finnhub format to standard article format
+                    news_articles = [
+                        {
+                            "title": a.get("headline", ""),
+                            "description": a.get("summary", ""),
+                            "publishedDate": a.get("datetime", ""),
+                            "source": a.get("source", ""),
+                            "url": a.get("url", ""),
+                        }
+                        for a in finnhub_news[:limit]
+                    ]
+
+                    # Try FinBERT first (local, fast, no API cost)
+                    analyzer = FinBERTAnalyzer.get_instance()
+                    if analyzer:
+                        tool_logger.step(
+                            "finbert_finnhub",
+                            f"Analyzing {len(news_articles)} Finnhub articles with FinBERT",
+                        )
+                        sentiment_result = _analyze_with_finbert(
+                            analyzer, news_articles
+                        )
+                        source = "finnhub_news_with_finbert"
+                    else:
+                        tool_logger.step(
+                            "llm_finnhub",
+                            f"Analyzing {len(news_articles)} Finnhub articles with LLM",
+                        )
+                        sentiment_result = await _analyze_news_sentiment_with_llm(
+                            news_articles, ticker, tool_logger
+                        )
+                        source = "finnhub_news_with_llm_analysis"
+
+                    tool_logger.complete(
+                        f"Finnhub news sentiment analysis completed for {ticker}"
+                    )
+                    return {
+                        "ticker": ticker,
+                        "sentiment": sentiment_result["overall_sentiment"],
+                        "confidence": sentiment_result["confidence"],
+                        "source": source,
+                        "status": "success",
+                        "analysis": {
+                            "articles_analyzed": len(news_articles),
+                            "sentiment_breakdown": sentiment_result["breakdown"],
+                            "key_themes": sentiment_result.get("themes", []),
+                            "recent_headlines": sentiment_result.get("headlines", [])[
+                                :3
+                            ],
+                        },
+                        "timeframe": timeframe,
+                        "request_id": request_id,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+        except TimeoutError:
+            tool_logger.step("finnhub_timeout", "Finnhub news timed out, continuing")
+        except Exception as e:
+            tool_logger.step("finnhub_error", f"Finnhub fallback error: {e}")
+
+        # Step 3: Fallback to research-based sentiment
         tool_logger.step("research_fallback", "Using research-based sentiment analysis")
 
         from maverick_mcp.api.routers.research import analyze_market_sentiment

@@ -260,6 +260,27 @@ class DataLimitsConfig(BaseModel):
     )
 
 
+class FinnhubSettings(BaseModel):
+    """Finnhub API configuration settings."""
+
+    api_key: str | None = Field(
+        default_factory=lambda: os.getenv("FINNHUB_API_KEY"),
+        description="Finnhub API key (free at finnhub.io)",
+    )
+    base_url: str = Field(
+        default="https://finnhub.io/api/v1",
+        description="Finnhub API base URL",
+    )
+    rate_limit_per_minute: int = Field(
+        default_factory=lambda: int(os.getenv("FINNHUB_RATE_LIMIT", "60")),
+        description="Finnhub API rate limit (calls per minute)",
+    )
+    cache_ttl_seconds: int = Field(
+        default_factory=lambda: int(os.getenv("FINNHUB_CACHE_TTL", "300")),
+        description="Finnhub cache TTL in seconds (default 5 minutes)",
+    )
+
+
 class ExternalDataSettings(BaseModel):
     """External data API configuration settings."""
 
@@ -866,6 +887,10 @@ class Settings(BaseModel):
     external_data: ExternalDataSettings = Field(
         default_factory=ExternalDataSettings,
         description="External data API settings",
+    )
+    finnhub: FinnhubSettings = Field(
+        default_factory=FinnhubSettings,
+        description="Finnhub alternative data API settings",
     )
     email: EmailSettings = Field(
         default_factory=EmailSettings, description="Email service configuration"

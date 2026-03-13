@@ -1193,6 +1193,18 @@ wheels = [
 ]
 
 [[package]]
+name = "finnhub-python"
+version = "2.4.27"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/03/86/6bcf8c3514683198ad07160efd2426d4898275a3e11cdd3ebed659e75d7a/finnhub_python-2.4.27.tar.gz", hash = "sha256:c4402f481005bbb48f72acfa14d7c91e95af1b1c8367ba2f4457eebe4e61b611", size = 13613, upload-time = "2026-01-26T04:39:58.352Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ea/97/6b0e320f7825345ba5754d2da337086598bd04076aa18e0269812ef4f5f3/finnhub_python-2.4.27-py3-none-any.whl", hash = "sha256:2e5bd70ea9c41c077224d9eaebaa2b9c66e0445d4b4d2768fee20a56ce2af07f", size = 12013, upload-time = "2026-01-26T04:39:56.909Z" },
+]
+
+[[package]]
 name = "finvizfinance"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2580,6 +2592,7 @@ dependencies = [
     { name = "exa-py" },
     { name = "fastapi" },
     { name = "fastmcp" },
+    { name = "finnhub-python" },
     { name = "finvizfinance" },
     { name = "fredapi" },
     { name = "greenlet" },
@@ -2679,6 +2692,7 @@ requires-dist = [
     { name = "exa-py", specifier = ">=1.0.19" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "fastmcp", specifier = ">=2.7.0" },
+    { name = "finnhub-python", specifier = ">=2.4.20" },
     { name = "finvizfinance", specifier = ">=1.1.0" },
     { name = "fredapi", specifier = ">=0.5.2" },
     { name = "greenlet", specifier = ">=3.0.0" },

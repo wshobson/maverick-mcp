@@ -12,6 +12,7 @@ from typing import TypeVar, cast
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.utils.circuit_breaker_services import (
     economic_data_breaker,
+    finnhub_breaker,
     http_breaker,
     market_data_breaker,
     news_data_breaker,
@@ -292,6 +293,41 @@ def with_http_circuit_breaker(
     return decorator
 
 
+def with_finnhub_circuit_breaker(use_fallback: bool = False) -> Callable:
+    """
+    Decorator for Finnhub API calls.
+
+    Finnhub provider handles its own fallback (returns empty data),
+    so this just wraps calls through the circuit breaker.
+
+    Args:
+        use_fallback: Not used (provider handles graceful degradation)
+
+    Example:
+        @with_finnhub_circuit_breaker()
+        def get_company_news(ticker: str) -> list[dict]:
+            return client.company_news(ticker, ...)
+    """
+
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        if asyncio.iscoroutinefunction(func):
+
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                return await finnhub_breaker.call_async(func, *args, **kwargs)
+
+            return cast(Callable[..., T], async_wrapper)
+        else:
+
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                return finnhub_breaker.call_sync(func, *args, **kwargs)
+
+            return cast(Callable[..., T], sync_wrapper)
+
+    return decorator
+
+
 def circuit_breaker_method(
     service: str = "http", use_fallback: bool = True, **breaker_kwargs
 ) -> Callable:
@@ -322,6 +358,7 @@ def circuit_breaker_method(
         "economic": with_economic_data_circuit_breaker,
         "news": with_news_circuit_breaker,
         "sentiment": with_news_circuit_breaker,
+        "finnhub": with_finnhub_circuit_breaker,
         "http": with_http_circuit_breaker,
     }
 

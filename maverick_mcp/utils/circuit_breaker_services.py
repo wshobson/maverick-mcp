@@ -87,6 +87,18 @@ TIINGO_CONFIG = CircuitBreakerConfig(
     expected_exceptions=(Exception,),
 )
 
+FINNHUB_CONFIG = CircuitBreakerConfig(
+    name="finnhub",
+    failure_threshold=5,
+    failure_rate_threshold=0.5,
+    timeout_threshold=15.0,
+    recovery_timeout=120,  # 2 minutes
+    success_threshold=3,
+    window_size=300,  # 5 minutes
+    detection_strategy=FailureDetectionStrategy.COMBINED,
+    expected_exceptions=(Exception,),
+)
+
 HTTP_CONFIG = CircuitBreakerConfig(
     name="http_general",
     failure_threshold=5,
@@ -288,12 +300,21 @@ class HttpCircuitBreaker(EnhancedCircuitBreaker):
         return self.call_sync(make_request)
 
 
+class FinnhubCircuitBreaker(EnhancedCircuitBreaker):
+    """Circuit breaker for Finnhub API calls."""
+
+    def __init__(self):
+        """Initialize with Finnhub configuration."""
+        super().__init__(FINNHUB_CONFIG)
+
+
 # Global instances for reuse
 stock_data_breaker = StockDataCircuitBreaker()
 market_data_breaker = MarketDataCircuitBreaker()
 economic_data_breaker = EconomicDataCircuitBreaker()
 news_data_breaker = NewsDataCircuitBreaker()
 http_breaker = HttpCircuitBreaker()
+finnhub_breaker = FinnhubCircuitBreaker()
 
 
 def get_service_circuit_breaker(service: str) -> EnhancedCircuitBreaker:
@@ -312,6 +333,7 @@ def get_service_circuit_breaker(service: str) -> EnhancedCircuitBreaker:
         "fred": economic_data_breaker,
         "external_api": MarketDataCircuitBreaker("external_api"),
         "tiingo": EnhancedCircuitBreaker(TIINGO_CONFIG),
+        "finnhub": finnhub_breaker,
         "news": news_data_breaker,
         "http": http_breaker,
     }
