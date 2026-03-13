@@ -12,6 +12,7 @@ Always consult qualified financial professionals before trading options.
 from __future__ import annotations
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
@@ -37,6 +38,7 @@ logger = get_logger("maverick_mcp.routers.options")
 
 # Thread pool for blocking yfinance calls
 _executor = ThreadPoolExecutor(max_workers=4)
+atexit.register(_executor.shutdown, wait=False)
 
 # Shared data provider (in-memory cache is per-process)
 _provider = OptionsDataProvider()

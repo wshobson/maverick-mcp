@@ -1551,6 +1551,16 @@ if __name__ == "__main__":
 
         shutdown_handler.register_cleanup(cleanup_price_stream)
 
+        # Register periodic cache cleanup
+        from maverick_mcp.utils.cache_cleanup import (
+            start_cache_cleanup,
+            stop_cache_cleanup,
+        )
+
+        asyncio.get_event_loop().run_until_complete(start_cache_cleanup())
+        logger.info("✓ Periodic cache cleanup started (every 5 minutes)")
+        shutdown_handler.register_cleanup(stop_cache_cleanup)
+
         # Run with the appropriate transport
         if args.transport == "stdio":
             logger.info(f"Starting {settings.app_name} server with stdio transport")

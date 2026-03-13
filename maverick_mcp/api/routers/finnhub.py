@@ -17,15 +17,19 @@ All tools degrade gracefully when no API key is configured.
 from __future__ import annotations
 
 import asyncio
+import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from maverick_mcp.providers.finnhub_data import FinnhubDataProvider
+from maverick_mcp.utils.rate_limiters import finnhub_limiter
 
 logger = logging.getLogger(__name__)
 
 _executor = ThreadPoolExecutor(max_workers=4)
+atexit.register(_executor.shutdown, wait=False)
+
 _provider: FinnhubDataProvider | None = None
 
 
@@ -63,6 +67,7 @@ async def get_finnhub_company_news(
         Dictionary containing company news articles
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         news = await loop.run_in_executor(
             _executor,
@@ -100,6 +105,7 @@ async def get_finnhub_earnings_calendar(
         Dictionary containing earnings calendar data
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             _executor,
@@ -135,6 +141,7 @@ async def get_finnhub_earnings_surprises(
         Dictionary containing earnings surprise data
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         surprises = await loop.run_in_executor(
             _executor,
@@ -167,6 +174,7 @@ async def get_finnhub_analyst_recommendations(
         Dictionary containing analyst recommendation trends
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         trends = await loop.run_in_executor(
             _executor,
@@ -203,6 +211,7 @@ async def get_finnhub_institutional_ownership(
         Dictionary containing institutional ownership data
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             _executor,
@@ -236,6 +245,7 @@ async def get_finnhub_company_peers(
         Dictionary containing peer ticker symbols
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         peers = await loop.run_in_executor(
             _executor,
@@ -269,6 +279,7 @@ async def get_finnhub_economic_calendar(
         Dictionary containing economic calendar events
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             _executor,
@@ -302,6 +313,7 @@ async def get_finnhub_market_news(
         Dictionary containing market news articles
     """
     try:
+        await finnhub_limiter.acquire()
         loop = asyncio.get_event_loop()
         news = await loop.run_in_executor(
             _executor,

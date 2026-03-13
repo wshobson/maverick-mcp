@@ -7,6 +7,7 @@ including PriceCache and Maverick screening models.
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import threading
@@ -140,6 +141,9 @@ else:
         echo=DB_ECHO,
         connect_args=sync_connect_args,
     )
+
+# Dispose connection pool on interpreter exit to avoid resource leaks
+atexit.register(engine.dispose)
 
 # Create session factory
 _session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)

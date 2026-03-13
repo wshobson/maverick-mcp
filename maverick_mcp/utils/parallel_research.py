@@ -13,6 +13,7 @@ from typing import Any
 
 from ..agents.circuit_breaker import circuit_breaker
 from ..config.settings import get_settings
+from ..utils.rate_limiters import general_api_limiter
 from .orchestration_logging import (
     get_orchestration_logger,
     log_agent_execution,
@@ -160,14 +161,9 @@ class ParallelResearchOrchestrator:
                     )
                     running_tasks.append(task_future)
 
-                    # OPTIMIZATION: Minimal delay only if absolutely needed for API rate limits
-                    # Reduced from progressive delays to fixed minimal delay
-                    if self.config.rate_limit_delay > 0 and len(running_tasks) < len(
-                        prepared_tasks
-                    ):
-                        await asyncio.sleep(
-                            self.config.rate_limit_delay * 0.1
-                        )  # 10% of original delay
+                    # Rate-limit API calls via leaky-bucket limiter
+                    if len(running_tasks) < len(prepared_tasks):
+                        await general_api_limiter.acquire()
 
                 # Wait for all tasks to complete using asyncio.as_completed for better responsiveness
                 completed_tasks = []

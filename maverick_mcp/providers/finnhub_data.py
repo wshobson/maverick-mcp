@@ -280,9 +280,7 @@ class FinnhubDataProvider:
         try:
             if not self._check_rate_limit():
                 return {"economicCalendar": []}
-            result = self._client.economic_calendar(
-                _from=from_date, to=to_date
-            )
+            result = self._client.economic_calendar(_from=from_date, to=to_date)
             self._set_cached(cache_key, result, ttl=3600)
             return result
         except Exception as e:
@@ -350,9 +348,7 @@ class FinnhubDataProvider:
     # Cache helpers
     # ------------------------------------------------------------------ #
 
-    def _get_cached(
-        self, key: str, ttl: int | None = None
-    ) -> Any | None:
+    def _get_cached(self, key: str, ttl: int | None = None) -> Any | None:
         """Return cached value if still valid, else None."""
         if key not in self._cache:
             return None
@@ -362,11 +358,35 @@ class FinnhubDataProvider:
             return value
         return None
 
+    _MAX_CACHE_SIZE = 500
+
     def _set_cached(
-        self, key: str, value: Any, ttl: int | None = None  # noqa: ARG002
+        self,
+        key: str,
+        value: Any,
+        ttl: int | None = None,  # noqa: ARG002
     ) -> None:
         """Store value in cache with current timestamp."""
         self._cache[key] = (time.monotonic(), value)
+
+        # Evict if cache grows too large
+        if len(self._cache) > self._MAX_CACHE_SIZE:
+            self._evict_cache()
+
+    def _evict_cache(self) -> None:
+        """Remove expired entries first, then oldest if still too large."""
+        now = time.monotonic()
+        expired = [
+            k for k, (ts, _) in self._cache.items() if now - ts > self._cache_ttl
+        ]
+        for k in expired:
+            del self._cache[k]
+        # If still over 80% of max, drop oldest until at 60%
+        target = int(self._MAX_CACHE_SIZE * 0.6)
+        if len(self._cache) > int(self._MAX_CACHE_SIZE * 0.8):
+            sorted_keys = sorted(self._cache, key=lambda k: self._cache[k][0])
+            for k in sorted_keys[: len(self._cache) - target]:
+                del self._cache[k]
 
     # ------------------------------------------------------------------ #
     # Rate limiter (token bucket)

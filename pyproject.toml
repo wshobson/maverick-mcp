@@ -65,6 +65,8 @@ dependencies = [
     "pandas-market-calendars>=5.1.0",
     "tiingo>=0.16.1",
     "finnhub-python>=2.4.20",
+    # Rate limiting
+    "aiolimiter>=1.1.0",
     # Options analysis
     "blackscholes>=0.1.2",
     "OptionsPricerLib>=0.1.0",

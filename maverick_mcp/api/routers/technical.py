@@ -11,6 +11,7 @@ investment advice. Always consult qualified financial professionals.
 """
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
@@ -51,6 +52,7 @@ stock_provider = StockDataProvider()
 
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=10)
+atexit.register(executor.shutdown, wait=False)
 
 
 @with_logging("rsi_analysis")
