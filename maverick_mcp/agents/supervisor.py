@@ -6,20 +6,23 @@ and conflict resolution for comprehensive financial analysis.
 """
 
 import logging
+import uuid
 from datetime import datetime
 from typing import Any
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command
 
 from maverick_mcp.agents.base import INVESTOR_PERSONAS, PersonaAwareAgent
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.exceptions import AgentInitializationError
-from maverick_mcp.memory.stores import ConversationStore
+from maverick_mcp.memory.checkpointer import get_persistent_checkpointer
+from maverick_mcp.memory.stores import ConversationStore, get_shared_context
+from maverick_mcp.utils.decision_logger import decision_logger
 from maverick_mcp.workflows.state import SupervisorState
 
 logger = logging.getLogger(__name__)
@@ -373,7 +376,7 @@ class SupervisorAgent(PersonaAwareAgent):
         llm: BaseChatModel,
         agents: dict[str, PersonaAwareAgent],
         persona: str = "moderate",
-        checkpointer: MemorySaver | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
         ttl_hours: int = 1,
         routing_strategy: str = "llm_powered",
         synthesis_mode: str = "weighted",
@@ -414,7 +417,7 @@ class SupervisorAgent(PersonaAwareAgent):
             llm=llm,
             tools=supervisor_tools,
             persona=persona,
-            checkpointer=checkpointer or MemorySaver(),
+            checkpointer=checkpointer or get_persistent_checkpointer(),
             ttl_hours=ttl_hours,
         )
 
@@ -635,6 +638,12 @@ class SupervisorAgent(PersonaAwareAgent):
         """
         start_time = datetime.now()
 
+        # Create shared context session for cross-agent coordination
+        if not session_id:
+            session_id = str(uuid.uuid4())
+        shared_ctx = get_shared_context()
+        shared_ctx.create_session(session_id)
+
         # Initialize supervisor state
         initial_state = {
             "messages": [HumanMessage(content=query)],
@@ -698,15 +707,52 @@ class SupervisorAgent(PersonaAwareAgent):
             execution_time = (datetime.now() - start_time).total_seconds() * 1000
             result["total_execution_time_ms"] = execution_time
 
-            return self._format_supervisor_response(result)
+            formatted = self._format_supervisor_response(result)
+
+            # Log the completed coordination decision
+            try:
+                classification = result.get("query_classification", {})
+                synthesis_text = formatted.get("synthesis", "")
+                decision_logger.log_decision(
+                    session_id=session_id,
+                    query_text=query[:500] if query else None,
+                    query_classification=classification.get("category"),
+                    routing_decision=formatted.get("agents_used"),
+                    confidence_score=float(formatted.get("confidence_score", 0.0)),
+                    response_summary=synthesis_text[:500] if synthesis_text else None,
+                    duration_ms=int(execution_time),
+                    status="success",
+                )
+            except Exception:
+                logger.debug(
+                    "Decision logging failed for coordination completion",
+                    exc_info=True,
+                )
+
+            return formatted
 
         except Exception as e:
+            error_duration_ms = int(
+                (datetime.now() - start_time).total_seconds() * 1000
+            )
             logger.error(f"Error in supervisor coordination: {e}")
+
+            # Log the error decision
+            try:
+                decision_logger.log_decision(
+                    session_id=session_id,
+                    query_text=query[:500] if query else None,
+                    response_summary=str(e)[:500],
+                    duration_ms=error_duration_ms,
+                    status="error",
+                )
+            except Exception:
+                logger.debug("Decision logging failed for error case", exc_info=True)
+
             return {
                 "status": "error",
                 "error": str(e),
-                "total_execution_time_ms": (datetime.now() - start_time).total_seconds()
-                * 1000,
+                "total_execution_time_ms": error_duration_ms,
                 "agent_type": "supervisor",
             }
 
@@ -738,6 +784,21 @@ class SupervisorAgent(PersonaAwareAgent):
         classification = await self.query_classifier.classify_query(
             query, state["persona"]
         )
+
+        # Log the classification decision
+        try:
+            decision_logger.log_decision(
+                session_id=state.get("session_id"),
+                query_text=query[:500] if query else None,
+                query_classification=classification.get("category"),
+                routing_decision=classification.get("required_agents"),
+                confidence_score=float(classification.get("confidence", 0.0)),
+                status="success",
+            )
+        except Exception:
+            logger.debug(
+                "Decision logging failed for query classification", exc_info=True
+            )
 
         return Command(
             goto="create_execution_plan",
@@ -781,15 +842,31 @@ class SupervisorAgent(PersonaAwareAgent):
         if len(required_agents) == 1:
             agent = required_agents[0]
             if agent == "market" and self.market_agent:
-                return "market_only"
+                route = "market_only"
             elif agent == "technical" and self.technical_agent:
-                return "technical_only"
+                route = "technical_only"
             elif agent == "research" and self.research_agent:
-                return "research_only"
+                route = "research_only"
+            else:
+                route = "synthesize"
         elif len(required_agents) > 1 and parallel:
-            return "parallel_execution"
+            route = "parallel_execution"
+        else:
+            route = "synthesize"
 
-        return "synthesize"
+        # Log the routing decision
+        try:
+            decision_logger.log_decision(
+                session_id=state.get("session_id"),
+                query_classification=classification.get("category"),
+                routing_decision=required_agents,
+                response_summary=f"route={route}, parallel={parallel}",
+                status="success",
+            )
+        except Exception:
+            logger.debug("Decision logging failed for routing", exc_info=True)
+
+        return route
 
     async def _parallel_coordinator(self, state: SupervisorState) -> Command:
         """Coordinate parallel execution of multiple agents."""
@@ -800,7 +877,7 @@ class SupervisorAgent(PersonaAwareAgent):
         )
 
     async def _invoke_market_agent(self, state: SupervisorState) -> Command:
-        """Invoke market analysis agent."""
+        """Invoke market analysis agent with shared context from prior agents."""
         if not self.market_agent:
             return Command(
                 goto="aggregate_results",
@@ -808,9 +885,31 @@ class SupervisorAgent(PersonaAwareAgent):
             )
 
         try:
+            session_id = state.get("session_id", "")
+            shared_ctx = get_shared_context()
+            prior = shared_ctx.get_summary(session_id)
+
+            # Build enhanced query with prior findings context
             query = state["messages"][-1].content if state["messages"] else ""
+            if prior:
+                enhanced_query = (
+                    f"Previous analysis findings:\n{prior}\n\nNow analyze: {query}"
+                )
+            else:
+                enhanced_query = query
+
             result = await self.market_agent.analyze_market(
-                query=query, session_id=state["session_id"]
+                query=enhanced_query, session_id=session_id
+            )
+
+            # Store finding in shared context for downstream agents
+            shared_ctx.add_finding(
+                session_id,
+                "market_agent",
+                {
+                    "summary": str(result)[:500] if result else "",
+                    "type": "market_analysis",
+                },
             )
 
             return Command(
@@ -831,33 +930,182 @@ class SupervisorAgent(PersonaAwareAgent):
             )
 
     async def _invoke_technical_agent(self, state: SupervisorState) -> Command:
-        """Invoke technical analysis agent."""
+        """Invoke technical analysis agent with shared context from prior agents."""
         if not self.technical_agent:
             return Command(
                 goto="aggregate_results",
                 update={"agent_errors": {"technical": "Technical agent not available"}},
             )
 
-        # This would implement technical agent invocation
-        return Command(
-            goto="aggregate_results", update={"active_agents": ["technical"]}
-        )
+        try:
+            session_id = state.get("session_id", "")
+            shared_ctx = get_shared_context()
+            prior = shared_ctx.get_summary(session_id)
+
+            # Build enhanced query with prior findings context
+            query = state["messages"][-1].content if state["messages"] else ""
+            if prior:
+                enhanced_query = (
+                    f"Previous analysis findings:\n{prior}\n\nNow analyze: {query}"
+                )
+            else:
+                enhanced_query = query
+
+            # Extract symbol from query classification if available
+            classification = state.get("query_classification", {})
+            symbol = classification.get("symbol", "")
+
+            if symbol and hasattr(self.technical_agent, "analyze_stock"):
+                result = await self.technical_agent.analyze_stock(
+                    symbol=symbol,
+                    timeframe="1d",
+                    indicators=["sma_20", "rsi", "macd"],
+                )
+            elif hasattr(self.technical_agent, "ainvoke"):
+                result = await self.technical_agent.ainvoke(
+                    query=enhanced_query, session_id=session_id
+                )
+            else:
+                result = {"analysis": enhanced_query, "status": "invoked"}
+
+            # Store finding in shared context for downstream agents
+            shared_ctx.add_finding(
+                session_id,
+                "technical_agent",
+                {
+                    "summary": str(result)[:500] if result else "",
+                    "type": "technical_analysis",
+                },
+            )
+
+            return Command(
+                goto="aggregate_results",
+                update={
+                    "agent_results": {"technical": result},
+                    "active_agents": ["technical"],
+                },
+            )
+
+        except Exception as e:
+            return Command(
+                goto="aggregate_results",
+                update={
+                    "agent_errors": {"technical": str(e)},
+                    "active_agents": ["technical"],
+                },
+            )
 
     async def _invoke_research_agent(self, state: SupervisorState) -> Command:
-        """Invoke deep research agent (future implementation)."""
+        """Invoke deep research agent with shared context from prior agents."""
         if not self.research_agent:
             return Command(
                 goto="aggregate_results",
                 update={"agent_errors": {"research": "Research agent not available"}},
             )
 
-        # Future implementation
-        return Command(goto="aggregate_results", update={"active_agents": ["research"]})
+        try:
+            session_id = state.get("session_id", "")
+            shared_ctx = get_shared_context()
+            prior = shared_ctx.get_summary(session_id)
+
+            # Build enhanced query with prior findings context
+            query = state["messages"][-1].content if state["messages"] else ""
+            if prior:
+                enhanced_query = (
+                    f"Previous analysis findings:\n{prior}\n\nNow analyze: {query}"
+                )
+            else:
+                enhanced_query = query
+
+            if hasattr(self.research_agent, "research_topic"):
+                result = await self.research_agent.research_topic(
+                    query=enhanced_query,
+                    session_id=session_id,
+                    research_scope="comprehensive",
+                )
+            elif hasattr(self.research_agent, "ainvoke"):
+                result = await self.research_agent.ainvoke(
+                    query=enhanced_query, session_id=session_id
+                )
+            else:
+                result = {"analysis": enhanced_query, "status": "invoked"}
+
+            # Store finding in shared context for downstream agents
+            shared_ctx.add_finding(
+                session_id,
+                "research_agent",
+                {
+                    "summary": str(result)[:500] if result else "",
+                    "type": "deep_research",
+                },
+            )
+
+            return Command(
+                goto="aggregate_results",
+                update={
+                    "agent_results": {"research": result},
+                    "active_agents": ["research"],
+                },
+            )
+
+        except Exception as e:
+            return Command(
+                goto="aggregate_results",
+                update={
+                    "agent_errors": {"research": str(e)},
+                    "active_agents": ["research"],
+                },
+            )
 
     async def _aggregate_results(self, state: SupervisorState) -> Command:
-        """Aggregate results from all agents."""
+        """Aggregate results from multiple agents with deduplication."""
+        agent_results = state.get("agent_results", {})
+
+        if len(agent_results) <= 1:
+            # No aggregation needed for single agent
+            return Command(
+                goto="synthesize_response",
+                update={"workflow_status": "synthesizing"},
+            )
+
+        # Collect all findings and detect conflicts
+        all_findings: dict[str, dict[str, Any]] = {}
+        conflicts: list[dict[str, Any]] = []
+
+        for agent_name, result in agent_results.items():
+            if not result:
+                continue
+            # Each agent may report on overlapping topics
+            if isinstance(result, dict):
+                for key, value in result.items():
+                    if key in all_findings:
+                        # Conflict detected - record both
+                        conflicts.append(
+                            {
+                                "field": key,
+                                "agents": [
+                                    all_findings[key]["source"],
+                                    agent_name,
+                                ],
+                                "values": [all_findings[key]["value"], value],
+                            }
+                        )
+                    else:
+                        all_findings[key] = {"value": value, "source": agent_name}
+
+        aggregated = {k: v["value"] for k, v in all_findings.items()}
+
         return Command(
-            goto="synthesize_response", update={"workflow_status": "synthesizing"}
+            goto="synthesize_response",
+            update={
+                "workflow_status": "synthesizing",
+                "conflicts_detected": conflicts,
+                "agent_results": {
+                    **agent_results,
+                    "_aggregated": aggregated,
+                    "_conflict_count": len(conflicts),
+                },
+            },
         )
 
     def _check_conflicts(self, state: SupervisorState) -> str:
@@ -877,6 +1125,11 @@ class SupervisorAgent(PersonaAwareAgent):
         agent_results = state.get("agent_results", {})
         conflicts = state.get("conflicts_detected", [])
         classification = state.get("query_classification", {})
+
+        # Clean up shared context session to prevent memory leaks
+        session_id = state.get("session_id", "")
+        if session_id:
+            get_shared_context().cleanup_session(session_id)
 
         if agent_results:
             synthesis = await self.result_synthesizer.synthesize_results(

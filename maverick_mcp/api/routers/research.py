@@ -111,7 +111,7 @@ def get_research_agent(
             persona="moderate",
             max_sources=max_sources,
             research_depth=research_scope,
-            exa_api_key=settings.research.exa_api_key,
+            exa_api_key=settings.research.get_exa_api_key(),
         )
         # Mark for initialization - will be initialized on first use
         agent._needs_initialization = True
@@ -124,7 +124,7 @@ def get_research_agent(
             persona="moderate",
             max_sources=25,  # Reduced for faster execution
             research_depth="standard",  # Reduced depth for speed
-            exa_api_key=settings.research.exa_api_key,
+            exa_api_key=settings.research.get_exa_api_key(),
         )
         # Mark for initialization - will be initialized on first use
         research_agent._needs_initialization = True

@@ -439,6 +439,10 @@ class BacktestingWorkflowState(BaseAgentState):
     steps_completed: list[str]  # Completed workflow steps
     total_execution_time_ms: float  # Total workflow execution time
 
+    # Replanning and retry control
+    retry_count: dict[str, int]  # Step-specific retry counts (e.g., "market_regime": 1)
+    max_retries: int  # Maximum retries per step (default: 2)
+
     # Error handling and recovery
     errors_encountered: list[dict[str, Any]]  # Errors with context
     fallback_strategies_used: list[str]  # Fallback strategies activated

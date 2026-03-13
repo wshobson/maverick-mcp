@@ -1,31 +1,158 @@
 """
 Memory stores for agent conversations and user data.
+
+Provides write-through persistence using SQLite so that all data
+survives server restarts while keeping the in-memory cache for fast reads.
 """
 
+import json
 import logging
+import sqlite3
+import threading
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
+
+from maverick_mcp.config.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
 
-class MemoryStore:
-    """Base class for memory storage."""
+def _resolve_db_path(path: str) -> str:
+    """Resolve a database path, creating parent directories as needed.
 
-    def __init__(self, ttl_hours: float = 24.0):
+    If the path is relative it is resolved against the project root
+    (two levels up from this file: memory/ -> maverick_mcp/ -> project root).
+    """
+    p = Path(path)
+    if not p.is_absolute():
+        project_root = Path(__file__).resolve().parent.parent.parent
+        p = project_root / p
+    p.parent.mkdir(parents=True, exist_ok=True)
+    return str(p)
+
+
+# Re-export for use by checkpointer.py
+resolve_db_path = _resolve_db_path
+
+
+class MemoryStore:
+    """Base class for memory storage with SQLite write-through persistence."""
+
+    def __init__(self, ttl_hours: float = 24.0, db_path: str | None = None):
         self.ttl_hours = ttl_hours
         self.store: dict[str, dict[str, Any]] = {}
+
+        # Resolve the persistent database path
+        if db_path is None:
+            try:
+                settings = get_settings()
+                db_path = settings.memory.memory_db_path
+            except Exception:
+                db_path = "data/memory_store.db"
+        self._db_path = _resolve_db_path(db_path)
+
+        # Thread lock for SQLite access (sqlite3 connections are not thread-safe)
+        self._lock = threading.Lock()
+
+        # Persistent connection (reused for all reads/writes)
+        self._conn = sqlite3.connect(
+            self._db_path, timeout=10, check_same_thread=False
+        )
+        self._conn.execute("PRAGMA journal_mode=WAL")
+
+        # Initialize the persistent store and load existing data
+        self._init_db()
+        self._load_from_db()
+
+    # ------------------------------------------------------------------ #
+    # SQLite helpers
+    # ------------------------------------------------------------------ #
+
+    def _init_db(self) -> None:
+        """Create the persistence table if it does not exist."""
+        with self._lock:
+            self._conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS memory_store (
+                    key   TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    expiry TEXT NOT NULL,
+                    created TEXT NOT NULL
+                )
+                """
+            )
+            self._conn.commit()
+
+    def _load_from_db(self) -> None:
+        """Load all non-expired entries from SQLite into the in-memory dict."""
+        now = datetime.now()
+        with self._lock:
+            # Bulk-delete expired rows first
+            self._conn.execute(
+                "DELETE FROM memory_store WHERE expiry < ?", (now.isoformat(),)
+            )
+            self._conn.commit()
+
+            cursor = self._conn.execute(
+                "SELECT key, value, expiry, created FROM memory_store"
+            )
+            for row in cursor.fetchall():
+                key, value_json, expiry_iso, created_iso = row
+                try:
+                    self.store[key] = {
+                        "value": json.loads(value_json),
+                        "expiry": expiry_iso,
+                        "created": created_iso,
+                    }
+                except (json.JSONDecodeError, ValueError):
+                    logger.warning("Skipping corrupt memory entry for key=%s", key)
+
+        logger.info(
+            "Loaded %d entries from persistent memory store at %s",
+            len(self.store),
+            self._db_path,
+        )
+
+    def _persist_entry(self, key: str, entry: dict[str, Any]) -> None:
+        """Write a single entry to SQLite (upsert)."""
+        value_json = json.dumps(entry["value"])
+        with self._lock:
+            self._conn.execute(
+                """
+                INSERT INTO memory_store (key, value, expiry, created)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET
+                    value   = excluded.value,
+                    expiry  = excluded.expiry,
+                    created = excluded.created
+                """,
+                (key, value_json, entry["expiry"], entry["created"]),
+            )
+            self._conn.commit()
+
+    def _delete_entry(self, key: str) -> None:
+        """Delete a single entry from SQLite."""
+        with self._lock:
+            self._conn.execute("DELETE FROM memory_store WHERE key = ?", (key,))
+            self._conn.commit()
+
+    # ------------------------------------------------------------------ #
+    # Public API (unchanged signatures)
+    # ------------------------------------------------------------------ #
 
     def set(self, key: str, value: Any, ttl_hours: float | None = None) -> None:
         """Store a value with optional custom TTL."""
         ttl = ttl_hours or self.ttl_hours
         expiry = datetime.now() + timedelta(hours=ttl)
 
-        self.store[key] = {
+        entry = {
             "value": value,
             "expiry": expiry.isoformat(),
             "created": datetime.now().isoformat(),
         }
+        self.store[key] = entry
+        self._persist_entry(key, entry)
 
     def get(self, key: str) -> Any | None:
         """Get a value if not expired."""
@@ -37,6 +164,7 @@ class MemoryStore:
 
         if datetime.now() > expiry:
             del self.store[key]
+            self._delete_entry(key)
             return None
 
         return entry["value"]
@@ -45,6 +173,7 @@ class MemoryStore:
         """Delete a value."""
         if key in self.store:
             del self.store[key]
+        self._delete_entry(key)
 
     def clear_expired(self) -> int:
         """Clear all expired entries."""
@@ -57,6 +186,7 @@ class MemoryStore:
 
         for key in expired_keys:
             del self.store[key]
+            self._delete_entry(key)
 
         return len(expired_keys)
 
@@ -111,8 +241,10 @@ class ConversationStore(MemoryStore):
 class UserMemoryStore(MemoryStore):
     """Store for user-specific long-term memory."""
 
-    def __init__(self, ttl_hours: float = 168.0):  # 1 week default
-        super().__init__(ttl_hours)
+    def __init__(
+        self, ttl_hours: float = 168.0, db_path: str | None = None
+    ):  # 1 week default
+        super().__init__(ttl_hours, db_path=db_path)
 
     def save_preference(self, user_id: str, preference_type: str, value: Any) -> None:
         """Save user preference."""
@@ -160,3 +292,91 @@ class UserMemoryStore(MemoryStore):
         """Get user's risk profile."""
         key = f"user:{user_id}:risk_profile"
         return self.get(key)
+
+
+class SharedAgentContext:
+    """Cross-agent shared context for a coordination session.
+
+    Allows agents to share findings during multi-agent execution,
+    enabling later agents to build on earlier findings.
+    """
+
+    def __init__(self):
+        self._contexts: dict[str, dict[str, Any]] = {}  # session_id -> context
+        self._lock = threading.Lock()
+
+    def create_session(self, session_id: str) -> None:
+        """Initialize a new coordination session."""
+        with self._lock:
+            if session_id in self._contexts:
+                return  # Don't clobber existing session context
+            self._contexts[session_id] = {
+                "findings": [],  # List of agent findings
+                "metadata": {},  # Session metadata
+                "agent_order": [],  # Which agents have contributed
+                "created_at": datetime.now().isoformat(),
+            }
+
+    def add_finding(
+        self, session_id: str, agent_name: str, finding: dict[str, Any]
+    ) -> None:
+        """Add an agent's finding to the shared context."""
+        with self._lock:
+            ctx = self._contexts.get(session_id)
+            if ctx is None:
+                # Auto-create session if it doesn't exist yet
+                self._contexts[session_id] = {
+                    "findings": [],
+                    "metadata": {},
+                    "agent_order": [],
+                    "created_at": datetime.now().isoformat(),
+                }
+                ctx = self._contexts[session_id]
+            ctx["findings"].append(
+                {
+                    "agent": agent_name,
+                    "data": finding,
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+            if agent_name not in ctx["agent_order"]:
+                ctx["agent_order"].append(agent_name)
+
+    def get_prior_findings(
+        self, session_id: str, exclude_agent: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Get findings from other agents in this session."""
+        with self._lock:
+            ctx = self._contexts.get(session_id, {})
+            findings = ctx.get("findings", [])
+            if exclude_agent:
+                return [f for f in findings if f["agent"] != exclude_agent]
+            return list(findings)
+
+    def get_summary(self, session_id: str) -> str:
+        """Get a text summary of all findings for handoff context."""
+        findings = self.get_prior_findings(session_id)
+        if not findings:
+            return ""
+        lines = []
+        for f in findings:
+            agent = f["agent"]
+            data = f["data"]
+            # Extract key points from the finding
+            summary = data.get("summary", str(data)[:200])
+            lines.append(f"[{agent}]: {summary}")
+        return "\n".join(lines)
+
+    def cleanup_session(self, session_id: str) -> None:
+        """Remove a completed session's context."""
+        with self._lock:
+            self._contexts.pop(session_id, None)
+
+
+# Module-level singleton
+_shared_context = SharedAgentContext()
+
+
+def get_shared_context() -> SharedAgentContext:
+    """Return the module-level shared agent context singleton."""
+    return _shared_context

@@ -10,13 +10,14 @@ from typing import Annotated, Any
 
 from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph, add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from maverick_mcp.config.settings import get_settings
+from maverick_mcp.memory.checkpointer import get_persistent_checkpointer
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -118,6 +119,7 @@ class BaseAgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     persona: str
     session_id: str
+    prior_findings: str  # Summary of findings from previously executed agents
 
 
 class PersonaAwareTool(BaseTool):
@@ -334,7 +336,7 @@ class PersonaAwareAgent(ABC):
         llm,
         tools: list[BaseTool],
         persona: str = "moderate",
-        checkpointer: MemorySaver | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
         ttl_hours: int = 1,
     ):
         """
@@ -344,7 +346,7 @@ class PersonaAwareAgent(ABC):
             llm: Language model to use
             tools: List of tools available to the agent
             persona: Investor persona name
-            checkpointer: Optional checkpointer (defaults to MemorySaver)
+            checkpointer: Optional checkpointer (defaults to persistent SQLite saver)
             ttl_hours: Time-to-live for memory in hours
         """
         self.llm = llm
@@ -352,9 +354,9 @@ class PersonaAwareAgent(ABC):
         self.persona = INVESTOR_PERSONAS.get(persona, INVESTOR_PERSONAS["moderate"])
         self.ttl_hours = ttl_hours
 
-        # Set up checkpointing
+        # Set up checkpointing -- prefer persistent SQLite-backed saver
         if checkpointer is None:
-            self.checkpointer = MemorySaver()
+            self.checkpointer = get_persistent_checkpointer()
         else:
             self.checkpointer = checkpointer
 
@@ -414,6 +416,14 @@ class PersonaAwareAgent(ABC):
         # Add system message if it's the first message
         if len(messages) == 1 and isinstance(messages[0], HumanMessage):
             system_prompt = self._build_system_prompt()
+
+            # Inject prior findings from other agents if available
+            prior_findings = state.get("prior_findings", "")
+            if prior_findings:
+                system_prompt += (
+                    f"\n\nContext from previous agent analyses:\n{prior_findings}"
+                )
+
             messages = [SystemMessage(content=system_prompt)] + messages
 
         # Call the LLM

@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from maverick_mcp.agents.deep_research import (
     PERSONA_RESEARCH_FOCUS,
@@ -265,7 +265,7 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
         self,
         openrouter_provider: OpenRouterProvider,
         persona: str = "moderate",
-        checkpointer: MemorySaver | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
         ttl_hours: int = 24,
         exa_api_key: str | None = None,
         default_depth: str = "standard",
@@ -355,6 +355,48 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
                 "topic": topic,
                 "optimization_enabled": self.optimization_enabled,
             }
+
+        # Check vector store cache before doing expensive research
+        use_cache = kwargs.get("use_cache", True)
+        if use_cache:
+            cached = self._check_vector_store_cache(topic)
+            if cached:
+                logger.info(
+                    "Vector store cache hit in optimized research for '%s'",
+                    topic[:60],
+                )
+                return {
+                    "status": "success",
+                    "agent_type": "optimized_deep_research",
+                    "persona": self.persona.name,
+                    "research_topic": topic,
+                    "research_depth": depth or self.default_depth,
+                    "findings": {
+                        "cached_results": [
+                            {
+                                "content": r.content,
+                                "source_url": r.source_url,
+                                "source_date": r.source_date.isoformat(),
+                                "credibility_score": r.credibility_score,
+                                "similarity_score": r.similarity_score,
+                                "temporal_score": r.temporal_score,
+                                "combined_score": r.combined_score,
+                                "ticker": r.ticker,
+                                "topic": r.topic,
+                            }
+                            for r in cached
+                        ],
+                    },
+                    "sources_analyzed": len(cached),
+                    "confidence_score": max(r.combined_score for r in cached),
+                    "citations": [
+                        {"url": r.source_url, "date": r.source_date.isoformat()}
+                        for r in cached
+                    ],
+                    "execution_time_ms": 0.0,
+                    "from_cache": True,
+                    "optimization_enabled": True,
+                }
 
         start_time = time.time()
         depth = depth or self.default_depth
@@ -534,6 +576,10 @@ class OptimizedDeepResearchAgent(DeepResearchAgent):
             time_budget=time_budget_seconds,
             current_confidence=current_confidence,
         )
+
+        # Store search results in vector store for future cache hits
+        if all_results:
+            self._store_search_results_to_vector_store(all_results, topic)
 
         return {
             "raw_results": all_results,

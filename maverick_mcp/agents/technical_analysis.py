@@ -8,12 +8,12 @@ from typing import Any
 
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import BaseTool
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from maverick_mcp.agents.circuit_breaker import circuit_manager
 from maverick_mcp.langchain_tools import get_tool_registry
 from maverick_mcp.memory import ConversationStore
+from maverick_mcp.memory.checkpointer import get_persistent_checkpointer
 from maverick_mcp.tools.risk_management import TechnicalStopsTool
 from maverick_mcp.workflows.state import TechnicalAnalysisState
 
@@ -56,12 +56,12 @@ class TechnicalAnalysisAgent(PersonaAwareAgent):
         # Get technical analysis tools
         tools = self._get_technical_tools()
 
-        # Initialize with MemorySaver
+        # Initialize with persistent checkpointer
         super().__init__(
             llm=llm,
             tools=tools,
             persona=persona,
-            checkpointer=MemorySaver(),
+            checkpointer=get_persistent_checkpointer(),
             ttl_hours=ttl_hours,
         )
 

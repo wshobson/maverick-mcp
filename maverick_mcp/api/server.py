@@ -262,6 +262,11 @@ setup_structured_logging(
 logger = get_logger("maverick_mcp.server")
 logger_manager = get_logger_manager()
 
+# Install secrets masking filter on all log handlers to prevent API key leakage
+from maverick_mcp.config.logging_config import install_secrets_filter
+
+_secrets_filter = install_secrets_filter()
+
 # Initialize FastMCP with enhanced connection management
 _fastmcp_instance = FastMCP(
     name=settings.app_name,
@@ -351,6 +356,161 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
     mcp.fastapi_app.include_router(health_router, tags=["health"])
     logger.info("Monitoring and health endpoints registered with FastAPI application")
+
+    # Register top-level health endpoints for Docker HEALTHCHECK, load balancers,
+    # and Kubernetes probes. These use the existing HealthChecker plus circuit
+    # breaker status for comprehensive dependency health aggregation.
+    from starlette.requests import Request
+    from starlette.responses import JSONResponse
+
+    from maverick_mcp.monitoring.health_check import HealthStatus, get_health_checker
+
+    _health_checker = get_health_checker()
+
+    # Track whether the server is shutting down so readiness probes can drain traffic.
+    # Use a mutable container so nested functions can update the value without nonlocal.
+    _shutdown_state = {"shutting_down": False}
+
+    @mcp.fastapi_app.get("/health", tags=["health"])
+    async def docker_health_endpoint(request: Request) -> JSONResponse:
+        """Lightweight health endpoint for Docker HEALTHCHECK and load balancers.
+
+        Checks database connectivity, cache availability, and circuit breaker
+        states. Returns 200 when healthy or degraded, 503 when unhealthy.
+        """
+        try:
+            health_result = await _health_checker.check_health(["database", "cache"])
+            result = _health_checker._health_to_dict(health_result)
+
+            # Aggregate circuit breaker status into the response
+            try:
+                from maverick_mcp.utils.circuit_breaker import (
+                    get_all_circuit_breaker_status,
+                )
+
+                cb_statuses = get_all_circuit_breaker_status()
+                open_breakers = {
+                    name: info
+                    for name, info in cb_statuses.items()
+                    if info.get("state") == "open"
+                }
+                result["circuit_breakers"] = {
+                    "total": len(cb_statuses),
+                    "open": len(open_breakers),
+                    "open_services": list(open_breakers.keys()),
+                }
+            except Exception:
+                result["circuit_breakers"] = {
+                    "total": 0,
+                    "open": 0,
+                    "open_services": [],
+                }
+
+            status_code = 200 if health_result.status != HealthStatus.UNHEALTHY else 503
+            return JSONResponse(content=result, status_code=status_code)
+        except Exception as e:
+            logger.error(f"Health endpoint failed: {e}")
+            return JSONResponse(
+                content={
+                    "status": "unhealthy",
+                    "error": str(e),
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+                status_code=503,
+            )
+
+    @mcp.fastapi_app.get("/health/ready", tags=["health"])
+    async def readiness_probe(request: Request) -> JSONResponse:
+        """Readiness probe for Kubernetes / container orchestrators.
+
+        Returns 200 when all critical dependencies (database) are reachable and the
+        server is not in the process of shutting down. Returns 503 otherwise so that
+        load balancers stop sending new traffic.
+        """
+        if _shutdown_state["shutting_down"]:
+            return JSONResponse(
+                content={
+                    "ready": False,
+                    "reason": "server_shutting_down",
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+                status_code=503,
+            )
+
+        try:
+            health_result = await _health_checker.check_health(["database", "cache"])
+            db_component = health_result.components.get("database")
+            db_ok = db_component is not None and db_component.status in (
+                HealthStatus.HEALTHY,
+                HealthStatus.DEGRADED,
+            )
+
+            ready = db_ok
+            status_code = 200 if ready else 503
+            return JSONResponse(
+                content={
+                    "ready": ready,
+                    "dependencies": {
+                        "database": db_component.status.value
+                        if db_component
+                        else "unknown",
+                        "cache": (
+                            health_result.components["cache"].status.value
+                            if "cache" in health_result.components
+                            else "unknown"
+                        ),
+                    },
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+                status_code=status_code,
+            )
+        except Exception as e:
+            logger.error(f"Readiness probe failed: {e}")
+            return JSONResponse(
+                content={
+                    "ready": False,
+                    "error": str(e),
+                    "timestamp": datetime.now(UTC).isoformat(),
+                },
+                status_code=503,
+            )
+
+    @mcp.fastapi_app.get("/health/live", tags=["health"])
+    async def liveness_probe(request: Request) -> JSONResponse:
+        """Liveness probe for Kubernetes / container orchestrators.
+
+        Returns 200 as long as the process is alive and can serve HTTP responses.
+        This intentionally does NOT check dependencies -- if the event loop is
+        responsive enough to handle this request, the process is alive.
+        """
+        return JSONResponse(
+            content={
+                "alive": True,
+                "timestamp": datetime.now(UTC).isoformat(),
+            },
+            status_code=200,
+        )
+
+    # Register a FastAPI shutdown event to coordinate graceful shutdown
+    # with the lifespan of the ASGI application managed by uvicorn.
+    @mcp.fastapi_app.on_event("shutdown")
+    async def on_fastapi_shutdown() -> None:
+        """Run cleanup when the ASGI application is shutting down."""
+        import asyncio as _asyncio
+
+        _shutdown_state["shutting_down"] = True
+        logger.info("ASGI shutdown event: marking server as not-ready")
+
+        # Give in-flight requests a brief window to complete
+        await _asyncio.sleep(2)
+
+        # NOTE: Database and Redis cleanup is handled by the registered
+        # shutdown_handler callbacks (cleanup_database, close_cache) below.
+        # Only mark shutdown state and drain here to avoid double-dispose.
+
+        logger.info("ASGI shutdown cleanup complete")
+
+    logger.info("Health endpoints registered at /health, /health/ready, /health/live")
 
 # Add Enhanced Rate Limiting Middleware to FastAPI app (not to MCP server directly,
 # since Starlette BaseHTTPMiddleware is incompatible with FastMCP's middleware chain)
@@ -1503,6 +1663,20 @@ if __name__ == "__main__":
                 logger.error(f"Error closing Redis: {e}")
 
         shutdown_handler.register_cleanup(close_cache)
+
+        # Register database engine disposal
+        async def cleanup_database():
+            """Dispose database engine and close all connections during shutdown."""
+            try:
+                from maverick_mcp.data.models import close_async_db_connections, engine
+
+                await close_async_db_connections()
+                engine.dispose()
+                logger.info("Database engine disposed during shutdown")
+            except Exception as e:
+                logger.error(f"Error disposing database engine: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_database)
 
         # Run with the appropriate transport
         if args.transport == "stdio":

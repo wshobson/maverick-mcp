@@ -18,7 +18,7 @@ from uuid import uuid4
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.tools import BaseTool, tool
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph import END, START, StateGraph  # type: ignore[import-untyped]
 from langgraph.types import Command  # type: ignore[import-untyped]
 
@@ -28,6 +28,7 @@ from maverick_mcp.config.settings import get_settings
 from maverick_mcp.exceptions import (
     WebSearchError,
 )
+from maverick_mcp.memory.checkpointer import get_persistent_checkpointer
 from maverick_mcp.memory.stores import ConversationStore
 from maverick_mcp.utils.orchestration_logging import (
     get_orchestration_logger,
@@ -43,6 +44,7 @@ except ImportError:  # pragma: no cover
     TavilyClient = None  # type: ignore[assignment]
 
 # Import moved to avoid circular dependency - will import where needed
+from maverick_mcp.data.vector_store import ResearchResult, get_vector_store
 from maverick_mcp.workflows.state import DeepResearchState
 
 logger = logging.getLogger(__name__)
@@ -1205,7 +1207,7 @@ class DeepResearchAgent(PersonaAwareAgent):
         self,
         llm: BaseChatModel,
         persona: str = "moderate",
-        checkpointer: MemorySaver | None = None,
+        checkpointer: BaseCheckpointSaver | None = None,
         ttl_hours: int = 24,  # Research results cached longer
         exa_api_key: str | None = None,
         default_depth: str = "standard",
@@ -1257,7 +1259,7 @@ class DeepResearchAgent(PersonaAwareAgent):
             llm=llm,
             tools=research_tools,
             persona=persona,
-            checkpointer=checkpointer or MemorySaver(),
+            checkpointer=checkpointer or get_persistent_checkpointer(),
             ttl_hours=ttl_hours,
         )
 
@@ -1322,6 +1324,140 @@ class DeepResearchAgent(PersonaAwareAgent):
                 "Search providers not pre-initialized - falling back to lazy loading"
             )
             await self.initialize()
+
+    # ------------------------------------------------------------------
+    # Vector store integration helpers
+    # ------------------------------------------------------------------
+
+    def _check_vector_store_cache(
+        self,
+        topic: str,
+        ticker: str | None = None,
+    ) -> list[ResearchResult] | None:
+        """
+        Check the research vector store for relevant cached results.
+
+        Returns a list of ResearchResult objects if a useful cache hit is
+        found, or None when the caller should proceed with live research.
+        """
+        try:
+            store = get_vector_store()
+            if not store.is_available:
+                return None
+
+            vs_settings = settings.vector_store
+
+            # Extract ticker from topic if not provided
+            if ticker is None:
+                ticker = self._extract_ticker_from_topic(topic)
+
+            results = store.search_similar(
+                query=topic,
+                ticker=ticker,
+                top_k=vs_settings.default_top_k,
+                max_age_days=vs_settings.max_age_days,
+            )
+
+            # Only count as a hit when we have reasonably relevant results
+            if results and results[0].combined_score >= 0.5:
+                return results
+
+            return None
+        except Exception:
+            logger.debug("Vector store cache check failed -- proceeding without cache")
+            return None
+
+    def _store_search_results_to_vector_store(
+        self,
+        search_results: list[dict[str, Any]],
+        topic: str,
+    ) -> None:
+        """
+        Store search results in the vector store for future retrieval.
+
+        Performs deduplication before storing to avoid redundant entries.
+        """
+        try:
+            store = get_vector_store()
+            if not store.is_available:
+                return
+
+            ticker = self._extract_ticker_from_topic(topic) or "UNKNOWN"
+            stored_count = 0
+
+            for result in search_results:
+                content = result.get("content") or result.get("raw_content") or ""
+                if not content or len(content) < 50:
+                    continue
+
+                source_url = result.get("url", "")
+
+                # Parse source date
+                source_date = self._parse_result_date(result.get("published_date", ""))
+
+                # Credibility from analysis or provider metadata
+                credibility = result.get("financial_relevance", 0.5)
+                analysis = result.get("analysis", {})
+                if isinstance(analysis, dict):
+                    credibility = max(
+                        credibility,
+                        analysis.get("credibility_score", 0.0),
+                    )
+
+                store.store_research(
+                    ticker=ticker,
+                    topic=topic,
+                    content=content,
+                    source_url=source_url,
+                    source_date=source_date,
+                    credibility_score=credibility,
+                )
+                stored_count += 1
+
+            if stored_count:
+                logger.info(
+                    "Stored %d research results in vector store for '%s'",
+                    stored_count,
+                    topic[:60],
+                )
+        except Exception:
+            logger.debug(
+                "Failed to store results in vector store -- continuing without caching"
+            )
+
+    @staticmethod
+    def _extract_ticker_from_topic(topic: str) -> str | None:
+        """Best-effort extraction of a stock ticker from a research topic string."""
+        import re
+
+        # Match common patterns: "$AAPL", "AAPL stock", "AAPL company"
+        # or a standalone 1-5 letter uppercase word at the start
+        match = re.search(r"\$([A-Z]{1,5})\b", topic)
+        if match:
+            return match.group(1)
+
+        words = topic.split()
+        if (
+            words
+            and words[0].isupper()
+            and 1 <= len(words[0]) <= 5
+            and words[0].isalpha()
+        ):
+            return words[0]
+
+        return None
+
+    @staticmethod
+    def _parse_result_date(date_str: str) -> datetime:
+        """Parse a date string from search results, with fallback to now."""
+        if not date_str:
+            return datetime.now(UTC)
+        try:
+            if date_str.endswith("Z"):
+                date_str = date_str.replace("Z", "+00:00")
+            return datetime.fromisoformat(date_str)
+        except (ValueError, TypeError):
+            return datetime.now(UTC)
 
     def get_state_schema(self) -> type:
         """Return DeepResearchState schema."""
@@ -1669,6 +1805,7 @@ class DeepResearchAgent(PersonaAwareAgent):
         focus_areas: list[str] | None = None,
         timeframe: str = "30d",
         timeout_budget: float | None = None,  # Total timeout budget in seconds
+        use_cache: bool = True,
         **kwargs,
     ) -> dict[str, Any]:
         """
@@ -1681,6 +1818,7 @@ class DeepResearchAgent(PersonaAwareAgent):
             focus_areas: Specific areas to focus on
             timeframe: Time range for research
             timeout_budget: Total timeout budget in seconds (enables budget allocation)
+            use_cache: Whether to use the research vector store cache (default: True)
             **kwargs: Additional parameters
 
         Returns:
@@ -1697,6 +1835,49 @@ class DeepResearchAgent(PersonaAwareAgent):
                 "topic": topic,
                 "available_functionality": "Limited to pre-existing data and basic analysis",
             }
+
+        # Check vector store for cached research before executing searches
+        if use_cache:
+            cached = self._check_vector_store_cache(topic)
+            if cached:
+                logger.info(
+                    "Vector store cache hit for topic '%s' -- returning %d cached results",
+                    topic[:60],
+                    len(cached),
+                )
+                return {
+                    "status": "success",
+                    "agent_type": "deep_research",
+                    "persona": self.persona.name,
+                    "research_topic": topic,
+                    "research_depth": depth or self.default_depth,
+                    "findings": {
+                        "cached_results": [
+                            {
+                                "content": r.content,
+                                "source_url": r.source_url,
+                                "source_date": r.source_date.isoformat(),
+                                "credibility_score": r.credibility_score,
+                                "similarity_score": r.similarity_score,
+                                "temporal_score": r.temporal_score,
+                                "combined_score": r.combined_score,
+                                "ticker": r.ticker,
+                                "topic": r.topic,
+                            }
+                            for r in cached
+                        ],
+                    },
+                    "sources_analyzed": len(cached),
+                    "confidence_score": max(r.combined_score for r in cached),
+                    "citations": [
+                        {"url": r.source_url, "date": r.source_date.isoformat()}
+                        for r in cached
+                    ],
+                    "execution_time_ms": 0.0,
+                    "search_queries_used": [],
+                    "source_diversity": 0.0,
+                    "from_cache": True,
+                }
 
         start_time = datetime.now()
         depth = depth or self.default_depth
@@ -1940,6 +2121,11 @@ class DeepResearchAgent(PersonaAwareAgent):
         logger.info(
             f"Search completed: {len(unique_results)} unique results from {len(all_results)} total"
         )
+
+        # Store results in vector store for future cache hits
+        research_topic = state.get("research_topic", "")
+        if research_topic and unique_results:
+            self._store_search_results_to_vector_store(unique_results, research_topic)
 
         return Command(
             goto="analyze_content",

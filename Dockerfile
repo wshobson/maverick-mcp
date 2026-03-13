@@ -52,5 +52,9 @@ USER maverick
 
 EXPOSE 8000
 
+# Health check for container orchestration (Docker, ECS, Kubernetes)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
 # Start MCP server
 CMD ["uv", "run", "python", "-m", "maverick_mcp.api.server", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]
