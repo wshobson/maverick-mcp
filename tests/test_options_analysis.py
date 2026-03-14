@@ -1,9 +1,6 @@
 """Unit tests for options analysis core module and data provider."""
 
 import time
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from maverick_mcp.core.options_analysis import (
     _days_to_expiry,
@@ -22,7 +19,6 @@ from maverick_mcp.core.options_analysis import (
     suggest_hedges,
 )
 from maverick_mcp.providers.options_data import OptionsDataProvider
-
 
 # ------------------------------------------------------------------ #
 # Helpers
