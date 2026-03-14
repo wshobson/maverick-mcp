@@ -496,6 +496,13 @@ class PriceCache(Base, TimestampMixin):
             df["volume"] = df["volume"].astype(int)
             df["symbol"] = ticker_symbol.upper()
 
+            # Validate OHLCV data from database
+            from maverick_mcp.validation.dataframe_schemas import (
+                validate_ohlcv_lowercase,
+            )
+
+            df = validate_ohlcv_lowercase(df, context=f"PriceCache for {ticker_symbol}")
+
         return df
 
 

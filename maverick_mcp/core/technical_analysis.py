@@ -121,6 +121,13 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     else:
         df["adx_14"] = np.nan
 
+    # Validate technical indicators output
+    from maverick_mcp.validation.dataframe_schemas import (
+        validate_technical_indicators,
+    )
+
+    df = validate_technical_indicators(df, context="add_technical_indicators")
+
     return df
 
 

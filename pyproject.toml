@@ -67,6 +67,8 @@ dependencies = [
     "finnhub-python>=2.4.20",
     # Rate limiting
     "aiolimiter>=1.1.0",
+    # DataFrame validation
+    "pandera>=0.20.0",
     # Options analysis
     "blackscholes>=0.1.2",
     "OptionsPricerLib>=0.1.0",

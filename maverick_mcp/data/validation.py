@@ -12,9 +12,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import pandera.pandas as pa
 from pandas import DataFrame
 
 from maverick_mcp.exceptions import ValidationError
+from maverick_mcp.validation.dataframe_schemas import OHLCVLowercaseSchema
 
 logger = logging.getLogger(__name__)
 
@@ -223,54 +225,49 @@ class DataValidator:
         if data.empty:
             return validation_results
 
-        # Check for negative prices
-        price_cols = [col for col in expected_columns if col in data.columns]
-        for col in price_cols:
-            if col in data.columns:
-                negative_count = (data[col] < 0).sum()
-                if negative_count > 0:
-                    error_msg = (
-                        f"Found {negative_count} negative {col} prices for {symbol}"
+        # --- Pandera schema validation (replaces manual checks) ---
+        try:
+            OHLCVLowercaseSchema.validate(data, lazy=True)
+        except pa.errors.SchemaErrors as exc:
+            for _, row in exc.failure_cases.iterrows():
+                check_name = str(row.get("check", ""))
+                column = str(row.get("column", ""))
+                if "positive" in check_name.lower() or "Price must be" in check_name:
+                    validation_results["price_validation"]["negative_prices"] += 1
+                    validation_results["errors"].append(
+                        f"Invalid {column} price for {symbol}: {check_name}"
                     )
-                    validation_results["errors"].append(error_msg)
-                    validation_results["price_validation"]["negative_prices"] += (
-                        negative_count
+                    validation_results["passed"] = False
+                elif "non-negative" in check_name.lower() or "Volume" in check_name:
+                    validation_results["price_validation"]["volume_anomalies"] += 1
+                    validation_results["errors"].append(
+                        f"Invalid volume for {symbol}: {check_name}"
+                    )
+                    validation_results["passed"] = False
+                elif "high" in check_name.lower() and "low" in check_name.lower():
+                    validation_results["price_validation"][
+                        "invalid_ohlc_relationships"
+                    ] += 1
+                    validation_results["errors"].append(
+                        f"OHLC relationship violation for {symbol}: {check_name}"
+                    )
+                    validation_results["passed"] = False
+                else:
+                    validation_results["errors"].append(
+                        f"Schema violation for {symbol}: {check_name}"
                     )
                     validation_results["passed"] = False
 
-        # Check for zero prices
+        # --- Additional checks not covered by Pandera ---
+
+        # Check for zero prices (warning, not error)
+        price_cols = [col for col in expected_columns if col in data.columns]
         for col in price_cols:
-            if col in data.columns:
-                zero_count = (data[col] == 0).sum()
-                if zero_count > 0:
-                    warning_msg = f"Found {zero_count} zero {col} prices for {symbol}"
-                    validation_results["warnings"].append(warning_msg)
-                    validation_results["price_validation"]["zero_prices"] += zero_count
-
-        # Validate OHLC relationships (High >= Open, Close, Low; Low <= Open, Close)
-        if all(col in data.columns for col in ["open", "high", "low", "close"]):
-            # High should be >= Open, Low, Close
-            high_violations = (
-                (data["high"] < data["open"])
-                | (data["high"] < data["low"])
-                | (data["high"] < data["close"])
-            ).sum()
-
-            # Low should be <= Open, High, Close
-            low_violations = (
-                (data["low"] > data["open"])
-                | (data["low"] > data["high"])
-                | (data["low"] > data["close"])
-            ).sum()
-
-            total_ohlc_violations = high_violations + low_violations
-            if total_ohlc_violations > 0:
-                error_msg = f"OHLC relationship violations for {symbol}: {total_ohlc_violations} bars"
-                validation_results["errors"].append(error_msg)
-                validation_results["price_validation"]["invalid_ohlc_relationships"] = (
-                    total_ohlc_violations
-                )
-                validation_results["passed"] = False
+            zero_count = (data[col] == 0).sum()
+            if zero_count > 0:
+                warning_msg = f"Found {zero_count} zero {col} prices for {symbol}"
+                validation_results["warnings"].append(warning_msg)
+                validation_results["price_validation"]["zero_prices"] += zero_count
 
         # Check for extreme price changes (>50% daily moves)
         if "close" in data.columns and len(data) > 1:
@@ -285,34 +282,20 @@ class DataValidator:
                     extreme_changes
                 )
 
-        # Validate volume data if present
-        if "volume" in data.columns:
-            negative_volume = (data["volume"] < 0).sum()
-            if negative_volume > 0:
-                error_msg = (
-                    f"Found {negative_volume} negative volume values for {symbol}"
-                )
-                validation_results["errors"].append(error_msg)
-                validation_results["price_validation"]["volume_anomalies"] += (
-                    negative_volume
-                )
-                validation_results["passed"] = False
-
-            # Check for suspiciously high volume (>10x median)
-            if len(data) > 10:
-                median_volume = data["volume"].median()
-                if median_volume > 0:
-                    high_volume_count = (data["volume"] > median_volume * 10).sum()
-                    if high_volume_count > 0:
-                        validation_results["price_validation"]["volume_anomalies"] += (
-                            high_volume_count
-                        )
+        # Check for suspiciously high volume (>10x median)
+        if "volume" in data.columns and len(data) > 10:
+            median_volume = data["volume"].median()
+            if median_volume > 0:
+                high_volume_count = (data["volume"] > median_volume * 10).sum()
+                if high_volume_count > 0:
+                    validation_results["price_validation"]["volume_anomalies"] += (
+                        high_volume_count
+                    )
 
         # Check data continuity (gaps in date index)
         if hasattr(data.index, "to_series"):
             date_diffs = data.index.to_series().diff()[1:]
             if len(date_diffs) > 0:
-                # Check for gaps larger than 7 days (weekend + holiday)
                 large_gaps = (date_diffs > pd.Timedelta(days=7)).sum()
                 if large_gaps > 0:
                     warning_msg = f"Found {large_gaps} large time gaps (>7 days) in data for {symbol}"

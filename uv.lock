@@ -2628,6 +2628,7 @@ dependencies = [
     { name = "pandas", version = "3.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14'" },
     { name = "pandas-market-calendars" },
     { name = "pandas-ta" },
+    { name = "pandera" },
     { name = "plotly" },
     { name = "prometheus-client" },
     { name = "psutil" },
@@ -2730,6 +2731,7 @@ requires-dist = [
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "pandas-market-calendars", specifier = ">=5.1.0" },
     { name = "pandas-ta", specifier = ">=0.3.14b0" },
+    { name = "pandera", specifier = ">=0.20.0" },
     { name = "plotly", specifier = ">=5.0.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "prometheus-client", specifier = ">=0.21.1" },
@@ -3548,6 +3550,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/95/6d/60b88a0334a8c6a5be114ed2c46c8f3e164127d0eccd9ff99b50773f2b20/pandas_ta-0.4.71b0.tar.gz", hash = "sha256:782ef8a874d2e0bdf80f445136617bda084f1fc5d14d3b1c525b282a152de37a", size = 1310317, upload-time = "2025-09-14T19:08:36.151Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/be/2f/c67d49afd31c3b02a02ecb5dd07399ed35298042e1b50d166efe2068bb0e/pandas_ta-0.4.71b0-py3-none-any.whl", hash = "sha256:b1f37831811462685be3ef456cfebc0615ce9c8a4eb31bbaa6b341e1a7767a84", size = 240265, upload-time = "2025-09-14T19:08:34.83Z" },
+]
+
+[[package]]
+name = "pandera"
+version = "0.29.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "pydantic" },
+    { name = "typeguard" },
+    { name = "typing-extensions" },
+    { name = "typing-inspect" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/ee/8e0d40dad2c0947b933fc9c0959b2c17cc3419ccdf50df683216f37a3f96/pandera-0.29.0.tar.gz", hash = "sha256:06bc4fc1e4ff02534dd44482a9bc704fb2e58fe3fbb11be906aa714f7f5ec801", size = 575324, upload-time = "2026-01-29T02:49:36.891Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/7b/03299e4ccc5e3cfb0f9e234207ac43ef08b3ba6c4c2882c890e550ceadba/pandera-0.29.0-py3-none-any.whl", hash = "sha256:b3b25d6c00d7c100fbab96aff0e81e52d3dae543a880d24135cca705fa97c516", size = 295876, upload-time = "2026-01-29T02:49:34.812Z" },
 ]
 
 [[package]]
@@ -5469,6 +5487,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a1/8a/1f72480fd013bbc6cd1929002abbbcde9a0b08ead6a15154de9d7f7fa37e/ty-0.0.21-py3-none-win32.whl", hash = "sha256:bef3ab4c7b966bcc276a8ac6c11b63ba222d21355b48d471ea782c4104eee4e0", size = 9693196, upload-time = "2026-03-06T01:57:24.126Z" },
     { url = "https://files.pythonhosted.org/packages/8d/f8/1104808b875c26c640e536945753a78562d606bef4e241d9dbf3d92477f6/ty-0.0.21-py3-none-win_amd64.whl", hash = "sha256:a709d576e5bea84b745d43058d8b9cd4f27f74a0b24acb4b0cbb7d3d41e0d050", size = 10668660, upload-time = "2026-03-06T01:56:55.06Z" },
     { url = "https://files.pythonhosted.org/packages/1b/b8/25e0adc404bbf986977657b25318991f93097b49f8aea640d93c0b0db68e/ty-0.0.21-py3-none-win_arm64.whl", hash = "sha256:f72047996598ac20553fb7e21ba5741e3c82dee4e9eadf10d954551a5fe09391", size = 10104161, upload-time = "2026-03-06T01:57:06.072Z" },
+]
+
+[[package]]
+name = "typeguard"
+version = "4.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2b/e8/66e25efcc18542d58706ce4e50415710593721aae26e794ab1dec34fb66f/typeguard-4.5.1.tar.gz", hash = "sha256:f6f8ecbbc819c9bc749983cc67c02391e16a9b43b8b27f15dc70ed7c4a007274", size = 80121, upload-time = "2026-02-19T16:09:03.392Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/88/b55b3117287a8540b76dbdd87733808d4d01c8067a3b339408c250bb3600/typeguard-4.5.1-py3-none-any.whl", hash = "sha256:44d2bf329d49a244110a090b55f5f91aa82d9a9834ebfd30bcc73651e4a8cc40", size = 36745, upload-time = "2026-02-19T16:09:01.6Z" },
 ]
 
 [[package]]
