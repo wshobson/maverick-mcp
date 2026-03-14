@@ -136,9 +136,11 @@ def risk_adjusted_analysis(
                 "available_columns": list(df.columns),
             }
 
-        df["atr"] = ta.atr(df["High"], df["Low"], df["Close"], length=20)
+        # Normalize columns to lowercase (get_stock_dataframe returns lowercase)
+        df.columns = [col.lower() for col in df.columns]
+        df["atr"] = ta.atr(df["high"], df["low"], df["close"], length=20)
         atr = df["atr"].iloc[-1]
-        current_price = df["Close"].iloc[-1]
+        current_price = df["close"].iloc[-1]
         risk_factor = (risk_level or 50.0) / 100  # Convert to 0-1 scale
         account_size = 100000
         analysis = {
@@ -214,10 +216,12 @@ def risk_adjusted_analysis(
                     unrealized_pnl = (
                         current_price - float(existing_position.average_cost_basis)
                     ) * float(existing_position.shares)
+                    cost_basis = float(existing_position.average_cost_basis)
                     unrealized_pnl_pct = (
-                        (current_price - float(existing_position.average_cost_basis))
-                        / float(existing_position.average_cost_basis)
-                    ) * 100
+                        ((current_price - cost_basis) / cost_basis) * 100
+                        if cost_basis > 0
+                        else 0.0
+                    )
 
                     analysis["existing_position"] = {
                         "shares_owned": float(existing_position.shares),
@@ -890,9 +894,12 @@ def get_my_portfolio(
                     position_dict["current_price"] = current_price
                     position_dict["current_value"] = float(current_value)
                     position_dict["unrealized_gain_loss"] = float(unrealized_gain_loss)
+                    total_cost_float = float(pos_db.total_cost)
                     position_dict["unrealized_gain_loss_percent"] = (
-                        position_dict["unrealized_gain_loss"] / float(pos_db.total_cost)
-                    ) * 100
+                        (position_dict["unrealized_gain_loss"] / total_cost_float) * 100
+                        if total_cost_float > 0
+                        else 0.0
+                    )
 
                 positions_list.append(position_dict)
 

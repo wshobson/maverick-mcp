@@ -380,7 +380,7 @@ class Stock(Base, TimestampMixin):
         "PriceCache",
         back_populates="stock",
         cascade="all, delete-orphan",
-        lazy="selectin",  # Eager load price caches to prevent N+1 queries
+        lazy="select",  # Lazy load — price_caches can be very large
     )
     maverick_stocks = relationship(
         "MaverickStocks", back_populates="stock", cascade="all, delete-orphan"

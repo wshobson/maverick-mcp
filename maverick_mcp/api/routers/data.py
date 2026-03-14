@@ -26,6 +26,8 @@ from maverick_mcp.infrastructure.data_fetching import StockDataFetchingService
 from maverick_mcp.providers.stock_data import (
     StockDataProvider,
 )  # Kept for backward compatibility
+from maverick_mcp.utils.error_handling import safe_error_message
+from maverick_mcp.validation.base import TickerValidator
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +97,11 @@ def fetch_stock_data(
         >>> fetch_stock_data(ticker="AAPL", interval="5m")
     """
     try:
+        ticker = TickerValidator.validate_ticker(ticker)
+    except ValueError as e:
+        return {"error": str(e), "ticker": ticker}
+
+    try:
         # Create services with dependency injection
         data_fetching_service = StockDataFetchingService()
 
@@ -115,8 +122,10 @@ def fetch_stock_data(
             result["record_count"] = len(data)
             return result
     except Exception as e:
-        logger.error(f"Error fetching stock data for {ticker}: {e}")
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(e, context=f"fetching stock data for {ticker}"),
+            "ticker": ticker,
+        }
 
 
 def fetch_stock_data_batch(
@@ -146,6 +155,18 @@ def fetch_stock_data_batch(
         ...     start_date="2024-01-01"
         ... )
     """
+    MAX_BATCH_SIZE = 50
+    if len(tickers) > MAX_BATCH_SIZE:
+        return {
+            "error": f"Batch size {len(tickers)} exceeds maximum of {MAX_BATCH_SIZE}",
+            "tickers": tickers[:5],
+        }
+
+    try:
+        tickers = TickerValidator.validate_ticker_list(tickers)
+    except ValueError as e:
+        return {"error": str(e), "tickers": tickers}
+
     results = {}
 
     # Create services with dependency injection
@@ -170,8 +191,12 @@ def fetch_stock_data_batch(
                     "record_count": len(data),
                 }
             except Exception as e:
-                logger.error(f"Error fetching data for {ticker}: {e}")
-                results[ticker] = {"status": "error", "error": str(e)}
+                results[ticker] = {
+                    "status": "error",
+                    "error": safe_error_message(
+                        e, context=f"fetching batch data for {ticker}"
+                    ),
+                }
 
     return {
         "results": results,
@@ -197,6 +222,11 @@ def get_stock_info(ticker: str) -> dict[str, Any]:
     Returns:
         Dictionary containing detailed stock information
     """
+    try:
+        ticker = TickerValidator.validate_ticker(ticker)
+    except ValueError as e:
+        return {"error": str(e), "ticker": ticker}
+
     try:
         # Use read-only context manager for automatic session management
         with get_db_session_read_only() as session:
@@ -261,8 +291,10 @@ def get_stock_info(ticker: str) -> dict[str, Any]:
                 },
             }
     except Exception as e:
-        logger.error(f"Error fetching stock info for {ticker}: {e}")
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(e, context=f"fetching stock info for {ticker}"),
+            "ticker": ticker,
+        }
 
 
 def get_fundamental_analysis(ticker: str) -> dict[str, Any]:
@@ -308,8 +340,12 @@ def get_fundamental_analysis(ticker: str) -> dict[str, Any]:
                 "financial_health": health,
             }
     except Exception as e:
-        logger.error(f"Error computing fundamental analysis for {ticker}: {e}")
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(
+                e, context=f"computing fundamental analysis for {ticker}"
+            ),
+            "ticker": ticker,
+        }
 
 
 def get_news_sentiment(
@@ -444,8 +480,12 @@ def get_cached_price_data(
                 "data": data,
             }
     except Exception as e:
-        logger.error(f"Error fetching cached price data for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(
+                e, context=f"fetching cached price data for {ticker}"
+            ),
+            "status": "error",
+        }
 
 
 def get_chart_links(ticker: str) -> dict[str, Any]:
@@ -481,8 +521,11 @@ def get_chart_links(ticker: str) -> dict[str, Any]:
             "description": "External chart resources for detailed analysis",
         }
     except Exception as e:
-        logger.error(f"Error generating chart links for {ticker}: {e}")
-        return {"error": str(e)}
+        return {
+            "error": safe_error_message(
+                e, context=f"generating chart links for {ticker}"
+            ),
+        }
 
 
 def clear_cache(ticker: str | None = None) -> dict[str, Any]:
@@ -511,8 +554,10 @@ def clear_cache(ticker: str | None = None) -> dict[str, Any]:
 
         return {"status": "success", "message": message, "entries_cleared": count}
     except Exception as e:
-        logger.error(f"Error clearing cache: {e}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="clearing cache"),
+            "status": "error",
+        }
 
 
 def warm_cache(
@@ -665,8 +710,10 @@ def check_watchlist_alerts(
                 trailing_stop_pct=trailing_stop_pct,
             )
     except Exception as e:
-        logger.error(f"Error checking watchlist alerts: {e}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="checking watchlist alerts"),
+            "status": "error",
+        }
 
 
 def get_intraday_summary(
@@ -736,5 +783,10 @@ def get_intraday_summary(
             "bar_count": len(df),
         }
     except Exception as e:
-        logger.error(f"Error getting intraday summary for {ticker}: {e}")
-        return {"error": str(e), "ticker": ticker, "status": "error"}
+        return {
+            "error": safe_error_message(
+                e, context=f"getting intraday summary for {ticker}"
+            ),
+            "ticker": ticker,
+            "status": "error",
+        }
