@@ -20,6 +20,7 @@ from maverick_mcp.api.middleware.mcp_logging import get_tool_logger
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.providers.llm_factory import get_llm
 from maverick_mcp.providers.openrouter_provider import TaskType
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.orchestration_logging import (
     log_performance_metrics,
     log_tool_invocation,
@@ -484,13 +485,13 @@ async def _execute_research_with_direct_timeout(
         # Return structured error response
         return {
             "status": "error",
-            "content": f"Research failed due to error: {str(e)}",
+            "content": f"Research failed due to error: {safe_error_message(e, context='research execution')}",
             "research_confidence": 0.0,
             "sources_found": 0,
             "timeout_warning": False,
             "elapsed_time": elapsed_time,
             "completion_percentage": 0,
-            "error": str(e),
+            "error": safe_error_message(e, context="research execution"),
             "error_type": type(e).__name__,
         }
 
@@ -765,7 +766,7 @@ async def comprehensive_research(
         )
         return {
             "success": False,
-            "error": f"Research error: {str(e)}",
+            "error": f"Research error: {safe_error_message(e, context='comprehensive research')}",
             "error_type": type(e).__name__,
             "query": query,
             "request_id": request_id,
@@ -860,7 +861,7 @@ async def company_comprehensive_research(
         )
         return {
             "success": False,
-            "error": f"Company research error: {str(e)}",
+            "error": f"Company research error: {safe_error_message(e, context='company research')}",
             "error_type": type(e).__name__,
             "symbol": symbol,
             "request_id": request_id,
@@ -948,7 +949,7 @@ async def analyze_market_sentiment(
         tool_logger.error("sentiment_error", e, f"Sentiment analysis failed: {str(e)}")
         return {
             "success": False,
-            "error": f"Sentiment analysis error: {str(e)}",
+            "error": f"Sentiment analysis error: {safe_error_message(e, context='market sentiment analysis')}",
             "error_type": type(e).__name__,
             "topic": topic,
             "request_id": request_id,
@@ -1046,7 +1047,7 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             )
             return {
                 "success": False,
-                "error": f"Research failed: {str(e)}",
+                "error": f"Research failed: {safe_error_message(e, context='comprehensive research tool')}",
                 "error_type": type(e).__name__,
                 "query": query,
                 "timestamp": datetime.now().isoformat(),

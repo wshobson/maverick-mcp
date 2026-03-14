@@ -21,6 +21,7 @@ from maverick_mcp.tools.performance_monitoring import (
     get_redis_connection_health,
     optimize_cache_settings,
 )
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.validation.base import BaseRequest, BaseResponse
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,9 @@ async def get_system_performance_health(
         return PerformanceReportResponse(
             overall_health_score=0.0,
             component_scores={},
-            recommendations=[f"Failed to assess system health: {str(e)}"],
+            recommendations=[
+                f"Failed to assess system health: {safe_error_message(e, context='system performance health')}"
+            ],
             detailed_metrics=None,
         )
 
@@ -147,7 +150,9 @@ async def get_redis_health_status() -> PerformanceMetricsResponse:
 
     except Exception as e:
         logger.error(f"Error getting Redis health status: {e}")
-        return PerformanceMetricsResponse(metrics={"error": str(e)})
+        return PerformanceMetricsResponse(
+            metrics={"error": safe_error_message(e, context="Redis health status")}
+        )
 
 
 async def get_cache_performance_status() -> PerformanceMetricsResponse:
@@ -170,7 +175,9 @@ async def get_cache_performance_status() -> PerformanceMetricsResponse:
 
     except Exception as e:
         logger.error(f"Error getting cache performance status: {e}")
-        return PerformanceMetricsResponse(metrics={"error": str(e)})
+        return PerformanceMetricsResponse(
+            metrics={"error": safe_error_message(e, context="cache performance status")}
+        )
 
 
 async def get_database_performance_status() -> PerformanceMetricsResponse:
@@ -193,7 +200,11 @@ async def get_database_performance_status() -> PerformanceMetricsResponse:
 
     except Exception as e:
         logger.error(f"Error getting database performance status: {e}")
-        return PerformanceMetricsResponse(metrics={"error": str(e)})
+        return PerformanceMetricsResponse(
+            metrics={
+                "error": safe_error_message(e, context="database performance status")
+            }
+        )
 
 
 async def analyze_database_index_usage() -> PerformanceMetricsResponse:
@@ -216,7 +227,9 @@ async def analyze_database_index_usage() -> PerformanceMetricsResponse:
 
     except Exception as e:
         logger.error(f"Error analyzing database index usage: {e}")
-        return PerformanceMetricsResponse(metrics={"error": str(e)})
+        return PerformanceMetricsResponse(
+            metrics={"error": safe_error_message(e, context="database index analysis")}
+        )
 
 
 async def optimize_cache_configuration() -> PerformanceMetricsResponse:
@@ -239,7 +252,13 @@ async def optimize_cache_configuration() -> PerformanceMetricsResponse:
 
     except Exception as e:
         logger.error(f"Error optimizing cache configuration: {e}")
-        return PerformanceMetricsResponse(metrics={"error": str(e)})
+        return PerformanceMetricsResponse(
+            metrics={
+                "error": safe_error_message(
+                    e, context="cache configuration optimization"
+                )
+            }
+        )
 
 
 async def clear_system_caches(
@@ -272,7 +291,9 @@ async def clear_system_caches(
 
     except Exception as e:
         logger.error(f"Error clearing system caches: {e}")
-        return PerformanceMetricsResponse(metrics={"error": str(e)})
+        return PerformanceMetricsResponse(
+            metrics={"error": safe_error_message(e, context="clearing system caches")}
+        )
 
 
 # Router configuration

@@ -31,6 +31,7 @@ from maverick_mcp.core.options_analysis import (
     price_option as core_price_option,
 )
 from maverick_mcp.providers.options_data import OptionsDataProvider
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.logging import PerformanceMonitor, get_logger
 from maverick_mcp.utils.mcp_logging import with_logging
 
@@ -121,7 +122,10 @@ async def get_options_chain(
         logger.error(
             "Error fetching options chain for %s: %s", ticker, e, exc_info=True
         )
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(e, context="fetching options chain"),
+            "ticker": ticker,
+        }
 
 
 # ------------------------------------------------------------------ #
@@ -197,7 +201,10 @@ async def calculate_option_greeks(
             return result
     except Exception as e:
         logger.error("Error calculating Greeks for %s: %s", ticker, e, exc_info=True)
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(e, context="calculating option Greeks"),
+            "ticker": ticker,
+        }
 
 
 # ------------------------------------------------------------------ #
@@ -268,7 +275,7 @@ async def get_iv_analysis(
             }
     except Exception as e:
         logger.error("Error in IV analysis for %s: %s", ticker, e, exc_info=True)
-        return {"error": str(e), "ticker": ticker}
+        return {"error": safe_error_message(e, context="IV analysis"), "ticker": ticker}
 
 
 # ------------------------------------------------------------------ #
@@ -343,7 +350,10 @@ async def price_option(
             return result
     except Exception as e:
         logger.error("Error pricing option for %s: %s", ticker, e, exc_info=True)
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(e, context="pricing option"),
+            "ticker": ticker,
+        }
 
 
 # ------------------------------------------------------------------ #
@@ -426,7 +436,10 @@ async def analyze_options_strategy(
             return result
     except Exception as e:
         logger.error("Error analyzing strategy for %s: %s", ticker, e, exc_info=True)
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(e, context="analyzing options strategy"),
+            "ticker": ticker,
+        }
 
 
 # ------------------------------------------------------------------ #
@@ -476,7 +489,12 @@ async def get_unusual_options_activity(
         logger.error(
             "Error detecting unusual activity for %s: %s", ticker, e, exc_info=True
         )
-        return {"error": str(e), "ticker": ticker}
+        return {
+            "error": safe_error_message(
+                e, context="detecting unusual options activity"
+            ),
+            "ticker": ticker,
+        }
 
 
 # ------------------------------------------------------------------ #
@@ -550,7 +568,7 @@ async def hedge_portfolio(
             return result
     except Exception as e:
         logger.error("Error generating hedge suggestions: %s", e, exc_info=True)
-        return {"error": str(e)}
+        return {"error": safe_error_message(e, context="generating hedge suggestions")}
 
 
 # ------------------------------------------------------------------ #

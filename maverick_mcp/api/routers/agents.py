@@ -14,6 +14,7 @@ from fastmcp import FastMCP
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.agents.market_analysis import MarketAnalysisAgent
 from maverick_mcp.agents.supervisor import SupervisorAgent
+from maverick_mcp.utils.error_handling import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -207,13 +208,19 @@ async def analyze_market_with_agent(
                     response["structured"] = structured.model_dump()
             except Exception as e:
                 logger.warning(f"Failed to parse structured output: {e}")
-                response["structured_error"] = str(e)
+                response["structured_error"] = safe_error_message(
+                    e, context="parsing structured output"
+                )
 
         return response
 
     except Exception as e:
         logger.error(f"Error in market agent analysis: {str(e)}")
-        return {"status": "error", "error": str(e), "agent_type": "market_analysis"}
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="market agent analysis"),
+            "agent_type": "market_analysis",
+        }
 
 
 async def get_agent_streaming_analysis(
@@ -269,7 +276,10 @@ async def get_agent_streaming_analysis(
 
     except Exception as e:
         logger.error(f"Error in streaming analysis: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="streaming analysis"),
+        }
 
 
 async def orchestrated_analysis(
@@ -332,7 +342,7 @@ async def orchestrated_analysis(
         logger.error(f"Error in orchestrated analysis: {str(e)}")
         return {
             "status": "error",
-            "error": str(e),
+            "error": safe_error_message(e, context="orchestrated analysis"),
             "agent_type": "supervisor_orchestrated",
         }
 
@@ -399,7 +409,11 @@ async def deep_research_financial(
 
     except Exception as e:
         logger.error(f"Error in deep research: {str(e)}")
-        return {"status": "error", "error": str(e), "agent_type": "deep_research"}
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="deep research"),
+            "agent_type": "deep_research",
+        }
 
 
 async def compare_multi_agent_analysis(
@@ -465,7 +479,12 @@ async def compare_multi_agent_analysis(
 
             except Exception as e:
                 logger.warning(f"Error with {agent_type} agent: {str(e)}")
-                results[agent_type] = {"error": str(e), "status": "failed"}
+                results[agent_type] = {
+                    "error": safe_error_message(
+                        e, context=f"{agent_type} agent comparison"
+                    ),
+                    "status": "failed",
+                }
 
         return {
             "status": "success",
@@ -479,7 +498,10 @@ async def compare_multi_agent_analysis(
 
     except Exception as e:
         logger.error(f"Error in multi-agent comparison: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="multi-agent comparison"),
+        }
 
 
 def list_available_agents() -> dict[str, Any]:
@@ -620,4 +642,7 @@ async def compare_personas_analysis(
 
     except Exception as e:
         logger.error(f"Error in persona comparison: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="persona comparison"),
+        }

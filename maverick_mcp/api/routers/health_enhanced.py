@@ -23,6 +23,7 @@ from sqlalchemy import text
 
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.utils.circuit_breaker import get_circuit_breaker_status
+from maverick_mcp.utils.error_handling import safe_error_message
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -217,7 +218,7 @@ async def _check_database_health() -> ComponentStatus:
             status="unhealthy",
             response_time_ms=round(response_time_ms, 2),
             last_check=timestamp,
-            error=str(e),
+            error=safe_error_message(e, context="database health check"),
         )
 
 
@@ -266,7 +267,12 @@ async def _check_cache_health() -> ComponentStatus:
             status="degraded",
             response_time_ms=round(response_time_ms, 2),
             last_check=timestamp,
-            details={"type": "fallback", "redis_error": str(e)},
+            details={
+                "type": "fallback",
+                "redis_error": safe_error_message(
+                    e, context="Redis cache health check"
+                ),
+            },
         )
 
 
@@ -377,7 +383,7 @@ async def _check_ml_models_health() -> ComponentStatus:
             status="unhealthy",
             response_time_ms=None,
             last_check=timestamp,
-            error=str(e),
+            error=safe_error_message(e, context="ML models health check"),
         )
 
 
@@ -579,7 +585,7 @@ async def readiness_probe() -> ReadinessStatus:
             ready=False,
             timestamp=datetime.now(UTC).isoformat(),
             dependencies={},
-            details={"error": str(e)},
+            details={"error": safe_error_message(e, context="readiness probe")},
         )
 
 
@@ -614,7 +620,7 @@ async def liveness_probe() -> LivenessStatus:
             alive=False,
             timestamp=datetime.now(UTC).isoformat(),
             last_heartbeat=datetime.now(UTC).isoformat(),
-            details={"error": str(e)},
+            details={"error": safe_error_message(e, context="liveness probe")},
         )
 
 

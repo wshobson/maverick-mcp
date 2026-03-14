@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from maverick_mcp.data.models import PortfolioPosition, UserPortfolio, get_db
 from maverick_mcp.domain.portfolio import Portfolio
 from maverick_mcp.providers.stock_data import StockDataProvider
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.stock_helpers import get_stock_dataframe
 
 logger = logging.getLogger(__name__)
@@ -245,7 +246,9 @@ def risk_adjusted_analysis(
         return analysis
     except Exception as e:
         logger.error(f"Error performing risk analysis for {ticker}: {e}")
-        return {"error": str(e)}
+        return {
+            "error": safe_error_message(e, context="performing risk-adjusted analysis")
+        }
 
 
 def compare_tickers(
@@ -421,7 +424,10 @@ def compare_tickers(
         return response
     except Exception as e:
         logger.error(f"Error comparing tickers {tickers}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="comparing tickers"),
+            "status": "error",
+        }
 
 
 def portfolio_correlation_analysis(
@@ -609,7 +615,10 @@ def portfolio_correlation_analysis(
 
     except Exception as e:
         logger.error(f"Error in correlation analysis: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="portfolio correlation analysis"),
+            "status": "error",
+        }
 
 
 # ============================================================================
@@ -769,7 +778,10 @@ def add_portfolio_position(
 
     except Exception as e:
         logger.error(f"Error adding position {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="adding portfolio position"),
+            "status": "error",
+        }
 
 
 def get_my_portfolio(
@@ -926,7 +938,10 @@ def get_my_portfolio(
 
     except Exception as e:
         logger.error(f"Error getting portfolio: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="fetching portfolio"),
+            "status": "error",
+        }
 
 
 def remove_portfolio_position(
@@ -1041,7 +1056,10 @@ def remove_portfolio_position(
 
     except Exception as e:
         logger.error(f"Error removing position {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="removing portfolio position"),
+            "status": "error",
+        }
 
 
 def clear_my_portfolio(
@@ -1122,7 +1140,10 @@ def clear_my_portfolio(
 
     except Exception as e:
         logger.error(f"Error clearing portfolio: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="clearing portfolio"),
+            "status": "error",
+        }
 
 
 def optimize_portfolio_hrp(
@@ -1188,4 +1209,7 @@ def optimize_portfolio_hrp(
 
     except Exception as e:
         logger.error(f"Error in HRP optimization: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="HRP portfolio optimization"),
+            "status": "error",
+        }

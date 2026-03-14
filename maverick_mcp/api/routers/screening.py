@@ -10,6 +10,8 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from maverick_mcp.utils.error_handling import safe_error_message
+
 logger = logging.getLogger(__name__)
 
 # Create the screening router
@@ -134,7 +136,10 @@ def get_maverick_stocks(
             return result
     except Exception as e:
         logger.error(f"Error fetching Maverick stocks: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="Maverick stock screening"),
+            "status": "error",
+        }
 
 
 def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
@@ -172,7 +177,10 @@ def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
             }
     except Exception as e:
         logger.error(f"Error fetching Maverick Bear stocks: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="Maverick Bear stock screening"),
+            "status": "error",
+        }
 
 
 def get_supply_demand_breakouts(
@@ -251,7 +259,10 @@ def get_supply_demand_breakouts(
             return result
     except Exception as e:
         logger.error(f"Error fetching supply/demand breakout stocks: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="supply/demand breakout screening"),
+            "status": "error",
+        }
 
 
 def get_all_screening_recommendations() -> dict[str, Any]:
@@ -274,7 +285,7 @@ def get_all_screening_recommendations() -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting all screening recommendations: {e}")
         return {
-            "error": str(e),
+            "error": safe_error_message(e, context="all screening recommendations"),
             "status": "error",
             "maverick_stocks": [],
             "maverick_bear_stocks": [],
@@ -355,4 +366,7 @@ def get_screening_by_criteria(
             }
     except Exception as e:
         logger.error(f"Error in custom screening: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="custom screening"),
+            "status": "error",
+        }

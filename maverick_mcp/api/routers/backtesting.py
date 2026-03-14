@@ -34,6 +34,25 @@ performance_logger = get_performance_logger("backtesting_router")
 logger = get_logger(__name__)
 
 
+def _convert_param(value: Any, param_type: type) -> Any:
+    """Convert string parameter to appropriate type.
+
+    Used by multiple backtesting tool handlers to coerce MCP string
+    arguments into the expected Python types.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str):
+        try:
+            if param_type is int:
+                return int(value)
+            elif param_type is float:
+                return float(value)
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid {param_type.__name__} value: {value}") from e
+    return value
+
+
 def convert_numpy_types(obj: Any) -> Any:
     """Recursively convert numpy types to Python native types for JSON serialization.
 
@@ -150,22 +169,7 @@ def setup_backtesting_tools(mcp):
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
-        # Convert string parameters to appropriate types
-        def convert_param(value, param_type):
-            """Convert string parameter to appropriate type."""
-            if value is None:
-                return None
-            if isinstance(value, str):
-                try:
-                    if param_type is int:
-                        return int(value)
-                    elif param_type is float:
-                        return float(value)
-                except (ValueError, TypeError) as e:
-                    raise ValueError(
-                        f"Invalid {param_type.__name__} value: {value}"
-                    ) from e
-            return value
+        convert_param = _convert_param
 
         # Build parameters dict from provided arguments with type conversion
         param_map = {
@@ -402,22 +406,7 @@ def setup_backtesting_tools(mcp):
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
-        # Convert string parameters to appropriate types
-        def convert_param(value, param_type):
-            """Convert string parameter to appropriate type."""
-            if value is None:
-                return None
-            if isinstance(value, str):
-                try:
-                    if param_type is int:
-                        return int(value)
-                    elif param_type is float:
-                        return float(value)
-                except (ValueError, TypeError) as e:
-                    raise ValueError(
-                        f"Invalid {param_type.__name__} value: {value}"
-                    ) from e
-            return value
+        convert_param = _convert_param
 
         # Build parameters dict from provided arguments with type conversion
         param_map = {
@@ -614,22 +603,7 @@ def setup_backtesting_tools(mcp):
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
-        # Convert string parameters to appropriate types
-        def convert_param(value, param_type):
-            """Convert string parameter to appropriate type."""
-            if value is None:
-                return None
-            if isinstance(value, str):
-                try:
-                    if param_type is int:
-                        return int(value)
-                    elif param_type is float:
-                        return float(value)
-                except (ValueError, TypeError) as e:
-                    raise ValueError(
-                        f"Invalid {param_type.__name__} value: {value}"
-                    ) from e
-            return value
+        convert_param = _convert_param
 
         # Build parameters dict from provided arguments with type conversion
         param_map = {

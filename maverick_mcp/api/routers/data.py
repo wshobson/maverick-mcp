@@ -7,6 +7,7 @@ stock data, news, fundamentals, and caching operations.
 Updated to use separated services following Single Responsibility Principle.
 """
 
+import atexit
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
@@ -36,11 +37,7 @@ data_router: FastMCP = FastMCP("Data_Operations")
 
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=10)
-
-
-def shutdown_executor() -> None:
-    """Shut down the module-level thread pool executor."""
-    executor.shutdown(wait=False)
+atexit.register(executor.shutdown, wait=False)
 
 
 def _dataframe_to_split_dict(df: pd.DataFrame) -> dict[str, Any]:
@@ -428,9 +425,8 @@ def get_news_sentiment(
             "status": "connection_error",
         }
     except Exception as e:
-        logger.error(f"Error fetching sentiment from External API for {ticker}: {e}")
         return {
-            "error": str(e),
+            "error": safe_error_message(e, context=f"fetching sentiment for {ticker}"),
             "ticker": ticker,
             "sentiment": "unavailable",
             "status": "error",
@@ -625,7 +621,14 @@ def warm_cache(
             results["warmed"].append(symbol)
         except Exception as e:
             logger.warning(f"Cache warm-up failed for {symbol}: {e}")
-            results["failed"].append({"symbol": symbol, "error": str(e)})
+            results["failed"].append(
+                {
+                    "symbol": symbol,
+                    "error": safe_error_message(
+                        e, context=f"warming cache for {symbol}"
+                    ),
+                }
+            )
 
     elapsed_ms = round((time.time() - start_time) * 1000)
 

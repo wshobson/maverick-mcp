@@ -5,6 +5,7 @@ from typing import Any
 
 from fastmcp import Context
 
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.workflows import BacktestingWorkflow
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ def setup_intelligent_backtesting_tools(mcp):
             logger.error(f"Intelligent backtest failed for {symbol}: {e}")
             return {
                 "symbol": symbol,
-                "error": str(e),
+                "error": safe_error_message(e, context="intelligent backtesting"),
                 "message": "Intelligent backtesting failed. Please check symbol and date range.",
             }
 
@@ -121,7 +122,7 @@ def setup_intelligent_backtesting_tools(mcp):
             return {
                 "symbol": symbol,
                 "analysis_type": "quick_analysis",
-                "error": str(e),
+                "error": safe_error_message(e, context="quick market regime analysis"),
                 "message": "Quick market analysis failed. Please check symbol and date range.",
             }
 

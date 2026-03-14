@@ -10,6 +10,7 @@ This module fixes the "No result received from client-side tool execution" issue
 """
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
@@ -41,6 +42,7 @@ technical_enhanced_router: FastMCP = FastMCP("Technical_Analysis_Enhanced")
 
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=4)
+atexit.register(executor.shutdown, wait=False)
 
 
 class TechnicalAnalysisTimeoutError(Exception):

@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from maverick_mcp.providers.finnhub_data import FinnhubDataProvider
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.rate_limiters import finnhub_limiter
 
 logger = logging.getLogger(__name__)
@@ -82,7 +83,11 @@ async def get_finnhub_company_news(
         }
     except Exception as e:
         logger.error("finnhub_company_news failed for %s: %s", ticker, e)
-        return {"status": "error", "ticker": ticker, "error": str(e)}
+        return {
+            "status": "error",
+            "ticker": ticker,
+            "error": safe_error_message(e, context="fetching company news"),
+        }
 
 
 async def get_finnhub_earnings_calendar(
@@ -120,7 +125,11 @@ async def get_finnhub_earnings_calendar(
         }
     except Exception as e:
         logger.error("finnhub_earnings_calendar failed: %s", e)
-        return {"status": "error", "ticker": ticker, "error": str(e)}
+        return {
+            "status": "error",
+            "ticker": ticker,
+            "error": safe_error_message(e, context="fetching earnings calendar"),
+        }
 
 
 async def get_finnhub_earnings_surprises(
@@ -155,7 +164,11 @@ async def get_finnhub_earnings_surprises(
         }
     except Exception as e:
         logger.error("finnhub_earnings_surprises failed for %s: %s", ticker, e)
-        return {"status": "error", "ticker": ticker, "error": str(e)}
+        return {
+            "status": "error",
+            "ticker": ticker,
+            "error": safe_error_message(e, context="fetching earnings surprises"),
+        }
 
 
 async def get_finnhub_analyst_recommendations(
@@ -190,7 +203,11 @@ async def get_finnhub_analyst_recommendations(
         }
     except Exception as e:
         logger.error("finnhub_analyst_recommendations failed for %s: %s", ticker, e)
-        return {"status": "error", "ticker": ticker, "error": str(e)}
+        return {
+            "status": "error",
+            "ticker": ticker,
+            "error": safe_error_message(e, context="fetching analyst recommendations"),
+        }
 
 
 async def get_finnhub_institutional_ownership(
@@ -226,7 +243,11 @@ async def get_finnhub_institutional_ownership(
         }
     except Exception as e:
         logger.error("finnhub_institutional_ownership failed for %s: %s", ticker, e)
-        return {"status": "error", "ticker": ticker, "error": str(e)}
+        return {
+            "status": "error",
+            "ticker": ticker,
+            "error": safe_error_message(e, context="fetching institutional ownership"),
+        }
 
 
 async def get_finnhub_company_peers(
@@ -259,7 +280,11 @@ async def get_finnhub_company_peers(
         }
     except Exception as e:
         logger.error("finnhub_company_peers failed for %s: %s", ticker, e)
-        return {"status": "error", "ticker": ticker, "error": str(e)}
+        return {
+            "status": "error",
+            "ticker": ticker,
+            "error": safe_error_message(e, context="fetching company peers"),
+        }
 
 
 async def get_finnhub_economic_calendar(
@@ -293,7 +318,10 @@ async def get_finnhub_economic_calendar(
         }
     except Exception as e:
         logger.error("finnhub_economic_calendar failed: %s", e)
-        return {"status": "error", "error": str(e)}
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="fetching economic calendar"),
+        }
 
 
 async def get_finnhub_market_news(
@@ -327,4 +355,8 @@ async def get_finnhub_market_news(
         }
     except Exception as e:
         logger.error("finnhub_market_news failed: %s", e)
-        return {"status": "error", "category": category, "error": str(e)}
+        return {
+            "status": "error",
+            "category": category,
+            "error": safe_error_message(e, context="fetching market news"),
+        }

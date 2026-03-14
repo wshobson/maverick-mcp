@@ -23,6 +23,7 @@ from maverick_mcp.utils.database_monitoring import (
     get_cache_monitor,
     get_database_monitor,
 )
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.logging import get_logger
 from maverick_mcp.utils.monitoring import get_metrics, get_monitoring_service
 
@@ -78,7 +79,7 @@ _server_start_time = time.time()
 
 
 @router.get("/health", response_model=HealthStatus)
-async def health_check():
+async def health_check() -> HealthStatus:
     """
     Basic health check endpoint.
 
@@ -95,7 +96,7 @@ async def health_check():
 
 
 @router.get("/health/detailed", response_model=DetailedHealthStatus)
-async def detailed_health_check():
+async def detailed_health_check() -> DetailedHealthStatus:
     """
     Detailed health check endpoint.
 
@@ -119,7 +120,9 @@ async def detailed_health_check():
     except Exception as e:
         services["database"] = {
             "status": "unhealthy",
-            "details": {"error": str(e)},
+            "details": {
+                "error": safe_error_message(e, context="database health check")
+            },
             "last_check": time.time(),
         }
 
@@ -139,7 +142,7 @@ async def detailed_health_check():
     except Exception as e:
         services["redis"] = {
             "status": "unhealthy",
-            "details": {"error": str(e)},
+            "details": {"error": safe_error_message(e, context="Redis health check")},
             "last_check": time.time(),
         }
 
@@ -156,7 +159,9 @@ async def detailed_health_check():
     except Exception as e:
         services["monitoring"] = {
             "status": "unhealthy",
-            "details": {"error": str(e)},
+            "details": {
+                "error": safe_error_message(e, context="monitoring service check")
+            },
             "last_check": time.time(),
         }
 
@@ -181,7 +186,7 @@ async def detailed_health_check():
 
 
 @router.get("/health/readiness")
-async def readiness_check():
+async def readiness_check() -> dict[str, Any]:
     """
     Readiness check endpoint.
 
@@ -227,7 +232,7 @@ async def readiness_check():
 
 
 @router.get("/health/liveness")
-async def liveness_check():
+async def liveness_check() -> dict[str, Any]:
     """
     Liveness check endpoint.
 
@@ -239,7 +244,7 @@ async def liveness_check():
 
 
 @router.get("/metrics")
-async def prometheus_metrics():
+async def prometheus_metrics() -> Response:
     """
     Prometheus metrics endpoint.
 
@@ -266,7 +271,7 @@ async def prometheus_metrics():
 
 
 @router.get("/metrics/backtesting")
-async def backtesting_metrics():
+async def backtesting_metrics() -> Response:
     """
     Specialized backtesting metrics endpoint.
 
@@ -287,7 +292,7 @@ async def backtesting_metrics():
 
 
 @router.get("/metrics/json")
-async def metrics_json():
+async def metrics_json() -> dict[str, Any]:
     """
     Get metrics in JSON format for dashboards and monitoring.
 
@@ -308,7 +313,7 @@ async def metrics_json():
 
 
 @router.get("/status", response_model=SystemMetrics)
-async def system_status():
+async def system_status() -> SystemMetrics:
     """
     Get current system status and performance metrics.
 
@@ -351,7 +356,7 @@ async def system_status():
 
 
 @router.get("/diagnostics")
-async def system_diagnostics():
+async def system_diagnostics() -> dict[str, Any]:
     """
     Get comprehensive system diagnostics.
 
@@ -533,7 +538,7 @@ async def _get_service_diagnostics() -> dict[str, Any]:
     except Exception as e:
         services["database"] = {
             "status": "error",
-            "error": str(e),
+            "error": safe_error_message(e, context="database diagnostics"),
         }
 
     # Redis diagnostics
@@ -552,7 +557,7 @@ async def _get_service_diagnostics() -> dict[str, Any]:
     except Exception as e:
         services["redis"] = {
             "status": "error",
-            "error": str(e),
+            "error": safe_error_message(e, context="Redis diagnostics"),
         }
 
     return services
@@ -600,7 +605,7 @@ def _get_configuration_diagnostics() -> dict[str, Any]:
 
 
 # Health check dependencies for other endpoints
-async def require_healthy_database():
+async def require_healthy_database() -> None:
     """Dependency that ensures database is healthy."""
     try:
         db_monitor = get_database_monitor()
@@ -615,7 +620,7 @@ async def require_healthy_database():
         )
 
 
-async def require_healthy_redis():
+async def require_healthy_redis() -> None:
     """Dependency that ensures Redis is healthy."""
     try:
         cache_monitor = get_cache_monitor()
@@ -630,7 +635,7 @@ async def require_healthy_redis():
 
 
 @router.get("/alerts")
-async def get_active_alerts():
+async def get_active_alerts() -> dict[str, Any]:
     """
     Get active alerts and anomalies detected by the monitoring system.
 
@@ -716,7 +721,7 @@ async def get_active_alerts():
 
 
 @router.get("/alerts/rules")
-async def get_alert_rules():
+async def get_alert_rules() -> dict[str, Any]:
     """
     Get configured alert rules and thresholds.
 

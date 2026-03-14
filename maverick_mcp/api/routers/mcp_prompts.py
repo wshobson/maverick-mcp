@@ -1,14 +1,16 @@
 """MCP Prompts for better tool discovery and usage guidance."""
 
+from typing import Any
+
 from fastmcp import FastMCP
 
 
-def register_mcp_prompts(mcp: FastMCP):
+def register_mcp_prompts(mcp: FastMCP) -> bool:
     """Register MCP prompts to help clients understand how to use the tools."""
 
     # Backtesting prompts
     @mcp.prompt()
-    async def backtest_strategy_guide():
+    async def backtest_strategy_guide() -> str:
         """Guide for running backtesting strategies."""
         return """
 # Backtesting Strategy Guide
@@ -45,7 +47,7 @@ def register_mcp_prompts(mcp: FastMCP):
 """
 
     @mcp.prompt()
-    async def ml_strategy_examples():
+    async def ml_strategy_examples() -> str:
         """Examples of ML strategy usage."""
         return """
 # ML Strategy Examples
@@ -76,7 +78,7 @@ def register_mcp_prompts(mcp: FastMCP):
 """
 
     @mcp.prompt()
-    async def optimization_guide():
+    async def optimization_guide() -> str:
         """Guide for parameter optimization."""
         return """
 # Parameter Optimization Guide
@@ -108,7 +110,7 @@ This will test combinations like:
 """
 
     @mcp.prompt()
-    async def available_tools_summary():
+    async def available_tools_summary() -> str:
         """Summary of all available MCP tools."""
         return """
 # MaverickMCP Tools Summary
@@ -149,7 +151,7 @@ This will test combinations like:
 """
 
     @mcp.prompt()
-    async def troubleshooting_guide():
+    async def troubleshooting_guide() -> str:
         """Troubleshooting common issues."""
         return """
 # Troubleshooting Guide
@@ -189,7 +191,7 @@ Then customize if needed:
 """
 
     @mcp.prompt()
-    async def quick_start():
+    async def quick_start() -> str:
         """Quick start guide for new users."""
         return """
 # Quick Start Guide
@@ -226,7 +228,7 @@ Then customize if needed:
 
     # Register a resources endpoint for better discovery
     @mcp.prompt()
-    async def strategy_reference():
+    async def strategy_reference() -> str:
         """Complete strategy reference with all parameters."""
         strategies = {
             "sma_cross": {
@@ -304,7 +306,7 @@ Parameters:
 
     # Register resources for better discovery
     @mcp.resource("strategies://list")
-    def list_strategies_resource():
+    def list_strategies_resource() -> dict[str, Any]:
         """List of all available backtesting strategies with parameters."""
         return {
             "traditional_strategies": {
@@ -383,7 +385,7 @@ Parameters:
         }
 
     @mcp.resource("tools://categories")
-    def tool_categories_resource():
+    def tool_categories_resource() -> dict[str, Any]:
         """Categorized list of all available MCP tools."""
         return {
             "backtesting": [
@@ -420,7 +422,7 @@ Parameters:
         }
 
     @mcp.resource("examples://backtesting")
-    def backtesting_examples_resource():
+    def backtesting_examples_resource() -> dict[str, Any]:
         """Practical examples of using backtesting tools."""
         return {
             "simple_backtest": {

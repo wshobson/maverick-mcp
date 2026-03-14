@@ -36,6 +36,7 @@ from maverick_mcp.core.visualization import (
     plotly_fig_to_base64,
 )
 from maverick_mcp.providers.stock_data import StockDataProvider
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.logging import PerformanceMonitor, get_logger
 from maverick_mcp.utils.mcp_logging import with_logging
 from maverick_mcp.utils.stock_helpers import (
@@ -103,7 +104,10 @@ async def get_rsi_analysis(
             exc_info=True,
             extra={"ticker": ticker, "period": period, "error_type": type(e).__name__},
         )
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="RSI analysis"),
+            "status": "error",
+        }
 
 
 async def get_macd_analysis(
@@ -140,7 +144,10 @@ async def get_macd_analysis(
         }
     except Exception as e:
         logger.error(f"Error in MACD analysis for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="MACD analysis"),
+            "status": "error",
+        }
 
 
 async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]:
@@ -168,7 +175,10 @@ async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]
         }
     except Exception as e:
         logger.error(f"Error in support/resistance analysis for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="support/resistance analysis"),
+            "status": "error",
+        }
 
 
 async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str, Any]:
@@ -251,7 +261,10 @@ async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str,
         }
     except Exception as e:
         logger.error(f"Error in technical analysis for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="full technical analysis"),
+            "status": "error",
+        }
 
 
 async def get_stock_chart_analysis(ticker: str) -> dict[str, Any]:
@@ -283,7 +296,7 @@ async def get_stock_chart_analysis(ticker: str) -> dict[str, Any]:
         return chart_content
     except Exception as e:
         logger.error(f"Error generating chart analysis for {ticker}: {e}")
-        return {"error": str(e)}
+        return {"error": safe_error_message(e, context="chart analysis generation")}
 
 
 def _generate_chart_mcp_format(df, ticker: str) -> dict[str, Any]:
