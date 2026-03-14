@@ -595,6 +595,15 @@ wheels = [
 ]
 
 [[package]]
+name = "circuitbreaker"
+version = "2.1.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/df/ac/de7a92c4ed39cba31fe5ad9203b76a25ca67c530797f6bb420fff5f65ccb/circuitbreaker-2.1.3.tar.gz", hash = "sha256:1a4baee510f7bea3c91b194dcce7c07805fe96c4423ed5594b75af438531d084", size = 10787, upload-time = "2025-03-31T08:12:08.963Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ae/34/15f08edd4628f65217de1fc3c1a27c82e46fe357d60c217fc9881e12ebcc/circuitbreaker-2.1.3-py3-none-any.whl", hash = "sha256:87ba6a3ed03fdc7032bc175561c2b04d52ade9d5faf94ca2b035fbdc5e6b1dd1", size = 7737, upload-time = "2025-03-31T08:12:07.802Z" },
+]
+
+[[package]]
 name = "clarabel"
 version = "0.11.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2598,6 +2607,7 @@ dependencies = [
     { name = "asyncpg" },
     { name = "blackscholes" },
     { name = "certifi" },
+    { name = "circuitbreaker" },
     { name = "cryptography" },
     { name = "exa-py" },
     { name = "fastapi" },
@@ -2647,6 +2657,7 @@ dependencies = [
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sqlalchemy" },
     { name = "ta-lib" },
+    { name = "tenacity" },
     { name = "tiingo" },
     { name = "tiktoken" },
     { name = "ty" },
@@ -2700,6 +2711,7 @@ requires-dist = [
     { name = "blackscholes", specifier = ">=0.1.2" },
     { name = "blackscholes", marker = "extra == 'options'", specifier = ">=0.1.2" },
     { name = "certifi", specifier = ">=2024.2.2" },
+    { name = "circuitbreaker", specifier = ">=2.1.3" },
     { name = "cryptography", specifier = ">=42.0.0" },
     { name = "exa-py", specifier = ">=1.0.19" },
     { name = "fastapi", specifier = ">=0.115.12" },
@@ -2758,6 +2770,7 @@ requires-dist = [
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.22.0" },
     { name = "sqlalchemy", specifier = ">=2.0.40" },
     { name = "ta-lib", specifier = ">=0.6.3" },
+    { name = "tenacity", specifier = ">=9.1.4" },
     { name = "testcontainers", extras = ["postgres", "redis"], marker = "extra == 'dev'", specifier = ">=4.5.0" },
     { name = "tiingo", specifier = ">=0.16.1" },
     { name = "tiktoken", specifier = ">=0.6.0" },

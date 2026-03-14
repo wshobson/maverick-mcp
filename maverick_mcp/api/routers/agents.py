@@ -103,7 +103,9 @@ class AgentSessionManager:
                     exa_api_key=exa_api_key,
                 )
             except Exception:
-                logger.error("Failed to initialize DeepResearchAgent (credentials redacted)")
+                logger.error(
+                    "Failed to initialize DeepResearchAgent (credentials redacted)"
+                )
                 raise RuntimeError("Agent initialization failed") from None
             agent._needs_initialization = True
             return agent

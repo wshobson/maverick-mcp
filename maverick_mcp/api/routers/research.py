@@ -115,7 +115,9 @@ def get_research_agent(
                 exa_api_key=settings.research.exa_api_key,
             )
         except Exception:
-            logger.error("Failed to initialize DeepResearchAgent (credentials redacted)")
+            logger.error(
+                "Failed to initialize DeepResearchAgent (credentials redacted)"
+            )
             raise RuntimeError("Agent initialization failed") from None
         # Mark for initialization - will be initialized on first use
         agent._needs_initialization = True
@@ -132,7 +134,9 @@ def get_research_agent(
                 exa_api_key=settings.research.exa_api_key,
             )
         except Exception:
-            logger.error("Failed to initialize DeepResearchAgent (credentials redacted)")
+            logger.error(
+                "Failed to initialize DeepResearchAgent (credentials redacted)"
+            )
             raise RuntimeError("Agent initialization failed") from None
         # Mark for initialization - will be initialized on first use
         research_agent._needs_initialization = True
