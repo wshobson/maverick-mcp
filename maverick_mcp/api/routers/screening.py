@@ -82,7 +82,7 @@ def get_maverick_stocks(
                     result["current_regime"] = regime_context
                 except Exception as e:
                     logger.warning(
-                        f"Regime detection failed, returning unfiltered: {e}"
+                        "Regime detection failed, returning unfiltered: %s", e
                     )
 
             # Enrich with EARS scores
@@ -91,7 +91,7 @@ def get_maverick_stocks(
 
                 result["stocks"] = enrich_stocks_with_ears(result["stocks"])
             except Exception as e:
-                logger.warning(f"EARS enrichment failed: {e}")
+                logger.warning("EARS enrichment failed: %s", e)
 
             # Filter by fundamental score if requested
             if min_fundamental_score is not None:
@@ -120,8 +120,9 @@ def get_maverick_stocks(
                                     filtered.append(stock)
                             except Exception as ticker_err:
                                 logger.warning(
-                                    f"Fundamental scoring failed for {ticker}: "
-                                    f"{ticker_err}"
+                                    "Fundamental scoring failed for %s: %s",
+                                    ticker,
+                                    ticker_err,
                                 )
                                 stock["fundamental_score"] = None
                                 stock["fundamental_grade"] = None
@@ -131,11 +132,11 @@ def get_maverick_stocks(
                         result["fundamental_filter_applied"] = True
                         result["min_fundamental_score"] = min_fundamental_score
                 except Exception as e:
-                    logger.warning(f"Fundamental filtering failed: {e}")
+                    logger.warning("Fundamental filtering failed: %s", e)
 
             return result
     except Exception as e:
-        logger.error(f"Error fetching Maverick stocks: {str(e)}")
+        logger.error("Error fetching Maverick stocks: %s", e)
         return {
             "error": safe_error_message(e, context="Maverick stock screening"),
             "status": "error",
@@ -176,7 +177,7 @@ def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
                 "description": "Weak stocks with bearish technical setups",
             }
     except Exception as e:
-        logger.error(f"Error fetching Maverick Bear stocks: {str(e)}")
+        logger.error("Error fetching Maverick Bear stocks: %s", e)
         return {
             "error": safe_error_message(e, context="Maverick Bear stock screening"),
             "status": "error",
@@ -245,7 +246,7 @@ def get_supply_demand_breakouts(
                     result["current_regime"] = regime_context
                 except Exception as e:
                     logger.warning(
-                        f"Regime detection failed, returning unfiltered: {e}"
+                        "Regime detection failed, returning unfiltered: %s", e
                     )
 
             # Enrich with EARS scores
@@ -254,11 +255,11 @@ def get_supply_demand_breakouts(
 
                 result["stocks"] = enrich_stocks_with_ears(result["stocks"])
             except Exception as e:
-                logger.warning(f"EARS enrichment failed: {e}")
+                logger.warning("EARS enrichment failed: %s", e)
 
             return result
     except Exception as e:
-        logger.error(f"Error fetching supply/demand breakout stocks: {str(e)}")
+        logger.error("Error fetching supply/demand breakout stocks: %s", e)
         return {
             "error": safe_error_message(e, context="supply/demand breakout screening"),
             "status": "error",
@@ -283,7 +284,7 @@ def get_all_screening_recommendations() -> dict[str, Any]:
         provider = StockDataProvider()
         return provider.get_all_screening_recommendations()
     except Exception as e:
-        logger.error(f"Error getting all screening recommendations: {e}")
+        logger.error("Error getting all screening recommendations: %s", e)
         return {
             "error": safe_error_message(e, context="all screening recommendations"),
             "status": "error",
@@ -365,7 +366,7 @@ def get_screening_by_criteria(
                 },
             }
     except Exception as e:
-        logger.error(f"Error in custom screening: {str(e)}")
+        logger.error("Error in custom screening: %s", e)
         return {
             "error": safe_error_message(e, context="custom screening"),
             "status": "error",

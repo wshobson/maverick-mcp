@@ -50,7 +50,7 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get system health: {e}")
+            logger.error("Failed to get system health: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="system health check"),
@@ -101,7 +101,7 @@ def register_health_tools(mcp: FastMCP):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get component status: {e}")
+            logger.error("Failed to get component status: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="component status check"),
@@ -151,7 +151,7 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get circuit breaker status: {e}")
+            logger.error("Failed to get circuit breaker status: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="circuit breaker status"),
@@ -186,7 +186,7 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get resource usage: {e}")
+            logger.error("Failed to get resource usage: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="resource usage check"),
@@ -216,7 +216,7 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get status dashboard: {e}")
+            logger.error("Failed to get status dashboard: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="status dashboard"),
@@ -256,7 +256,7 @@ def register_health_tools(mcp: FastMCP):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to reset circuit breaker {breaker_name}: {e}")
+            logger.error("Failed to reset circuit breaker %s: %s", breaker_name, e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="circuit breaker reset"),
@@ -304,7 +304,7 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get health history: {e}")
+            logger.error("Failed to get health history: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="health history retrieval"),
@@ -443,7 +443,7 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to run health diagnostics: {e}")
+            logger.error("Failed to run health diagnostics: %s", e)
             return {
                 "status": "error",
                 "error": safe_error_message(e, context="health diagnostics"),

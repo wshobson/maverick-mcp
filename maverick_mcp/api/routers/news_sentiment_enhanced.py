@@ -32,7 +32,7 @@ def get_tiingo_client() -> TiingoClient | None:
             config = {"session": True, "api_key": api_key}
             return TiingoClient(config)
         except Exception as e:
-            logger.warning(f"Failed to initialize Tiingo client: {e}")
+            logger.warning("Failed to initialize Tiingo client: %s", e)
     return None
 
 

@@ -245,7 +245,7 @@ def risk_adjusted_analysis(
 
         return analysis
     except Exception as e:
-        logger.error(f"Error performing risk analysis for {ticker}: {e}")
+        logger.error("Error performing risk analysis for %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="performing risk-adjusted analysis")
         }
@@ -423,7 +423,7 @@ def compare_tickers(
 
         return response
     except Exception as e:
-        logger.error(f"Error comparing tickers {tickers}: {str(e)}")
+        logger.error("Error comparing tickers %s: %s", tickers, e)
         return {
             "error": safe_error_message(e, context="comparing tickers"),
             "status": "error",
@@ -520,7 +520,7 @@ def portfolio_correlation_analysis(
                 else:
                     failed_tickers.append(ticker)
             except Exception as e:
-                logger.warning(f"Failed to fetch data for {ticker}: {e}")
+                logger.warning("Failed to fetch data for %s: %s", ticker, e)
                 failed_tickers.append(ticker)
 
         # Check if we have enough valid tickers
@@ -614,7 +614,7 @@ def portfolio_correlation_analysis(
         return response
 
     except Exception as e:
-        logger.error(f"Error in correlation analysis: {str(e)}")
+        logger.error("Error in correlation analysis: %s", e)
         return {
             "error": safe_error_message(e, context="portfolio correlation analysis"),
             "status": "error",
@@ -777,7 +777,7 @@ def add_portfolio_position(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error adding position {ticker}: {str(e)}")
+        logger.error("Error adding position %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="adding portfolio position"),
             "status": "error",
@@ -874,7 +874,7 @@ def get_my_portfolio(
                             )
                     except Exception as e:
                         logger.warning(
-                            f"Could not fetch price for {pos.ticker}: {str(e)}"
+                            "Could not fetch price for %s: %s", pos.ticker, e
                         )
 
             # Calculate metrics
@@ -937,7 +937,7 @@ def get_my_portfolio(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error getting portfolio: {str(e)}")
+        logger.error("Error getting portfolio: %s", e)
         return {
             "error": safe_error_message(e, context="fetching portfolio"),
             "status": "error",
@@ -1055,7 +1055,7 @@ def remove_portfolio_position(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error removing position {ticker}: {str(e)}")
+        logger.error("Error removing position %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="removing portfolio position"),
             "status": "error",
@@ -1139,7 +1139,7 @@ def clear_my_portfolio(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error clearing portfolio: {str(e)}")
+        logger.error("Error clearing portfolio: %s", e)
         return {
             "error": safe_error_message(e, context="clearing portfolio"),
             "status": "error",
@@ -1208,7 +1208,7 @@ def optimize_portfolio_hrp(
         return result
 
     except Exception as e:
-        logger.error(f"Error in HRP optimization: {str(e)}")
+        logger.error("Error in HRP optimization: %s", e)
         return {
             "error": safe_error_message(e, context="HRP portfolio optimization"),
             "status": "error",

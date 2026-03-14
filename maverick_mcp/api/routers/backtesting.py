@@ -255,9 +255,9 @@ def setup_backtesting_tools(mcp):
                     backtest_id = pm.save_backtest_result(results)
                     results["persisted"] = True
                     results["backtest_id"] = backtest_id
-                    logger.info(f"Persisted backtest result: {backtest_id}")
+                    logger.info("Persisted backtest result: %s", backtest_id)
             except Exception as e:
-                logger.warning(f"Failed to persist backtest result: {e}")
+                logger.warning("Failed to persist backtest result: %s", e)
                 results["persisted"] = False
                 results["persist_error"] = str(e)
 
@@ -869,7 +869,9 @@ def setup_backtesting_tools(mcp):
             }
 
         logger.info(
-            f"ML backtest data split: {len(train_data)} training, {len(test_data)} testing samples"
+            "ML backtest data split: %d training, %d testing samples",
+            len(train_data),
+            len(test_data),
         )
 
         try:

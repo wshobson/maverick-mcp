@@ -207,7 +207,7 @@ async def analyze_market_with_agent(
                     structured = StructuredMarketAnalysis(**raw_text)
                     response["structured"] = structured.model_dump()
             except Exception as e:
-                logger.warning(f"Failed to parse structured output: {e}")
+                logger.warning("Failed to parse structured output: %s", e)
                 response["structured_error"] = safe_error_message(
                     e, context="parsing structured output"
                 )
@@ -215,7 +215,7 @@ async def analyze_market_with_agent(
         return response
 
     except Exception as e:
-        logger.error(f"Error in market agent analysis: {str(e)}")
+        logger.error("Error in market agent analysis: %s", e)
         return {
             "status": "error",
             "error": safe_error_message(e, context="market agent analysis"),
@@ -275,7 +275,7 @@ async def get_agent_streaming_analysis(
         }
 
     except Exception as e:
-        logger.error(f"Error in streaming analysis: {str(e)}")
+        logger.error("Error in streaming analysis: %s", e)
         return {
             "status": "error",
             "error": safe_error_message(e, context="streaming analysis"),
@@ -339,7 +339,7 @@ async def orchestrated_analysis(
         }
 
     except Exception as e:
-        logger.error(f"Error in orchestrated analysis: {str(e)}")
+        logger.error("Error in orchestrated analysis: %s", e)
         return {
             "status": "error",
             "error": safe_error_message(e, context="orchestrated analysis"),
@@ -408,7 +408,7 @@ async def deep_research_financial(
         }
 
     except Exception as e:
-        logger.error(f"Error in deep research: {str(e)}")
+        logger.error("Error in deep research: %s", e)
         return {
             "status": "error",
             "error": safe_error_message(e, context="deep research"),
@@ -478,7 +478,7 @@ async def compare_multi_agent_analysis(
                 execution_times[agent_type] = result.get("execution_time_ms", 0)
 
             except Exception as e:
-                logger.warning(f"Error with {agent_type} agent: {str(e)}")
+                logger.warning("Error with %s agent: %s", agent_type, e)
                 results[agent_type] = {
                     "error": safe_error_message(
                         e, context=f"{agent_type} agent comparison"
@@ -497,7 +497,7 @@ async def compare_multi_agent_analysis(
         }
 
     except Exception as e:
-        logger.error(f"Error in multi-agent comparison: {str(e)}")
+        logger.error("Error in multi-agent comparison: %s", e)
         return {
             "status": "error",
             "error": safe_error_message(e, context="multi-agent comparison"),
@@ -641,7 +641,7 @@ async def compare_personas_analysis(
         }
 
     except Exception as e:
-        logger.error(f"Error in persona comparison: {str(e)}")
+        logger.error("Error in persona comparison: %s", e)
         return {
             "status": "error",
             "error": safe_error_message(e, context="persona comparison"),

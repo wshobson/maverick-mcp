@@ -108,7 +108,7 @@ async def get_system_performance_health(
         )
 
         logger.info(
-            f"Performance health report generated: overall score {overall_score}"
+            "Performance health report generated: overall score %s", overall_score
         )
 
         return PerformanceReportResponse(
@@ -119,7 +119,7 @@ async def get_system_performance_health(
         )
 
     except Exception as e:
-        logger.error(f"Error getting system performance health: {e}")
+        logger.error("Error getting system performance health: %s", e)
         return PerformanceReportResponse(
             overall_health_score=0.0,
             component_scores={},
@@ -149,7 +149,7 @@ async def get_redis_health_status() -> PerformanceMetricsResponse:
         return PerformanceMetricsResponse(metrics=redis_health)
 
     except Exception as e:
-        logger.error(f"Error getting Redis health status: {e}")
+        logger.error("Error getting Redis health status: %s", e)
         return PerformanceMetricsResponse(
             metrics={"error": safe_error_message(e, context="Redis health status")}
         )
@@ -174,7 +174,7 @@ async def get_cache_performance_status() -> PerformanceMetricsResponse:
         return PerformanceMetricsResponse(metrics=cache_metrics)
 
     except Exception as e:
-        logger.error(f"Error getting cache performance status: {e}")
+        logger.error("Error getting cache performance status: %s", e)
         return PerformanceMetricsResponse(
             metrics={"error": safe_error_message(e, context="cache performance status")}
         )
@@ -199,7 +199,7 @@ async def get_database_performance_status() -> PerformanceMetricsResponse:
         return PerformanceMetricsResponse(metrics=query_metrics)
 
     except Exception as e:
-        logger.error(f"Error getting database performance status: {e}")
+        logger.error("Error getting database performance status: %s", e)
         return PerformanceMetricsResponse(
             metrics={
                 "error": safe_error_message(e, context="database performance status")
@@ -226,7 +226,7 @@ async def analyze_database_index_usage() -> PerformanceMetricsResponse:
         return PerformanceMetricsResponse(metrics=index_analysis)
 
     except Exception as e:
-        logger.error(f"Error analyzing database index usage: {e}")
+        logger.error("Error analyzing database index usage: %s", e)
         return PerformanceMetricsResponse(
             metrics={"error": safe_error_message(e, context="database index analysis")}
         )
@@ -251,7 +251,7 @@ async def optimize_cache_configuration() -> PerformanceMetricsResponse:
         return PerformanceMetricsResponse(metrics=optimization_analysis)
 
     except Exception as e:
-        logger.error(f"Error optimizing cache configuration: {e}")
+        logger.error("Error optimizing cache configuration: %s", e)
         return PerformanceMetricsResponse(
             metrics={
                 "error": safe_error_message(
@@ -283,14 +283,14 @@ async def clear_system_caches(
     """
     try:
         cache_types = request.cache_types or ["all"]
-        logger.info(f"Clearing performance caches: {cache_types}")
+        logger.info("Clearing performance caches: %s", cache_types)
 
         clear_results = await clear_performance_caches(cache_types)
 
         return PerformanceMetricsResponse(metrics=clear_results)
 
     except Exception as e:
-        logger.error(f"Error clearing system caches: {e}")
+        logger.error("Error clearing system caches: %s", e)
         return PerformanceMetricsResponse(
             metrics={"error": safe_error_message(e, context="clearing system caches")}
         )

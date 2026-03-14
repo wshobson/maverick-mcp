@@ -163,7 +163,7 @@ def _get_resource_usage() -> ResourceUsage:
             load_average=load_average,
         )
     except Exception as e:
-        logger.error(f"Failed to get resource usage: {e}")
+        logger.error("Failed to get resource usage: %s", e)
         return ResourceUsage(
             cpu_percent=0.0,
             memory_percent=0.0,
@@ -402,7 +402,7 @@ async def _get_detailed_health_status() -> dict[str, Any]:
             db_task, cache_task, apis_task, ml_task
         )
     except Exception as e:
-        logger.error(f"Error running health checks: {e}")
+        logger.error("Error running health checks: %s", e)
         # Return minimal status on error
         return {
             "status": "unhealthy",
@@ -493,7 +493,7 @@ async def basic_health_check() -> BasicHealthStatus:
             uptime_seconds=_get_uptime_seconds(),
         )
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error("Health check failed: %s", e)
         return BasicHealthStatus(
             status="unhealthy",
             timestamp=datetime.now(UTC).isoformat(),
@@ -521,7 +521,7 @@ async def detailed_health_check() -> DetailedHealthStatus:
         health_data = await _get_detailed_health_status()
         return DetailedHealthStatus(**health_data)
     except Exception as e:
-        logger.error(f"Detailed health check failed: {e}")
+        logger.error("Detailed health check failed: %s", e)
         # Return minimal unhealthy status
         return DetailedHealthStatus(
             status="unhealthy",
@@ -580,7 +580,7 @@ async def readiness_probe() -> ReadinessStatus:
         )
 
     except Exception as e:
-        logger.error(f"Readiness probe failed: {e}")
+        logger.error("Readiness probe failed: %s", e)
         return ReadinessStatus(
             ready=False,
             timestamp=datetime.now(UTC).isoformat(),
@@ -615,7 +615,7 @@ async def liveness_probe() -> LivenessStatus:
         )
 
     except Exception as e:
-        logger.error(f"Liveness probe failed: {e}")
+        logger.error("Liveness probe failed: %s", e)
         return LivenessStatus(
             alive=False,
             timestamp=datetime.now(UTC).isoformat(),
@@ -665,7 +665,7 @@ async def reset_circuit_breaker(name: str) -> dict:
         )
 
     breaker.reset()
-    logger.info(f"Circuit breaker '{name}' reset via API")
+    logger.info("Circuit breaker '%s' reset via API", name)
 
     return {"status": "success", "message": f"Circuit breaker '{name}' reset"}
 

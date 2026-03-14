@@ -68,7 +68,7 @@ def setup_intelligent_backtesting_tools(mcp):
             return results
 
         except Exception as e:
-            logger.error(f"Intelligent backtest failed for {symbol}: {e}")
+            logger.error("Intelligent backtest failed for %s: %s", symbol, e)
             return {
                 "symbol": symbol,
                 "error": safe_error_message(e, context="intelligent backtesting"),
@@ -118,7 +118,7 @@ def setup_intelligent_backtesting_tools(mcp):
             return results
 
         except Exception as e:
-            logger.error(f"Quick market analysis failed for {symbol}: {e}")
+            logger.error("Quick market analysis failed for %s: %s", symbol, e)
             return {
                 "symbol": symbol,
                 "analysis_type": "quick_analysis",

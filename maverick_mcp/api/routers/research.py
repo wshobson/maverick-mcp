@@ -312,7 +312,8 @@ def _get_adaptive_llm_for_research(
     if time_pressure <= 0.3 or timeout_budget < 120:
         # Emergency mode: prioritize speed above all for <120s timeouts (below basic)
         logger.info(
-            f"Emergency fast model selection triggered - timeout budget: {timeout_budget}s"
+            "Emergency fast model selection triggered - timeout budget: %ss",
+            timeout_budget,
         )
         return get_llm(
             task_type=TaskType.DEEP_RESEARCH,
@@ -382,7 +383,10 @@ async def _execute_research_with_direct_timeout(
         }
         timing_log["cumulative_time"] = current_time - start_time
         logger.debug(
-            f"TIMING: {phase_name} took {phase_duration:.2f}s (cumulative: {timing_log['cumulative_time']:.2f}s)"
+            "TIMING: %s took %.2fs (cumulative: %.2fs)",
+            phase_name,
+            phase_duration,
+            timing_log["cumulative_time"],
         )
 
     try:
@@ -394,7 +398,8 @@ async def _execute_research_with_direct_timeout(
 
         # Use direct asyncio.wait_for for hard timeout enforcement
         logger.info(
-            f"TIMING: Starting research execution phase (budget: {total_timeout}s)"
+            "TIMING: Starting research execution phase (budget: %ss)",
+            total_timeout,
         )
 
         result = await asyncio.wait_for(
@@ -418,9 +423,9 @@ async def _execute_research_with_direct_timeout(
 
         # Log detailed timing breakdown
         logger.info(
-            f"RESEARCH_TIMING_BREAKDOWN: "
-            f"Total={elapsed_time:.2f}s, "
-            f"Phases={timing_log['phase_timings']}"
+            "RESEARCH_TIMING_BREAKDOWN: Total=%.2fs, Phases=%s",
+            elapsed_time,
+            timing_log["phase_timings"],
         )
 
         # Add timing information to successful results
@@ -436,9 +441,10 @@ async def _execute_research_with_direct_timeout(
 
         # Log timeout timing analysis
         logger.warning(
-            f"RESEARCH_TIMEOUT: "
-            f"Exceeded {total_timeout}s limit after {elapsed_time:.2f}s, "
-            f"Phases={timing_log['phase_timings']}"
+            "RESEARCH_TIMEOUT: Exceeded %ss limit after %.2fs, Phases=%s",
+            total_timeout,
+            elapsed_time,
+            timing_log["phase_timings"],
         )
 
         tool_logger.step(
@@ -528,7 +534,11 @@ async def comprehensive_research(
 
     # Log incoming parameters
     logger.info(
-        f"📥 RESEARCH_REQUEST: query='{query[:50]}...', scope='{research_scope}', max_sources={max_sources}, timeframe='{timeframe}'"
+        "RESEARCH_REQUEST: query='%s...', scope='%s', max_sources=%s, timeframe='%s'",
+        query[:50],
+        research_scope,
+        max_sources,
+        timeframe,
     )
 
     try:
@@ -544,7 +554,11 @@ async def comprehensive_research(
 
         # Log the timeout calculation result explicitly
         logger.info(
-            f"🔧 TIMEOUT_CONFIGURATION: scope='{research_scope}' → timeout={adaptive_timeout}s (was requesting {max_sources} sources, optimized to {optimized_sources})"
+            "TIMEOUT_CONFIGURATION: scope='%s' -> timeout=%ss (was requesting %s sources, optimized to %s)",
+            research_scope,
+            adaptive_timeout,
+            max_sources,
+            optimized_sources,
         )
 
         # Step 2: Log optimization setup (components initialized in underlying research system)
@@ -993,7 +1007,8 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
         """
         # CRITICAL DEBUG: Log immediately when tool is called
         logger.error(
-            f"🚨 TOOL CALLED: research_comprehensive_research with query: {query[:50]}"
+            "TOOL CALLED: research_comprehensive_research with query: %s",
+            query[:50],
         )
 
         # Log tool invocation
@@ -1040,9 +1055,9 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             return result
 
         except Exception as e:
-            logger.error(
-                f"Research error: {str(e)}",
-                exc_info=True,
+            logger.exception(
+                "Research error: %s",
+                e,
                 extra={"query": query[:100]},
             )
             return {

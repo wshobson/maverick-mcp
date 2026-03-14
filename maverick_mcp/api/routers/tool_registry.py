@@ -352,9 +352,9 @@ def register_research_tools(mcp: FastMCP) -> None:
         logger.info("Successfully registered 4 research tools directly")
 
     except ImportError as e:
-        logger.warning(f"Research module not available: {e}")
+        logger.warning("Research module not available: %s", e)
     except Exception as e:
-        logger.error(f"Failed to register research tools: {e}")
+        logger.error("Failed to register research tools: %s", e)
         # Don't raise - allow server to continue without research tools
 
 
@@ -370,7 +370,7 @@ def register_backtesting_tools(mcp: FastMCP) -> None:
             "Backtesting module not available - VectorBT may not be installed"
         )
     except Exception as e:
-        logger.error(f"✗ Failed to register backtesting tools: {e}")
+        logger.error("Failed to register backtesting tools: %s", e)
 
 
 def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
@@ -383,7 +383,7 @@ def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
     except ImportError:
         logger.warning("MCP prompts module not available")
     except Exception as e:
-        logger.error(f"✗ Failed to register MCP prompts: {e}")
+        logger.error("Failed to register MCP prompts: %s", e)
 
     # Register introspection tools
     try:
@@ -394,7 +394,7 @@ def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
     except ImportError:
         logger.warning("Introspection module not available")
     except Exception as e:
-        logger.error(f"✗ Failed to register introspection tools: {e}")
+        logger.error("Failed to register introspection tools: %s", e)
 
 
 def register_options_tools(mcp: FastMCP) -> None:
@@ -474,37 +474,37 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         register_technical_tools(mcp)
         logger.info("✓ Technical tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register technical tools: {e}")
+        logger.error("Failed to register technical tools: %s", e)
 
     try:
         register_screening_tools(mcp)
         logger.info("✓ Screening tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register screening tools: {e}")
+        logger.error("Failed to register screening tools: %s", e)
 
     try:
         register_portfolio_tools(mcp)
         logger.info("✓ Portfolio tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register portfolio tools: {e}")
+        logger.error("Failed to register portfolio tools: %s", e)
 
     try:
         register_data_tools(mcp)
         logger.info("✓ Data tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register data tools: {e}")
+        logger.error("Failed to register data tools: %s", e)
 
     try:
         register_performance_tools(mcp)
         logger.info("✓ Performance tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register performance tools: {e}")
+        logger.error("Failed to register performance tools: %s", e)
 
     try:
         register_agent_tools(mcp)
         logger.info("✓ Agent tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register agent tools: {e}")
+        logger.error("Failed to register agent tools: %s", e)
 
     try:
         # Import and register research tools on the main MCP instance
@@ -514,7 +514,7 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         create_research_router(mcp)
         logger.info("✓ Research tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register research tools: {e}")
+        logger.error("Failed to register research tools: %s", e)
 
     try:
         # Import and register health monitoring tools
@@ -523,7 +523,7 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         register_health_tools(mcp)
         logger.info("✓ Health monitoring tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register health monitoring tools: {e}")
+        logger.error("Failed to register health monitoring tools: %s", e)
 
     # Register backtesting tools
     register_backtesting_tools(mcp)
@@ -533,21 +533,21 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         register_options_tools(mcp)
         logger.info("✓ Options analysis tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register options tools: {e}")
+        logger.error("Failed to register options tools: %s", e)
 
     # Register Finnhub alternative data tools
     try:
         register_finnhub_tools(mcp)
         logger.info("✓ Finnhub alternative data tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register Finnhub tools: {e}")
+        logger.error("Failed to register Finnhub tools: %s", e)
 
     # Register streaming tools
     try:
         register_streaming_tools(mcp)
         logger.info("✓ Streaming tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register streaming tools: {e}")
+        logger.error("Failed to register streaming tools: %s", e)
 
     # Register MCP prompts and resources for introspection
     register_mcp_prompts_and_resources(mcp)

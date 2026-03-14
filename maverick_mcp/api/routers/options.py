@@ -119,9 +119,7 @@ async def get_options_chain(
                 "timestamp": datetime.now(tz=UTC).isoformat(),
             }
     except Exception as e:
-        logger.error(
-            "Error fetching options chain for %s: %s", ticker, e, exc_info=True
-        )
+        logger.exception("Error fetching options chain for %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="fetching options chain"),
             "ticker": ticker,
@@ -200,7 +198,7 @@ async def calculate_option_greeks(
             result["timestamp"] = datetime.now(tz=UTC).isoformat()
             return result
     except Exception as e:
-        logger.error("Error calculating Greeks for %s: %s", ticker, e, exc_info=True)
+        logger.exception("Error calculating Greeks for %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="calculating option Greeks"),
             "ticker": ticker,
@@ -274,7 +272,7 @@ async def get_iv_analysis(
                 "timestamp": datetime.now(tz=UTC).isoformat(),
             }
     except Exception as e:
-        logger.error("Error in IV analysis for %s: %s", ticker, e, exc_info=True)
+        logger.exception("Error in IV analysis for %s: %s", ticker, e)
         return {"error": safe_error_message(e, context="IV analysis"), "ticker": ticker}
 
 
@@ -349,7 +347,7 @@ async def price_option(
             result["timestamp"] = datetime.now(tz=UTC).isoformat()
             return result
     except Exception as e:
-        logger.error("Error pricing option for %s: %s", ticker, e, exc_info=True)
+        logger.exception("Error pricing option for %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="pricing option"),
             "ticker": ticker,
@@ -435,7 +433,7 @@ async def analyze_options_strategy(
             result["timestamp"] = datetime.now(tz=UTC).isoformat()
             return result
     except Exception as e:
-        logger.error("Error analyzing strategy for %s: %s", ticker, e, exc_info=True)
+        logger.exception("Error analyzing strategy for %s: %s", ticker, e)
         return {
             "error": safe_error_message(e, context="analyzing options strategy"),
             "ticker": ticker,
@@ -486,9 +484,7 @@ async def get_unusual_options_activity(
             result["timestamp"] = datetime.now(tz=UTC).isoformat()
             return result
     except Exception as e:
-        logger.error(
-            "Error detecting unusual activity for %s: %s", ticker, e, exc_info=True
-        )
+        logger.exception("Error detecting unusual activity for %s: %s", ticker, e)
         return {
             "error": safe_error_message(
                 e, context="detecting unusual options activity"
@@ -567,7 +563,7 @@ async def hedge_portfolio(
             result["timestamp"] = datetime.now(tz=UTC).isoformat()
             return result
     except Exception as e:
-        logger.error("Error generating hedge suggestions: %s", e, exc_info=True)
+        logger.exception("Error generating hedge suggestions: %s", e)
         return {"error": safe_error_message(e, context="generating hedge suggestions")}
 
 

@@ -61,29 +61,27 @@ To start the Maverick-MCP server:
 
 ```bash
 # Recommended: Use the Makefile
-make dev
+make dev          # Streamable-HTTP transport (default dev server)
+make dev-stdio    # STDIO transport (recommended for Claude Desktop)
+make dev-sse      # SSE transport (legacy, for clients that require it)
 
-# Alternative: Direct FastMCP server
-python -m maverick_mcp.api.server --transport streamable-http --port 8003
-
-# Development mode with hot reload
-./scripts/dev.sh
+# Alternative: Direct command
+python -m maverick_mcp.api.server --transport stdio
 ```
 
-Note: The server will start using streamable-http transport on port 8003. The streamable-http transport is compatible with mcp-remote, while SSE transport is not (SSE requires GET requests but mcp-remote sends POST requests).
-
-When the server starts, you can access it at:
-
-- http://localhost:8003
+**Transport guidance** (see CLAUDE.md for full details):
+- **STDIO** (recommended for Claude Desktop): Direct subprocess communication, fastest and most reliable
+- **Streamable-HTTP** (`make dev`): Default dev server on port 8003, use with mcp-remote bridge
+- **SSE** (`make dev-sse`): Legacy transport for clients with native SSE support
 
 You can also start the server programmatically:
 
 ```python
 from maverick_mcp.api.server import mcp
 
-# Start the server with SSE transport
+# Start with STDIO transport (recommended for Claude Desktop)
 # NOTE: All financial analysis tools include appropriate disclaimers
-mcp.run(transport="sse")
+mcp.run(transport="stdio")
 ```
 
 ## Financial Analysis Tools

@@ -227,7 +227,7 @@ async def readiness_check() -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Readiness check failed: {e}")
+        logger.error("Readiness check failed: %s", e)
         raise HTTPException(status_code=503, detail="Readiness check failed")
 
 
@@ -266,7 +266,7 @@ async def prometheus_metrics() -> Response:
             media_type="text/plain; version=0.0.4; charset=utf-8",
         )
     except Exception as e:
-        logger.error(f"Failed to generate metrics: {e}")
+        logger.error("Failed to generate metrics: %s", e)
         raise HTTPException(status_code=500, detail="Failed to generate metrics")
 
 
@@ -285,7 +285,7 @@ async def backtesting_metrics() -> Response:
             media_type="text/plain; version=0.0.4; charset=utf-8",
         )
     except Exception as e:
-        logger.error(f"Failed to generate backtesting metrics: {e}")
+        logger.error("Failed to generate backtesting metrics: %s", e)
         raise HTTPException(
             status_code=500, detail="Failed to generate backtesting metrics"
         )
@@ -308,7 +308,7 @@ async def metrics_json() -> dict[str, Any]:
             "backtesting": await _get_backtesting_metrics(),
         }
     except Exception as e:
-        logger.error(f"Failed to generate JSON metrics: {e}")
+        logger.error("Failed to generate JSON metrics: %s", e)
         raise HTTPException(status_code=500, detail="Failed to generate JSON metrics")
 
 
@@ -351,7 +351,7 @@ async def system_status() -> SystemMetrics:
         )
 
     except Exception as e:
-        logger.error(f"Failed to get system status: {e}")
+        logger.error("Failed to get system status: %s", e)
         raise HTTPException(status_code=500, detail="Failed to get system status")
 
 
@@ -384,7 +384,7 @@ async def system_diagnostics() -> dict[str, Any]:
         return diagnostics
 
     except Exception as e:
-        logger.error(f"Failed to generate diagnostics: {e}")
+        logger.error("Failed to generate diagnostics: %s", e)
         raise HTTPException(status_code=500, detail="Failed to generate diagnostics")
 
 
@@ -402,7 +402,7 @@ async def _get_basic_metrics() -> dict[str, Any]:
             "uptime_seconds": time.time() - _server_start_time,
         }
     except Exception as e:
-        logger.error(f"Failed to get basic metrics: {e}")
+        logger.error("Failed to get basic metrics: %s", e)
         return {}
 
 
@@ -430,7 +430,7 @@ async def _get_system_metrics() -> dict[str, Any]:
             "threads": process.num_threads(),
         }
     except Exception as e:
-        logger.error(f"Failed to get system metrics: {e}")
+        logger.error("Failed to get system metrics: %s", e)
         return {}
 
 
@@ -459,7 +459,7 @@ async def _get_application_metrics() -> dict[str, Any]:
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get application metrics: {e}")
+        logger.error("Failed to get application metrics: %s", e)
         return {}
 
 
@@ -518,7 +518,7 @@ async def _get_backtesting_metrics() -> dict[str, Any]:
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get backtesting metrics: {e}")
+        logger.error("Failed to get backtesting metrics: %s", e)
         return {}
 
 
@@ -586,7 +586,7 @@ async def _get_performance_diagnostics() -> dict[str, Any]:
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get performance diagnostics: {e}")
+        logger.error("Failed to get performance diagnostics: %s", e)
         return {}
 
 
@@ -716,7 +716,7 @@ async def get_active_alerts() -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Failed to get alerts: {e}")
+        logger.error("Failed to get alerts: %s", e)
         raise HTTPException(status_code=500, detail="Failed to get alerts")
 
 
@@ -839,5 +839,5 @@ async def get_alert_rules() -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Failed to get alert rules: {e}")
+        logger.error("Failed to get alert rules: %s", e)
         raise HTTPException(status_code=500, detail="Failed to get alert rules")

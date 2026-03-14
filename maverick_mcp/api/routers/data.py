@@ -382,7 +382,7 @@ def get_news_sentiment(
 
         url = f"{base_url}/sentiment/{ticker}"
         headers = {"X-API-KEY": api_key}
-        logger.info(f"Fetching sentiment for {ticker} from {url}")
+        logger.info("Fetching sentiment for %s from %s", ticker, url)
         resp = requests.get(url, headers=headers, timeout=10)
 
         if resp.status_code == 404:
@@ -599,7 +599,7 @@ def warm_cache(
             finally:
                 db.close()
         except Exception as e:
-            logger.warning(f"Failed to load portfolio for cache warm-up: {e}")
+            logger.warning("Failed to load portfolio for cache warm-up: %s", e)
 
     if not symbols:
         return {
@@ -620,7 +620,7 @@ def warm_cache(
             provider.get_stock_data(symbol, start_date, end_date)
             results["warmed"].append(symbol)
         except Exception as e:
-            logger.warning(f"Cache warm-up failed for {symbol}: {e}")
+            logger.warning("Cache warm-up failed for %s: %s", symbol, e)
             results["failed"].append(
                 {
                     "symbol": symbol,
