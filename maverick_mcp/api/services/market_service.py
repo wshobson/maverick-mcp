@@ -49,46 +49,31 @@ class MarketService(BaseService):
 
     async def _get_market_overview(self) -> dict[str, Any]:
         """Get market overview implementation."""
+        import asyncio
+
         try:
             from maverick_mcp.providers.market_data import MarketDataProvider
 
             market_provider = MarketDataProvider()
 
-            # Get major indices
-            indices_data = await market_provider.get_major_indices_async()
-
-            # Get sector performance
-            sector_data = await market_provider.get_sector_performance_async()
-
-            # Get market breadth indicators
-            breadth_data = await market_provider.get_market_breadth_async()
-
-            # Get top movers
-            movers_data = await market_provider.get_top_movers_async()
-
-            overview = {
-                "timestamp": market_provider._get_current_timestamp(),
-                "market_status": "open",  # This would be determined by market hours
-                "indices": indices_data,
-                "sectors": sector_data,
-                "market_breadth": breadth_data,
-                "top_movers": movers_data,
-                "market_sentiment": {
-                    "fear_greed_index": 45,  # Placeholder - would integrate with actual data
-                    "vix": 18.5,
-                    "put_call_ratio": 0.85,
-                },
-                "economic_highlights": [
-                    "Fed meeting next week",
-                    "Earnings season continues",
-                    "GDP data released",
-                ],
-            }
+            # Use the single get_market_overview_async which fetches indices,
+            # sectors, and breadth internally — avoids calling nonexistent methods
+            overview = await asyncio.wait_for(
+                market_provider.get_market_overview_async(),
+                timeout=25.0,
+            )
 
             self.log_tool_usage("get_market_overview")
 
             return overview
 
+        except TimeoutError:
+            self.logger.error("Market overview request timed out after 25s")
+            return {
+                "error": "Market overview request timed out. Markets may be closed or data provider is slow.",
+                "timestamp": self._get_current_timestamp(),
+                "status": "timeout",
+            }
         except Exception as e:
             self.logger.error(f"Failed to get market overview: {e}")
             return {

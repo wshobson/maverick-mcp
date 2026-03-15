@@ -194,6 +194,24 @@ async def analyze_database_indexes() -> dict[str, Any]:
         async with get_async_db_session() as session:
             recommendations = await query_optimizer.analyze_missing_indexes(session)
 
+            # pg_stat_* views are PostgreSQL-only; skip on SQLite
+            bind = session.get_bind()
+            is_pg = "postgresql" in str(bind.url)
+
+            index_usage: list[dict[str, Any]] = []
+            table_stats: list[dict[str, Any]] = []
+            poor_index_usage: list[dict[str, Any]] = []
+
+            if not is_pg:
+                return {
+                    "index_recommendations": recommendations,
+                    "index_usage_stats": index_usage,
+                    "table_scan_stats": table_stats,
+                    "poor_index_usage": poor_index_usage,
+                    "note": "Detailed index analysis requires PostgreSQL. SQLite uses automatic indexes.",
+                    "analysis_timestamp": datetime.now().isoformat(),
+                }
+
             # Get index usage statistics
             index_usage_query = text(
                 """

@@ -175,7 +175,8 @@ class TestSessionManagementIntegration:
         try:
             with get_db_session_read_only() as session:
                 # Simple test query that should work on any PostgreSQL database
-                result = session.execute("SELECT 1 as test_value")
+                from sqlalchemy import text
+                result = session.execute(text("SELECT 1 as test_value"))
                 row = result.fetchone()
                 assert row[0] == 1
         except Exception as e:

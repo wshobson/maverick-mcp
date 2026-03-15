@@ -617,7 +617,11 @@ class VectorBTEngine(BatchProcessingMixin):
                 "size": float(trade.get("Size", 0)),
                 "pnl": float(trade.get("PnL", 0)),
                 "return": float(trade.get("Return", 0)),
-                "duration": str(trade.get("Duration", "")),
+                "duration": (
+                    round(trade["Duration"].total_seconds() / 86400, 1)
+                    if pd.notna(trade.get("Duration"))
+                    else None
+                ),
             }
             for _, trade in trades.iterrows()
         ]

@@ -42,13 +42,19 @@ def get_maverick_stocks(limit: int = 20) -> dict[str, Any]:
         with SessionLocal() as session:
             stocks = MaverickStocks.get_top_stocks(session, limit=limit)
 
-            return {
+            result = {
                 "status": "success",
                 "count": len(stocks),
                 "stocks": [stock.to_dict() for stock in stocks],
                 "screening_type": "maverick_bullish",
                 "description": "High momentum stocks with bullish technical setups",
             }
+            if len(stocks) == 0:
+                result["hint"] = (
+                    "Screening tables are empty. Run 'python scripts/run_stock_screening.py' "
+                    "to populate screening data."
+                )
+            return result
     except Exception as e:
         logger.error(f"Error fetching Maverick stocks: {str(e)}")
         return {"error": str(e), "status": "error"}
@@ -80,13 +86,19 @@ def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
         with SessionLocal() as session:
             stocks = MaverickBearStocks.get_top_stocks(session, limit=limit)
 
-            return {
+            result = {
                 "status": "success",
                 "count": len(stocks),
                 "stocks": [stock.to_dict() for stock in stocks],
                 "screening_type": "maverick_bearish",
                 "description": "Weak stocks with bearish technical setups",
             }
+            if len(stocks) == 0:
+                result["hint"] = (
+                    "Screening tables are empty. Run 'python scripts/run_stock_screening.py' "
+                    "to populate screening data."
+                )
+            return result
     except Exception as e:
         logger.error(f"Error fetching Maverick Bear stocks: {str(e)}")
         return {"error": str(e), "status": "error"}
@@ -122,13 +134,19 @@ def get_supply_demand_breakouts(
             else:
                 stocks = SupplyDemandBreakoutStocks.get_top_stocks(session, limit=limit)
 
-            return {
+            result = {
                 "status": "success",
                 "count": len(stocks),
                 "stocks": [stock.to_dict() for stock in stocks],
                 "screening_type": "supply_demand_breakout",
                 "description": "Stocks breaking out from accumulation with strong demand dynamics",
             }
+            if len(stocks) == 0:
+                result["hint"] = (
+                    "Screening tables are empty. Run 'python scripts/run_stock_screening.py' "
+                    "to populate screening data."
+                )
+            return result
     except Exception as e:
         logger.error(f"Error fetching supply/demand breakout stocks: {str(e)}")
         return {"error": str(e), "status": "error"}

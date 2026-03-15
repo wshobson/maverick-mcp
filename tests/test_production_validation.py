@@ -154,7 +154,8 @@ class TestEnvironmentConfiguration:
         # Test database connection
         try:
             with SessionLocal() as session:
-                result = session.execute("SELECT 1")
+                from sqlalchemy import text
+                result = session.execute(text("SELECT 1"))
                 assert result.scalar() == 1
         except Exception as e:
             pytest.skip(f"Database connection test skipped: {e}")

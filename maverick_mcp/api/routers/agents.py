@@ -407,18 +407,24 @@ async def compare_multi_agent_analysis(
             try:
                 agent = get_or_create_agent(agent_type, persona)
 
-                # Run analysis based on agent type
+                # Run analysis based on agent type with per-agent timeout
                 if agent_type == "market":
-                    result = await agent.analyze_market(
-                        query=query,
-                        session_id=f"{session_id}_{agent_type}",
-                        max_results=10,
+                    result = await asyncio.wait_for(
+                        agent.analyze_market(
+                            query=query,
+                            session_id=f"{session_id}_{agent_type}",
+                            max_results=10,
+                        ),
+                        timeout=25.0,
                     )
                 elif agent_type == "supervisor":
-                    result = await agent.coordinate_agents(
-                        query=query,
-                        session_id=f"{session_id}_{agent_type}",
-                        max_agents=2,
+                    result = await asyncio.wait_for(
+                        agent.coordinate_agents(
+                            query=query,
+                            session_id=f"{session_id}_{agent_type}",
+                            max_agents=2,
+                        ),
+                        timeout=25.0,
                     )
                 else:
                     continue
@@ -562,22 +568,29 @@ async def compare_personas_analysis(
         results = {}
 
         for persona in ["conservative", "moderate", "aggressive"]:
-            agent = get_or_create_agent("market", persona)
+            try:
+                agent = get_or_create_agent("market", persona)
 
-            # Run analysis for this persona
-            result = await agent.analyze_market(
-                query=query, session_id=f"{session_id}_{persona}", max_results=10
-            )
+                # Run analysis for this persona with timeout
+                result = await asyncio.wait_for(
+                    agent.analyze_market(
+                        query=query, session_id=f"{session_id}_{persona}", max_results=10
+                    ),
+                    timeout=25.0,
+                )
 
-            results[persona] = {
-                "summary": result.get("results", {}).get("summary", ""),
-                "top_picks": result.get("results", {}).get("screened_symbols", [])[:5],
-                "risk_parameters": {
-                    "risk_tolerance": agent.persona.risk_tolerance,
-                    "max_position_size": f"{agent.persona.position_size_max * 100:.1f}%",
-                    "stop_loss_multiplier": agent.persona.stop_loss_multiplier,
-                },
-            }
+                results[persona] = {
+                    "summary": result.get("results", {}).get("summary", ""),
+                    "top_picks": result.get("results", {}).get("screened_symbols", [])[:5],
+                    "risk_parameters": {
+                        "risk_tolerance": agent.persona.risk_tolerance,
+                        "max_position_size": f"{agent.persona.position_size_max * 100:.1f}%",
+                        "stop_loss_multiplier": agent.persona.stop_loss_multiplier,
+                    },
+                }
+            except Exception as e:
+                logger.warning(f"Error with {persona} persona: {str(e)}")
+                results[persona] = {"error": str(e), "status": "failed"}
 
         return {
             "status": "success",

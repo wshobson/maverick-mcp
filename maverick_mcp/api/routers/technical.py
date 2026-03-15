@@ -231,6 +231,17 @@ async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str,
         # Get current price and indicators
         current_price = df["close"].iloc[-1]
 
+        # Extract moving average values (computed by add_technical_indicators)
+        moving_averages = {}
+        for col, label in [
+            ("ema_21", "ema_21"),
+            ("sma_20", "sma_20"),
+            ("sma_50", "sma_50"),
+            ("sma_200", "sma_200"),
+        ]:
+            if col in df.columns and not pd.isna(df[col].iloc[-1]):
+                moving_averages[label] = round(float(df[col].iloc[-1]), 2)
+
         # Compile results
         return {
             "ticker": ticker,
@@ -243,6 +254,7 @@ async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str,
                 "stochastic": stoch_analysis,
                 "bollinger_bands": bb_analysis,
                 "volume": volume_analysis,
+                "moving_averages": moving_averages,
             },
             "levels": {"support": sorted(support), "resistance": sorted(resistance)},
             "patterns": patterns,

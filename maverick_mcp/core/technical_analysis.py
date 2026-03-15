@@ -295,10 +295,12 @@ def analyze_rsi(df: pd.DataFrame) -> dict[str, Any]:
             signal = "overbought"
         elif rsi < 30:
             signal = "oversold"
-        elif rsi > 50:
+        elif rsi >= 55:
             signal = "bullish"
-        else:
+        elif rsi <= 45:
             signal = "bearish"
+        else:
+            signal = "neutral"
 
         return {
             "current": round(rsi, 2),
@@ -633,8 +635,8 @@ def identify_chart_patterns(df: pd.DataFrame) -> list[str]:
             ):
                 patterns.append("Double Bottom (W)")
 
-    # Check for potential double top (M formation)
-    if len(df) >= 40:
+    # Check for potential double top (M formation) — only if no double bottom detected
+    if len(df) >= 40 and "Double Bottom (W)" not in patterns:
         recent_highs = df["high"].iloc[-40:].values
         potential_tops = []
 
