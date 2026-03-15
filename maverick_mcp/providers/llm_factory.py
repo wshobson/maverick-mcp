@@ -98,7 +98,11 @@ def get_llm(
             pass
 
     # Final fallback to fake LLM for testing
-    logger.warning("No LLM API keys found - using FakeListLLM for testing")
+    logger.warning(
+        "No LLM API keys found (OPENROUTER_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY) - "
+        "using FakeListLLM for testing. Agent tools will return mock responses and "
+        "bind_tools() is not supported. Set an API key for real agent functionality."
+    )
     return FakeListLLM(
         responses=[
             "Mock analysis response for testing purposes.",

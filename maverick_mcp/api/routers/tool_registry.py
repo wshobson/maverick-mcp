@@ -373,8 +373,8 @@ def register_backtesting_tools(mcp: FastMCP) -> None:
         logger.error("Failed to register backtesting tools: %s", e)
 
 
-def register_finnhub_tools(mcp: FastMCP) -> None:
-    """Register Finnhub data tools on main server."""
+def register_finnhub_core_tools(mcp: FastMCP) -> None:
+    """Register core Finnhub data tools (quote, profile, earnings, financials)."""
     from typing import Any
 
     from maverick_mcp.providers.finnhub_provider import get_finnhub_provider
@@ -616,10 +616,10 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         logger.error("Failed to register health monitoring tools: %s", e)
 
     try:
-        register_finnhub_tools(mcp)
-        logger.info("✓ Finnhub tools registered successfully")
+        register_finnhub_core_tools(mcp)
+        logger.info("✓ Finnhub core tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register Finnhub tools: {e}")
+        logger.error("Failed to register Finnhub core tools: %s", e)
 
     # Register backtesting tools
     register_backtesting_tools(mcp)
