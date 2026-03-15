@@ -18,6 +18,7 @@ from aiohttp import ClientTimeout, TCPConnector
 from maverick_mcp.backtesting.vectorbt_engine import VectorBTEngine
 from maverick_mcp.data.cache import CacheManager
 from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
+from maverick_mcp.utils.rate_limiters import general_api_limiter
 
 logger = logging.getLogger(__name__)
 
@@ -332,8 +333,8 @@ class StrategyExecutor:
         """Fetch data with rate limiting."""
         async with self._api_semaphore:
             try:
-                # Add small delay to prevent API hammering
-                await asyncio.sleep(0.05)
+                # Rate-limit API calls via leaky-bucket limiter
+                await general_api_limiter.acquire()
 
                 # Pre-fetch data into cache
                 await self.data_provider.get_stock_data_async(

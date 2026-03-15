@@ -11,6 +11,7 @@ investment advice. Always consult qualified financial professionals.
 """
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
@@ -36,6 +37,7 @@ from maverick_mcp.core.visualization import (
     plotly_fig_to_base64,
 )
 from maverick_mcp.providers.stock_data import StockDataProvider
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.logging import PerformanceMonitor, get_logger
 from maverick_mcp.utils.mcp_logging import with_logging
 from maverick_mcp.utils.stock_helpers import (
@@ -52,6 +54,7 @@ stock_provider = StockDataProvider()
 
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=10)
+atexit.register(executor.shutdown, wait=False)
 
 
 @with_logging("rsi_analysis")
@@ -97,12 +100,14 @@ async def get_rsi_analysis(
 
         return {"ticker": ticker, "period": period, "analysis": analysis}
     except Exception as e:
-        logger.error(
+        logger.exception(
             "Error in RSI analysis",
-            exc_info=True,
             extra={"ticker": ticker, "period": period, "error_type": type(e).__name__},
         )
-        return {"error": str(e), "status": "error"}
+        return {
+            "error": safe_error_message(e, context="RSI analysis"),
+            "status": "error",
+        }
 
 
 async def get_macd_analysis(
@@ -138,8 +143,11 @@ async def get_macd_analysis(
             "analysis": analysis,
         }
     except Exception as e:
-        logger.error(f"Error in MACD analysis for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error in MACD analysis for %s: %s", ticker, e)
+        return {
+            "error": safe_error_message(e, context="MACD analysis"),
+            "status": "error",
+        }
 
 
 async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]:
@@ -166,8 +174,11 @@ async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]
             "resistance_levels": [float(x) for x in sorted(resistance)],
         }
     except Exception as e:
-        logger.error(f"Error in support/resistance analysis for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error in support/resistance analysis for %s: %s", ticker, e)
+        return {
+            "error": safe_error_message(e, context="support/resistance analysis"),
+            "status": "error",
+        }
 
 
 async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str, Any]:
@@ -201,13 +212,14 @@ async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str,
 
             # Log authenticated user
             logger.info(
-                f"Technical analysis requested by authenticated user: {access_token.client_id}",
+                "Technical analysis requested by authenticated user: %s",
+                access_token.client_id,
                 extra={"scopes": access_token.scopes},
             )
 
             # Check for premium features based on scopes
             has_premium = "premium:access" in access_token.scopes
-            logger.info(f"Has premium: {has_premium}")
+            logger.info("Has premium: %s", has_premium)
         except Exception:
             # Authentication is optional for this tool
             logger.debug("Technical analysis requested by unauthenticated user")
@@ -261,8 +273,11 @@ async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str,
             "last_updated": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Error in technical analysis for {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error in technical analysis for %s: %s", ticker, e)
+        return {
+            "error": safe_error_message(e, context="full technical analysis"),
+            "status": "error",
+        }
 
 
 async def get_stock_chart_analysis(ticker: str) -> dict[str, Any]:
@@ -293,8 +308,8 @@ async def get_stock_chart_analysis(ticker: str) -> dict[str, Any]:
         )
         return chart_content
     except Exception as e:
-        logger.error(f"Error generating chart analysis for {ticker}: {e}")
-        return {"error": str(e)}
+        logger.error("Error generating chart analysis for %s: %s", ticker, e)
+        return {"error": safe_error_message(e, context="chart analysis generation")}
 
 
 def _generate_chart_mcp_format(df, ticker: str) -> dict[str, Any]:
@@ -336,8 +351,11 @@ def _generate_chart_mcp_format(df, ticker: str) -> dict[str, Any]:
             max_chars = 50000
 
             logger.info(
-                f"Generated chart for {ticker}: {config['width']}x{config['height']} "
-                f"({len(base64_data):,} chars base64)"
+                "Generated chart for %s: %dx%d (%d chars base64)",
+                ticker,
+                config["width"],
+                config["height"],
+                len(base64_data),
             )
 
             if len(base64_data) <= max_chars:
@@ -353,13 +371,17 @@ def _generate_chart_mcp_format(df, ticker: str) -> dict[str, Any]:
                 )
             else:
                 logger.warning(
-                    f"Chart for {ticker} too large at {config['width']}x{config['height']} "
-                    f"({len(base64_data):,} chars > {max_chars}), trying smaller size..."
+                    "Chart for %s too large at %dx%d (%d chars > %d), trying smaller size...",
+                    ticker,
+                    config["width"],
+                    config["height"],
+                    len(base64_data),
+                    max_chars,
                 )
                 continue
 
         except Exception as e:
-            logger.warning(f"Failed to generate chart with config {config}: {e}")
+            logger.warning("Failed to generate chart with config %s: %s", config, e)
             continue
 
     # If all configs failed, return error
@@ -405,7 +427,7 @@ def _return_image_with_claude_desktop_workaround(
             ]
         }
     except Exception as e:
-        logger.warning(f"Alternative image format failed: {e}")
+        logger.warning("Alternative image format failed: %s", e)
 
     # Format 2: Try original format one more time with different structure
     try:
@@ -416,7 +438,7 @@ def _return_image_with_claude_desktop_workaround(
             ]
         }
     except Exception as e:
-        logger.warning(f"Standard image format failed: {e}")
+        logger.warning("Standard image format failed: %s", e)
 
     # Format 3: File-based fallback (most reliable for Claude Desktop)
     try:
@@ -435,7 +457,7 @@ def _return_image_with_claude_desktop_workaround(
         image_data = b64.b64decode(base64_data)
         chart_file.write_bytes(image_data)
 
-        logger.info(f"Saved chart to file: {chart_file}")
+        logger.info("Saved chart to file: %s", chart_file)
 
         return {
             "content": [
@@ -455,7 +477,7 @@ def _return_image_with_claude_desktop_workaround(
             ]
         }
     except Exception as e:
-        logger.error(f"File fallback also failed: {e}")
+        logger.error("File fallback also failed: %s", e)
         return {
             "content": [
                 {

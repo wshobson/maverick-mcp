@@ -121,6 +121,11 @@ class StockDataFetchingService:
         for col in ["Open", "High", "Low", "Close"]:
             df[col] = df[col].astype(float)
 
+        # Validate OHLCV data at the ingestion boundary
+        from maverick_mcp.validation.dataframe_schemas import validate_ohlcv
+
+        df = validate_ohlcv(df, context=f"StockDataFetchingService for {symbol}")
+
         return df
 
     @with_stock_data_circuit_breaker(use_fallback=False)

@@ -7,6 +7,7 @@ including PriceCache and Maverick screening models.
 
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import threading
@@ -140,6 +141,9 @@ else:
         echo=DB_ECHO,
         connect_args=sync_connect_args,
     )
+
+# Dispose connection pool on interpreter exit to avoid resource leaks
+atexit.register(engine.dispose)
 
 # Create session factory
 _session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -376,7 +380,7 @@ class Stock(Base, TimestampMixin):
         "PriceCache",
         back_populates="stock",
         cascade="all, delete-orphan",
-        lazy="selectin",  # Eager load price caches to prevent N+1 queries
+        lazy="select",  # Lazy load — price_caches can be very large
     )
     maverick_stocks = relationship(
         "MaverickStocks", back_populates="stock", cascade="all, delete-orphan"
@@ -491,6 +495,13 @@ class PriceCache(Base, TimestampMixin):
 
             df["volume"] = df["volume"].astype(int)
             df["symbol"] = ticker_symbol.upper()
+
+            # Validate OHLCV data from database
+            from maverick_mcp.validation.dataframe_schemas import (
+                validate_ohlcv_lowercase,
+            )
+
+            df = validate_ohlcv_lowercase(df, context=f"PriceCache for {ticker_symbol}")
 
         return df
 
@@ -1075,6 +1086,21 @@ class BacktestResult(Base, TimestampMixin):
     # Additional Analysis
     beta = Column(Numeric(8, 4))  # Market beta
     alpha = Column(Numeric(8, 4))  # Alpha vs market
+
+    # Advanced Risk Metrics
+    var_95 = Column(Numeric(8, 6))  # Value at Risk (95%)
+    cvar_95 = Column(Numeric(8, 6))  # Conditional VaR (Expected Shortfall)
+    ulcer_index = Column(Numeric(8, 6))  # Ulcer Index
+
+    # Strategy Quality Metrics
+    expectancy = Column(Numeric(12, 4))  # Expected value per trade
+    kelly_criterion = Column(Numeric(8, 6))  # Kelly fraction
+    recovery_factor = Column(Numeric(8, 4))  # Return / Max Drawdown
+    risk_reward_ratio = Column(Numeric(8, 4))  # Avg Win / Avg Loss
+
+    # Trade Streaks
+    max_consecutive_wins = Column(Integer)
+    max_consecutive_losses = Column(Integer)
 
     # Time series data (stored as JSON for efficient queries)
     equity_curve = Column(JSON)  # Daily portfolio values

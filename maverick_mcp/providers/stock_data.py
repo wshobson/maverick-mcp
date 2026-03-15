@@ -510,6 +510,15 @@ class EnhancedStockDataProvider:
             if not cache_df.empty:
                 logger.debug(f"Sample row: {cache_df.iloc[0].to_dict()}")
 
+            # Validate before caching to prevent corrupt data in DB
+            from maverick_mcp.validation.dataframe_schemas import (
+                validate_ohlcv_lowercase,
+            )
+
+            cache_df = validate_ohlcv_lowercase(
+                cache_df, context=f"cache write for {symbol}"
+            )
+
             # Insert data
             count = bulk_insert_price_data(session, symbol, cache_df)
             if count == 0:
@@ -704,6 +713,12 @@ class EnhancedStockDataProvider:
                     df[col] = 0.0
 
         df.index.name = "Date"
+
+        # Validate OHLCV data at the ingestion boundary
+        from maverick_mcp.validation.dataframe_schemas import validate_ohlcv
+
+        df = validate_ohlcv(df, context=f"yfinance fetch for {symbol}")
+
         return df
 
     def get_maverick_recommendations(

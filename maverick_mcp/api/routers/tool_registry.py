@@ -121,11 +121,14 @@ def register_portfolio_tools(mcp: FastMCP) -> None:
 def register_data_tools(mcp: FastMCP) -> None:
     """Register data tools directly on main server"""
     from maverick_mcp.api.routers.data import (
+        check_watchlist_alerts,
         clear_cache,
         fetch_stock_data,
         fetch_stock_data_batch,
         get_cached_price_data,
         get_chart_links,
+        get_fundamental_analysis,
+        get_intraday_summary,
         get_stock_info,
     )
 
@@ -160,9 +163,12 @@ def register_data_tools(mcp: FastMCP) -> None:
         """
         return await get_news_sentiment_enhanced(ticker, timeframe, limit)
 
+    mcp.tool(name="data_get_fundamental_analysis")(get_fundamental_analysis)
     mcp.tool(name="data_get_cached_price_data")(get_cached_price_data)
     mcp.tool(name="data_get_chart_links")(get_chart_links)
     mcp.tool(name="data_clear_cache")(clear_cache)
+    mcp.tool(name="data_check_watchlist_alerts")(check_watchlist_alerts)
+    mcp.tool(name="data_get_intraday_summary")(get_intraday_summary)
 
 
 def register_performance_tools(mcp: FastMCP) -> None:
@@ -346,9 +352,9 @@ def register_research_tools(mcp: FastMCP) -> None:
         logger.info("Successfully registered 4 research tools directly")
 
     except ImportError as e:
-        logger.warning(f"Research module not available: {e}")
+        logger.warning("Research module not available: %s", e)
     except Exception as e:
-        logger.error(f"Failed to register research tools: {e}")
+        logger.error("Failed to register research tools: %s", e)
         # Don't raise - allow server to continue without research tools
 
 
@@ -364,7 +370,7 @@ def register_backtesting_tools(mcp: FastMCP) -> None:
             "Backtesting module not available - VectorBT may not be installed"
         )
     except Exception as e:
-        logger.error(f"✗ Failed to register backtesting tools: {e}")
+        logger.error("Failed to register backtesting tools: %s", e)
 
 
 def register_finnhub_tools(mcp: FastMCP) -> None:
@@ -467,7 +473,7 @@ def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
     except ImportError:
         logger.warning("MCP prompts module not available")
     except Exception as e:
-        logger.error(f"✗ Failed to register MCP prompts: {e}")
+        logger.error("Failed to register MCP prompts: %s", e)
 
     # Register introspection tools
     try:
@@ -478,7 +484,76 @@ def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
     except ImportError:
         logger.warning("Introspection module not available")
     except Exception as e:
-        logger.error(f"✗ Failed to register introspection tools: {e}")
+        logger.error("Failed to register introspection tools: %s", e)
+
+
+def register_options_tools(mcp: FastMCP) -> None:
+    """Register options analysis tools directly on main server"""
+    from maverick_mcp.api.routers.options import (
+        analyze_options_strategy,
+        calculate_option_greeks,
+        get_iv_analysis,
+        get_options_chain,
+        get_unusual_options_activity,
+        hedge_portfolio,
+        price_option,
+    )
+
+    mcp.tool(name="options_get_chain")(get_options_chain)
+    mcp.tool(name="options_calculate_greeks")(calculate_option_greeks)
+    mcp.tool(name="options_iv_analysis")(get_iv_analysis)
+    mcp.tool(name="options_price_option")(price_option)
+    mcp.tool(name="options_analyze_strategy")(analyze_options_strategy)
+    mcp.tool(name="options_unusual_activity")(get_unusual_options_activity)
+    mcp.tool(name="options_hedge_portfolio")(hedge_portfolio)
+
+
+def register_finnhub_tools(mcp: FastMCP) -> None:
+    """Register Finnhub alternative data tools directly on main server"""
+    from maverick_mcp.api.routers.finnhub import (
+        get_finnhub_analyst_recommendations,
+        get_finnhub_company_news,
+        get_finnhub_company_peers,
+        get_finnhub_earnings_calendar,
+        get_finnhub_earnings_surprises,
+        get_finnhub_economic_calendar,
+        get_finnhub_institutional_ownership,
+        get_finnhub_market_news,
+    )
+
+    mcp.tool(name="finnhub_company_news")(get_finnhub_company_news)
+    mcp.tool(name="finnhub_earnings_calendar")(get_finnhub_earnings_calendar)
+    mcp.tool(name="finnhub_earnings_surprises")(get_finnhub_earnings_surprises)
+    mcp.tool(name="finnhub_analyst_recommendations")(
+        get_finnhub_analyst_recommendations
+    )
+    mcp.tool(name="finnhub_institutional_ownership")(
+        get_finnhub_institutional_ownership
+    )
+    mcp.tool(name="finnhub_company_peers")(get_finnhub_company_peers)
+    mcp.tool(name="finnhub_economic_calendar")(get_finnhub_economic_calendar)
+    mcp.tool(name="finnhub_market_news")(get_finnhub_market_news)
+
+
+def register_streaming_tools(mcp: FastMCP) -> None:
+    """Register real-time price streaming tools directly on main server"""
+    from maverick_mcp.streaming.tools import (
+        get_price_snapshot,
+        get_stream_status,
+        set_poll_interval,
+        start_price_stream,
+        stop_price_stream,
+        subscribe,
+        unsubscribe,
+    )
+
+    mcp.tool(name="streaming_start_price_stream")(start_price_stream)
+    mcp.tool(name="streaming_stop_price_stream")(stop_price_stream)
+    mcp.tool(name="streaming_subscribe")(subscribe)
+    mcp.tool(name="streaming_unsubscribe")(unsubscribe)
+    mcp.tool(name="streaming_get_stream_status")(get_stream_status)
+    mcp.tool(name="streaming_set_poll_interval")(set_poll_interval)
+    mcp.tool(name="streaming_get_price_snapshot")(get_price_snapshot)
 
 
 def register_all_router_tools(mcp: FastMCP) -> None:
@@ -489,37 +564,37 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         register_technical_tools(mcp)
         logger.info("✓ Technical tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register technical tools: {e}")
+        logger.error("Failed to register technical tools: %s", e)
 
     try:
         register_screening_tools(mcp)
         logger.info("✓ Screening tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register screening tools: {e}")
+        logger.error("Failed to register screening tools: %s", e)
 
     try:
         register_portfolio_tools(mcp)
         logger.info("✓ Portfolio tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register portfolio tools: {e}")
+        logger.error("Failed to register portfolio tools: %s", e)
 
     try:
         register_data_tools(mcp)
         logger.info("✓ Data tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register data tools: {e}")
+        logger.error("Failed to register data tools: %s", e)
 
     try:
         register_performance_tools(mcp)
         logger.info("✓ Performance tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register performance tools: {e}")
+        logger.error("Failed to register performance tools: %s", e)
 
     try:
         register_agent_tools(mcp)
         logger.info("✓ Agent tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register agent tools: {e}")
+        logger.error("Failed to register agent tools: %s", e)
 
     try:
         # Import and register research tools on the main MCP instance
@@ -529,7 +604,7 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         create_research_router(mcp)
         logger.info("✓ Research tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register research tools: {e}")
+        logger.error("Failed to register research tools: %s", e)
 
     try:
         # Import and register health monitoring tools
@@ -538,7 +613,7 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         register_health_tools(mcp)
         logger.info("✓ Health monitoring tools registered successfully")
     except Exception as e:
-        logger.error(f"✗ Failed to register health monitoring tools: {e}")
+        logger.error("Failed to register health monitoring tools: %s", e)
 
     try:
         register_finnhub_tools(mcp)
@@ -548,6 +623,27 @@ def register_all_router_tools(mcp: FastMCP) -> None:
 
     # Register backtesting tools
     register_backtesting_tools(mcp)
+
+    # Register options analysis tools
+    try:
+        register_options_tools(mcp)
+        logger.info("✓ Options analysis tools registered successfully")
+    except Exception as e:
+        logger.error("Failed to register options tools: %s", e)
+
+    # Register Finnhub alternative data tools
+    try:
+        register_finnhub_tools(mcp)
+        logger.info("✓ Finnhub alternative data tools registered successfully")
+    except Exception as e:
+        logger.error("Failed to register Finnhub tools: %s", e)
+
+    # Register streaming tools
+    try:
+        register_streaming_tools(mcp)
+        logger.info("✓ Streaming tools registered successfully")
+    except Exception as e:
+        logger.error("Failed to register streaming tools: %s", e)
 
     # Register MCP prompts and resources for introspection
     register_mcp_prompts_and_resources(mcp)
@@ -563,5 +659,7 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     logger.info("   • Research and analysis tools")
     logger.info("   • Health monitoring tools")
     logger.info("   • Backtesting system tools")
+    logger.info("   • Options analysis tools")
+    logger.info("   • Finnhub alternative data tools")
     logger.info("   • MCP prompts for introspection")
     logger.info("   • Introspection and discovery tools")

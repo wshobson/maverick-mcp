@@ -125,9 +125,9 @@ class PersonaAwareTool(BaseTool):
 
     persona: InvestorPersona | None = None
     # State tracking
-    last_analysis_time: dict[str, datetime] = {}
-    analyzed_stocks: dict[str, dict] = {}
-    key_price_levels: dict[str, dict] = {}
+    last_analysis_time: dict[str, datetime] = Field(default_factory=dict)
+    analyzed_stocks: dict[str, dict] = Field(default_factory=dict)
+    key_price_levels: dict[str, dict] = Field(default_factory=dict)
     # Cache settings
     cache_ttl: int = settings.agent.agent_cache_ttl_seconds
 

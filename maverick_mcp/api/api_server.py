@@ -15,7 +15,7 @@ from maverick_mcp.api.middleware.error_handling import (
     RequestTracingMiddleware,
 )
 from maverick_mcp.api.middleware.security import SecurityHeadersMiddleware
-from maverick_mcp.api.routers.health import router as health_router
+from maverick_mcp.api.routers.health_enhanced import router as health_router
 from maverick_mcp.config.settings import settings
 from maverick_mcp.utils.logging import get_logger
 

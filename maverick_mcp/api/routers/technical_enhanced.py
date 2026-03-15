@@ -10,6 +10,7 @@ This module fixes the "No result received from client-side tool execution" issue
 """
 
 import asyncio
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
@@ -41,6 +42,7 @@ technical_enhanced_router: FastMCP = FastMCP("Technical_Analysis_Enhanced")
 
 # Thread pool for blocking operations
 executor = ThreadPoolExecutor(max_workers=4)
+atexit.register(executor.shutdown, wait=False)
 
 
 class TechnicalAnalysisTimeoutError(Exception):
@@ -133,7 +135,7 @@ async def _execute_technical_analysis_with_logging(
         if access_token and "premium:access" in access_token.scopes:
             has_premium = True
             logger.info(
-                f"Premium user accessing technical analysis: {access_token.client_id}"
+                "Premium user accessing technical analysis: %s", access_token.client_id
             )
     except Exception:
         logger.debug("Unauthenticated user accessing technical analysis")
@@ -149,7 +151,7 @@ async def _execute_technical_analysis_with_logging(
         if df.empty:
             raise TechnicalAnalysisError(f"No data available for {ticker}")
 
-        logger.info(f"Retrieved {len(df)} data points for {ticker}")
+        logger.info("Retrieved %d data points for %s", len(df), ticker)
         tool_logger.step("data_validation", f"Retrieved {len(df)} data points")
 
     except TimeoutError:
@@ -406,11 +408,11 @@ async def _generate_chart_with_logging(tool_logger, ticker: str) -> dict[str, An
                 }
             else:
                 logger.warning(
-                    f"Chart too large ({len(data_uri)} chars), trying smaller config"
+                    "Chart too large (%d chars), trying smaller config", len(data_uri)
                 )
 
         except Exception as e:
-            logger.warning(f"Chart generation attempt {i + 1} failed: {e}")
+            logger.warning("Chart generation attempt %d failed: %s", i + 1, e)
             if i == len(chart_configs) - 1:  # Last attempt
                 raise TechnicalAnalysisError(
                     f"All chart generation attempts failed: {e}"

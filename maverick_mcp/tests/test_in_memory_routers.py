@@ -6,6 +6,7 @@ in-memory testing capabilities via the main MCP server.
 """
 
 import asyncio
+import json
 from unittest.mock import Mock, patch
 
 import pytest
@@ -236,7 +237,7 @@ class TestTechnicalRouter:
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = json.loads(result.content[0].text)
                 assert "analysis" in data
                 assert "histogram" in data["analysis"]
                 assert "indicator" in data["analysis"]
@@ -276,7 +277,7 @@ class TestTechnicalRouter:
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = json.loads(result.content[0].text)
                 assert "support_levels" in data
                 assert "resistance_levels" in data
                 assert len(data["support_levels"]) > 0
@@ -384,8 +385,6 @@ class TestPortfolioRouter:
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                import json
-
                 data = json.loads(result.content[0].text)
                 assert "ticker" in data or "error" in data
 
@@ -433,8 +432,6 @@ class TestPortfolioRouter:
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                import json
-
                 # Handle NaN values in response
                 result_text = (
                     result.content[0].text.replace("NaN", "null").replace("'", '"')

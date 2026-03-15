@@ -148,6 +148,16 @@ if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
 
 # FastMCP SSE compatibility patch (mcp-remote trailing-slash redirect workaround)
 #
+# WHY: mcp-remote sends requests to `/sse/` (with trailing slash), but FastMCP
+# only registers `/sse` (without trailing slash). This causes a 307 redirect that
+# breaks tool registration in some clients. This shim registers both path variants.
+#
+# SCOPE: Only applied in the SSE transport branch of __main__ (see bottom of file).
+# Idempotent — safe to call multiple times, no-ops after first application.
+#
+# REMOVAL: Remove this patch when FastMCP natively handles both `/sse` and `/sse/`
+# without 307 redirects (track upstream FastMCP releases).
+#
 # IMPORTANT: This must be applied only when running SSE transport, otherwise it
 # creates import-time global side effects (and slows tests).
 from fastmcp.server import http as fastmcp_http
@@ -271,34 +281,6 @@ mcp = cast(FastMCPProtocol, _fastmcp_instance)
 # Initialize connection manager for stability
 connection_manager: "MCPConnectionManager | None" = None
 
-# TEMPORARILY DISABLED: MCP logging middleware - was breaking SSE transport
-# TODO: Fix middleware to work properly with SSE transport
-# logger.info("Adding comprehensive MCP logging middleware...")
-# try:
-#     from maverick_mcp.api.middleware.mcp_logging import add_mcp_logging_middleware
-#
-#     # Add logging middleware with debug mode based on settings
-#     include_payloads = settings.api.debug or settings.api.log_level.upper() == "DEBUG"
-#     import logging as py_logging
-#     add_mcp_logging_middleware(
-#         mcp,
-#         include_payloads=include_payloads,
-#         max_payload_length=3000,  # Larger payloads in debug mode
-#         log_level=getattr(py_logging, settings.api.log_level.upper())
-#     )
-#     logger.info("✅ MCP logging middleware added successfully")
-#
-#     # Add console notification
-#     print("🔧 MCP Server Enhanced Logging Enabled")
-#     print("   📊 Tool calls will be logged with execution details")
-#     print("   🔍 Protocol messages will be tracked for debugging")
-#     print("   ⏱️  Timeout detection and warnings active")
-#     print()
-#
-# except Exception as e:
-#     logger.warning(f"Failed to add MCP logging middleware: {e}")
-#     print("⚠️  Warning: MCP logging middleware could not be added")
-
 # Initialize monitoring and observability systems
 logger.info("Initializing monitoring and observability systems...")
 
@@ -351,6 +333,12 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
     mcp.fastapi_app.include_router(health_router, tags=["health"])
     logger.info("Monitoring and health endpoints registered with FastAPI application")
+
+    # Mount WebSocket endpoint for real-time price streaming
+    from maverick_mcp.streaming.websocket_handler import websocket_prices
+
+    mcp.fastapi_app.add_api_websocket_route("/ws/prices", websocket_prices)
+    logger.info("WebSocket price streaming endpoint registered at /ws/prices")
 
 # Add Enhanced Rate Limiting Middleware to FastAPI app (not to MCP server directly,
 # since Starlette BaseHTTPMiddleware is incompatible with FastMCP's middleware chain)
@@ -1312,6 +1300,20 @@ def portfolio_holdings_resource() -> str:
         )
 
 
+@mcp.resource("watchlist://streaming-alerts")
+def streaming_alerts_resource() -> str:
+    """Current streaming alert state for all subscribed tickers.
+
+    Returns the real-time alert state tracked by the price streaming
+    service, including which tickers are being monitored and any active
+    alert conditions detected during the most recent evaluation cycle.
+    """
+    from maverick_mcp.streaming.price_stream_manager import PriceStreamManager
+
+    manager = PriceStreamManager.get_instance()
+    return json.dumps(manager.get_alert_state())
+
+
 # Main execution block
 if __name__ == "__main__":
     import asyncio
@@ -1562,6 +1564,43 @@ if __name__ == "__main__":
                 logger.error(f"Error closing Redis: {e}")
 
         shutdown_handler.register_cleanup(close_cache)
+
+        # Register data router executor cleanup
+        def cleanup_data_executor():
+            """Shut down data router thread pool executor."""
+            from maverick_mcp.api.routers.data import shutdown_executor
+
+            try:
+                shutdown_executor()
+                logger.info("Data router executor shut down")
+            except Exception as e:
+                logger.error(f"Error shutting down data executor: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_data_executor)
+
+        # Register price stream cleanup
+        async def cleanup_price_stream():
+            """Stop the real-time price streaming service."""
+            from maverick_mcp.streaming.price_stream_manager import PriceStreamManager
+
+            try:
+                manager = PriceStreamManager.get_instance()
+                await manager.stop()
+                logger.info("Price stream manager stopped")
+            except Exception as e:
+                logger.error(f"Error stopping price stream: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_price_stream)
+
+        # Register periodic cache cleanup
+        from maverick_mcp.utils.cache_cleanup import (
+            start_cache_cleanup,
+            stop_cache_cleanup,
+        )
+
+        asyncio.get_event_loop().run_until_complete(start_cache_cleanup())
+        logger.info("✓ Periodic cache cleanup started (every 5 minutes)")
+        shutdown_handler.register_cleanup(stop_cache_cleanup)
 
         # Run with the appropriate transport
         if args.transport == "stdio":

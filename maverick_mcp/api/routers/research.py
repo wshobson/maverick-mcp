@@ -20,6 +20,7 @@ from maverick_mcp.api.middleware.mcp_logging import get_tool_logger
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.providers.llm_factory import get_llm
 from maverick_mcp.providers.openrouter_provider import TaskType
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.orchestration_logging import (
     log_performance_metrics,
     log_tool_invocation,
@@ -106,26 +107,38 @@ def get_research_agent(
             query, research_scope, timeout_budget, max_sources
         )
 
-        agent = DeepResearchAgent(
-            llm=adaptive_llm,
-            persona="moderate",
-            max_sources=max_sources,
-            research_depth=research_scope,
-            exa_api_key=settings.research.exa_api_key,
-        )
+        try:
+            agent = DeepResearchAgent(
+                llm=adaptive_llm,
+                persona="moderate",
+                max_sources=max_sources,
+                research_depth=research_scope,
+                exa_api_key=settings.research.exa_api_key,
+            )
+        except Exception:
+            logger.error(
+                "Failed to initialize DeepResearchAgent (credentials redacted)"
+            )
+            raise RuntimeError("Agent initialization failed") from None
         # Mark for initialization - will be initialized on first use
         agent._needs_initialization = True
         return agent
 
     # Use singleton for standard requests
     if research_agent is None:
-        research_agent = DeepResearchAgent(
-            llm=llm,
-            persona="moderate",
-            max_sources=25,  # Reduced for faster execution
-            research_depth="standard",  # Reduced depth for speed
-            exa_api_key=settings.research.exa_api_key,
-        )
+        try:
+            research_agent = DeepResearchAgent(
+                llm=llm,
+                persona="moderate",
+                max_sources=25,  # Reduced for faster execution
+                research_depth="standard",  # Reduced depth for speed
+                exa_api_key=settings.research.exa_api_key,
+            )
+        except Exception:
+            logger.error(
+                "Failed to initialize DeepResearchAgent (credentials redacted)"
+            )
+            raise RuntimeError("Agent initialization failed") from None
         # Mark for initialization - will be initialized on first use
         research_agent._needs_initialization = True
     return research_agent
@@ -299,7 +312,8 @@ def _get_adaptive_llm_for_research(
     if time_pressure <= 0.3 or timeout_budget < 120:
         # Emergency mode: prioritize speed above all for <120s timeouts (below basic)
         logger.info(
-            f"Emergency fast model selection triggered - timeout budget: {timeout_budget}s"
+            "Emergency fast model selection triggered - timeout budget: %ss",
+            timeout_budget,
         )
         return get_llm(
             task_type=TaskType.DEEP_RESEARCH,
@@ -369,7 +383,10 @@ async def _execute_research_with_direct_timeout(
         }
         timing_log["cumulative_time"] = current_time - start_time
         logger.debug(
-            f"TIMING: {phase_name} took {phase_duration:.2f}s (cumulative: {timing_log['cumulative_time']:.2f}s)"
+            "TIMING: %s took %.2fs (cumulative: %.2fs)",
+            phase_name,
+            phase_duration,
+            timing_log["cumulative_time"],
         )
 
     try:
@@ -381,7 +398,8 @@ async def _execute_research_with_direct_timeout(
 
         # Use direct asyncio.wait_for for hard timeout enforcement
         logger.info(
-            f"TIMING: Starting research execution phase (budget: {total_timeout}s)"
+            "TIMING: Starting research execution phase (budget: %ss)",
+            total_timeout,
         )
 
         result = await asyncio.wait_for(
@@ -405,9 +423,9 @@ async def _execute_research_with_direct_timeout(
 
         # Log detailed timing breakdown
         logger.info(
-            f"RESEARCH_TIMING_BREAKDOWN: "
-            f"Total={elapsed_time:.2f}s, "
-            f"Phases={timing_log['phase_timings']}"
+            "RESEARCH_TIMING_BREAKDOWN: Total=%.2fs, Phases=%s",
+            elapsed_time,
+            timing_log["phase_timings"],
         )
 
         # Add timing information to successful results
@@ -423,9 +441,10 @@ async def _execute_research_with_direct_timeout(
 
         # Log timeout timing analysis
         logger.warning(
-            f"RESEARCH_TIMEOUT: "
-            f"Exceeded {total_timeout}s limit after {elapsed_time:.2f}s, "
-            f"Phases={timing_log['phase_timings']}"
+            "RESEARCH_TIMEOUT: Exceeded %ss limit after %.2fs, Phases=%s",
+            total_timeout,
+            elapsed_time,
+            timing_log["phase_timings"],
         )
 
         tool_logger.step(
@@ -472,13 +491,13 @@ async def _execute_research_with_direct_timeout(
         # Return structured error response
         return {
             "status": "error",
-            "content": f"Research failed due to error: {str(e)}",
+            "content": f"Research failed due to error: {safe_error_message(e, context='research execution')}",
             "research_confidence": 0.0,
             "sources_found": 0,
             "timeout_warning": False,
             "elapsed_time": elapsed_time,
             "completion_percentage": 0,
-            "error": str(e),
+            "error": safe_error_message(e, context="research execution"),
             "error_type": type(e).__name__,
         }
 
@@ -515,7 +534,11 @@ async def comprehensive_research(
 
     # Log incoming parameters
     logger.info(
-        f"📥 RESEARCH_REQUEST: query='{query[:50]}...', scope='{research_scope}', max_sources={max_sources}, timeframe='{timeframe}'"
+        "RESEARCH_REQUEST: query='%s...', scope='%s', max_sources=%s, timeframe='%s'",
+        query[:50],
+        research_scope,
+        max_sources,
+        timeframe,
     )
 
     try:
@@ -531,7 +554,11 @@ async def comprehensive_research(
 
         # Log the timeout calculation result explicitly
         logger.info(
-            f"🔧 TIMEOUT_CONFIGURATION: scope='{research_scope}' → timeout={adaptive_timeout}s (was requesting {max_sources} sources, optimized to {optimized_sources})"
+            "TIMEOUT_CONFIGURATION: scope='%s' -> timeout=%ss (was requesting %s sources, optimized to %s)",
+            research_scope,
+            adaptive_timeout,
+            max_sources,
+            optimized_sources,
         )
 
         # Step 2: Log optimization setup (components initialized in underlying research system)
@@ -753,7 +780,7 @@ async def comprehensive_research(
         )
         return {
             "success": False,
-            "error": f"Research error: {str(e)}",
+            "error": f"Research error: {safe_error_message(e, context='comprehensive research')}",
             "error_type": type(e).__name__,
             "query": query,
             "request_id": request_id,
@@ -848,7 +875,7 @@ async def company_comprehensive_research(
         )
         return {
             "success": False,
-            "error": f"Company research error: {str(e)}",
+            "error": f"Company research error: {safe_error_message(e, context='company research')}",
             "error_type": type(e).__name__,
             "symbol": symbol,
             "request_id": request_id,
@@ -936,7 +963,7 @@ async def analyze_market_sentiment(
         tool_logger.error("sentiment_error", e, f"Sentiment analysis failed: {str(e)}")
         return {
             "success": False,
-            "error": f"Sentiment analysis error: {str(e)}",
+            "error": f"Sentiment analysis error: {safe_error_message(e, context='market sentiment analysis')}",
             "error_type": type(e).__name__,
             "topic": topic,
             "request_id": request_id,
@@ -980,7 +1007,8 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
         """
         # CRITICAL DEBUG: Log immediately when tool is called
         logger.error(
-            f"🚨 TOOL CALLED: research_comprehensive_research with query: {query[:50]}"
+            "TOOL CALLED: research_comprehensive_research with query: %s",
+            query[:50],
         )
 
         # Log tool invocation
@@ -1027,14 +1055,14 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
             return result
 
         except Exception as e:
-            logger.error(
-                f"Research error: {str(e)}",
-                exc_info=True,
+            logger.exception(
+                "Research error: %s",
+                e,
                 extra={"query": query[:100]},
             )
             return {
                 "success": False,
-                "error": f"Research failed: {str(e)}",
+                "error": f"Research failed: {safe_error_message(e, context='comprehensive research tool')}",
                 "error_type": type(e).__name__,
                 "query": query,
                 "timestamp": datetime.now().isoformat(),

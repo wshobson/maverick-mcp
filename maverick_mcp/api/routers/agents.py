@@ -5,7 +5,6 @@ This router exposes the LangGraph agents as MCP tools while maintaining
 compatibility with the existing infrastructure.
 """
 
-import asyncio
 import logging
 import os
 from typing import Any
@@ -15,6 +14,7 @@ from fastmcp import FastMCP
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.agents.market_analysis import MarketAnalysisAgent
 from maverick_mcp.agents.supervisor import SupervisorAgent
+from maverick_mcp.utils.error_handling import safe_error_message
 
 logger = logging.getLogger(__name__)
 
@@ -22,71 +22,105 @@ logger = logging.getLogger(__name__)
 agents_router: FastMCP = FastMCP("Financial_Analysis_Agents")
 
 
-# Cache for agent instances to avoid recreation
-_agent_cache: dict[str, Any] = {}
+class AgentSessionManager:
+    """Manages agent instances with Redis-backed session persistence.
 
+    Agent objects live in-process memory (they hold LLM connections that can't
+    be serialized), but their *configuration* (type, persona, creation time) is
+    persisted to Redis so that sessions survive server restarts.  On restart
+    the agent is transparently re-created from the stored config.
+    """
 
-def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
-    """Get or create an agent instance with caching."""
-    cache_key = f"{agent_type}:{persona}"
+    def __init__(self) -> None:
+        self._instances: dict[str, Any] = {}
 
-    if cache_key not in _agent_cache:
-        try:
-            # Import task-aware LLM factory
-            from maverick_mcp.providers.llm_factory import get_llm
-            from maverick_mcp.providers.openrouter_provider import TaskType
+    def get_or_create(self, agent_type: str, persona: str = "moderate") -> Any:
+        """Return a cached agent, re-creating from persisted config if needed."""
+        cache_key = f"{agent_type}:{persona}"
 
-            # Map agent types to task types for optimal model selection
-            task_mapping = {
-                "market": TaskType.MARKET_ANALYSIS,
-                "technical": TaskType.TECHNICAL_ANALYSIS,
-                "supervisor": TaskType.MULTI_AGENT_ORCHESTRATION,
-                "deep_research": TaskType.DEEP_RESEARCH,
+        if cache_key in self._instances:
+            return self._instances[cache_key]
+
+        # Check Redis / in-memory session store for prior config
+        from maverick_mcp.data.cache import load_agent_session
+
+        session = load_agent_session(cache_key)
+        # Even if a session exists we still need to create the live object
+        # (LLM connections aren't serializable).  The session merely proves
+        # the user had this agent active before a restart.
+
+        agent = self._create_agent(agent_type, persona)
+        self._instances[cache_key] = agent
+
+        # Persist config so it survives restarts
+        from maverick_mcp.data.cache import save_agent_session
+
+        save_agent_session(
+            cache_key,
+            {
+                "agent_type": agent_type,
+                "persona": persona,
+                "restored": session is not None,
+            },
+        )
+
+        return agent
+
+    @staticmethod
+    def _create_agent(agent_type: str, persona: str) -> Any:
+        """Instantiate a fresh agent of the requested type."""
+        from maverick_mcp.providers.llm_factory import get_llm
+        from maverick_mcp.providers.openrouter_provider import TaskType
+
+        task_mapping = {
+            "market": TaskType.MARKET_ANALYSIS,
+            "technical": TaskType.TECHNICAL_ANALYSIS,
+            "supervisor": TaskType.MULTI_AGENT_ORCHESTRATION,
+            "deep_research": TaskType.DEEP_RESEARCH,
+        }
+
+        task_type = task_mapping.get(agent_type, TaskType.GENERAL)
+        llm = get_llm(task_type=task_type)
+
+        if agent_type == "market":
+            return MarketAnalysisAgent(llm=llm, persona=persona, ttl_hours=1)
+
+        if agent_type == "supervisor":
+            # Reuse singleton manager for sub-agents
+            market_agent = _agent_manager.get_or_create("market", persona)
+            agents = {
+                "market": market_agent,
+                "technical": None,
             }
+            return SupervisorAgent(llm=llm, agents=agents, persona=persona, ttl_hours=1)
 
-            task_type = task_mapping.get(agent_type, TaskType.GENERAL)
-
-            # Get optimized LLM for this task
-            llm = get_llm(task_type=task_type)
-
-            # Create agent based on type
-            if agent_type == "market":
-                _agent_cache[cache_key] = MarketAnalysisAgent(
-                    llm=llm, persona=persona, ttl_hours=1
-                )
-            elif agent_type == "supervisor":
-                # Create mock agents for supervisor
-                agents = {
-                    "market": get_or_create_agent("market", persona),
-                    "technical": None,  # Would be actual technical agent in full implementation
-                }
-                _agent_cache[cache_key] = SupervisorAgent(
-                    llm=llm, agents=agents, persona=persona, ttl_hours=1
-                )
-            elif agent_type == "deep_research":
-                # Get web search API keys from environment
-                exa_api_key = os.getenv("EXA_API_KEY")
-
+        if agent_type == "deep_research":
+            exa_api_key = os.getenv("EXA_API_KEY")
+            try:
                 agent = DeepResearchAgent(
                     llm=llm,
                     persona=persona,
                     ttl_hours=1,
                     exa_api_key=exa_api_key,
                 )
-                # Mark for initialization - will be initialized on first use
-                agent._needs_initialization = True
-                _agent_cache[cache_key] = agent
-            else:
-                raise ValueError(f"Unknown agent type: {agent_type}")
-        except Exception as e:
-            logger.error(f"Failed to create {agent_type} agent: {e}")
-            raise RuntimeError(
-                f"Agent '{agent_type}' could not be initialized. "
-                f"Ensure required API keys (OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY) "
-                f"are configured. Error: {e}"
-            ) from e
+            except Exception:
+                logger.error(
+                    "Failed to initialize DeepResearchAgent (credentials redacted)"
+                )
+                raise RuntimeError("Agent initialization failed") from None
+            agent._needs_initialization = True
+            return agent
 
-    return _agent_cache[cache_key]
+        raise ValueError(f"Unknown agent type: {agent_type}")
+
+
+# Singleton manager instance
+_agent_manager = AgentSessionManager()
+
+
+def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
+    """Get or create an agent instance with Redis-backed session persistence."""
+    return _agent_manager.get_or_create(agent_type, persona)
 
 
 async def analyze_market_with_agent(
@@ -95,6 +129,7 @@ async def analyze_market_with_agent(
     screening_strategy: str = "momentum",
     max_results: int = 20,
     session_id: str | None = None,
+    structured_output: bool = False,
 ) -> dict[str, Any]:
     """
     Analyze market using LangGraph agent with persona-aware recommendations.
@@ -108,6 +143,7 @@ async def analyze_market_with_agent(
         screening_strategy: Strategy to use (momentum, maverick, supply_demand_breakout)
         max_results: Maximum number of results
         session_id: Optional session ID for conversation continuity
+        structured_output: If True, return JSON with fields: signals[], risk_level, regime, top_picks[]
 
     Returns:
         Persona-adjusted market analysis with recommendations
@@ -122,18 +158,22 @@ async def analyze_market_with_agent(
         # Get or create agent
         agent = get_or_create_agent("market", persona)
 
-        # Run analysis with timeout to prevent Claude Desktop hanging
-        result = await asyncio.wait_for(
-            agent.analyze_market(
-                query=query,
-                session_id=session_id,
-                screening_strategy=screening_strategy,
-                max_results=max_results,
-            ),
-            timeout=25.0,
+        # Augment query with structured output instructions if requested
+        effective_query = query
+        if structured_output:
+            from maverick_mcp.validation.agent_schemas import STRUCTURED_OUTPUT_PROMPT
+
+            effective_query = f"{query}\n\n{STRUCTURED_OUTPUT_PROMPT}"
+
+        # Run analysis
+        result = await agent.analyze_market(
+            query=effective_query,
+            session_id=session_id,
+            screening_strategy=screening_strategy,
+            max_results=max_results,
         )
 
-        return {
+        response = {
             "status": "success",
             "agent_type": "market_analysis",
             "persona": persona,
@@ -141,16 +181,46 @@ async def analyze_market_with_agent(
             **result,
         }
 
-    except TimeoutError:
-        logger.error("Market agent analysis timed out after 25s")
+        # Parse structured output if requested
+        if structured_output:
+            try:
+                import json
+
+                from maverick_mcp.validation.agent_schemas import (
+                    StructuredMarketAnalysis,
+                )
+
+                # Try to extract JSON from agent response
+                raw_text = result.get("analysis", result.get("response", ""))
+                if isinstance(raw_text, str):
+                    # Find JSON in response (may be wrapped in markdown)
+                    json_start = raw_text.find("{")
+                    json_end = raw_text.rfind("}") + 1
+                    if json_start >= 0 and json_end > json_start:
+                        json_str = raw_text[json_start:json_end]
+                        parsed = json.loads(json_str)
+                        structured = StructuredMarketAnalysis(**parsed)
+                        response["structured"] = structured.model_dump()
+                    else:
+                        response["structured_error"] = "No JSON found in agent response"
+                elif isinstance(raw_text, dict):
+                    structured = StructuredMarketAnalysis(**raw_text)
+                    response["structured"] = structured.model_dump()
+            except Exception as e:
+                logger.warning("Failed to parse structured output: %s", e)
+                response["structured_error"] = safe_error_message(
+                    e, context="parsing structured output"
+                )
+
+        return response
+
+    except Exception as e:
+        logger.error("Error in market agent analysis: %s", e)
         return {
             "status": "error",
-            "error": "Analysis timed out. Try a simpler query or check API key configuration.",
+            "error": safe_error_message(e, context="market agent analysis"),
             "agent_type": "market_analysis",
         }
-    except Exception as e:
-        logger.error(f"Error in market agent analysis: {str(e)}")
-        return {"status": "error", "error": str(e), "agent_type": "market_analysis"}
 
 
 async def get_agent_streaming_analysis(
@@ -186,15 +256,13 @@ async def get_agent_streaming_analysis(
         # In a real implementation, this would be a streaming endpoint
         updates = []
 
-        async def _collect_stream():
-            async for chunk in agent.stream_analysis(
-                query=query, session_id=session_id, stream_mode=stream_mode
-            ):
-                updates.append(chunk)
-                if len(updates) >= 5:
-                    break
-
-        await asyncio.wait_for(_collect_stream(), timeout=25.0)
+        async for chunk in agent.stream_analysis(
+            query=query, session_id=session_id, stream_mode=stream_mode
+        ):
+            updates.append(chunk)
+            # Limit collected updates for demo
+            if len(updates) >= 5:
+                break
 
         return {
             "status": "success",
@@ -206,15 +274,12 @@ async def get_agent_streaming_analysis(
             "note": "Full streaming requires WebSocket or SSE endpoint",
         }
 
-    except TimeoutError:
-        logger.error("Streaming analysis timed out after 25s")
+    except Exception as e:
+        logger.error("Error in streaming analysis: %s", e)
         return {
             "status": "error",
-            "error": "Streaming analysis timed out. Try a simpler query.",
+            "error": safe_error_message(e, context="streaming analysis"),
         }
-    except Exception as e:
-        logger.error(f"Error in streaming analysis: {str(e)}")
-        return {"status": "error", "error": str(e)}
 
 
 async def orchestrated_analysis(
@@ -252,16 +317,13 @@ async def orchestrated_analysis(
         # Get supervisor agent
         supervisor = get_or_create_agent("supervisor", persona)
 
-        # Run orchestrated analysis with timeout
-        result = await asyncio.wait_for(
-            supervisor.coordinate_agents(
-                query=query,
-                session_id=session_id,
-                routing_strategy=routing_strategy,
-                max_agents=max_agents,
-                parallel_execution=parallel_execution,
-            ),
-            timeout=25.0,
+        # Run orchestrated analysis
+        result = await supervisor.coordinate_agents(
+            query=query,
+            session_id=session_id,
+            routing_strategy=routing_strategy,
+            max_agents=max_agents,
+            parallel_execution=parallel_execution,
         )
 
         return {
@@ -276,18 +338,11 @@ async def orchestrated_analysis(
             **result,
         }
 
-    except TimeoutError:
-        logger.error("Orchestrated analysis timed out after 25s")
-        return {
-            "status": "error",
-            "error": "Orchestrated analysis timed out. Try reducing max_agents or simplifying the query.",
-            "agent_type": "supervisor_orchestrated",
-        }
     except Exception as e:
-        logger.error(f"Error in orchestrated analysis: {str(e)}")
+        logger.error("Error in orchestrated analysis: %s", e)
         return {
             "status": "error",
-            "error": str(e),
+            "error": safe_error_message(e, context="orchestrated analysis"),
             "agent_type": "supervisor_orchestrated",
         }
 
@@ -329,19 +384,13 @@ async def deep_research_financial(
         # Get deep research agent
         researcher = get_or_create_agent("deep_research", persona)
 
-        # Deep research gets a longer timeout since it's expected to take more time
-        timeout = {"basic": 30.0, "standard": 60.0, "comprehensive": 120.0, "exhaustive": 180.0}
-        research_timeout = timeout.get(research_depth, 60.0)
-
-        result = await asyncio.wait_for(
-            researcher.research_comprehensive(
-                topic=research_topic,
-                session_id=session_id,
-                depth=research_depth,
-                focus_areas=focus_areas,
-                timeframe=timeframe,
-            ),
-            timeout=research_timeout,
+        # Run deep research
+        result = await researcher.research_comprehensive(
+            topic=research_topic,
+            session_id=session_id,
+            depth=research_depth,
+            focus_areas=focus_areas,
+            timeframe=timeframe,
         )
 
         return {
@@ -358,16 +407,13 @@ async def deep_research_financial(
             **result,
         }
 
-    except TimeoutError:
-        logger.error(f"Deep research timed out for topic: {research_topic}")
+    except Exception as e:
+        logger.error("Error in deep research: %s", e)
         return {
             "status": "error",
-            "error": f"Research timed out. Try reducing research_depth from '{research_depth}' or narrowing focus_areas.",
+            "error": safe_error_message(e, context="deep research"),
             "agent_type": "deep_research",
         }
-    except Exception as e:
-        logger.error(f"Error in deep research: {str(e)}")
-        return {"status": "error", "error": str(e), "agent_type": "deep_research"}
 
 
 async def compare_multi_agent_analysis(
@@ -407,24 +453,18 @@ async def compare_multi_agent_analysis(
             try:
                 agent = get_or_create_agent(agent_type, persona)
 
-                # Run analysis based on agent type with per-agent timeout
+                # Run analysis based on agent type
                 if agent_type == "market":
-                    result = await asyncio.wait_for(
-                        agent.analyze_market(
-                            query=query,
-                            session_id=f"{session_id}_{agent_type}",
-                            max_results=10,
-                        ),
-                        timeout=25.0,
+                    result = await agent.analyze_market(
+                        query=query,
+                        session_id=f"{session_id}_{agent_type}",
+                        max_results=10,
                     )
                 elif agent_type == "supervisor":
-                    result = await asyncio.wait_for(
-                        agent.coordinate_agents(
-                            query=query,
-                            session_id=f"{session_id}_{agent_type}",
-                            max_agents=2,
-                        ),
-                        timeout=25.0,
+                    result = await agent.coordinate_agents(
+                        query=query,
+                        session_id=f"{session_id}_{agent_type}",
+                        max_agents=2,
                     )
                 else:
                     continue
@@ -438,8 +478,13 @@ async def compare_multi_agent_analysis(
                 execution_times[agent_type] = result.get("execution_time_ms", 0)
 
             except Exception as e:
-                logger.warning(f"Error with {agent_type} agent: {str(e)}")
-                results[agent_type] = {"error": str(e), "status": "failed"}
+                logger.warning("Error with %s agent: %s", agent_type, e)
+                results[agent_type] = {
+                    "error": safe_error_message(
+                        e, context=f"{agent_type} agent comparison"
+                    ),
+                    "status": "failed",
+                }
 
         return {
             "status": "success",
@@ -452,8 +497,11 @@ async def compare_multi_agent_analysis(
         }
 
     except Exception as e:
-        logger.error(f"Error in multi-agent comparison: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        logger.error("Error in multi-agent comparison: %s", e)
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="multi-agent comparison"),
+        }
 
 
 def list_available_agents() -> dict[str, Any]:
@@ -568,29 +616,22 @@ async def compare_personas_analysis(
         results = {}
 
         for persona in ["conservative", "moderate", "aggressive"]:
-            try:
-                agent = get_or_create_agent("market", persona)
+            agent = get_or_create_agent("market", persona)
 
-                # Run analysis for this persona with timeout
-                result = await asyncio.wait_for(
-                    agent.analyze_market(
-                        query=query, session_id=f"{session_id}_{persona}", max_results=10
-                    ),
-                    timeout=25.0,
-                )
+            # Run analysis for this persona
+            result = await agent.analyze_market(
+                query=query, session_id=f"{session_id}_{persona}", max_results=10
+            )
 
-                results[persona] = {
-                    "summary": result.get("results", {}).get("summary", ""),
-                    "top_picks": result.get("results", {}).get("screened_symbols", [])[:5],
-                    "risk_parameters": {
-                        "risk_tolerance": agent.persona.risk_tolerance,
-                        "max_position_size": f"{agent.persona.position_size_max * 100:.1f}%",
-                        "stop_loss_multiplier": agent.persona.stop_loss_multiplier,
-                    },
-                }
-            except Exception as e:
-                logger.warning(f"Error with {persona} persona: {str(e)}")
-                results[persona] = {"error": str(e), "status": "failed"}
+            results[persona] = {
+                "summary": result.get("results", {}).get("summary", ""),
+                "top_picks": result.get("results", {}).get("screened_symbols", [])[:5],
+                "risk_parameters": {
+                    "risk_tolerance": agent.persona.risk_tolerance,
+                    "max_position_size": f"{agent.persona.position_size_max * 100:.1f}%",
+                    "stop_loss_multiplier": agent.persona.stop_loss_multiplier,
+                },
+            }
 
         return {
             "status": "success",
@@ -600,5 +641,8 @@ async def compare_personas_analysis(
         }
 
     except Exception as e:
-        logger.error(f"Error in persona comparison: {str(e)}")
-        return {"status": "error", "error": str(e)}
+        logger.error("Error in persona comparison: %s", e)
+        return {
+            "status": "error",
+            "error": safe_error_message(e, context="persona comparison"),
+        }

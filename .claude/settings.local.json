@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh --version)",
+      "Bash(gh auth:*)",
+      "Bash(gh pr:*)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(git add:*)"
+    ]
+  }
+}

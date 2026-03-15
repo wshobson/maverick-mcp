@@ -30,6 +30,17 @@ from .data import (
     StockDataBatchRequest,
 )
 
+# DataFrame validation (Pandera schemas)
+from .dataframe_schemas import (
+    OHLCVLowercaseSchema,
+    OHLCVSchema,
+    TechnicalIndicatorsSchema,
+    validate_ohlcv,
+    validate_ohlcv_lowercase,
+    validate_technical_indicators,
+    validated_output,
+)
+
 # Error imports removed - use maverick_mcp.exceptions instead
 from .middleware import (
     RateLimitMiddleware,
@@ -130,4 +141,12 @@ __all__ = [
     "SupportResistanceRequest",
     "TechnicalAnalysisRequest",
     "StockChartRequest",
+    # DataFrame validation (Pandera)
+    "OHLCVSchema",
+    "OHLCVLowercaseSchema",
+    "TechnicalIndicatorsSchema",
+    "validate_ohlcv",
+    "validate_ohlcv_lowercase",
+    "validate_technical_indicators",
+    "validated_output",
 ]

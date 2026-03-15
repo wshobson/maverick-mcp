@@ -8,6 +8,7 @@ This module contains all portfolio-related tools including:
 """
 
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -20,9 +21,13 @@ from sqlalchemy.orm import Session
 from maverick_mcp.data.models import PortfolioPosition, UserPortfolio, get_db
 from maverick_mcp.domain.portfolio import Portfolio
 from maverick_mcp.providers.stock_data import StockDataProvider
+from maverick_mcp.utils.error_handling import safe_error_message
 from maverick_mcp.utils.stock_helpers import get_stock_dataframe
 
 logger = logging.getLogger(__name__)
+
+# Ticker validation pattern — matches validation/base.py TickerSymbol
+_TICKER_RE = re.compile(r"^[A-Z0-9\-\.]{1,10}$")
 
 # Create the portfolio router
 portfolio_router: FastMCP = FastMCP("Portfolio_Analysis")
@@ -48,11 +53,11 @@ def _validate_ticker(ticker: str) -> tuple[bool, str | None]:
 
     normalized = ticker.strip().upper()
 
-    # Basic validation: 1-5 alphanumeric characters
-    if not normalized.isalnum():
+    # Validate format: letters, numbers, dots, and hyphens (e.g. BRK.B, BF-A)
+    if not _TICKER_RE.match(normalized):
         return (
             False,
-            f"Invalid ticker symbol '{ticker}': must contain only letters and numbers",
+            f"Invalid ticker symbol '{ticker}': must contain only letters, numbers, dots, and hyphens",
         )
 
     if len(normalized) > 10:
@@ -64,7 +69,6 @@ def _validate_ticker(ticker: str) -> tuple[bool, str | None]:
 def risk_adjusted_analysis(
     ticker: str,
     risk_level: float | str | None = 50.0,
-    portfolio_value: float | None = None,
     user_id: str = "default",
     portfolio_name: str = "My Portfolio",
 ) -> dict[str, Any]:
@@ -133,11 +137,13 @@ def risk_adjusted_analysis(
                 "available_columns": list(df.columns),
             }
 
-        df["atr"] = ta.atr(df["High"], df["Low"], df["Close"], length=20)
+        # Normalize columns to lowercase (get_stock_dataframe returns lowercase)
+        df.columns = [col.lower() for col in df.columns]
+        df["atr"] = ta.atr(df["high"], df["low"], df["close"], length=20)
         atr = df["atr"].iloc[-1]
-        current_price = df["Close"].iloc[-1]
+        current_price = df["close"].iloc[-1]
         risk_factor = (risk_level or 50.0) / 100  # Convert to 0-1 scale
-        account_size = portfolio_value if portfolio_value and portfolio_value > 0 else 100000
+        account_size = 100000
         analysis = {
             "ticker": ticker,
             "current_price": round(current_price, 2),
@@ -211,10 +217,12 @@ def risk_adjusted_analysis(
                     unrealized_pnl = (
                         current_price - float(existing_position.average_cost_basis)
                     ) * float(existing_position.shares)
+                    cost_basis = float(existing_position.average_cost_basis)
                     unrealized_pnl_pct = (
-                        (current_price - float(existing_position.average_cost_basis))
-                        / float(existing_position.average_cost_basis)
-                    ) * 100
+                        ((current_price - cost_basis) / cost_basis) * 100
+                        if cost_basis > 0
+                        else 0.0
+                    )
 
                     analysis["existing_position"] = {
                         "shares_owned": float(existing_position.shares),
@@ -237,8 +245,10 @@ def risk_adjusted_analysis(
 
         return analysis
     except Exception as e:
-        logger.error(f"Error performing risk analysis for {ticker}: {e}")
-        return {"error": str(e)}
+        logger.error("Error performing risk analysis for %s: %s", ticker, e)
+        return {
+            "error": safe_error_message(e, context="performing risk-adjusted analysis")
+        }
 
 
 def compare_tickers(
@@ -413,8 +423,11 @@ def compare_tickers(
 
         return response
     except Exception as e:
-        logger.error(f"Error comparing tickers {tickers}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error comparing tickers %s: %s", tickers, e)
+        return {
+            "error": safe_error_message(e, context="comparing tickers"),
+            "status": "error",
+        }
 
 
 def portfolio_correlation_analysis(
@@ -503,13 +516,11 @@ def portfolio_correlation_analysis(
                     end_date.strftime("%Y-%m-%d"),
                 )
                 if not df.empty:
-                    # yfinance returns "Close" (capitalized); normalize
-                    close_col = "Close" if "Close" in df.columns else "close"
-                    price_data[ticker] = df[close_col]
+                    price_data[ticker] = df["close"]
                 else:
                     failed_tickers.append(ticker)
             except Exception as e:
-                logger.warning(f"Failed to fetch data for {ticker}: {e}", exc_info=True)
+                logger.warning("Failed to fetch data for %s: %s", ticker, e)
                 failed_tickers.append(ticker)
 
         # Check if we have enough valid tickers
@@ -603,8 +614,11 @@ def portfolio_correlation_analysis(
         return response
 
     except Exception as e:
-        logger.error(f"Error in correlation analysis: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error in correlation analysis: %s", e)
+        return {
+            "error": safe_error_message(e, context="portfolio correlation analysis"),
+            "status": "error",
+        }
 
 
 # ============================================================================
@@ -763,8 +777,11 @@ def add_portfolio_position(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error adding position {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error adding position %s: %s", ticker, e)
+        return {
+            "error": safe_error_message(e, context="adding portfolio position"),
+            "status": "error",
+        }
 
 
 def get_my_portfolio(
@@ -810,12 +827,8 @@ def get_my_portfolio(
                     "total_invested": 0.0,
                 }
 
-            # Get all positions
-            positions = (
-                db.query(PortfolioPosition)
-                .filter_by(portfolio_id=portfolio_db.id)
-                .all()
-            )
+            # Positions already loaded via selectin relationship
+            positions = portfolio_db.positions
 
             if not positions:
                 return {
@@ -861,7 +874,7 @@ def get_my_portfolio(
                             )
                     except Exception as e:
                         logger.warning(
-                            f"Could not fetch price for {pos.ticker}: {str(e)}"
+                            "Could not fetch price for %s: %s", pos.ticker, e
                         )
 
             # Calculate metrics
@@ -893,9 +906,12 @@ def get_my_portfolio(
                     position_dict["current_price"] = current_price
                     position_dict["current_value"] = float(current_value)
                     position_dict["unrealized_gain_loss"] = float(unrealized_gain_loss)
+                    total_cost_float = float(pos_db.total_cost)
                     position_dict["unrealized_gain_loss_percent"] = (
-                        position_dict["unrealized_gain_loss"] / float(pos_db.total_cost)
-                    ) * 100
+                        (position_dict["unrealized_gain_loss"] / total_cost_float) * 100
+                        if total_cost_float > 0
+                        else 0.0
+                    )
 
                 positions_list.append(position_dict)
 
@@ -921,8 +937,11 @@ def get_my_portfolio(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error getting portfolio: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error getting portfolio: %s", e)
+        return {
+            "error": safe_error_message(e, context="fetching portfolio"),
+            "status": "error",
+        }
 
 
 def remove_portfolio_position(
@@ -1036,8 +1055,11 @@ def remove_portfolio_position(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error removing position {ticker}: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error removing position %s: %s", ticker, e)
+        return {
+            "error": safe_error_message(e, context="removing portfolio position"),
+            "status": "error",
+        }
 
 
 def clear_my_portfolio(
@@ -1117,5 +1139,77 @@ def clear_my_portfolio(
             db.close()
 
     except Exception as e:
-        logger.error(f"Error clearing portfolio: {str(e)}")
-        return {"error": str(e), "status": "error"}
+        logger.error("Error clearing portfolio: %s", e)
+        return {
+            "error": safe_error_message(e, context="clearing portfolio"),
+            "status": "error",
+        }
+
+
+def optimize_portfolio_hrp(
+    symbols: list[str] | None = None,
+    days: int = 252,
+    risk_measure: str = "MV",
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
+    """Optimize portfolio allocation using Hierarchical Risk Parity (HRP).
+
+    HRP builds a hierarchical tree of asset clusters and allocates risk
+    top-down, producing diversified weights without requiring return estimates.
+
+    If no symbols provided, automatically uses portfolio holdings.
+
+    Args:
+        symbols: List of ticker symbols (minimum 2). If None, uses portfolio.
+        days: Number of trading days for analysis (default: 252 ~ 1 year)
+        risk_measure: Risk measure ('MV' for variance, 'CVaR', 'CDaR')
+        user_id: User identifier for portfolio auto-detection
+        portfolio_name: Portfolio name for auto-detection
+
+    Returns:
+        Dictionary containing HRP weights, metrics, and equal-weight comparison
+    """
+    try:
+        # Auto-fill from portfolio if no symbols provided
+        if symbols is None or len(symbols) == 0:
+            db: Session = next(get_db())
+            try:
+                portfolio = (
+                    db.query(UserPortfolio)
+                    .filter_by(user_id=user_id, name=portfolio_name)
+                    .first()
+                )
+                if not portfolio or len(portfolio.positions) < 2:
+                    return {
+                        "error": "No portfolio found or fewer than 2 positions",
+                        "details": "Provide at least 2 symbols or add more portfolio positions",
+                        "status": "error",
+                    }
+                symbols = [pos.ticker for pos in portfolio.positions]
+                portfolio_context = {
+                    "using_portfolio": True,
+                    "portfolio_name": portfolio_name,
+                }
+            finally:
+                db.close()
+        else:
+            portfolio_context = {"using_portfolio": False}
+
+        from maverick_mcp.core.portfolio_optimization import optimize_hrp
+
+        result = optimize_hrp(symbols=symbols, days=days, risk_measure=risk_measure)
+
+        if result.get("status") == "success" and portfolio_context.get(
+            "using_portfolio"
+        ):
+            result["portfolio_context"] = portfolio_context
+
+        return result
+
+    except Exception as e:
+        logger.error("Error in HRP optimization: %s", e)
+        return {
+            "error": safe_error_message(e, context="HRP portfolio optimization"),
+            "status": "error",
+        }

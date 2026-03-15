@@ -13,6 +13,7 @@ from typing import Any
 from fastmcp import FastMCP
 
 from maverick_mcp.config.settings import get_settings
+from maverick_mcp.utils.error_handling import safe_error_message
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -49,10 +50,10 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get system health: {e}")
+            logger.error("Failed to get system health: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="system health check"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -100,10 +101,10 @@ def register_health_tools(mcp: FastMCP):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get component status: {e}")
+            logger.error("Failed to get component status: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="component status check"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -150,10 +151,10 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get circuit breaker status: {e}")
+            logger.error("Failed to get circuit breaker status: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="circuit breaker status"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -185,10 +186,10 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get resource usage: {e}")
+            logger.error("Failed to get resource usage: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="resource usage check"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -215,10 +216,10 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get status dashboard: {e}")
+            logger.error("Failed to get status dashboard: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="status dashboard"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -255,10 +256,10 @@ def register_health_tools(mcp: FastMCP):
                 }
 
         except Exception as e:
-            logger.error(f"Failed to reset circuit breaker {breaker_name}: {e}")
+            logger.error("Failed to reset circuit breaker %s: %s", breaker_name, e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="circuit breaker reset"),
                 "breaker_name": breaker_name,
                 "timestamp": datetime.now(UTC).isoformat(),
             }
@@ -303,10 +304,10 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to get health history: {e}")
+            logger.error("Failed to get health history: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="health history retrieval"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
@@ -447,10 +448,10 @@ def register_health_tools(mcp: FastMCP):
             }
 
         except Exception as e:
-            logger.error(f"Failed to run health diagnostics: {e}")
+            logger.error("Failed to run health diagnostics: %s", e)
             return {
                 "status": "error",
-                "error": str(e),
+                "error": safe_error_message(e, context="health diagnostics"),
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 

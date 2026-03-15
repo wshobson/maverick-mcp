@@ -1,26 +1,48 @@
 """
 Comprehensive tests for the circuit breaker system.
+
+Tests cover the adapter-based implementation backed by the ``circuitbreaker``
+library, the backward-compatible facade in ``circuit_breaker.py``, and the
+service-specific wrappers in ``circuit_breaker_services.py``.
 """
 
-import asyncio
 import time
 from unittest.mock import patch
 
 import pytest
 
-from maverick_mcp.exceptions import CircuitBreakerError, ExternalServiceError
+from maverick_mcp.exceptions import CircuitBreakerError
 from maverick_mcp.utils.circuit_breaker import (
     CircuitBreakerConfig,
     CircuitBreakerMetrics,
     CircuitState,
     EnhancedCircuitBreaker,
-    FailureDetectionStrategy,
     circuit_breaker,
     get_all_circuit_breakers,
     get_circuit_breaker,
     get_circuit_breaker_status,
     reset_all_circuit_breakers,
 )
+from maverick_mcp.utils.circuit_breaker_adapter import (
+    MaverickCircuitBreaker,
+    _breakers,
+    _breakers_lock,
+    get_or_create_breaker,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _fresh_breaker(name: str, **kwargs) -> MaverickCircuitBreaker:
+    """Create a breaker that is NOT in the global registry."""
+    return MaverickCircuitBreaker(name=name, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# Metrics
+# ---------------------------------------------------------------------------
 
 
 class TestCircuitBreakerMetrics:
@@ -75,17 +97,17 @@ class TestCircuitBreakerMetrics:
         assert stats["total_calls"] == 1  # Old call should be removed
 
 
-class TestEnhancedCircuitBreaker:
-    """Test enhanced circuit breaker functionality."""
+# ---------------------------------------------------------------------------
+# MaverickCircuitBreaker (adapter)
+# ---------------------------------------------------------------------------
 
-    def test_circuit_breaker_initialization(self):
-        """Test circuit breaker is initialized correctly."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_threshold=3,
-            recovery_timeout=5,
-        )
-        breaker = EnhancedCircuitBreaker(config)
+
+class TestMaverickCircuitBreaker:
+    """Test the adapter-based MaverickCircuitBreaker."""
+
+    def test_initialization(self):
+        """Test breaker is initialized correctly."""
+        breaker = _fresh_breaker("test_init", failure_threshold=3, recovery_timeout=5)
 
         assert breaker.state == CircuitState.CLOSED
         assert breaker.is_closed
@@ -93,14 +115,8 @@ class TestEnhancedCircuitBreaker:
 
     def test_consecutive_failures_opens_circuit(self):
         """Test circuit opens after consecutive failures."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_threshold=3,
-            detection_strategy=FailureDetectionStrategy.CONSECUTIVE_FAILURES,
-        )
-        breaker = EnhancedCircuitBreaker(config)
+        breaker = _fresh_breaker("test_open", failure_threshold=3)
 
-        # Fail 3 times
         for _ in range(3):
             try:
                 breaker.call_sync(lambda: 1 / 0)
@@ -110,37 +126,9 @@ class TestEnhancedCircuitBreaker:
         assert breaker.state == CircuitState.OPEN
         assert breaker.is_open
 
-    def test_failure_rate_opens_circuit(self):
-        """Test circuit opens based on failure rate."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_rate_threshold=0.5,
-            detection_strategy=FailureDetectionStrategy.FAILURE_RATE,
-        )
-        breaker = EnhancedCircuitBreaker(config)
-
-        # Need minimum calls for rate calculation
-        for i in range(10):
-            try:
-                if i % 2 == 0:  # 50% failure rate
-                    breaker.call_sync(lambda: 1 / 0)
-                else:
-                    breaker.call_sync(lambda: "success")
-            except (ZeroDivisionError, CircuitBreakerError):
-                pass
-
-        stats = breaker._metrics.get_stats()
-        assert stats["failure_rate"] >= 0.5
-        assert breaker.state == CircuitState.OPEN
-
-    def test_circuit_breaker_blocks_calls_when_open(self):
+    def test_blocks_calls_when_open(self):
         """Test circuit breaker blocks calls when open."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_threshold=1,
-            recovery_timeout=60,
-        )
-        breaker = EnhancedCircuitBreaker(config)
+        breaker = _fresh_breaker("test_block", failure_threshold=1, recovery_timeout=60)
 
         # Open the circuit
         try:
@@ -152,56 +140,39 @@ class TestEnhancedCircuitBreaker:
         with pytest.raises(CircuitBreakerError) as exc_info:
             breaker.call_sync(lambda: "success")
 
-        assert "Circuit breaker open for test:" in str(exc_info.value)
         assert exc_info.value.context["state"] == "open"
 
-    def test_circuit_breaker_recovery(self):
+    def test_recovery(self):
         """Test circuit breaker recovery to half-open then closed."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_threshold=1,
-            recovery_timeout=1,  # 1 second
-            success_threshold=2,
+        breaker = _fresh_breaker(
+            "test_recovery", failure_threshold=1, recovery_timeout=1
         )
-        breaker = EnhancedCircuitBreaker(config)
 
         # Open the circuit
         try:
             breaker.call_sync(lambda: 1 / 0)
         except ZeroDivisionError:
             pass
-
         assert breaker.state == CircuitState.OPEN
 
         # Wait for recovery timeout
         time.sleep(1.1)
 
-        # First successful call should move to half-open
-        result = breaker.call_sync(lambda: "success1")
-        assert result == "success1"
-        assert breaker.state == CircuitState.HALF_OPEN
-
-        # Second successful call should close the circuit
-        result = breaker.call_sync(lambda: "success2")
-        assert result == "success2"
+        # Successful call should move to half-open then closed
+        result = breaker.call_sync(lambda: "success")
+        assert result == "success"
+        # Library moves back to CLOSED after 1 success in half-open
         assert breaker.state == CircuitState.CLOSED
 
     def test_half_open_failure_reopens(self):
         """Test failure in half-open state reopens circuit."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_threshold=1,
-            recovery_timeout=1,
-        )
-        breaker = EnhancedCircuitBreaker(config)
+        breaker = _fresh_breaker("test_reopen", failure_threshold=1, recovery_timeout=1)
 
-        # Open the circuit
         try:
             breaker.call_sync(lambda: 1 / 0)
         except ZeroDivisionError:
             pass
 
-        # Wait for recovery
         time.sleep(1.1)
 
         # Fail in half-open state
@@ -214,33 +185,22 @@ class TestEnhancedCircuitBreaker:
 
     def test_manual_reset(self):
         """Test manual circuit breaker reset."""
-        config = CircuitBreakerConfig(
-            name="test",
-            failure_threshold=1,
-        )
-        breaker = EnhancedCircuitBreaker(config)
+        breaker = _fresh_breaker("test_reset", failure_threshold=1)
 
-        # Open the circuit
         try:
             breaker.call_sync(lambda: 1 / 0)
         except ZeroDivisionError:
             pass
-
         assert breaker.state == CircuitState.OPEN
 
-        # Manual reset
         breaker.reset()
         assert breaker.state == CircuitState.CLOSED
-        assert breaker._consecutive_failures == 0
+        assert breaker.consecutive_failures == 0
 
     @pytest.mark.asyncio
     async def test_async_circuit_breaker(self):
         """Test circuit breaker with async functions."""
-        config = CircuitBreakerConfig(
-            name="test_async",
-            failure_threshold=2,
-        )
-        breaker = EnhancedCircuitBreaker(config)
+        breaker = _fresh_breaker("test_async_cb", failure_threshold=2)
 
         async def failing_func():
             raise ValueError("Async failure")
@@ -248,63 +208,82 @@ class TestEnhancedCircuitBreaker:
         async def success_func():
             return "async success"
 
-        # Test failures
         for _ in range(2):
             with pytest.raises(ValueError):
                 await breaker.call_async(failing_func)
 
         assert breaker.state == CircuitState.OPEN
 
-        # Test blocking
         with pytest.raises(CircuitBreakerError):
             await breaker.call_async(success_func)
 
-    @pytest.mark.asyncio
-    async def test_async_timeout(self):
-        """Test async timeout handling."""
+    def test_get_status(self):
+        """Test get_status returns expected format."""
+        breaker = _fresh_breaker("test_status")
+        breaker.call_sync(lambda: "ok")
+
+        status = breaker.get_status()
+        assert status["name"] == "test_status"
+        assert status["state"] == "closed"
+        assert "metrics" in status
+        assert "config" in status
+        assert status["metrics"]["total_calls"] == 1
+
+
+# ---------------------------------------------------------------------------
+# EnhancedCircuitBreaker (backward-compatible alias)
+# ---------------------------------------------------------------------------
+
+
+class TestEnhancedCircuitBreaker:
+    """Test backward-compatible EnhancedCircuitBreaker alias."""
+
+    def test_config_constructor_works(self):
+        """EnhancedCircuitBreaker(config) should still work."""
         config = CircuitBreakerConfig(
-            name="test_timeout",
-            timeout_threshold=0.1,  # 100ms
-            failure_threshold=1,
+            name="compat_test",
+            failure_threshold=3,
+            recovery_timeout=5,
         )
         breaker = EnhancedCircuitBreaker(config)
 
-        async def slow_func():
-            await asyncio.sleep(0.5)  # 500ms
-            return "done"
+        assert breaker.state == CircuitState.CLOSED
+        assert breaker.config.name == "compat_test"
 
-        with pytest.raises(ExternalServiceError) as exc_info:
-            await breaker.call_async(slow_func)
+    def test_is_same_as_maverick_breaker(self):
+        """EnhancedCircuitBreaker is MaverickCircuitBreaker."""
+        assert EnhancedCircuitBreaker is MaverickCircuitBreaker
 
-        assert "timed out" in str(exc_info.value)
-        assert breaker.state == CircuitState.OPEN
+
+# ---------------------------------------------------------------------------
+# Decorator
+# ---------------------------------------------------------------------------
 
 
 class TestCircuitBreakerDecorator:
     """Test circuit breaker decorator functionality."""
 
+    def setup_method(self):
+        """Clear registry between tests."""
+        with _breakers_lock:
+            _breakers.clear()
+
     def test_sync_decorator(self):
         """Test decorator with sync function."""
-        call_count = 0
 
         @circuit_breaker(name="test_decorator", failure_threshold=2)
         def test_func(should_fail=False):
-            nonlocal call_count
-            call_count += 1
             if should_fail:
                 raise ValueError("Test failure")
             return "success"
 
-        # Successful calls
         assert test_func() == "success"
         assert test_func() == "success"
 
-        # Failures
         for _ in range(2):
             with pytest.raises(ValueError):
                 test_func(should_fail=True)
 
-        # Circuit should be open
         with pytest.raises(CircuitBreakerError):
             test_func()
 
@@ -318,46 +297,45 @@ class TestCircuitBreakerDecorator:
                 raise ValueError("Async test failure")
             return "async success"
 
-        # Success
         result = await async_test_func()
         assert result == "async success"
 
-        # Failure
         with pytest.raises(ValueError):
             await async_test_func(should_fail=True)
 
-        # Circuit open
         with pytest.raises(CircuitBreakerError):
             await async_test_func()
+
+
+# ---------------------------------------------------------------------------
+# Registry
+# ---------------------------------------------------------------------------
 
 
 class TestCircuitBreakerRegistry:
     """Test global circuit breaker registry."""
 
+    def setup_method(self):
+        """Clear registry between tests."""
+        with _breakers_lock:
+            _breakers.clear()
+
     def test_get_circuit_breaker(self):
         """Test getting circuit breaker by name."""
 
-        # Create a breaker via decorator
         @circuit_breaker(name="registry_test")
         def test_func():
             return "test"
 
-        # Call to initialize
         test_func()
 
-        # Get from registry
         breaker = get_circuit_breaker("registry_test")
         assert breaker is not None
         assert breaker.config.name == "registry_test"
 
     def test_get_all_circuit_breakers(self):
         """Test getting all circuit breakers."""
-        # Clear existing (from other tests)
-        from maverick_mcp.utils.circuit_breaker import _breakers
 
-        _breakers.clear()
-
-        # Create multiple breakers
         @circuit_breaker(name="breaker1")
         def func1():
             pass
@@ -366,7 +344,6 @@ class TestCircuitBreakerRegistry:
         def func2():
             pass
 
-        # Initialize
         func1()
         func2()
 
@@ -378,7 +355,6 @@ class TestCircuitBreakerRegistry:
     def test_reset_all_circuit_breakers(self):
         """Test resetting all circuit breakers."""
 
-        # Create and open a breaker
         @circuit_breaker(name="reset_test", failure_threshold=1)
         def failing_func():
             raise ValueError("Fail")
@@ -389,14 +365,12 @@ class TestCircuitBreakerRegistry:
         breaker = get_circuit_breaker("reset_test")
         assert breaker.state == CircuitState.OPEN
 
-        # Reset all
         reset_all_circuit_breakers()
         assert breaker.state == CircuitState.CLOSED
 
     def test_circuit_breaker_status(self):
         """Test getting status of all circuit breakers."""
 
-        # Create a breaker
         @circuit_breaker(name="status_test")
         def test_func():
             return "test"
@@ -409,8 +383,18 @@ class TestCircuitBreakerRegistry:
         assert status["status_test"]["name"] == "status_test"
 
 
+# ---------------------------------------------------------------------------
+# Service-specific circuit breakers
+# ---------------------------------------------------------------------------
+
+
 class TestServiceSpecificCircuitBreakers:
     """Test service-specific circuit breaker implementations."""
+
+    def setup_method(self):
+        """Clear registry so each test gets fresh breakers."""
+        with _breakers_lock:
+            _breakers.clear()
 
     def test_stock_data_circuit_breaker(self):
         """Test stock data circuit breaker with fallback."""
@@ -418,17 +402,14 @@ class TestServiceSpecificCircuitBreakers:
 
         breaker = StockDataCircuitBreaker()
 
-        # Mock a failing function
         def failing_fetch(symbol, start, end):
             raise Exception("API Error")
 
-        # Mock fallback data
         with patch.object(breaker.fallback_chain, "execute_sync") as mock_fallback:
             import pandas as pd
 
             mock_fallback.return_value = pd.DataFrame({"Close": [100, 101, 102]})
 
-            # Should use fallback
             result = breaker.fetch_with_fallback(
                 failing_fetch, "AAPL", "2024-01-01", "2024-01-31"
             )
@@ -443,11 +424,9 @@ class TestServiceSpecificCircuitBreakers:
 
         breaker = MarketDataCircuitBreaker("finviz")
 
-        # Mock failing function
         def failing_fetch(mover_type):
             raise Exception("Finviz Error")
 
-        # Should return fallback
         result = breaker.fetch_with_fallback(failing_fetch, "gainers")
 
         assert isinstance(result, dict)
@@ -463,11 +442,9 @@ class TestServiceSpecificCircuitBreakers:
 
         breaker = EconomicDataCircuitBreaker()
 
-        # Mock failing function
         def failing_fetch(series_id, start, end):
             raise Exception("FRED API Error")
 
-        # Should return default values
         result = breaker.fetch_with_fallback(
             failing_fetch, "GDP", "2024-01-01", "2024-01-31"
         )
@@ -477,3 +454,16 @@ class TestServiceSpecificCircuitBreakers:
         assert isinstance(result, pd.Series)
         assert result.attrs["is_fallback"] is True
         assert all(result == 2.5)  # Default GDP value
+
+    def test_get_or_create_breaker_reuses(self):
+        """Same name returns the same breaker instance."""
+        b1 = get_or_create_breaker("reuse_test")
+        b2 = get_or_create_breaker("reuse_test")
+        assert b1 is b2
+
+    def test_get_or_create_breaker_uses_service_config(self):
+        """Known services get their configured thresholds."""
+        breaker = get_or_create_breaker("yfinance")
+        # The library stores thresholds on instance attrs (_failure_threshold)
+        assert breaker._cb._failure_threshold == 3
+        assert breaker._cb._recovery_timeout == 120

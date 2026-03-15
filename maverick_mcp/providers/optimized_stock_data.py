@@ -173,6 +173,16 @@ class OptimizedStockDataProvider:
 
                 df["volume"] = pd.to_numeric(df["volume"], errors="coerce")
 
+            # Validate OHLCV data from database
+            if not df.empty:
+                from maverick_mcp.validation.dataframe_schemas import (
+                    validate_ohlcv_lowercase,
+                )
+
+                df = validate_ohlcv_lowercase(
+                    df, context=f"OptimizedStockDataProvider for {symbol}"
+                )
+
             return df
 
     @cached(data_type="screening", ttl=7200)

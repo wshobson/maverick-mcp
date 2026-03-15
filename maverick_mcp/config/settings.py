@@ -7,14 +7,26 @@ through environment variables or a settings file.
 
 import logging
 import os
+import re
 import tempfile
 from decimal import Decimal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from maverick_mcp.config.constants import CONFIG
 
 logger = logging.getLogger("maverick_mcp.config")
+
+
+def mask_url(url: str) -> str:
+    """Mask credentials in a connection URL for safe logging.
+
+    Replaces passwords in URLs like ``redis://:secret@host`` or
+    ``postgresql://user:secret@host`` with ``***`` so URLs can be
+    safely included in logs and error messages.
+    """
+    return re.sub(r"(://[^:]*:)[^@]+(@)", r"\1***\2", url)
 
 
 class DatabaseSettings(BaseModel):
@@ -38,6 +50,11 @@ class DatabaseSettings(BaseModel):
             return env_url
         # Default to SQLite for development
         return "sqlite:///maverick_mcp.db"
+
+    @property
+    def masked_url(self) -> str:
+        """Get database URL with credentials masked for safe logging."""
+        return mask_url(self.url)
 
 
 class APISettings(BaseModel):
@@ -120,6 +137,11 @@ class RedisSettings(BaseModel):
         elif self.password:
             auth = f":{self.password}@"
         return f"{scheme}://{auth}{self.host}:{self.port}/{self.db}"
+
+    @property
+    def masked_url(self) -> str:
+        """Get Redis URL with credentials masked for safe logging."""
+        return mask_url(self.url)
 
 
 class ResearchSettings(BaseModel):
@@ -256,6 +278,27 @@ class DataLimitsConfig(BaseModel):
     max_query_results: int = Field(
         default_factory=lambda: int(os.getenv("MAX_QUERY_RESULTS", "50000")),
         description="Maximum query results",
+    )
+
+
+class FinnhubSettings(BaseModel):
+    """Finnhub API configuration settings."""
+
+    api_key: str | None = Field(
+        default_factory=lambda: os.getenv("FINNHUB_API_KEY"),
+        description="Finnhub API key (free at finnhub.io)",
+    )
+    base_url: str = Field(
+        default="https://finnhub.io/api/v1",
+        description="Finnhub API base URL",
+    )
+    rate_limit_per_minute: int = Field(
+        default_factory=lambda: int(os.getenv("FINNHUB_RATE_LIMIT", "60")),
+        description="Finnhub API rate limit (calls per minute)",
+    )
+    cache_ttl_seconds: int = Field(
+        default_factory=lambda: int(os.getenv("FINNHUB_CACHE_TTL", "300")),
+        description="Finnhub cache TTL in seconds (default 5 minutes)",
     )
 
 
@@ -866,6 +909,10 @@ class Settings(BaseModel):
         default_factory=ExternalDataSettings,
         description="External data API settings",
     )
+    finnhub: FinnhubSettings = Field(
+        default_factory=FinnhubSettings,
+        description="Finnhub alternative data API settings",
+    )
     email: EmailSettings = Field(
         default_factory=EmailSettings, description="Email service configuration"
     )
@@ -882,7 +929,7 @@ class Settings(BaseModel):
         default_factory=AgentConfig, description="Agent settings"
     )
     validation: ValidationConfig = Field(
-        default_factory=FinancialConfig, description="Financial calculation settings"
+        default_factory=ValidationConfig, description="Validation settings"
     )
     performance: PerformanceConfig = Field(
         default_factory=PerformanceConfig, description="Performance settings"
@@ -891,18 +938,25 @@ class Settings(BaseModel):
     provider: ProviderConfig = Field(
         default_factory=ProviderConfig, description="Provider configuration"
     )
-    agent: AgentConfig = Field(
-        default_factory=AgentConfig, description="Agent configuration"
-    )
     db: DatabaseConfig = Field(
         default_factory=DatabaseConfig, description="Database connection settings"
     )
     middleware: MiddlewareConfig = Field(
         default_factory=MiddlewareConfig, description="Middleware settings"
     )
-    validation: ValidationConfig = Field(
-        default_factory=ValidationConfig, description="Validation settings"
+
+    # Lazy import to avoid circular dependency at module load
+    streaming: Any = Field(
+        default=None,
+        description="Streaming settings (loaded lazily from StreamingConfig)",
     )
+
+    def model_post_init(self, __context: Any) -> None:  # noqa: ANN401
+        """Lazily initialise the streaming config after all fields are set."""
+        if self.streaming is None:
+            from maverick_mcp.streaming.config import StreamingConfig
+
+            object.__setattr__(self, "streaming", StreamingConfig())
 
 
 def load_settings_from_environment() -> Settings:
