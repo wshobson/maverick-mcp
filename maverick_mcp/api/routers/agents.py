@@ -5,6 +5,7 @@ This router exposes the LangGraph agents as MCP tools while maintaining
 compatibility with the existing infrastructure.
 """
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -165,12 +166,15 @@ async def analyze_market_with_agent(
 
             effective_query = f"{query}\n\n{STRUCTURED_OUTPUT_PROMPT}"
 
-        # Run analysis
-        result = await agent.analyze_market(
-            query=effective_query,
-            session_id=session_id,
-            screening_strategy=screening_strategy,
-            max_results=max_results,
+        # Run analysis with timeout to prevent Claude Desktop hanging
+        result = await asyncio.wait_for(
+            agent.analyze_market(
+                query=effective_query,
+                session_id=session_id,
+                screening_strategy=screening_strategy,
+                max_results=max_results,
+            ),
+            timeout=25.0,
         )
 
         response = {
@@ -214,6 +218,13 @@ async def analyze_market_with_agent(
 
         return response
 
+    except TimeoutError:
+        logger.error("Market agent analysis timed out after 25s")
+        return {
+            "status": "error",
+            "error": "Analysis timed out. Try a simpler query or check API key configuration.",
+            "agent_type": "market_analysis",
+        }
     except Exception as e:
         logger.error("Error in market agent analysis: %s", e)
         return {
@@ -256,13 +267,15 @@ async def get_agent_streaming_analysis(
         # In a real implementation, this would be a streaming endpoint
         updates = []
 
-        async for chunk in agent.stream_analysis(
-            query=query, session_id=session_id, stream_mode=stream_mode
-        ):
-            updates.append(chunk)
-            # Limit collected updates for demo
-            if len(updates) >= 5:
-                break
+        async def _collect_stream():
+            async for chunk in agent.stream_analysis(
+                query=query, session_id=session_id, stream_mode=stream_mode
+            ):
+                updates.append(chunk)
+                if len(updates) >= 5:
+                    break
+
+        await asyncio.wait_for(_collect_stream(), timeout=25.0)
 
         return {
             "status": "success",
@@ -274,6 +287,12 @@ async def get_agent_streaming_analysis(
             "note": "Full streaming requires WebSocket or SSE endpoint",
         }
 
+    except TimeoutError:
+        logger.error("Streaming analysis timed out after 25s")
+        return {
+            "status": "error",
+            "error": "Streaming analysis timed out. Try a simpler query.",
+        }
     except Exception as e:
         logger.error("Error in streaming analysis: %s", e)
         return {
@@ -317,13 +336,16 @@ async def orchestrated_analysis(
         # Get supervisor agent
         supervisor = get_or_create_agent("supervisor", persona)
 
-        # Run orchestrated analysis
-        result = await supervisor.coordinate_agents(
-            query=query,
-            session_id=session_id,
-            routing_strategy=routing_strategy,
-            max_agents=max_agents,
-            parallel_execution=parallel_execution,
+        # Run orchestrated analysis with timeout
+        result = await asyncio.wait_for(
+            supervisor.coordinate_agents(
+                query=query,
+                session_id=session_id,
+                routing_strategy=routing_strategy,
+                max_agents=max_agents,
+                parallel_execution=parallel_execution,
+            ),
+            timeout=25.0,
         )
 
         return {
@@ -338,6 +360,13 @@ async def orchestrated_analysis(
             **result,
         }
 
+    except TimeoutError:
+        logger.error("Orchestrated analysis timed out after 25s")
+        return {
+            "status": "error",
+            "error": "Orchestrated analysis timed out. Try reducing max_agents or simplifying the query.",
+            "agent_type": "supervisor_orchestrated",
+        }
     except Exception as e:
         logger.error("Error in orchestrated analysis: %s", e)
         return {
@@ -384,13 +413,19 @@ async def deep_research_financial(
         # Get deep research agent
         researcher = get_or_create_agent("deep_research", persona)
 
-        # Run deep research
-        result = await researcher.research_comprehensive(
-            topic=research_topic,
-            session_id=session_id,
-            depth=research_depth,
-            focus_areas=focus_areas,
-            timeframe=timeframe,
+        # Deep research gets a longer timeout since it's expected to take more time
+        depth_timeouts = {"basic": 30.0, "standard": 60.0, "comprehensive": 120.0, "exhaustive": 180.0}
+        research_timeout = depth_timeouts.get(research_depth, 60.0)
+
+        result = await asyncio.wait_for(
+            researcher.research_comprehensive(
+                topic=research_topic,
+                session_id=session_id,
+                depth=research_depth,
+                focus_areas=focus_areas,
+                timeframe=timeframe,
+            ),
+            timeout=research_timeout,
         )
 
         return {
@@ -407,6 +442,13 @@ async def deep_research_financial(
             **result,
         }
 
+    except TimeoutError:
+        logger.error("Deep research timed out for topic: %s", research_topic)
+        return {
+            "status": "error",
+            "error": f"Research timed out. Try reducing research_depth from '{research_depth}' or narrowing focus_areas.",
+            "agent_type": "deep_research",
+        }
     except Exception as e:
         logger.error("Error in deep research: %s", e)
         return {
@@ -453,18 +495,24 @@ async def compare_multi_agent_analysis(
             try:
                 agent = get_or_create_agent(agent_type, persona)
 
-                # Run analysis based on agent type
+                # Run analysis based on agent type with per-agent timeout
                 if agent_type == "market":
-                    result = await agent.analyze_market(
-                        query=query,
-                        session_id=f"{session_id}_{agent_type}",
-                        max_results=10,
+                    result = await asyncio.wait_for(
+                        agent.analyze_market(
+                            query=query,
+                            session_id=f"{session_id}_{agent_type}",
+                            max_results=10,
+                        ),
+                        timeout=25.0,
                     )
                 elif agent_type == "supervisor":
-                    result = await agent.coordinate_agents(
-                        query=query,
-                        session_id=f"{session_id}_{agent_type}",
-                        max_agents=2,
+                    result = await asyncio.wait_for(
+                        agent.coordinate_agents(
+                            query=query,
+                            session_id=f"{session_id}_{agent_type}",
+                            max_agents=2,
+                        ),
+                        timeout=25.0,
                     )
                 else:
                     continue
@@ -616,22 +664,29 @@ async def compare_personas_analysis(
         results = {}
 
         for persona in ["conservative", "moderate", "aggressive"]:
-            agent = get_or_create_agent("market", persona)
+            try:
+                agent = get_or_create_agent("market", persona)
 
-            # Run analysis for this persona
-            result = await agent.analyze_market(
-                query=query, session_id=f"{session_id}_{persona}", max_results=10
-            )
+                # Run analysis for this persona with timeout
+                result = await asyncio.wait_for(
+                    agent.analyze_market(
+                        query=query, session_id=f"{session_id}_{persona}", max_results=10
+                    ),
+                    timeout=25.0,
+                )
 
-            results[persona] = {
-                "summary": result.get("results", {}).get("summary", ""),
-                "top_picks": result.get("results", {}).get("screened_symbols", [])[:5],
-                "risk_parameters": {
-                    "risk_tolerance": agent.persona.risk_tolerance,
-                    "max_position_size": f"{agent.persona.position_size_max * 100:.1f}%",
-                    "stop_loss_multiplier": agent.persona.stop_loss_multiplier,
-                },
-            }
+                results[persona] = {
+                    "summary": result.get("results", {}).get("summary", ""),
+                    "top_picks": result.get("results", {}).get("screened_symbols", [])[:5],
+                    "risk_parameters": {
+                        "risk_tolerance": agent.persona.risk_tolerance,
+                        "max_position_size": f"{agent.persona.position_size_max * 100:.1f}%",
+                        "stop_loss_multiplier": agent.persona.stop_loss_multiplier,
+                    },
+                }
+            except (TimeoutError, Exception) as e:
+                logger.warning("Persona '%s' analysis failed: %s", persona, e)
+                results[persona] = {"error": str(e), "status": "failed"}
 
         return {
             "status": "success",

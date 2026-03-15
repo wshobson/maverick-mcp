@@ -520,7 +520,7 @@ def portfolio_correlation_analysis(
                 else:
                     failed_tickers.append(ticker)
             except Exception as e:
-                logger.warning("Failed to fetch data for %s: %s", ticker, e)
+                logger.warning("Failed to fetch data for %s: %s", ticker, e, exc_info=True)
                 failed_tickers.append(ticker)
 
         # Check if we have enough valid tickers

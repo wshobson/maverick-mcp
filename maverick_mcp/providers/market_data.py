@@ -375,10 +375,19 @@ class MarketDataProvider:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    async def _run_in_executor(self, func, *args) -> Any:
-        """Run a blocking function in an executor to make it non-blocking."""
+    async def _run_in_executor(self, func, *args, timeout: float = 15.0) -> Any:
+        """Run a blocking function in an executor to make it non-blocking.
+
+        Args:
+            func: The blocking function to run
+            *args: Arguments to pass to the function
+            timeout: Maximum seconds to wait (default: 15s)
+        """
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, func, *args)
+        return await asyncio.wait_for(
+            loop.run_in_executor(None, func, *args),
+            timeout=timeout,
+        )
 
     def _fetch_data(
         self, url: str, params: dict[str, Any] | None = None

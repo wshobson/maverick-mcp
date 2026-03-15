@@ -113,6 +113,9 @@ def fetch_stock_data(
             data = stock_analysis_service.get_stock_data(
                 ticker, start_date, end_date, interval=interval
             )
+            # Normalize timestamps to UTC date-only for consistency
+            if hasattr(data.index, "tz") and data.index.tz is not None:
+                data.index = data.index.tz_convert("UTC").normalize().tz_localize(None)
             result: dict[str, Any] = _dataframe_to_split_dict(data)
             result["ticker"] = ticker
             result["interval"] = interval
@@ -182,6 +185,9 @@ def fetch_stock_data_batch(
                 data = stock_analysis_service.get_stock_data(
                     ticker, start_date, end_date
                 )
+                # Normalize timestamps to UTC date-only for cross-ticker consistency
+                if hasattr(data.index, "tz") and data.index.tz is not None:
+                    data.index = data.index.tz_convert("UTC").normalize().tz_localize(None)
                 results[ticker] = {
                     "status": "success",
                     "data": _dataframe_to_split_dict(data),
