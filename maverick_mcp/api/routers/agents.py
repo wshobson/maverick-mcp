@@ -5,6 +5,7 @@ This router exposes the LangGraph agents as MCP tools while maintaining
 compatibility with the existing infrastructure.
 """
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -30,52 +31,60 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
     cache_key = f"{agent_type}:{persona}"
 
     if cache_key not in _agent_cache:
-        # Import task-aware LLM factory
-        from maverick_mcp.providers.llm_factory import get_llm
-        from maverick_mcp.providers.openrouter_provider import TaskType
+        try:
+            # Import task-aware LLM factory
+            from maverick_mcp.providers.llm_factory import get_llm
+            from maverick_mcp.providers.openrouter_provider import TaskType
 
-        # Map agent types to task types for optimal model selection
-        task_mapping = {
-            "market": TaskType.MARKET_ANALYSIS,
-            "technical": TaskType.TECHNICAL_ANALYSIS,
-            "supervisor": TaskType.MULTI_AGENT_ORCHESTRATION,
-            "deep_research": TaskType.DEEP_RESEARCH,
-        }
-
-        task_type = task_mapping.get(agent_type, TaskType.GENERAL)
-
-        # Get optimized LLM for this task
-        llm = get_llm(task_type=task_type)
-
-        # Create agent based on type
-        if agent_type == "market":
-            _agent_cache[cache_key] = MarketAnalysisAgent(
-                llm=llm, persona=persona, ttl_hours=1
-            )
-        elif agent_type == "supervisor":
-            # Create mock agents for supervisor
-            agents = {
-                "market": get_or_create_agent("market", persona),
-                "technical": None,  # Would be actual technical agent in full implementation
+            # Map agent types to task types for optimal model selection
+            task_mapping = {
+                "market": TaskType.MARKET_ANALYSIS,
+                "technical": TaskType.TECHNICAL_ANALYSIS,
+                "supervisor": TaskType.MULTI_AGENT_ORCHESTRATION,
+                "deep_research": TaskType.DEEP_RESEARCH,
             }
-            _agent_cache[cache_key] = SupervisorAgent(
-                llm=llm, agents=agents, persona=persona, ttl_hours=1
-            )
-        elif agent_type == "deep_research":
-            # Get web search API keys from environment
-            exa_api_key = os.getenv("EXA_API_KEY")
 
-            agent = DeepResearchAgent(
-                llm=llm,
-                persona=persona,
-                ttl_hours=1,
-                exa_api_key=exa_api_key,
-            )
-            # Mark for initialization - will be initialized on first use
-            agent._needs_initialization = True
-            _agent_cache[cache_key] = agent
-        else:
-            raise ValueError(f"Unknown agent type: {agent_type}")
+            task_type = task_mapping.get(agent_type, TaskType.GENERAL)
+
+            # Get optimized LLM for this task
+            llm = get_llm(task_type=task_type)
+
+            # Create agent based on type
+            if agent_type == "market":
+                _agent_cache[cache_key] = MarketAnalysisAgent(
+                    llm=llm, persona=persona, ttl_hours=1
+                )
+            elif agent_type == "supervisor":
+                # Create mock agents for supervisor
+                agents = {
+                    "market": get_or_create_agent("market", persona),
+                    "technical": None,  # Would be actual technical agent in full implementation
+                }
+                _agent_cache[cache_key] = SupervisorAgent(
+                    llm=llm, agents=agents, persona=persona, ttl_hours=1
+                )
+            elif agent_type == "deep_research":
+                # Get web search API keys from environment
+                exa_api_key = os.getenv("EXA_API_KEY")
+
+                agent = DeepResearchAgent(
+                    llm=llm,
+                    persona=persona,
+                    ttl_hours=1,
+                    exa_api_key=exa_api_key,
+                )
+                # Mark for initialization - will be initialized on first use
+                agent._needs_initialization = True
+                _agent_cache[cache_key] = agent
+            else:
+                raise ValueError(f"Unknown agent type: {agent_type}")
+        except Exception as e:
+            logger.error(f"Failed to create {agent_type} agent: {e}")
+            raise RuntimeError(
+                f"Agent '{agent_type}' could not be initialized. "
+                f"Ensure required API keys (OPENROUTER_API_KEY, OPENAI_API_KEY, or ANTHROPIC_API_KEY) "
+                f"are configured. Error: {e}"
+            ) from e
 
     return _agent_cache[cache_key]
 
@@ -113,12 +122,15 @@ async def analyze_market_with_agent(
         # Get or create agent
         agent = get_or_create_agent("market", persona)
 
-        # Run analysis
-        result = await agent.analyze_market(
-            query=query,
-            session_id=session_id,
-            screening_strategy=screening_strategy,
-            max_results=max_results,
+        # Run analysis with timeout to prevent Claude Desktop hanging
+        result = await asyncio.wait_for(
+            agent.analyze_market(
+                query=query,
+                session_id=session_id,
+                screening_strategy=screening_strategy,
+                max_results=max_results,
+            ),
+            timeout=25.0,
         )
 
         return {
@@ -129,6 +141,13 @@ async def analyze_market_with_agent(
             **result,
         }
 
+    except TimeoutError:
+        logger.error("Market agent analysis timed out after 25s")
+        return {
+            "status": "error",
+            "error": "Analysis timed out. Try a simpler query or check API key configuration.",
+            "agent_type": "market_analysis",
+        }
     except Exception as e:
         logger.error(f"Error in market agent analysis: {str(e)}")
         return {"status": "error", "error": str(e), "agent_type": "market_analysis"}
@@ -167,13 +186,15 @@ async def get_agent_streaming_analysis(
         # In a real implementation, this would be a streaming endpoint
         updates = []
 
-        async for chunk in agent.stream_analysis(
-            query=query, session_id=session_id, stream_mode=stream_mode
-        ):
-            updates.append(chunk)
-            # Limit collected updates for demo
-            if len(updates) >= 5:
-                break
+        async def _collect_stream():
+            async for chunk in agent.stream_analysis(
+                query=query, session_id=session_id, stream_mode=stream_mode
+            ):
+                updates.append(chunk)
+                if len(updates) >= 5:
+                    break
+
+        await asyncio.wait_for(_collect_stream(), timeout=25.0)
 
         return {
             "status": "success",
@@ -185,6 +206,12 @@ async def get_agent_streaming_analysis(
             "note": "Full streaming requires WebSocket or SSE endpoint",
         }
 
+    except TimeoutError:
+        logger.error("Streaming analysis timed out after 25s")
+        return {
+            "status": "error",
+            "error": "Streaming analysis timed out. Try a simpler query.",
+        }
     except Exception as e:
         logger.error(f"Error in streaming analysis: {str(e)}")
         return {"status": "error", "error": str(e)}
@@ -225,13 +252,16 @@ async def orchestrated_analysis(
         # Get supervisor agent
         supervisor = get_or_create_agent("supervisor", persona)
 
-        # Run orchestrated analysis
-        result = await supervisor.coordinate_agents(
-            query=query,
-            session_id=session_id,
-            routing_strategy=routing_strategy,
-            max_agents=max_agents,
-            parallel_execution=parallel_execution,
+        # Run orchestrated analysis with timeout
+        result = await asyncio.wait_for(
+            supervisor.coordinate_agents(
+                query=query,
+                session_id=session_id,
+                routing_strategy=routing_strategy,
+                max_agents=max_agents,
+                parallel_execution=parallel_execution,
+            ),
+            timeout=25.0,
         )
 
         return {
@@ -246,6 +276,13 @@ async def orchestrated_analysis(
             **result,
         }
 
+    except TimeoutError:
+        logger.error("Orchestrated analysis timed out after 25s")
+        return {
+            "status": "error",
+            "error": "Orchestrated analysis timed out. Try reducing max_agents or simplifying the query.",
+            "agent_type": "supervisor_orchestrated",
+        }
     except Exception as e:
         logger.error(f"Error in orchestrated analysis: {str(e)}")
         return {
@@ -292,13 +329,19 @@ async def deep_research_financial(
         # Get deep research agent
         researcher = get_or_create_agent("deep_research", persona)
 
-        # Run deep research
-        result = await researcher.research_comprehensive(
-            topic=research_topic,
-            session_id=session_id,
-            depth=research_depth,
-            focus_areas=focus_areas,
-            timeframe=timeframe,
+        # Deep research gets a longer timeout since it's expected to take more time
+        timeout = {"basic": 30.0, "standard": 60.0, "comprehensive": 120.0, "exhaustive": 180.0}
+        research_timeout = timeout.get(research_depth, 60.0)
+
+        result = await asyncio.wait_for(
+            researcher.research_comprehensive(
+                topic=research_topic,
+                session_id=session_id,
+                depth=research_depth,
+                focus_areas=focus_areas,
+                timeframe=timeframe,
+            ),
+            timeout=research_timeout,
         )
 
         return {
@@ -315,6 +358,13 @@ async def deep_research_financial(
             **result,
         }
 
+    except TimeoutError:
+        logger.error(f"Deep research timed out for topic: {research_topic}")
+        return {
+            "status": "error",
+            "error": f"Research timed out. Try reducing research_depth from '{research_depth}' or narrowing focus_areas.",
+            "agent_type": "deep_research",
+        }
     except Exception as e:
         logger.error(f"Error in deep research: {str(e)}")
         return {"status": "error", "error": str(e), "agent_type": "deep_research"}

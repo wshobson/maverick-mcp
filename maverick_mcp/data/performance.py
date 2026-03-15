@@ -610,6 +610,17 @@ class QueryOptimizer:
         recommendations = []
 
         try:
+            # pg_stats / pg_stat_user_tables are PostgreSQL-only
+            bind = session.get_bind()
+            if "sqlite" in str(bind.url):
+                return [
+                    {
+                        "analysis": "SQLite backend detected",
+                        "recommendation": "Index analysis requires PostgreSQL. SQLite uses automatic indexes.",
+                        "stats": [],
+                    }
+                ]
+
             # Check for common missing indexes
             queries = [
                 # PriceCache table analysis

@@ -15,7 +15,10 @@ This test suite covers:
 import asyncio
 import gc
 import logging
-import resource
+try:
+    import resource
+except ImportError:
+    resource = None  # type: ignore[assignment]  # Unix-only module
 import threading
 import time
 from dataclasses import dataclass

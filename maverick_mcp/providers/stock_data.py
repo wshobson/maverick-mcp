@@ -307,7 +307,7 @@ class EnhancedStockDataProvider:
             return df
 
         except Exception as e:
-            logger.error(f"Error getting flexible cached data: {e}")
+            logger.error(f"Error getting flexible cached data: {e}", exc_info=True)
             return None
 
     def _is_trading_day_between(
@@ -586,9 +586,25 @@ class EnhancedStockDataProvider:
             )
         except Exception as e:
             logger.warning(f"Smart cache failed, falling back to yfinance: {e}")
-            return self._fetch_stock_data_from_yfinance(
-                symbol, start_date, end_date, period, interval
-            )
+            try:
+                return self._fetch_stock_data_from_yfinance(
+                    symbol, start_date, end_date, period, interval
+                )
+            except Exception as yf_err:
+                logger.warning(f"yfinance also failed for {symbol}: {yf_err}, trying Finnhub")
+                try:
+                    from maverick_mcp.providers.finnhub_provider import (
+                        get_finnhub_provider,
+                    )
+
+                    provider = get_finnhub_provider()
+                    if provider.is_configured and start_date and end_date:
+                        df = provider.get_stock_candles(symbol, "D", start_date, end_date)
+                        if not df.empty:
+                            return df
+                except Exception as fh_err:
+                    logger.warning(f"Finnhub fallback also failed for {symbol}: {fh_err}")
+                raise yf_err
 
     async def get_stock_data_async(
         self,

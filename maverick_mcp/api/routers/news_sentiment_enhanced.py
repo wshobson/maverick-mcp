@@ -364,21 +364,22 @@ def _basic_news_analysis(news_articles: list) -> dict[str, Any]:
 def _extract_sentiment_from_research(sentiment_data: dict) -> str:
     """Extract simple sentiment direction from research data."""
 
+    # If confidence is very low or zero, we have no real evidence — return neutral
+    confidence = sentiment_data.get("sentiment_confidence", 0.0)
+    if confidence < 0.1:
+        return "neutral"
+
     overall = sentiment_data.get("overall_sentiment", {})
 
     # Check for sentiment keywords
-    if isinstance(overall, dict):
-        sentiment_str = str(overall).lower()
-    else:
-        sentiment_str = str(overall).lower()
+    sentiment_str = str(overall).lower()
 
     if "bullish" in sentiment_str or "positive" in sentiment_str:
         return "bullish"
     elif "bearish" in sentiment_str or "negative" in sentiment_str:
         return "bearish"
 
-    # Check confidence for direction
-    confidence = sentiment_data.get("sentiment_confidence", 0.5)
+    # Use confidence for direction only when we have meaningful data
     if confidence > 0.6:
         return "bullish"
     elif confidence < 0.4:

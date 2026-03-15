@@ -21,8 +21,15 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from testcontainers.postgres import PostgresContainer
-from testcontainers.redis import RedisContainer
+try:
+    from testcontainers.postgres import PostgresContainer
+except ImportError:
+    PostgresContainer = None  # type: ignore[assignment,misc]
+
+try:
+    from testcontainers.redis import RedisContainer
+except ImportError:
+    RedisContainer = None  # type: ignore[assignment,misc]
 
 # Add the parent directory to the path to enable imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -110,6 +117,8 @@ def postgres_container():
     Skips gracefully when Docker is not available so that non-Docker tests
     are not blocked.
     """
+    if PostgresContainer is None:
+        pytest.skip("testcontainers[postgres] not installed")
     try:
         with PostgresContainer("postgres:15-alpine") as postgres:
             postgres.with_env("POSTGRES_PASSWORD", "test")
@@ -129,6 +138,8 @@ def redis_container():
     Skips gracefully when Docker is not available so that non-Docker tests
     are not blocked.
     """
+    if RedisContainer is None:
+        pytest.skip("testcontainers[redis] not installed")
     try:
         with RedisContainer("redis:7-alpine") as redis:
             yield redis
@@ -140,13 +151,13 @@ def redis_container():
 
 # Database setup fixtures
 @pytest.fixture(scope="session")
-def database_url(postgres_container: PostgresContainer) -> str:
+def database_url(postgres_container) -> str:
     """Get the database URL from the test container."""
     return postgres_container.get_connection_url()
 
 
 @pytest.fixture(scope="session")
-def redis_url(redis_container: RedisContainer) -> str:
+def redis_url(redis_container) -> str:
     """Get the Redis URL from the test container."""
     host = redis_container.get_container_host_ip()
     port = redis_container.get_exposed_port(6379)
@@ -243,7 +254,12 @@ qun1AVmirRvY8l7OqvCdZcaL4LDR8FwgxniAGlrZiuFdJka0XyjxXgK8AxM+QNK8
 bQIDAQAB
 -----END PUBLIC KEY-----"""
     yield
-    # Clean up (optional)
+    # Clean up logging handlers to prevent I/O errors during pytest capture teardown.
+    import logging as _logging
+
+    for handler in _logging.root.handlers[:]:
+        _logging.root.removeHandler(handler)
+        handler.close()
 
 
 # Docker-dependent environment setup (NOT autouse - only for integration tests)

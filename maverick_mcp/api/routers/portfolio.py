@@ -64,6 +64,7 @@ def _validate_ticker(ticker: str) -> tuple[bool, str | None]:
 def risk_adjusted_analysis(
     ticker: str,
     risk_level: float | str | None = 50.0,
+    portfolio_value: float | None = None,
     user_id: str = "default",
     portfolio_name: str = "My Portfolio",
 ) -> dict[str, Any]:
@@ -136,7 +137,7 @@ def risk_adjusted_analysis(
         atr = df["atr"].iloc[-1]
         current_price = df["Close"].iloc[-1]
         risk_factor = (risk_level or 50.0) / 100  # Convert to 0-1 scale
-        account_size = 100000
+        account_size = portfolio_value if portfolio_value and portfolio_value > 0 else 100000
         analysis = {
             "ticker": ticker,
             "current_price": round(current_price, 2),
@@ -502,11 +503,13 @@ def portfolio_correlation_analysis(
                     end_date.strftime("%Y-%m-%d"),
                 )
                 if not df.empty:
-                    price_data[ticker] = df["close"]
+                    # yfinance returns "Close" (capitalized); normalize
+                    close_col = "Close" if "Close" in df.columns else "close"
+                    price_data[ticker] = df[close_col]
                 else:
                     failed_tickers.append(ticker)
             except Exception as e:
-                logger.warning(f"Failed to fetch data for {ticker}: {e}")
+                logger.warning(f"Failed to fetch data for {ticker}: {e}", exc_info=True)
                 failed_tickers.append(ticker)
 
         # Check if we have enough valid tickers
@@ -905,10 +908,10 @@ def get_my_portfolio(
                 },
                 "positions": positions_list,
                 "metrics": {
-                    "total_invested": metrics["total_invested"],
-                    "total_current_value": metrics.get("total_current_value", 0),
-                    "total_unrealized_gain_loss": metrics["total_unrealized_gain_loss"],
-                    "total_return_percent": metrics["total_return_percent"],
+                    "total_invested": metrics.get("total_invested", 0),
+                    "total_current_value": metrics.get("total_value", 0),
+                    "total_unrealized_gain_loss": metrics.get("total_pnl", 0),
+                    "total_return_percent": metrics.get("total_pnl_percentage", 0),
                     "number_of_positions": len(positions_list),
                 },
                 "as_of": datetime.now(UTC).isoformat(),

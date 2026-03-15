@@ -19,6 +19,7 @@ from typing import Any
 import psutil
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 
 from maverick_mcp.config.settings import get_settings
 from maverick_mcp.utils.circuit_breaker import get_circuit_breaker_status
@@ -185,7 +186,7 @@ async def _check_database_health() -> ComponentStatus:
         db_session = next(get_db())
         try:
             # Simple query to test connection
-            result = db_session.execute("SELECT 1 as test")
+            result = db_session.execute(text("SELECT 1 as test"))
             test_value = result.scalar()
 
             response_time_ms = (time.time() - start_time) * 1000
@@ -279,6 +280,7 @@ async def _check_external_apis_health() -> dict[str, ComponentStatus]:
         "finviz": "Finviz API",
         "fred_api": "FRED Economic Data API",
         "tiingo": "Tiingo Market Data API",
+        "finnhub": "Finnhub API",
         "openrouter": "OpenRouter AI API",
         "exa": "Exa Search API",
         "news_api": "News API",

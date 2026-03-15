@@ -2,6 +2,8 @@ import base64
 import io
 import logging
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -19,7 +21,10 @@ def set_chart_style(theme: str = "light") -> None:
     Args:
         theme (str): Chart theme, either 'light' or 'dark'
     """
-    plt.style.use("default")
+    try:
+        plt.style.use("seaborn-v0_8")
+    except OSError:
+        plt.style.use("default")
 
     if theme == "dark":
         plt.style.use("dark_background")

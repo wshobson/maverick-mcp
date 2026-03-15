@@ -416,8 +416,8 @@ class PersonaAwareAgent(ABC):
             system_prompt = self._build_system_prompt()
             messages = [SystemMessage(content=system_prompt)] + messages
 
-        # Call the LLM
-        if self.tools:
+        # Call the LLM — guard against FakeListLLM which lacks bind_tools
+        if self.tools and hasattr(self.llm, "bind_tools"):
             response = self.llm.bind_tools(self.tools).invoke(messages)
         else:
             response = self.llm.invoke(messages)
@@ -466,18 +466,23 @@ Always adjust your recommendations to match this risk profile. Be explicit about
         """
         return BaseAgentState
 
-    async def ainvoke(self, query: str, session_id: str, **kwargs) -> dict[str, Any]:
+    async def ainvoke(
+        self, query: str, session_id: str, timeout: float = 30.0, **kwargs
+    ) -> dict[str, Any]:
         """
         Invoke the agent asynchronously.
 
         Args:
             query: User query
             session_id: Session identifier
+            timeout: Maximum seconds to wait for completion (default 30s)
             **kwargs: Additional parameters
 
         Returns:
             Agent response
         """
+        import asyncio
+
         config = {
             "configurable": {"thread_id": session_id, "persona": self.persona.name}
         }
@@ -486,14 +491,17 @@ Always adjust your recommendations to match this risk profile. Be explicit about
         if "config" in kwargs:
             config.update(kwargs["config"])
 
-        # Run the graph
-        result = await self.graph.ainvoke(
-            {
-                "messages": [HumanMessage(content=query)],
-                "persona": self.persona.name,
-                "session_id": session_id,
-            },
-            config=config,
+        # Run the graph with timeout protection
+        result = await asyncio.wait_for(
+            self.graph.ainvoke(
+                {
+                    "messages": [HumanMessage(content=query)],
+                    "persona": self.persona.name,
+                    "session_id": session_id,
+                },
+                config=config,
+            ),
+            timeout=timeout,
         )
 
         return self._extract_response(result)

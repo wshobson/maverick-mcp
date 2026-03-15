@@ -567,7 +567,7 @@ class MaverickStocks(Base, TimestampMixin):
 
     @classmethod
     def get_latest_analysis(
-        cls, session: Session, days_back: int = 1
+        cls, session: Session, days_back: int = 30
     ) -> Sequence[MaverickStocks]:
         """Get latest maverick analysis within specified days."""
         cutoff_date = datetime.now(UTC).date() - timedelta(days=days_back)
@@ -684,7 +684,7 @@ class MaverickBearStocks(Base, TimestampMixin):
 
     @classmethod
     def get_latest_analysis(
-        cls, session: Session, days_back: int = 1
+        cls, session: Session, days_back: int = 30
     ) -> Sequence[MaverickBearStocks]:
         """Get latest bear analysis within specified days."""
         cutoff_date = datetime.now(UTC).date() - timedelta(days=days_back)
@@ -838,7 +838,7 @@ class SupplyDemandBreakoutStocks(Base, TimestampMixin):
 
     @classmethod
     def get_latest_analysis(
-        cls, session: Session, days_back: int = 1
+        cls, session: Session, days_back: int = 30
     ) -> Sequence[SupplyDemandBreakoutStocks]:
         """Get latest supply/demand analysis within specified days."""
         cutoff_date = datetime.now(UTC).date() - timedelta(days=days_back)
@@ -1603,7 +1603,7 @@ def bulk_insert_price_data(
         return 0
 
 
-def get_latest_maverick_screening(days_back: int = 1) -> dict:
+def get_latest_maverick_screening(days_back: int = 30) -> dict:
     """Get latest screening results from all maverick tables."""
     with SessionLocal() as session:
         results = {

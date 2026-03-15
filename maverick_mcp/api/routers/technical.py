@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from typing import Any
 
+import pandas as pd
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_access_token
 

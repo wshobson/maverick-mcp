@@ -16,7 +16,7 @@ class TestSuiteValidator:
 
     def __init__(self, test_file_path: str):
         self.test_file_path = Path(test_file_path)
-        self.content = self.test_file_path.read_text()
+        self.content = self.test_file_path.read_text(encoding="utf-8")
         self.tree = ast.parse(self.content)
 
     def validate_pytest_patterns(self) -> dict[str, Any]:
@@ -303,7 +303,7 @@ class TestParallelResearchTestSuites:
         for test_file, expected_categories in expected_test_categories.items():
             file_path = Path(__file__).parent / test_file
             if file_path.exists():
-                content = file_path.read_text().lower()
+                content = file_path.read_text(encoding="utf-8").lower()
 
                 for category in expected_categories:
                     assert category in content, (
@@ -322,7 +322,7 @@ class TestParallelResearchTestSuites:
         for test_file in test_files:
             file_path = Path(__file__).parent / test_file
             if file_path.exists():
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8")
 
                 # Should have module docstring
                 assert '"""' in content, f"Should have docstrings in {test_file}"
@@ -346,7 +346,7 @@ class TestParallelResearchTestSuites:
         for test_file in test_files:
             file_path = Path(__file__).parent / test_file
             if file_path.exists():
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8")
 
                 # Should not have circular import patterns
                 lines = content.split("\n")
@@ -377,7 +377,7 @@ class TestParallelResearchTestSuites:
         for test_file in test_files:
             file_path = Path(__file__).parent / test_file
             if file_path.exists():
-                content = file_path.read_text()
+                content = file_path.read_text(encoding="utf-8")
 
                 # If file has fixtures, they should be properly structured
                 if "@pytest.fixture" in content:
@@ -406,7 +406,7 @@ class TestParallelResearchTestSuites:
         for test_file in test_files:
             file_path = Path(__file__).parent / test_file
             if file_path.exists():
-                content = file_path.read_text().lower()
+                content = file_path.read_text(encoding="utf-8").lower()
 
                 # Should test error scenarios
                 error_keywords = [
@@ -429,7 +429,7 @@ class TestParallelResearchTestSuites:
         for test_file in performance_test_files:
             file_path = Path(__file__).parent / test_file
             if file_path.exists():
-                content = file_path.read_text().lower()
+                content = file_path.read_text(encoding="utf-8").lower()
 
                 # Should test performance characteristics
                 perf_keywords = [
@@ -451,7 +451,7 @@ class TestParallelResearchTestSuites:
         )
 
         if integration_file.exists():
-            content = integration_file.read_text()
+            content = integration_file.read_text(encoding="utf-8")
 
             # Should have integration markers
             assert "@pytest.mark.integration" in content, (

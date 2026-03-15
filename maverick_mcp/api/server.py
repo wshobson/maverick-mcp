@@ -730,11 +730,25 @@ async def get_market_overview() -> dict[str, Any]:
 
         provider = MarketDataProvider()
 
-        indices, sectors, breadth = await asyncio.gather(
+        results = await asyncio.gather(
             provider.get_market_summary_async(),
             provider.get_sector_performance_async(),
             provider.get_market_overview_async(),
+            return_exceptions=True,
         )
+
+        indices = results[0] if not isinstance(results[0], BaseException) else {}
+        sectors = results[1] if not isinstance(results[1], BaseException) else {}
+        breadth = results[2] if not isinstance(results[2], BaseException) else {}
+
+        # Log any partial failures
+        errors = []
+        for name, res in zip(
+            ["indices", "sectors", "breadth"], results, strict=True
+        ):
+            if isinstance(res, BaseException):
+                logger.warning(f"Market overview partial failure ({name}): {res}")
+                errors.append(f"{name}: {res}")
 
         overview = {
             "indices": indices,
@@ -744,10 +758,13 @@ async def get_market_overview() -> dict[str, Any]:
             "mode": "simple_stock_analysis",
         }
 
-        vix_value = indices.get("current_price", 0)
+        if errors:
+            overview["partial_errors"] = errors
+
+        vix_value = indices.get("current_price", 0) if isinstance(indices, dict) else 0
         overview["volatility"] = {
             "vix": vix_value,
-            "vix_change": indices.get("change_percent", 0),
+            "vix_change": indices.get("change_percent", 0) if isinstance(indices, dict) else 0,
             "fear_level": (
                 "extreme"
                 if vix_value > 30
@@ -1434,6 +1451,48 @@ if __name__ == "__main__":
     logger.info("Adding startup delay for connection stability...")
     time.sleep(3)  # 3 second delay to ensure full initialization
     logger.info("Startup delay completed, server ready for connections")
+
+    # Auto-seed screening data if tables are empty
+    try:
+        from maverick_mcp.data.models import (
+            MaverickBearStocks,
+            MaverickStocks,
+            SessionLocal,
+            SupplyDemandBreakoutStocks,
+        )
+
+        with SessionLocal() as session:
+            maverick_count = session.query(MaverickStocks).count()
+            bear_count = session.query(MaverickBearStocks).count()
+            breakout_count = session.query(SupplyDemandBreakoutStocks).count()
+
+            if maverick_count == 0 and bear_count == 0 and breakout_count == 0:
+                logger.info(
+                    "Screening tables are empty — running auto-seed for S&P 500 data..."
+                )
+                try:
+                    import subprocess
+
+                    result = subprocess.run(
+                        [sys.executable, "scripts/seed_sp500.py"],
+                        capture_output=True,
+                        text=True,
+                        timeout=120,
+                    )
+                    if result.returncode == 0:
+                        logger.info("Auto-seed completed successfully")
+                    else:
+                        logger.warning(
+                            f"Auto-seed exited with code {result.returncode}: {result.stderr[:500]}"
+                        )
+                except Exception as seed_err:
+                    logger.warning(f"Auto-seed failed (run 'uv run python scripts/seed_sp500.py' manually): {seed_err}")
+            else:
+                logger.info(
+                    f"Screening data present: {maverick_count} maverick, {bear_count} bear, {breakout_count} breakout"
+                )
+    except Exception as e:
+        logger.warning(f"Screening data check failed: {e}")
 
     # Use graceful shutdown handler
     with graceful_shutdown(f"{settings.app_name}-{args.transport}") as shutdown_handler:

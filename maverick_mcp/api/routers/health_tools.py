@@ -368,8 +368,13 @@ def register_health_tools(mcp: FastMCP):
                     }
                 )
 
-            # Check resource usage
-            resource_usage = health_status.get("resource_usage", {})
+            # Check resource usage — convert Pydantic model to dict if needed
+            raw_usage = health_status.get("resource_usage", {})
+            resource_usage = (
+                raw_usage.model_dump()
+                if hasattr(raw_usage, "model_dump")
+                else raw_usage if isinstance(raw_usage, dict) else {}
+            )
             if resource_usage.get("memory_percent", 0) > 85:
                 recommendations.append(
                     {

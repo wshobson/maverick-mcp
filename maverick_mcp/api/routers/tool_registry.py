@@ -367,6 +367,96 @@ def register_backtesting_tools(mcp: FastMCP) -> None:
         logger.error(f"✗ Failed to register backtesting tools: {e}")
 
 
+def register_finnhub_tools(mcp: FastMCP) -> None:
+    """Register Finnhub data tools on main server."""
+    from typing import Any
+
+    from maverick_mcp.providers.finnhub_provider import get_finnhub_provider
+
+    provider = get_finnhub_provider()
+
+    if not provider.is_configured:
+        logger.warning(
+            "Finnhub API key not configured (set FINNHUB_API_KEY). "
+            "Finnhub tools will not be registered."
+        )
+        return
+
+    @mcp.tool(name="data_finnhub_quote")
+    def finnhub_get_quote(ticker: str) -> dict[str, Any]:
+        """
+        Get real-time stock quote from Finnhub.
+
+        Provides current price, change, open, high, low, and previous close
+        from Finnhub's real-time feed. Useful as an alternative to yfinance quotes.
+
+        Args:
+            ticker: Stock ticker symbol (e.g., AAPL, MSFT)
+
+        Returns:
+            Dictionary with real-time quote data
+        """
+        return provider.get_quote(ticker)
+
+    @mcp.tool(name="data_finnhub_company_profile")
+    def finnhub_get_company_profile(ticker: str) -> dict[str, Any]:
+        """
+        Get company profile from Finnhub.
+
+        Returns company name, industry, market cap, IPO date, logo, and more.
+
+        Args:
+            ticker: Stock ticker symbol
+
+        Returns:
+            Dictionary with company profile data
+        """
+        return provider.get_company_profile(ticker)
+
+    @mcp.tool(name="data_finnhub_earnings_calendar")
+    def finnhub_get_earnings_calendar(
+        days_ahead: int = 7,
+    ) -> dict[str, Any]:
+        """
+        Get upcoming earnings calendar from Finnhub.
+
+        Args:
+            days_ahead: Number of days to look ahead (default: 7)
+
+        Returns:
+            Dictionary with upcoming earnings events
+        """
+        from datetime import timedelta
+
+        from_date = datetime.now().strftime("%Y-%m-%d")
+        to_date = (datetime.now() + timedelta(days=days_ahead)).strftime("%Y-%m-%d")
+        earnings = provider.get_earnings_calendar(from_date, to_date)
+        return {
+            "status": "success",
+            "count": len(earnings),
+            "earnings": earnings,
+            "from_date": from_date,
+            "to_date": to_date,
+            "source": "finnhub",
+        }
+
+    @mcp.tool(name="data_finnhub_financials")
+    def finnhub_get_basic_financials(ticker: str) -> dict[str, Any]:
+        """
+        Get basic financial metrics from Finnhub.
+
+        Returns PE ratio, PB ratio, beta, market cap, 52-week range,
+        ROE, ROA, revenue growth, and EPS growth.
+
+        Args:
+            ticker: Stock ticker symbol
+
+        Returns:
+            Dictionary with financial metrics
+        """
+        return provider.get_basic_financials(ticker)
+
+
 def register_mcp_prompts_and_resources(mcp: FastMCP) -> None:
     """Register MCP prompts and resources for better client introspection"""
     try:
@@ -449,6 +539,12 @@ def register_all_router_tools(mcp: FastMCP) -> None:
         logger.info("✓ Health monitoring tools registered successfully")
     except Exception as e:
         logger.error(f"✗ Failed to register health monitoring tools: {e}")
+
+    try:
+        register_finnhub_tools(mcp)
+        logger.info("✓ Finnhub tools registered successfully")
+    except Exception as e:
+        logger.error(f"✗ Failed to register Finnhub tools: {e}")
 
     # Register backtesting tools
     register_backtesting_tools(mcp)

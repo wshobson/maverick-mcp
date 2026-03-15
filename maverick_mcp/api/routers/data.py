@@ -81,6 +81,9 @@ def fetch_stock_data(
             )
 
             data = stock_analysis_service.get_stock_data(ticker, start_date, end_date)
+            # Normalize timestamps to UTC date-only for consistency
+            if hasattr(data.index, "tz") and data.index.tz is not None:
+                data.index = data.index.tz_convert("UTC").normalize().tz_localize(None)
             json_data = data.to_json(orient="split", date_format="iso")
             result: dict[str, Any] = json.loads(json_data) if json_data else {}
             result["ticker"] = ticker
@@ -136,6 +139,9 @@ def fetch_stock_data_batch(
                 data = stock_analysis_service.get_stock_data(
                     ticker, start_date, end_date
                 )
+                # Normalize timestamps to UTC date-only for cross-ticker consistency
+                if hasattr(data.index, "tz") and data.index.tz is not None:
+                    data.index = data.index.tz_convert("UTC").normalize().tz_localize(None)
                 results[ticker] = {
                     "status": "success",
                     "data": json.loads(
