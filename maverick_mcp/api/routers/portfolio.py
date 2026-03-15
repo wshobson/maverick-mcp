@@ -906,7 +906,7 @@ def get_my_portfolio(
                 "positions": positions_list,
                 "metrics": {
                     "total_invested": metrics["total_invested"],
-                    "total_current_value": metrics["total_current_value"],
+                    "total_current_value": metrics.get("total_current_value", 0),
                     "total_unrealized_gain_loss": metrics["total_unrealized_gain_loss"],
                     "total_return_percent": metrics["total_return_percent"],
                     "number_of_positions": len(positions_list),

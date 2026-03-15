@@ -19,7 +19,7 @@ def set_chart_style(theme: str = "light") -> None:
     Args:
         theme (str): Chart theme, either 'light' or 'dark'
     """
-    plt.style.use("seaborn")
+    plt.style.use("default")
 
     if theme == "dark":
         plt.style.use("dark_background")
