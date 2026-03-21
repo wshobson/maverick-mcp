@@ -1683,7 +1683,6 @@ if __name__ == "__main__":
             logger.info(f"Starting {settings.app_name} server with stdio transport")
             mcp.run(
                 transport="stdio",
-                debug=settings.api.debug,
                 log_level=settings.api.log_level.upper(),
             )
         elif args.transport == "streamable-http":
