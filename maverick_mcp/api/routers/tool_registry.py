@@ -1342,6 +1342,13 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     except Exception as e:
         logger.error(f"Failed to register tool registry status: {e}")
 
+    try:
+        from maverick_mcp.api.routers.signals import register_signal_tools
+        register_signal_tools(mcp)
+        logger.info("Signal tools registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to register signal tools: {e}")
+
     logger.info("Tool registration process completed")
     logger.info("All tools registered:")
     logger.info("   - Technical analysis tools")
