@@ -1519,6 +1519,15 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to start health monitoring: {e}")
 
+        # Initialize service layer
+        logger.info("Starting service layer...")
+        try:
+            from maverick_mcp.services import scheduler as maverick_scheduler
+            maverick_scheduler.start()
+            logger.info("Service layer scheduler started")
+        except Exception as e:
+            logger.error(f"Failed to start service layer: {e}")
+
     asyncio.run(init_systems())
 
     # Initialize connection management and transport optimizations
@@ -1663,6 +1672,17 @@ if __name__ == "__main__":
                 logger.error(f"Error closing Redis: {e}")
 
         shutdown_handler.register_cleanup(close_cache)
+
+        async def cleanup_service_layer():
+            """Shutdown service layer scheduler."""
+            try:
+                from maverick_mcp.services import scheduler as maverick_scheduler
+                maverick_scheduler.shutdown()
+                logger.info("Service layer scheduler stopped")
+            except Exception as e:
+                logger.error(f"Service layer shutdown error: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_service_layer)
 
         # Register database engine disposal
         async def cleanup_database():
