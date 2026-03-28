@@ -92,7 +92,7 @@ def test_recompute_all_wins(service, tracker):
     assert perf.win_count == 2
     assert perf.loss_count == 0
     assert perf.total_pnl == pytest.approx(30.0)
-    assert perf.profit_factor == pytest.approx(0.0)  # No losses → 0
+    assert perf.profit_factor == float("inf")  # No losses → infinite profit factor
     # expectancy = (1.0 * 15.0) - (0.0 * 0.0) = 15.0
     assert perf.expectancy == pytest.approx(15.0)
 

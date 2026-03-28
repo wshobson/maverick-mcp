@@ -491,6 +491,17 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
             status_code=200,
         )
 
+    # Start the service layer scheduler on the server's long-lived event loop
+    @mcp.fastapi_app.on_event("startup")
+    async def on_fastapi_startup() -> None:
+        """Start the scheduler on the ASGI server's event loop."""
+        try:
+            from maverick_mcp.services import scheduler as maverick_scheduler
+            maverick_scheduler.start()
+            logger.info("Service layer scheduler started on server loop")
+        except Exception as e:
+            logger.error(f"Failed to start service layer scheduler: {e}")
+
     # Register a FastAPI shutdown event to coordinate graceful shutdown
     # with the lifespan of the ASGI application managed by uvicorn.
     @mcp.fastapi_app.on_event("shutdown")
@@ -1519,14 +1530,9 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to start health monitoring: {e}")
 
-        # Initialize service layer
-        logger.info("Starting service layer...")
-        try:
-            from maverick_mcp.services import scheduler as maverick_scheduler
-            maverick_scheduler.start()
-            logger.info("Service layer scheduler started")
-        except Exception as e:
-            logger.error(f"Failed to start service layer: {e}")
+        # NOTE: Scheduler start is deferred to the ASGI startup event
+        # (on_fastapi_startup below) so it binds to the long-lived server
+        # loop, not this transient asyncio.run() loop.
 
         # Register domain services and wire cross-domain events
         try:
@@ -1537,15 +1543,15 @@ if __name__ == "__main__":
             _reg.register("event_bus", _eb)
             _reg.register("regime_detector", RegimeDetector())
 
-            async def on_signal_for_risk(event):
-                logger.debug("Risk: signal event for %s", event.get("ticker"))
+            async def on_signal_for_risk(topic, data):
+                logger.debug("Risk: signal event for %s", data.get("ticker") if data else "unknown")
 
-            async def on_screening_change(event):
-                logger.debug("Screening change: %s %s", event.get("change_type", ""), event.get("symbol"))
+            async def on_screening_change(topic, data):
+                logger.debug("Screening change: %s %s", data.get("change_type", "") if data else "", data.get("symbol", "") if data else "")
 
-            async def on_regime_change(event):
+            async def on_regime_change(topic, data):
                 logger.info("Regime changed: %s (confidence: %s)",
-                    event.get("regime"), event.get("confidence"))
+                    data.get("regime") if data else "unknown", data.get("confidence") if data else "unknown")
 
             _eb.subscribe("signal.triggered", on_signal_for_risk)
             _eb.subscribe("screening.entry", on_screening_change)

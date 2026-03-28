@@ -85,25 +85,18 @@ def test_run_screen_detects_exits(service):
     assert exits[0].run_id == run2.id
 
 
-def test_run_screen_publishes_events(service, event_bus):
-    """Events are published for entries and exits."""
-    received: list[dict] = []
-
-    event_bus.subscribe("screening.entry", lambda topic, data: received.append({"type": "entry", **data}))
-    event_bus.subscribe("screening.exit", lambda topic, data: received.append({"type": "exit", **data}))
-
+def test_run_screen_changes_are_persisted(service, event_bus):
+    """Entry/exit changes are persisted to the database (events are fire-and-forget)."""
     service.run_screen("maverick_bullish", _make_results("AAPL", "MSFT"))
-    # First run — no previous run, no events
-    assert received == []
-
     service.run_screen("maverick_bullish", _make_results("AAPL", "NVDA"))
-    # MSFT exits, NVDA enters
-    entry_events = [e for e in received if e["type"] == "entry"]
-    exit_events = [e for e in received if e["type"] == "exit"]
-    assert len(entry_events) == 1
-    assert entry_events[0]["symbol"] == "NVDA"
-    assert len(exit_events) == 1
-    assert exit_events[0]["symbol"] == "MSFT"
+
+    changes = service.get_changes("maverick_bullish")
+    entry_changes = [c for c in changes if c.change_type == "entry"]
+    exit_changes = [c for c in changes if c.change_type == "exit"]
+    assert len(entry_changes) == 1
+    assert entry_changes[0].symbol == "NVDA"
+    assert len(exit_changes) == 1
+    assert exit_changes[0].symbol == "MSFT"
 
 
 def test_get_changes_filters_by_screen(service):

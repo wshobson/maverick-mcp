@@ -210,6 +210,8 @@ class SignalService:
 
     async def _evaluate_single(self, signal: Signal, data: Any) -> dict[str, Any]:
         """Evaluate one signal and publish events as needed."""
+        import pandas as pd
+
         previous_state = signal.previous_state
 
         eval_result = evaluate_condition(
@@ -222,6 +224,13 @@ class SignalService:
         current_value = eval_result.get("current_value", 0.0)
         new_state = eval_result.get("new_state")
         error = eval_result.get("error")
+
+        # Get the actual close price (not the indicator value) for price_at_trigger
+        close_price = current_value  # fallback
+        if isinstance(data, pd.DataFrame) and not data.empty:
+            close_col = "close" if "close" in data.columns else "Close"
+            if close_col in data.columns:
+                close_price = float(data[close_col].iloc[-1])
 
         if error:
             logger.warning("Signal %s eval error: %s", signal.id, error)
@@ -253,7 +262,7 @@ class SignalService:
         # Publish events
         if triggered:
             snapshot = {**eval_result, "signal_label": signal.label}
-            self.record_trigger(signal, price=current_value, snapshot=snapshot)
+            self.record_trigger(signal, price=close_price, snapshot=snapshot)
             await self._bus.publish(
                 "signal.triggered",
                 {

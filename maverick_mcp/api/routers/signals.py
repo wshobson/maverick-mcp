@@ -170,12 +170,15 @@ def register_signal_tools(mcp: FastMCP) -> None:
             provider = EnhancedStockDataProvider()
 
             async def data_fetcher(ticker: str, days: int = 60) -> pd.DataFrame:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 df = await loop.run_in_executor(
                     None,
                     lambda: provider.get_stock_data(ticker, period=f"{days}d"),
                 )
-                return df
+                if df is not None and not df.empty:
+                    # Normalize yfinance-style columns (Close -> close, Volume -> volume)
+                    df.columns = [c.lower() for c in df.columns]
+                return df if df is not None else pd.DataFrame()
 
             with SessionLocal() as session:
                 svc = SignalService(db_session=session, event_bus=event_bus)

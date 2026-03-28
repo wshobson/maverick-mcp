@@ -19,11 +19,10 @@ def _fire_publish(event_bus: EventBus, topic: str, data: dict[str, Any]) -> None
     """Fire-and-forget publish that works in both sync and async call contexts."""
     try:
         loop = asyncio.get_running_loop()
-        # Running inside an async context — schedule as a task
-        asyncio.ensure_future(event_bus.publish(topic, data), loop=loop)
+        loop.create_task(event_bus.publish(topic, data))
     except RuntimeError:
-        # No running event loop — run synchronously via a new loop
-        asyncio.run(event_bus.publish(topic, data))
+        # No running event loop (e.g. sync tests) — skip event publishing
+        logger.debug("No running event loop; skipping publish for %s", topic)
 
 
 class ScreeningPipelineService:

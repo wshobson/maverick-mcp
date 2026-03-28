@@ -160,7 +160,7 @@ class Scheduler:
                 {
                     "id": job.id,
                     "name": job.name,
-                    "next_run_time": job.next_run_time,
+                    "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
                 }
             )
         return jobs

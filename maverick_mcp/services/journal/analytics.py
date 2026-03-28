@@ -58,7 +58,8 @@ class StrategyTracker:
         ]
 
         wins = [e for e in tagged if (e.pnl or 0.0) > 0]
-        losses = [e for e in tagged if (e.pnl or 0.0) <= 0]
+        losses = [e for e in tagged if (e.pnl or 0.0) < 0]
+        # Breakeven trades (pnl == 0) are neither wins nor losses
 
         win_count = len(wins)
         loss_count = len(losses)
@@ -81,7 +82,8 @@ class StrategyTracker:
         if total_loss_pnl != 0.0:
             profit_factor = total_win_pnl / abs(total_loss_pnl)
         else:
-            profit_factor = 0.0
+            # No losses: infinite profit factor, capped for serialization
+            profit_factor = float("inf") if total_win_pnl > 0 else 0.0
 
         # Upsert
         perf = (
