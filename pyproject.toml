@@ -13,6 +13,7 @@ dependencies = [
     "gunicorn>=23.0.0",
     "python-multipart>=0.0.20",
     "aiofiles>=24.1.0",
+    "apscheduler>=3.10,<4.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.0.1",
     # LangChain and AI dependencies
