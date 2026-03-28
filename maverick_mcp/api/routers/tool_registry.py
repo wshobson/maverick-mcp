@@ -1349,6 +1349,13 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     except Exception as e:
         logger.error(f"Failed to register signal tools: {e}")
 
+    try:
+        from maverick_mcp.api.routers.screening_pipeline import register_screening_pipeline_tools
+        register_screening_pipeline_tools(mcp)
+        logger.info("Screening pipeline tools registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to register screening pipeline tools: {e}")
+
     logger.info("Tool registration process completed")
     logger.info("All tools registered:")
     logger.info("   - Technical analysis tools")
