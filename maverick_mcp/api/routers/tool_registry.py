@@ -1363,18 +1363,18 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     except Exception as e:
         logger.error(f"Failed to register trade journal tools: {e}")
 
+    try:
+        from maverick_mcp.api.routers.watchlist import register_watchlist_tools
+        register_watchlist_tools(mcp)
+        logger.info("Watchlist tools registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to register watchlist tools: {e}")
+
+    try:
+        from maverick_mcp.api.routers.risk_dashboard import register_risk_dashboard_tools
+        register_risk_dashboard_tools(mcp)
+        logger.info("Risk dashboard tools registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to register risk dashboard tools: {e}")
+
     logger.info("Tool registration process completed")
-    logger.info("All tools registered:")
-    logger.info("   - Technical analysis tools")
-    logger.info("   - Stock screening tools")
-    logger.info("   - Portfolio analysis tools")
-    logger.info("   - Data retrieval tools")
-    logger.info("   - Performance monitoring tools")
-    logger.info("   - Agent orchestration tools")
-    logger.info("   - Research and analysis tools")
-    logger.info("   - Health monitoring tools")
-    logger.info("   - Backtesting system tools")
-    logger.info("   - MCP prompts for introspection")
-    logger.info("   - Introspection and discovery tools")
-    logger.info("   - Decision audit trail tools")
-    logger.info("   - Tool registry status")

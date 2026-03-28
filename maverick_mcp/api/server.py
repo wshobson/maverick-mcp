@@ -1528,6 +1528,33 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to start service layer: {e}")
 
+        # Register domain services and wire cross-domain events
+        try:
+            from maverick_mcp.services import event_bus as _eb
+            from maverick_mcp.services import registry as _reg
+            from maverick_mcp.services.signals.regime import RegimeDetector
+
+            _reg.register("event_bus", _eb)
+            _reg.register("regime_detector", RegimeDetector())
+
+            async def on_signal_for_risk(event):
+                logger.debug("Risk: signal event for %s", event.get("ticker"))
+
+            async def on_screening_change(event):
+                logger.debug("Screening change: %s %s", event.get("change_type", ""), event.get("symbol"))
+
+            async def on_regime_change(event):
+                logger.info("Regime changed: %s (confidence: %s)",
+                    event.get("regime"), event.get("confidence"))
+
+            _eb.subscribe("signal.triggered", on_signal_for_risk)
+            _eb.subscribe("screening.entry", on_screening_change)
+            _eb.subscribe("screening.exit", on_screening_change)
+            _eb.subscribe("regime.changed", on_regime_change)
+            logger.info("Service layer: domain services registered, event wiring complete")
+        except Exception as e:
+            logger.error(f"Failed to wire domain services: {e}")
+
     asyncio.run(init_systems())
 
     # Initialize connection management and transport optimizations
