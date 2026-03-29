@@ -491,6 +491,17 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
             status_code=200,
         )
 
+    # Start the service layer scheduler on the server's long-lived event loop
+    @mcp.fastapi_app.on_event("startup")
+    async def on_fastapi_startup() -> None:
+        """Start the scheduler on the ASGI server's event loop."""
+        try:
+            from maverick_mcp.services import scheduler as maverick_scheduler
+            maverick_scheduler.start()
+            logger.info("Service layer scheduler started on server loop")
+        except Exception as e:
+            logger.error(f"Failed to start service layer scheduler: {e}")
+
     # Register a FastAPI shutdown event to coordinate graceful shutdown
     # with the lifespan of the ASGI application managed by uvicorn.
     @mcp.fastapi_app.on_event("shutdown")
@@ -1519,6 +1530,37 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to start health monitoring: {e}")
 
+        # NOTE: Scheduler start is deferred to the ASGI startup event
+        # (on_fastapi_startup below) so it binds to the long-lived server
+        # loop, not this transient asyncio.run() loop.
+
+        # Register domain services and wire cross-domain events
+        try:
+            from maverick_mcp.services import event_bus as _eb
+            from maverick_mcp.services import registry as _reg
+            from maverick_mcp.services.signals.regime import RegimeDetector
+
+            _reg.register("event_bus", _eb)
+            _reg.register("regime_detector", RegimeDetector())
+
+            async def on_signal_for_risk(topic, data):
+                logger.debug("Risk: signal event for %s", data.get("ticker") if data else "unknown")
+
+            async def on_screening_change(topic, data):
+                logger.debug("Screening change: %s %s", data.get("change_type", "") if data else "", data.get("symbol", "") if data else "")
+
+            async def on_regime_change(topic, data):
+                logger.info("Regime changed: %s (confidence: %s)",
+                    data.get("regime") if data else "unknown", data.get("confidence") if data else "unknown")
+
+            _eb.subscribe("signal.triggered", on_signal_for_risk)
+            _eb.subscribe("screening.entry", on_screening_change)
+            _eb.subscribe("screening.exit", on_screening_change)
+            _eb.subscribe("regime.changed", on_regime_change)
+            logger.info("Service layer: domain services registered, event wiring complete")
+        except Exception as e:
+            logger.error(f"Failed to wire domain services: {e}")
+
     asyncio.run(init_systems())
 
     # Initialize connection management and transport optimizations
@@ -1663,6 +1705,17 @@ if __name__ == "__main__":
                 logger.error(f"Error closing Redis: {e}")
 
         shutdown_handler.register_cleanup(close_cache)
+
+        async def cleanup_service_layer():
+            """Shutdown service layer scheduler."""
+            try:
+                from maverick_mcp.services import scheduler as maverick_scheduler
+                maverick_scheduler.shutdown()
+                logger.info("Service layer scheduler stopped")
+            except Exception as e:
+                logger.error(f"Service layer shutdown error: {e}")
+
+        shutdown_handler.register_cleanup(cleanup_service_layer)
 
         # Register database engine disposal
         async def cleanup_database():
