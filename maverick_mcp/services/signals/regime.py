@@ -11,7 +11,11 @@ import logging
 from typing import Any
 
 import pandas as pd
-import pandas_ta as ta  # noqa: F401
+
+try:
+    import pandas_ta as ta  # noqa: F401
+except ImportError:
+    ta = None  # pandas_ta requires numba (Python <3.14)
 
 logger = logging.getLogger(__name__)
 

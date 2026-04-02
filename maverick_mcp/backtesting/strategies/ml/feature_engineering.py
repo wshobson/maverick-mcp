@@ -5,7 +5,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import pandas_ta as ta
+
+try:
+    import pandas_ta as ta
+except ImportError:
+    ta = None  # pandas_ta requires numba (Python <3.14)
 from pandas import DataFrame, Series
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
