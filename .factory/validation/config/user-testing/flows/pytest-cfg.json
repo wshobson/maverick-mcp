@@ -3,7 +3,7 @@
   "surface": "pytest",
   "testedAt": "2026-04-02T00:00:00Z",
   "isolation": {
-    "workingDirectory": "C:\\Users\\Janak Kalaria\\Downloads\\Droid.Claude\\Linear\\maverick-byok",
+    "workingDirectory": "./",
     "branch": "feat/byok-provider-endpoint",
     "python": "3.14.3",
     "testFile": "tests/test_llm_settings.py"

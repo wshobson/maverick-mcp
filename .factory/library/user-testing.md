@@ -2,7 +2,7 @@
 
 ## Environment
 
-- **Working directory:** `C:\Users\Janak Kalaria\Downloads\Droid.Claude\Linear\maverick-byok`
+- **Working directory:** `./` (project root)
 - **Branch:** `feat/byok-provider-endpoint`
 - **Python:** 3.14.3 (numba/vectorbt/pandas_ta not installable)
 - **OS:** Windows 10 (PowerShell default shell — use `;` not `&&` for command chaining)
