@@ -440,7 +440,9 @@ class CostTrackingLLM:
             )
         return rid
 
-    async def _post_call_record(self, response: Any, request_id: str | None = None) -> None:
+    async def _post_call_record(
+        self, response: Any, request_id: str | None = None
+    ) -> None:
         """Record actual token usage from an AIMessage response."""
         rid = request_id or self._get_request_id()
         try:
@@ -459,7 +461,9 @@ class CostTrackingLLM:
                 exc_info=True,
             )
 
-    async def _post_call_record_generation(self, response: Any, request_id: str | None = None) -> None:
+    async def _post_call_record_generation(
+        self, response: Any, request_id: str | None = None
+    ) -> None:
         """Record actual token usage from a generate() LLMResult response."""
         rid = request_id or self._get_request_id()
         try:
@@ -579,17 +583,18 @@ class OpenRouterProvider:
     def __init__(
         self,
         api_key: str,
+        base_url: str | None = None,
         cost_accumulator: CostAccumulator | None = None,
     ):
         """Initialize OpenRouter provider.
 
         Args:
             api_key: OpenRouter API key
+            base_url: Optional custom base URL. Defaults to https://openrouter.ai/api/v1
             cost_accumulator: Optional CostAccumulator instance. If not provided,
-                a shared singleton is created automatically.
-        """
+                a shared singleton is created automatically."""
         self.api_key = api_key
-        self.base_url = "https://openrouter.ai/api/v1"
+        self.base_url = base_url or "https://openrouter.ai/api/v1"
         self._model_usage_stats: dict[str, dict[str, int]] = {}
 
         # Use provided accumulator, shared singleton, or create new one
@@ -992,6 +997,7 @@ def get_openrouter_llm(
     prefer_fast: bool = False,
     prefer_cheap: bool = True,
     prefer_quality: bool = False,
+    base_url: str | None = None,
     **kwargs: Any,
 ) -> ChatOpenAI | CostTrackingLLM:
     """Get an OpenRouter LLM instance with cost-efficiency by default.
@@ -1002,13 +1008,14 @@ def get_openrouter_llm(
         prefer_fast: Prioritize speed
         prefer_cheap: Prioritize cost (default True)
         prefer_quality: Use premium models regardless of cost
+        base_url: Optional custom base URL override
         **kwargs: Additional arguments for get_llm (including ``request_id``
             and ``track_cost``)
 
     Returns:
         Configured ChatOpenAI instance, optionally wrapped with cost tracking
     """
-    provider = OpenRouterProvider(api_key)
+    provider = OpenRouterProvider(api_key=api_key, base_url=base_url)
     return provider.get_llm(
         task_type=task_type,
         prefer_fast=prefer_fast,

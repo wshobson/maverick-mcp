@@ -1,20 +1,27 @@
 """LLM factory for creating language model instances.
 
-This module provides a factory function to create LLM instances with intelligent model selection.
+This module provides a factory function to create LLM instances with intelligent
+model selection. Configuration is read from ``LLMSettings`` (wired into
+``Settings.llm``) rather than raw ``os.getenv`` calls.
 """
 
 import logging
-import os
 from typing import Any
 
 from langchain_community.llms import FakeListLLM
 
+from maverick_mcp.config.settings import LLMSettings, get_settings
 from maverick_mcp.providers.openrouter_provider import (
     TaskType,
     get_openrouter_llm,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _get_llm_settings() -> LLMSettings:
+    """Return the current LLMSettings from the global Settings singleton."""
+    return get_settings().llm
 
 
 def get_llm(
@@ -42,11 +49,63 @@ def get_llm(
     3. Anthropic ChatAnthropic if ANTHROPIC_API_KEY is available (fallback)
     4. FakeListLLM as fallback for testing
     """
-    # Check for OpenRouter first (preferred)
-    openrouter_api_key = os.getenv("OPENROUTER_API_KEY")
+    settings = _get_llm_settings()
+    provider = settings.provider
+    temperature = settings.temperature
+
+    # --- Explicit provider selection -------------------------------------------
+    if provider == "openrouter":
+        api_key = settings.get_openrouter_api_key()
+        if api_key:
+            logger.info("Using OpenRouter (explicit) for task: %s", task_type)
+            return get_openrouter_llm(
+                api_key=api_key,
+                task_type=task_type,
+                prefer_fast=prefer_fast,
+                prefer_cheap=prefer_cheap,
+                prefer_quality=prefer_quality,
+                model_override=model_override,
+                base_url=settings.openrouter_base_url,
+            )
+        logger.warning("LLM_PROVIDER=openrouter but no OPENROUTER_API_KEY set")
+
+    elif provider == "openai":
+        api_key = settings.get_openai_api_key()
+        if api_key:
+            logger.info("Using OpenAI (explicit)")
+            from langchain_openai import ChatOpenAI
+
+            kwargs: dict[str, Any] = {
+                "model": settings.openai_default_model,
+                "temperature": temperature,
+                "streaming": False,
+            }
+            if settings.openai_base_url:
+                kwargs["base_url"] = settings.openai_base_url
+            return ChatOpenAI(openai_api_key=api_key, **kwargs)
+        logger.warning("LLM_PROVIDER=openai but no OPENAI_API_KEY set")
+
+    elif provider == "anthropic":
+        api_key = settings.get_anthropic_api_key()
+        if api_key:
+            logger.info("Using Anthropic (explicit)")
+            from langchain_anthropic import ChatAnthropic
+
+            kwargs: dict[str, Any] = {
+                "model": settings.anthropic_default_model,
+                "temperature": temperature,
+            }
+            if settings.anthropic_base_url:
+                kwargs["anthropic_api_url"] = settings.anthropic_base_url
+            return ChatAnthropic(anthropic_api_key=api_key, **kwargs)
+        logger.warning("LLM_PROVIDER=anthropic but no ANTHROPIC_API_KEY set")
+
+    # --- Auto-detection chain (provider == "auto") ----------------------------
+    openrouter_api_key = settings.get_openrouter_api_key()
     if openrouter_api_key:
         logger.info(
-            f"Using OpenRouter with intelligent model selection for task: {task_type}"
+            "Using OpenRouter with intelligent model selection for task: %s",
+            task_type,
         )
         return get_openrouter_llm(
             api_key=openrouter_api_key,
@@ -55,29 +114,35 @@ def get_llm(
             prefer_cheap=prefer_cheap,
             prefer_quality=prefer_quality,
             model_override=model_override,
+            base_url=settings.openrouter_base_url,
         )
 
-    # Fallback to OpenAI
-    openai_api_key = os.getenv("OPENAI_API_KEY")
+    openai_api_key = settings.get_openai_api_key()
     if openai_api_key:
         logger.info("Falling back to OpenAI API")
-        try:
-            from langchain_openai import ChatOpenAI
+        from langchain_openai import ChatOpenAI
 
-            return ChatOpenAI(model="gpt-4o-mini", temperature=0.3, streaming=False)
-        except ImportError:
-            pass
+        kwargs: dict[str, Any] = {
+            "model": settings.openai_default_model,
+            "temperature": temperature,
+            "streaming": False,
+        }
+        if settings.openai_base_url:
+            kwargs["base_url"] = settings.openai_base_url
+        return ChatOpenAI(openai_api_key=openai_api_key, **kwargs)
 
-    # Fallback to Anthropic
-    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+    anthropic_api_key = settings.get_anthropic_api_key()
     if anthropic_api_key:
         logger.info("Falling back to Anthropic API")
-        try:
-            from langchain_anthropic import ChatAnthropic
+        from langchain_anthropic import ChatAnthropic
 
-            return ChatAnthropic(model="claude-3-sonnet-20240229", temperature=0.3)
-        except ImportError:
-            pass
+        kwargs: dict[str, Any] = {
+            "model": settings.anthropic_default_model,
+            "temperature": temperature,
+        }
+        if settings.anthropic_base_url:
+            kwargs["anthropic_api_url"] = settings.anthropic_base_url
+        return ChatAnthropic(anthropic_api_key=anthropic_api_key, **kwargs)
 
     # Final fallback to fake LLM for testing
     logger.warning("No LLM API keys found - using FakeListLLM for testing")
