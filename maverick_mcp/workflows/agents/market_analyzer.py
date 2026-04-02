@@ -25,6 +25,15 @@ from maverick_mcp.workflows.state import BacktestingWorkflowState
 logger = logging.getLogger(__name__)
 
 
+def _require_ta():
+    """Raise ImportError if pandas_ta is not available."""
+    if ta is None:
+        raise ImportError(
+            "pandas_ta is required for this feature. "
+            "Install it with: pip install pandas_ta (requires Python <3.14)"
+        )
+
+
 class MarketAnalyzerAgent:
     """Intelligent market regime analyzer for backtesting workflows."""
 
@@ -219,6 +228,7 @@ class MarketAnalyzerAgent:
 
     def _analyze_trend(self, close: pd.Series) -> dict[str, Any]:
         """Analyze trend characteristics."""
+        _require_ta()
         # Calculate moving averages
         ma_20 = ta.sma(close, length=self.SHORT_PERIOD)
         ma_50 = ta.sma(close, length=self.MEDIUM_PERIOD)

@@ -17,6 +17,16 @@ try:
 except ImportError:
     ta = None  # pandas_ta requires numba (Python <3.14)
 
+
+def _require_ta():
+    """Raise ImportError if pandas_ta is not available."""
+    if ta is None:
+        raise ImportError(
+            "pandas_ta is required for this feature. "
+            "Install it with: pip install pandas_ta (requires Python <3.14)"
+        )
+
+
 logger = logging.getLogger(__name__)
 
 
