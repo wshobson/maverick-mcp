@@ -1,0 +1,59 @@
+{
+  "featureId": "llm-settings-config",
+  "milestone": "config",
+  "reviewedAt": "2026-04-02T05:15:00.000Z",
+  "commitId": "ae06c1d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReviewIssues": [
+    {
+      "severity": "non_blocking",
+      "file": ".env.example",
+      "description": "Duplicate LLM configuration sections: lines 56-71 (commented block) and lines 85-110 (bottom block with uncommented LLM_PROVIDER and LLM_TEMPERATURE) repeat the same variables. Every LLM_* and *_BASE_URL variable appears twice in the file. While functional (last uncommented value wins), this is confusing for users. Recommend consolidating into a single section in a follow-up."
+    },
+    {
+      "severity": "non_blocking",
+      "file": "maverick_mcp/config/settings.py",
+      "description": "LLMSettings.temperature has no range validator despite the description stating '(0.0-1.0)'. Values like 2.0 or -1.0 will be accepted without error. Consider adding @field_validator('temperature') with ge=0.0 le=2.0 bounds (some providers support >1.0) or at minimum a warning for values outside [0.0, 1.0]. Not blocking because some LLM providers do accept temperature >1.0."
+    },
+    {
+      "severity": "suggestion",
+      "file": "maverick_mcp/config/settings.py",
+      "description": "Helper functions _env_or_none() and _secret_or_none() are defined after the LLMSettings class that references them (between LLMSettings and Settings). This works because lambdas resolve names lazily, but placing helpers before the class that uses them would be more conventional and easier to follow. Minor readability suggestion."
+    },
+    {
+      "severity": "suggestion",
+      "file": "tests/test_llm_settings.py",
+      "description": "No tests for the get_*_api_key() accessor methods (get_openai_api_key, get_anthropic_api_key, get_openrouter_api_key). Also no tests for _secret_or_none() behavior with empty-string API key env vars, or for API key env var binding (e.g., monkeypatch OPENAI_API_KEY and verify it populates). These would strengthen coverage for downstream consumers."
+    },
+    {
+      "severity": "suggestion",
+      "file": "tests/test_llm_settings.py",
+      "description": "VAL-CFG-013 (.env.example completeness) has no actual test — comment says 'verified via verification step in features.json — grep check'. A simple pytest test that reads .env.example and asserts all expected variable names are present would make this assertion self-verifying."
+    }
+  ],
+  "testCoverage": {
+    "adequate": true,
+    "notes": "35 tests comprehensively cover VAL-CFG-001 through VAL-CFG-012. All core assertion categories (defaults, provider validation, env var binding, type coercion, Settings integration, backward compatibility, None preservation, empty-string-to-None) are tested. Minor gaps: no tests for get_*_api_key() accessors, no test for API key env var binding, no test for whitespace-only base URL strings, and VAL-CFG-013 is not tested in code (verified externally via grep). These gaps are non-blocking."
+  },
+  "sharedStateObservations": [
+    {
+      "target": "AGENTS.md",
+      "observation": "Worker introduced _env_or_none() and _secret_or_none() helper functions as a new pattern for empty-string-to-None env var coercion. This is cleaner than the inline lambdas used elsewhere in settings.py. AGENTS.md Coding Conventions section should document this pattern so future workers use these helpers instead of reimplementing inline logic.",
+      "evidence": "maverick_mcp/config/settings.py lines 1058-1067: _env_or_none() and _secret_or_none() functions. Compare to existing inline patterns like `SecretStr(v) if (v := os.getenv('EXA_API_KEY')) else None` in APISettings."
+    },
+    {
+      "target": "AGENTS.md",
+      "observation": "Pre-existing Settings class has duplicate field declarations: 'agent' defined at lines 1096 and 1109, 'validation' defined at lines 1099 and 1118. The first 'validation' has wrong default_factory=FinancialConfig. Python uses the last definition so it works, but this is a latent bug. Should be documented so a future worker can clean it up.",
+      "evidence": "maverick_mcp/config/settings.py lines 1096-1118: duplicate 'agent: AgentConfig' and 'validation: ValidationConfig' fields. First validation has default_factory=FinancialConfig (wrong type)."
+    },
+    {
+      "target": "library",
+      "observation": ".env.example now has duplicate LLM variable sections that could confuse future workers about where to add new env vars. The convention should be documented: all LLM/BYOK vars go in the bottom '# LLM / BYOK' section, and the mid-file commented block should be removed in a cleanup pass.",
+      "evidence": ".env.example lines 56-71 (first LLM block) vs lines 85-110 (second LLM block) — same variables in both sections."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "LLMSettings implementation is clean, well-structured, and follows existing settings.py patterns faithfully. All 10 specified fields are present with correct types and defaults. Provider validation via @field_validator is sound. SecretStr usage for API keys and _env_or_none/_secret_or_none helpers for empty-string-to-None coercion are good patterns. Settings.llm wiring is correct. 35 unit tests cover all 13 VAL-CFG assertions. Two non-blocking issues: (1) .env.example has duplicate LLM configuration sections, and (2) temperature field lacks range validation despite description claiming 0.0-1.0 bounds. No security concerns — API keys properly use SecretStr. Overall: PASS."
+}
