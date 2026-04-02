@@ -1,0 +1,23 @@
+{
+  "milestone": "setup",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Created initial user-testing.md with environment setup knowledge, testing tools, and concurrency guidance for future milestones",
+      "source": "setup"
+    }
+  ],
+  "notes": "The setup milestone has zero testable assertions. The only implementation feature (fork-and-setup) has no fulfills — it was purely environment preparation (repo clone, branch creation, dependency installation). All 43 validation contract assertions belong to future milestones (config, factory, docs). Environment verified: repo cloned, branch feat/byok-provider-endpoint exists, all expected files present.",
+  "previousRound": null
+}
