@@ -13,7 +13,12 @@ from decimal import Decimal
 from typing import Any
 
 import pandas as pd
-import pandas_ta as ta
+
+try:
+    import pandas_ta as ta
+except ImportError:
+    ta = None  # pandas_ta requires numba (Python <3.14)
+
 from fastmcp import FastMCP
 from sqlalchemy.orm import Session
 
@@ -23,6 +28,15 @@ from maverick_mcp.providers.stock_data import StockDataProvider
 from maverick_mcp.utils.stock_helpers import get_stock_dataframe
 
 logger = logging.getLogger(__name__)
+
+
+def _require_ta():
+    """Raise ImportError if pandas_ta is not available."""
+    if ta is None:
+        raise ImportError(
+            "pandas_ta is required for this feature. "
+            "Install it with: pip install pandas_ta (requires Python <3.14)"
+        )
 
 # Create the portfolio router
 portfolio_router: FastMCP = FastMCP("Portfolio_Analysis")
@@ -132,6 +146,7 @@ def risk_adjusted_analysis(
                 "available_columns": list(df.columns),
             }
 
+        _require_ta()
         df["atr"] = ta.atr(df["High"], df["Low"], df["Close"], length=20)
         atr = df["atr"].iloc[-1]
         current_price = df["Close"].iloc[-1]
