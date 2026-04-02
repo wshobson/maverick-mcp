@@ -11,7 +11,7 @@ import tempfile
 import warnings
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, SecretStr, model_validator
+from pydantic import BaseModel, Field, SecretStr, field_validator, model_validator
 
 from maverick_mcp.config.constants import CONFIG
 
@@ -966,6 +966,95 @@ class MemoryConfig(BaseModel):
     )
 
 
+class LLMSettings(BaseModel):
+    """LLM provider and BYOK (Bring Your Own Key) configuration settings."""
+
+    provider: str = Field(
+        default_factory=lambda: os.getenv("LLM_PROVIDER", "auto"),
+        description="LLM provider: auto, openrouter, openai, or anthropic",
+    )
+    openrouter_base_url: str | None = Field(
+        default_factory=lambda: _env_or_none("OPENROUTER_BASE_URL"),
+        description="OpenRouter API base URL override",
+    )
+    openrouter_api_key: SecretStr | None = Field(
+        default_factory=lambda: _secret_or_none("OPENROUTER_API_KEY"),
+        description="OpenRouter API key",
+    )
+    openai_base_url: str | None = Field(
+        default_factory=lambda: _env_or_none("OPENAI_BASE_URL"),
+        description="OpenAI API base URL override",
+    )
+    openai_api_key: SecretStr | None = Field(
+        default_factory=lambda: _secret_or_none("OPENAI_API_KEY"),
+        description="OpenAI API key",
+    )
+    anthropic_base_url: str | None = Field(
+        default_factory=lambda: _env_or_none("ANTHROPIC_BASE_URL"),
+        description="Anthropic API base URL override",
+    )
+    anthropic_api_key: SecretStr | None = Field(
+        default_factory=lambda: _secret_or_none("ANTHROPIC_API_KEY"),
+        description="Anthropic API key",
+    )
+    openai_default_model: str = Field(
+        default_factory=lambda: os.getenv("OPENAI_DEFAULT_MODEL", "gpt-4o"),
+        description="Default model for OpenAI provider",
+    )
+    anthropic_default_model: str = Field(
+        default_factory=lambda: os.getenv(
+            "ANTHROPIC_DEFAULT_MODEL", "claude-sonnet-4-20250514"
+        ),
+        description="Default model for Anthropic provider",
+    )
+    temperature: float = Field(
+        default_factory=lambda: float(os.getenv("LLM_TEMPERATURE", "0.3")),
+        description="LLM sampling temperature (0.0-1.0)",
+    )
+
+    @field_validator("provider")
+    @classmethod
+    def _validate_provider(cls, v: str) -> str:
+        valid = {"auto", "openrouter", "openai", "anthropic"}
+        if v not in valid:
+            raise ValueError(
+                f"Invalid LLM provider '{v}'. Valid: {', '.join(sorted(valid))}"
+            )
+        return v
+
+    def get_openrouter_api_key(self) -> str | None:
+        """Get the OpenRouter API key as a plain string."""
+        return (
+            self.openrouter_api_key.get_secret_value()
+            if self.openrouter_api_key
+            else None
+        )
+
+    def get_openai_api_key(self) -> str | None:
+        """Get the OpenAI API key as a plain string."""
+        return self.openai_api_key.get_secret_value() if self.openai_api_key else None
+
+    def get_anthropic_api_key(self) -> str | None:
+        """Get the Anthropic API key as a plain string."""
+        return (
+            self.anthropic_api_key.get_secret_value()
+            if self.anthropic_api_key
+            else None
+        )
+
+
+def _env_or_none(var: str) -> str | None:
+    """Read an env var, returning None if empty or unset."""
+    val = os.getenv(var)
+    return val if val and val.strip() else None
+
+
+def _secret_or_none(var: str) -> SecretStr | None:
+    """Read an env var into a SecretStr, returning None if empty or unset."""
+    val = os.getenv(var)
+    return SecretStr(val) if val and val.strip() else None
+
+
 class Settings(BaseModel):
     """Main application settings."""
 
@@ -1034,6 +1123,9 @@ class Settings(BaseModel):
     )
     memory: MemoryConfig = Field(
         default_factory=MemoryConfig, description="Memory persistence settings"
+    )
+    llm: LLMSettings = Field(
+        default_factory=LLMSettings, description="LLM configuration settings"
     )
 
 
