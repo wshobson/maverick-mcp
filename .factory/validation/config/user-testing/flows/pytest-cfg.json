@@ -1,0 +1,77 @@
+{
+  "groupId": "pytest-cfg",
+  "surface": "pytest",
+  "testedAt": "2026-04-02T00:00:00Z",
+  "isolation": {
+    "workingDirectory": "C:\\Users\\Janak Kalaria\\Downloads\\Droid.Claude\\Linear\\maverick-byok",
+    "branch": "feat/byok-provider-endpoint",
+    "python": "3.14.3",
+    "testFile": "tests/test_llm_settings.py"
+  },
+  "assertions": {
+    "VAL-CFG-001": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestLLMSettingsDefaults: all 6 tests passed — provider='auto', base URLs None, API keys None, default models correct, temperature=0.3, no ValidationError"
+    },
+    "VAL-CFG-002": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestValidProviders: 4 parametrized tests passed — auto, openrouter, openai, anthropic all accepted"
+    },
+    "VAL-CFG-003": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestInvalidProvider: 4 parametrized tests passed — groq, invalid, azure, empty string all raise ValidationError"
+    },
+    "VAL-CFG-004": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestProviderEnvBinding: 4 tests passed — LLM_PROVIDER env var correctly populates provider field for openai, anthropic, openrouter, auto"
+    },
+    "VAL-CFG-005": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestBaseURLEnvBinding: 3 tests passed — OPENAI_BASE_URL, ANTHROPIC_BASE_URL, OPENROUTER_BASE_URL each bind to their respective field"
+    },
+    "VAL-CFG-006": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestDefaultModelEnvBinding: 2 tests passed — OPENAI_DEFAULT_MODEL and ANTHROPIC_DEFAULT_MODEL bind correctly"
+    },
+    "VAL-CFG-007": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestTemperatureCoercion: 2 tests passed — LLM_TEMPERATURE string '0.7' coerces to float 0.7, '0' coerces to 0.0"
+    },
+    "VAL-CFG-008": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestTemperatureBoundaries: 2 tests passed — temperature=0.0 and temperature=1.0 both accepted"
+    },
+    "VAL-CFG-009": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestSettingsIntegration: 2 tests passed — Settings().llm is LLMSettings instance with provider='auto' and temperature=0.3"
+    },
+    "VAL-CFG-010": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestBackwardCompatibility: 2 tests passed — Settings() and LLMSettings() instantiate without new LLM_* env vars"
+    },
+    "VAL-CFG-011": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestBaseURLNonePreserved: 1 test passed — all base URLs are None (not empty string) when no env vars set"
+    },
+    "VAL-CFG-012": {
+      "status": "pass",
+      "evidence": "config/pytest-cfg/test-output.txt",
+      "details": "TestEmptyStringBaseURL: 3 tests passed — empty string env vars for OPENAI_BASE_URL, ANTHROPIC_BASE_URL, OPENROUTER_BASE_URL all resolve to None"
+    }
+  },
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": ["pytest"],
+  "summary": "Tested 12 assertions (VAL-CFG-001 through VAL-CFG-012): all 12 passed. 35 total tests, 0 failures. 16 unrelated deprecation warnings from upstream dependencies."
+}

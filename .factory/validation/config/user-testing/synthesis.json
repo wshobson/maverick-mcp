@@ -1,0 +1,30 @@
+{
+  "milestone": "config",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 13,
+    "passed": 13,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-CFG-001",
+    "VAL-CFG-002",
+    "VAL-CFG-003",
+    "VAL-CFG-004",
+    "VAL-CFG-005",
+    "VAL-CFG-006",
+    "VAL-CFG-007",
+    "VAL-CFG-008",
+    "VAL-CFG-009",
+    "VAL-CFG-010",
+    "VAL-CFG-011",
+    "VAL-CFG-012",
+    "VAL-CFG-013"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null
+}
