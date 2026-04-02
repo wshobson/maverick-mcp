@@ -28,6 +28,20 @@ from maverick_mcp.config.technical_constants import TECHNICAL_CONFIG
 logger = logging.getLogger("maverick_mcp.technical_analysis")
 
 
+def _require_ta():
+    """Raise ImportError if pandas_ta is not available.
+
+    Every function that calls ``ta.*`` must invoke this guard first so that
+    callers receive a clear error instead of an ``AttributeError: 'NoneType
+    object has no attribute 'ema'``.
+    """
+    if ta is None:
+        raise ImportError(
+            "pandas_ta is required for technical analysis features. "
+            "Install it with: pip install pandas_ta (requires Python <3.14)"
+        )
+
+
 def _get_column_case_insensitive(df: pd.DataFrame, column_name: str) -> str | None:
     """
     Get the actual column name from the dataframe in a case-insensitive way.
@@ -59,6 +73,8 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame with added technical indicators
     """
+    _require_ta()
+
     # Ensure column names are lowercase
     df = df.copy()
     df.columns = [col.lower() for col in df.columns]
@@ -703,6 +719,8 @@ def calculate_atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     Returns:
         Series with ATR values
     """
+    _require_ta()
+
     # Optimized to avoid copying the entire dataframe
     high_col = _get_column_case_insensitive(df, "high")
     low_col = _get_column_case_insensitive(df, "low")
@@ -812,6 +830,8 @@ def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
     Returns:
         Series with RSI values
     """
+    _require_ta()
+
     # Optimized to avoid copying the entire dataframe
     close_col = _get_column_case_insensitive(df, "close")
 
@@ -854,7 +874,9 @@ def calculate_sma(df: pd.DataFrame, period: int) -> pd.Series:
     if not close_col:
         raise ValueError("DataFrame must contain a 'close' or 'Close' column")
 
-    # Use pandas_ta to calculate SMA
+    _require_ta()
+
+    # Ensure we return a Series
     sma = ta.sma(df[close_col], length=period)
 
     # Ensure we return a Series

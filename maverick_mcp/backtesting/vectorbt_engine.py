@@ -6,11 +6,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-
-try:
-    import vectorbt as vbt
-except ImportError:
-    vbt = None  # vectorbt requires numba (Python <3.14)
+import vectorbt as vbt
 from pandas import DataFrame, Series
 
 from maverick_mcp.backtesting.batch_processing import BatchProcessingMixin

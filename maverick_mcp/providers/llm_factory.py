@@ -67,7 +67,10 @@ def get_llm(
                 model_override=model_override,
                 base_url=settings.openrouter_base_url,
             )
-        logger.warning("LLM_PROVIDER=openrouter but no OPENROUTER_API_KEY set")
+        raise ValueError(
+            "LLM_PROVIDER is set to 'openrouter' but OPENROUTER_API_KEY is not configured. "
+            "Either set the API key or change LLM_PROVIDER to 'auto'."
+        )
 
     elif provider == "openai":
         api_key = settings.get_openai_api_key()
@@ -83,7 +86,10 @@ def get_llm(
             if settings.openai_base_url:
                 kwargs["base_url"] = settings.openai_base_url
             return ChatOpenAI(openai_api_key=api_key, **kwargs)
-        logger.warning("LLM_PROVIDER=openai but no OPENAI_API_KEY set")
+        raise ValueError(
+            "LLM_PROVIDER is set to 'openai' but OPENAI_API_KEY is not configured. "
+            "Either set the API key or change LLM_PROVIDER to 'auto'."
+        )
 
     elif provider == "anthropic":
         api_key = settings.get_anthropic_api_key()
@@ -98,7 +104,10 @@ def get_llm(
             if settings.anthropic_base_url:
                 kwargs["anthropic_api_url"] = settings.anthropic_base_url
             return ChatAnthropic(anthropic_api_key=api_key, **kwargs)
-        logger.warning("LLM_PROVIDER=anthropic but no ANTHROPIC_API_KEY set")
+        raise ValueError(
+            "LLM_PROVIDER is set to 'anthropic' but ANTHROPIC_API_KEY is not configured. "
+            "Either set the API key or change LLM_PROVIDER to 'auto'."
+        )
 
     # --- Auto-detection chain (provider == "auto") ----------------------------
     openrouter_api_key = settings.get_openrouter_api_key()

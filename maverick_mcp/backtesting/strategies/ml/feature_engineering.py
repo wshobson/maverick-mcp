@@ -17,6 +17,20 @@ from sklearn.preprocessing import StandardScaler
 logger = logging.getLogger(__name__)
 
 
+def _require_ta():
+    """Raise ImportError if pandas_ta is not available.
+
+    Every function that calls ``ta.*`` must invoke this guard first so that
+    callers receive a clear error instead of an ``AttributeError: 'NoneType
+    object has no attribute 'sma'``.
+    """
+    if ta is None:
+        raise ImportError(
+            "pandas_ta is required for technical indicator features. "
+            "Install it with: pip install pandas_ta (requires Python <3.14)"
+        )
+
+
 class FeatureExtractor:
     """Extract technical and statistical features for ML models."""
 
@@ -108,6 +122,8 @@ class FeatureExtractor:
         Returns:
             DataFrame with technical features
         """
+        _require_ta()
+
         features = pd.DataFrame(index=data.index)
 
         # Normalize column names
