@@ -12,7 +12,7 @@ cp .env.example .env
 
 ---
 
-## LLM Configuration (BYOK — Bring Your Own Key)
+## LLM Configuration (BYOK - Bring Your Own Key)
 
 MaverickMCP supports multiple LLM providers through a BYOK model. You can use OpenRouter (default), OpenAI, Anthropic, or any OpenAI-compatible endpoint.
 
@@ -22,10 +22,10 @@ MaverickMCP supports multiple LLM providers through a BYOK model. You can use Op
 |---|---|---|
 | `LLM_PROVIDER` | `auto` | `auto`, `openrouter`, `openai`, `anthropic` |
 
-- **`auto`** (default) — Automatically selects the first provider with an available API key. Resolution order: OpenRouter → OpenAI → Anthropic → FakeListLLM (testing fallback).
-- **`openrouter`** — Explicitly use OpenRouter. Requires `OPENROUTER_API_KEY`.
-- **`openai`** — Explicitly use OpenAI. Requires `OPENAI_API_KEY`.
-- **`anthropic`** — Explicitly use Anthropic. Requires `ANTHROPIC_API_KEY`.
+- **`auto`** (default) - Automatically selects the first provider with an available API key. Resolution order: OpenRouter -> OpenAI -> Anthropic -> FakeListLLM (testing fallback).
+- **`openrouter`** - Explicitly use OpenRouter. Requires `OPENROUTER_API_KEY`.
+- **`openai`** - Explicitly use OpenAI. Requires `OPENAI_API_KEY`.
+- **`anthropic`** - Explicitly use Anthropic. Requires `ANTHROPIC_API_KEY`.
 
 ### Base URL Override
 
@@ -54,7 +54,7 @@ OpenRouter model selection is handled automatically by the intelligent model sel
 
 | Variable | Default | Range |
 |---|---|---|
-| `LLM_TEMPERATURE` | `0.3` | `0.0` – `1.0` |
+| `LLM_TEMPERATURE` | `0.3` | `0.0` - `1.0` |
 
 Controls the sampling temperature for all providers. Lower values produce more deterministic outputs; higher values produce more creative responses.
 
@@ -74,7 +74,7 @@ Controls the sampling temperature for all providers. Lower values produce more d
 
 ### Example 1: OpenRouter (Default)
 
-The simplest setup — just set an OpenRouter key and everything works automatically.
+The simplest setup - just set an OpenRouter key and everything works automatically.
 
 ```bash
 # .env
@@ -174,10 +174,10 @@ LLM_TEMPERATURE=0.7
 
 When `LLM_PROVIDER=auto` (the default), the system checks for API keys in this order:
 
-1. **OpenRouter** — if `OPENROUTER_API_KEY` is set → uses OpenRouter with intelligent model selection
-2. **OpenAI** — if `OPENAI_API_KEY` is set → uses `ChatOpenAI` with the default or overridden model
-3. **Anthropic** — if `ANTHROPIC_API_KEY` is set → uses `ChatAnthropic` with the default or overridden model
-4. **Fallback** — if no keys are set → uses `FakeListLLM` (testing-only mock responses)
+1. **OpenRouter** - if `OPENROUTER_API_KEY` is set -> uses OpenRouter with intelligent model selection
+2. **OpenAI** - if `OPENAI_API_KEY` is set -> uses `ChatOpenAI` with the default or overridden model
+3. **Anthropic** - if `ANTHROPIC_API_KEY` is set -> uses `ChatAnthropic` with the default or overridden model
+4. **Fallback** - if no keys are set -> uses `FakeListLLM` (testing-only mock responses)
 
 This means existing deployments that only set `OPENROUTER_API_KEY` continue to work exactly as before with no changes required.
 

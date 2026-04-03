@@ -321,6 +321,37 @@ class TestOpenAIDefaultModel:
         assert isinstance(result, ChatOpenAI)
         assert result.model_name == "gpt-4o"
 
+    def test_openai_runtime_model_override_explicit_provider(self):
+        """model_override takes precedence for explicit OpenAI provider selection."""
+        settings = LLMSettings(
+            provider="openai",
+            openai_api_key=__import__("pydantic").SecretStr("test-key"),
+            openai_default_model="gpt-4o",
+        )
+        get_llm = _import_get_llm()
+        with patch(
+            "maverick_mcp.providers.llm_factory._get_llm_settings",
+            return_value=settings,
+        ):
+            result = get_llm(model_override="gpt-4.1-mini")
+        assert isinstance(result, ChatOpenAI)
+        assert result.model_name == "gpt-4.1-mini"
+
+    def test_openai_runtime_model_override_auto_fallback(self):
+        """model_override takes precedence for OpenAI auto-detection fallback."""
+        settings = LLMSettings(
+            openai_api_key=__import__("pydantic").SecretStr("test-key"),
+            openai_default_model="gpt-4o",
+        )
+        get_llm = _import_get_llm()
+        with patch(
+            "maverick_mcp.providers.llm_factory._get_llm_settings",
+            return_value=settings,
+        ):
+            result = get_llm(model_override="gpt-4.1-mini")
+        assert isinstance(result, ChatOpenAI)
+        assert result.model_name == "gpt-4.1-mini"
+
 
 # ---------------------------------------------------------------------------
 # VAL-FCT-013: Default model override for Anthropic
@@ -345,6 +376,37 @@ class TestAnthropicDefaultModel:
             result = get_llm()
         assert isinstance(result, ChatAnthropic)
         assert result.model == "claude-sonnet-4-20250514"
+
+    def test_anthropic_runtime_model_override_explicit_provider(self):
+        """model_override takes precedence for explicit Anthropic provider selection."""
+        settings = LLMSettings(
+            provider="anthropic",
+            anthropic_api_key=__import__("pydantic").SecretStr("test-key"),
+            anthropic_default_model="claude-sonnet-4-20250514",
+        )
+        get_llm = _import_get_llm()
+        with patch(
+            "maverick_mcp.providers.llm_factory._get_llm_settings",
+            return_value=settings,
+        ):
+            result = get_llm(model_override="claude-3-5-haiku-20241022")
+        assert isinstance(result, ChatAnthropic)
+        assert result.model == "claude-3-5-haiku-20241022"
+
+    def test_anthropic_runtime_model_override_auto_fallback(self):
+        """model_override takes precedence for Anthropic auto-detection fallback."""
+        settings = LLMSettings(
+            anthropic_api_key=__import__("pydantic").SecretStr("test-key"),
+            anthropic_default_model="claude-sonnet-4-20250514",
+        )
+        get_llm = _import_get_llm()
+        with patch(
+            "maverick_mcp.providers.llm_factory._get_llm_settings",
+            return_value=settings,
+        ):
+            result = get_llm(model_override="claude-3-5-haiku-20241022")
+        assert isinstance(result, ChatAnthropic)
+        assert result.model == "claude-3-5-haiku-20241022"
 
 
 # ---------------------------------------------------------------------------
@@ -389,7 +451,7 @@ class TestTemperatureOverride:
 
 
 # ---------------------------------------------------------------------------
-# VAL-FCT-015: Backward compatibility — no new env vars preserves current behavior
+# VAL-FCT-015: Backward compatibility - no new env vars preserves current behavior
 # ---------------------------------------------------------------------------
 
 
@@ -515,7 +577,7 @@ class TestCrossAnthropicBaseURL:
 
 
 # ---------------------------------------------------------------------------
-# VAL-CROSS-004: Backward compatibility — zero new env vars, identical behavior
+# VAL-CROSS-004: Backward compatibility - zero new env vars, identical behavior
 # ---------------------------------------------------------------------------
 
 

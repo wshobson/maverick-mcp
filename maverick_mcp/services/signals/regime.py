@@ -1,7 +1,7 @@
 """Market regime detector using composite multi-factor scoring.
 
 The RegimeDetector classifies the current market environment into one of
-four regimes — ``bull``, ``bear``, ``choppy``, or ``transitional`` — by
+four regimes - ``bull``, ``bear``, ``choppy``, or ``transitional`` - by
 combining four weighted factors: trend, volatility, momentum, and breadth.
 """
 
@@ -77,13 +77,13 @@ class RegimeDetector:
         Args:
             market_prices: Series of market close prices (most recent last).
             vix_level: Current VIX level.
-            breadth_ratio: Optional ratio of advancing to total issues (0–1).
+            breadth_ratio: Optional ratio of advancing to total issues (0-1).
                            If None, a neutral breadth score is assumed.
 
         Returns:
             Dict with keys:
             - ``regime`` (str): one of bull / bear / choppy / transitional
-            - ``confidence`` (float): 0–1
+            - ``confidence`` (float): 0-1
             - ``drivers`` (dict): per-factor scores
             - ``votes`` (dict): raw vote per factor (bull=+1, bear=-1, neutral=0)
         """
@@ -104,8 +104,8 @@ class RegimeDetector:
         if confidence < _TRANSITIONAL_THRESHOLD:
             regime = "transitional"
         elif composite > 0:
-            # Positive composite → bullish or choppy
-            # If trend score is weak but composite is positive → choppy
+            # Positive composite -> bullish or choppy
+            # If trend score is weak but composite is positive -> choppy
             if trend_score < 0.15 and vol_score < 0.1:
                 regime = "choppy"
             else:
@@ -113,7 +113,7 @@ class RegimeDetector:
         else:
             regime = "bear"
 
-        # Special case: very low volatility signal with no clear direction → choppy
+        # Special case: very low volatility signal with no clear direction -> choppy
         if regime != "bear" and trend_score < 0.05 and vol_score < 0.05:
             regime = "choppy"
 
@@ -162,7 +162,7 @@ class RegimeDetector:
         return _clip(raw), "bull" if raw > 0 else "bear"
 
     def _score_volatility(self, vix: float) -> tuple[float, str]:
-        """Score based on VIX level.  High VIX → bearish, low VIX → bullish."""
+        """Score based on VIX level.  High VIX -> bearish, low VIX -> bullish."""
         if vix < 16:
             return 0.8, "bull"
         if vix < 22:
@@ -183,10 +183,10 @@ class RegimeDetector:
         return score, "bull" if score > 0 else ("bear" if score < 0 else "neutral")
 
     def _score_breadth(self, breadth_ratio: float | None) -> tuple[float, str]:
-        """Score from advance/decline breadth ratio (0–1 scale)."""
+        """Score from advance/decline breadth ratio (0-1 scale)."""
         if breadth_ratio is None:
             return 0.0, "neutral"  # default when not provided
-        # > 0.6 → bullish, < 0.4 → bearish, 0.4-0.6 → neutral
+        # > 0.6 -> bullish, < 0.4 -> bearish, 0.4-0.6 -> neutral
         if breadth_ratio > 0.6:
             score = _clip((breadth_ratio - 0.5) * 5)
             return score, "bull"

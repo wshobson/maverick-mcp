@@ -193,7 +193,7 @@ class TestSettingsIntegration:
 
 
 # ---------------------------------------------------------------------------
-# VAL-CFG-010: Backward compatibility — no new required fields
+# VAL-CFG-010: Backward compatibility - no new required fields
 # ---------------------------------------------------------------------------
 class TestBackwardCompatibility:
     """Settings() with zero new LLM_* env vars does not raise."""
@@ -247,5 +247,5 @@ class TestEmptyStringBaseURL:
 
 # ---------------------------------------------------------------------------
 # VAL-CFG-013: .env.example contains all new BYOK variables
-# (verified via verification step in features.json — grep check)
+# (verified via verification step in features.json - grep check)
 # ---------------------------------------------------------------------------

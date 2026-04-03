@@ -79,7 +79,7 @@ def get_llm(
             from langchain_openai import ChatOpenAI
 
             kwargs: dict[str, Any] = {
-                "model": settings.openai_default_model,
+                "model": model_override or settings.openai_default_model,
                 "temperature": temperature,
                 "streaming": False,
             }
@@ -98,7 +98,7 @@ def get_llm(
             from langchain_anthropic import ChatAnthropic
 
             kwargs: dict[str, Any] = {
-                "model": settings.anthropic_default_model,
+                "model": model_override or settings.anthropic_default_model,
                 "temperature": temperature,
             }
             if settings.anthropic_base_url:
@@ -132,7 +132,7 @@ def get_llm(
         from langchain_openai import ChatOpenAI
 
         kwargs: dict[str, Any] = {
-            "model": settings.openai_default_model,
+            "model": model_override or settings.openai_default_model,
             "temperature": temperature,
             "streaming": False,
         }
@@ -146,7 +146,7 @@ def get_llm(
         from langchain_anthropic import ChatAnthropic
 
         kwargs: dict[str, Any] = {
-            "model": settings.anthropic_default_model,
+            "model": model_override or settings.anthropic_default_model,
             "temperature": temperature,
         }
         if settings.anthropic_base_url:

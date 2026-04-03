@@ -13,7 +13,7 @@ from typing import Any
 import pandas as pd
 
 try:
-    import pandas_ta as ta  # noqa: F401 — registers pandas accessor
+    import pandas_ta as ta  # noqa: F401 - registers pandas accessor
 except ImportError:
     ta = None  # pandas_ta requires numba (Python <3.14)
 
@@ -65,7 +65,7 @@ def evaluate_condition(
         A dict with keys:
         - ``triggered`` (bool)
         - ``current_value`` (float)
-        - ``new_state`` (dict | None) — updated state to persist for next call
+        - ``new_state`` (dict | None) - updated state to persist for next call
         - ``error`` (str | None)
     """
     _empty_result: dict[str, Any] = {
@@ -260,7 +260,7 @@ def _evaluate_crossing(
     new_state = {"was_above": is_above_now, "last_value": current_value}
 
     if previous_state is None:
-        # No history yet — record state but do not trigger
+        # No history yet - record state but do not trigger
         return False, new_state
 
     was_above = bool(previous_state.get("was_above", not is_above_now))
