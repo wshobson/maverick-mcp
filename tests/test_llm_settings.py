@@ -68,6 +68,11 @@ class TestInvalidProvider:
         with pytest.raises(ValidationError):
             LLMSettings(provider=provider)
 
+    def test_invalid_provider_from_env_rejected(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        with pytest.raises(ValidationError):
+            LLMSettings()
+
 
 # ---------------------------------------------------------------------------
 # VAL-CFG-004: LLM_PROVIDER env var binding works

@@ -971,6 +971,7 @@ class LLMSettings(BaseModel):
 
     provider: str = Field(
         default_factory=lambda: os.getenv("LLM_PROVIDER", "auto"),
+        validate_default=True,
         description="LLM provider: auto, openrouter, openai, or anthropic",
     )
     openrouter_base_url: str | None = Field(
