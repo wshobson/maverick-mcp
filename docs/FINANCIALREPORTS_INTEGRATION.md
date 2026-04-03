@@ -2,15 +2,15 @@
 
 ## Overview
 
-[FinancialReports.eu](https://financialreports.eu) provides API access to **14M+ regulatory filings** from 35 official sources across 30+ countries. Since both Maverick and FinancialReports.eu use MCP, integration is a natural fit — adding regulatory filings as a new tool alongside Maverick's existing stock analysis capabilities.
+[FinancialReports.eu](https://financialreports.eu) provides API access to **14M+ filings** from data sources across 30+ countries. Since both Maverick and FinancialReports.eu use MCP, integration is a natural fit — adding filings as a new tool alongside Maverick's existing stock analysis capabilities.
 
 ## Why This Fits Maverick MCP
 
 Maverick provides stock analysis via MCP. FinancialReports.eu adds:
 
-- **Regulatory filings** — annual reports, interim results, ESG disclosures, M&A announcements
+- **Filings** — annual reports, interim results, ESG disclosures, M&A announcements
 - **MCP-native** — FinancialReports.eu already has its own [MCP server](https://financialreports.eu), making it a natural companion to Maverick
-- **Global coverage** — 35 regulators (SEC, FCA, Euronext, EDINET, etc.) across 30+ countries
+- **Global coverage** — 30+ countries
 - **Markdown endpoint** — `GET /filings/{id}/markdown/` returns LLM-ready text, perfect for Claude analysis
 - **33,000+ companies** with ISIN identifiers
 
@@ -45,7 +45,7 @@ content = requests.get(
 
 ### 2. Companion MCP Server
 
-Users can run FinancialReports.eu's MCP server alongside Maverick, giving Claude access to both stock analysis and regulatory filings in the same session.
+Users can run FinancialReports.eu's MCP server alongside Maverick, giving Claude access to both stock analysis and filings in the same session.
 
 ### 3. Python SDK
 
@@ -75,14 +75,14 @@ content = filings_markdown_retrieve.sync(client=client, id=filings.results[0].id
 | **Rate Limiting** | Burst limit + monthly quota |
 | **Companies** | 33,230+ |
 | **Total Filings** | 14,135,359+ |
-| **Sources** | 35 official regulators |
+| **Coverage** | 30+ countries |
 
 ## Complementary Value
 
 | Maverick MCP (current) | + FinancialReports.eu |
 |---|---|
-| Stock price analysis | Regulatory filing documents |
+| Stock price analysis | Filing documents |
 | Technical indicators | Annual report text (Markdown) |
 | Portfolio tracking | Filing event timeline |
-| US-focused data | 35 regulators, 30+ countries |
+| US-focused data | 30+ countries |
 | — | ESG disclosures, M&A announcements |
