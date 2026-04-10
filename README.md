@@ -169,6 +169,21 @@ This configuration provides stable tool registration and prevents tools from dis
 }
 ```
 
+> [!WARNING]
+> **Windows Claude Desktop Users**
+> Claude Desktop on Windows currently has a bug where it ignores the `"cwd"` configuration parameter, which can cause the server to crash with a `ModuleNotFoundError` when running via `uv`. 
+> 
+> To bypass this, wrap the command in `cmd.exe` to force the directory change:
+> ```json
+> "maverick-mcp": {
+>   "command": "cmd.exe",
+>   "args": [
+>     "/c",
+>     "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick_mcp.api.server --transport stdio"
+>   ]
+> }
+> ```
+
 > **Important**: Note the trailing slash in `/sse/` - this is REQUIRED to prevent redirect issues!
 
 **Config File Location:**
