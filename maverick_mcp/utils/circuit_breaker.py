@@ -14,6 +14,7 @@ Circuit breakers help prevent cascade failures and provide graceful degradation.
 
 import asyncio
 import functools
+import inspect
 import logging
 import threading
 import time
@@ -589,7 +590,7 @@ def circuit_breaker(
         # Get or create circuit breaker for this function
         breaker = _get_or_create_breaker(config)
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):

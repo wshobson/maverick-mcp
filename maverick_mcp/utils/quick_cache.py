@@ -8,6 +8,7 @@ to avoid repeated API calls during development and testing.
 import asyncio
 import functools
 import hashlib
+import inspect
 import json
 import time
 from collections import OrderedDict
@@ -44,33 +45,37 @@ class QuickCache:
         # Use hash for shorter keys
         return hashlib.sha256(key_str.encode()).hexdigest()
 
+    # ── sync accessors (no event-loop overhead) ──────────────────────
+    def get_sync(self, key: str) -> Any | None:
+        """Get value from cache (sync path — no event-loop needed)."""
+        if key in self.cache:
+            value, expiry = self.cache[key]
+            if time.time() < expiry:
+                self.cache.move_to_end(key)
+                self.hits += 1
+                return value
+            else:
+                del self.cache[key]
+        self.misses += 1
+        return None
+
+    def set_sync(self, key: str, value: Any, ttl_seconds: float) -> None:
+        """Set value in cache (sync path — no event-loop needed)."""
+        expiry = time.time() + ttl_seconds
+        if len(self.cache) >= self.max_size:
+            self.cache.popitem(last=False)
+        self.cache[key] = (value, expiry)
+
+    # ── async accessors (lock-protected for concurrent coroutines) ──
     async def get(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
         async with self._lock:
-            if key in self.cache:
-                value, expiry = self.cache[key]
-                if time.time() < expiry:
-                    # Move to end (LRU)
-                    self.cache.move_to_end(key)
-                    self.hits += 1
-                    return value
-                else:
-                    # Expired, remove it
-                    del self.cache[key]
-
-            self.misses += 1
-            return None
+            return self.get_sync(key)
 
     async def set(self, key: str, value: Any, ttl_seconds: float):
         """Set value in cache with TTL."""
         async with self._lock:
-            expiry = time.time() + ttl_seconds
-
-            # Remove oldest if at capacity
-            if len(self.cache) >= self.max_size:
-                self.cache.popitem(last=False)
-
-            self.cache[key] = (value, expiry)
+            self.set_sync(key, value, ttl_seconds)
 
     def get_stats(self) -> dict[str, Any]:
         """Get cache statistics."""
@@ -189,53 +194,34 @@ def quick_cache(
 
         @functools.wraps(func)
         def sync_wrapper(*args: Any, **kwargs: Any) -> T:
-            # For sync functions, we need to run the async cache operations
-            # in a thread to avoid blocking
-            loop_policy = asyncio.get_event_loop_policy()
-            try:
-                previous_loop = loop_policy.get_event_loop()
-            except RuntimeError:
-                previous_loop = None
+            # Use sync cache accessors — no event-loop creation overhead.
+            cache_key = _cache.make_key(
+                f"{key_prefix}:{func.__name__}" if key_prefix else func.__name__,
+                args,
+                kwargs,
+            )
 
-            loop = loop_policy.new_event_loop()
-            asyncio.set_event_loop(loop)
-            try:
-                cache_key = _cache.make_key(
-                    f"{key_prefix}:{func.__name__}" if key_prefix else func.__name__,
-                    args,
-                    kwargs,
-                )
+            # Try to get from cache
+            cached_value = _cache.get_sync(cache_key)
+            if cached_value is not None:
+                if log_stats:
+                    stats = _cache.get_stats()
+                    logger.debug(
+                        f"Cache HIT for {func.__name__}",
+                        extra={
+                            "function": func.__name__,
+                            "hit_rate": stats["hit_rate"],
+                        },
+                    )
+                return cached_value
 
-                # Try to get from cache (sync version)
-                cached_value = loop.run_until_complete(_cache.get(cache_key))
-                if cached_value is not None:
-                    if log_stats:
-                        stats = _cache.get_stats()
-                        logger.debug(
-                            f"Cache HIT for {func.__name__}",
-                            extra={
-                                "function": func.__name__,
-                                "hit_rate": stats["hit_rate"],
-                            },
-                        )
-                    return cached_value
-
-                # Cache miss
-                result = func(*args, **kwargs)
-
-                # Cache the result
-                loop.run_until_complete(_cache.set(cache_key, result, ttl_seconds))
-
-                return result
-            finally:
-                loop.close()
-                if previous_loop is not None:
-                    asyncio.set_event_loop(previous_loop)
-                else:
-                    asyncio.set_event_loop(None)
+            # Cache miss — execute the sync function, then cache
+            result = func(*args, **kwargs)
+            _cache.set_sync(cache_key, result, ttl_seconds)
+            return result
 
         # Return appropriate wrapper based on function type
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper  # type: ignore[return-value]
         else:
             return sync_wrapper

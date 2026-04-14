@@ -21,8 +21,18 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
-from testcontainers.postgres import PostgresContainer
-from testcontainers.redis import RedisContainer
+
+# testcontainers is optional — only needed for integration tests that use Docker.
+# Gracefully degrade so unit tests can run without it installed.
+try:
+    from testcontainers.postgres import PostgresContainer
+    from testcontainers.redis import RedisContainer
+
+    _HAS_TESTCONTAINERS = True
+except ImportError:
+    _HAS_TESTCONTAINERS = False
+    PostgresContainer = None  # type: ignore[assignment,misc]
+    RedisContainer = None  # type: ignore[assignment,misc]
 
 # Add the parent directory to the path to enable imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -107,9 +117,11 @@ def pytest_collection_modifyitems(
 def postgres_container():
     """Create a PostgreSQL test container for the test session.
 
-    Skips gracefully when Docker is not available so that non-Docker tests
-    are not blocked.
+    Skips gracefully when Docker or testcontainers is not available so that
+    non-Docker tests are not blocked.
     """
+    if not _HAS_TESTCONTAINERS:
+        pytest.skip("testcontainers package not installed")
     try:
         with PostgresContainer("postgres:15-alpine") as postgres:
             postgres.with_env("POSTGRES_PASSWORD", "test")
@@ -126,9 +138,11 @@ def postgres_container():
 def redis_container():
     """Create a Redis test container for the test session.
 
-    Skips gracefully when Docker is not available so that non-Docker tests
-    are not blocked.
+    Skips gracefully when Docker or testcontainers is not available so that
+    non-Docker tests are not blocked.
     """
+    if not _HAS_TESTCONTAINERS:
+        pytest.skip("testcontainers package not installed")
     try:
         with RedisContainer("redis:7-alpine") as redis:
             yield redis

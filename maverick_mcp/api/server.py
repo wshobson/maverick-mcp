@@ -102,11 +102,13 @@ warnings.filterwarnings(
 
 # ruff: noqa: E402 - Imports after warnings config for proper deprecation warning suppression
 import argparse
+import asyncio as _asyncio
 import json
 import logging
 import sys
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
@@ -267,9 +269,50 @@ from maverick_mcp.config.logging_config import install_secrets_filter
 
 _secrets_filter = install_secrets_filter()
 
+
+# ---------------------------------------------------------------------------
+# ASGI lifespan — manages long-lived background tasks on the server's event loop.
+# This replaces the deprecated @app.on_event("startup") / ("shutdown") pattern.
+# ---------------------------------------------------------------------------
+@asynccontextmanager
+async def _server_lifespan(app: Any) -> AsyncIterator[None]:
+    """Start and tear down long-lived background tasks.
+
+    The code **before** ``yield`` runs at ASGI startup (on uvicorn's
+    long-lived event loop).  The code **after** ``yield`` runs at ASGI
+    shutdown — so asyncio tasks created here survive the server's entire
+    lifetime.
+    """
+    # ── startup ──────────────────────────────────────────────────────
+    try:
+        from maverick_mcp.services import scheduler as maverick_scheduler
+
+        maverick_scheduler.start()
+        logger.info("Service layer scheduler started on server loop")
+    except Exception as e:
+        logger.error(f"Failed to start service layer scheduler: {e}")
+
+    try:
+        from maverick_mcp.monitoring.health_monitor import start_health_monitoring
+
+        await start_health_monitoring()
+        logger.info("✅ Background health monitoring started on server loop")
+    except Exception as e:
+        logger.error(f"Failed to start health monitoring: {e}")
+
+    yield  # ── server is running ─────────────────────────────────────
+
+    # ── shutdown ─────────────────────────────────────────────────────
+    _shutdown_state["shutting_down"] = True
+    logger.info("ASGI shutdown event: marking server as not-ready")
+    await _asyncio.sleep(2)  # give in-flight requests a brief window
+    logger.info("ASGI shutdown cleanup complete")
+
+
 # Initialize FastMCP with enhanced connection management
 _fastmcp_instance = FastMCP(
     name=settings.app_name,
+    lifespan=_server_lifespan,
 )
 mcp = cast(FastMCPProtocol, _fastmcp_instance)
 
@@ -491,35 +534,8 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
             status_code=200,
         )
 
-    # Start the service layer scheduler on the server's long-lived event loop
-    @mcp.fastapi_app.on_event("startup")
-    async def on_fastapi_startup() -> None:
-        """Start the scheduler on the ASGI server's event loop."""
-        try:
-            from maverick_mcp.services import scheduler as maverick_scheduler
-            maverick_scheduler.start()
-            logger.info("Service layer scheduler started on server loop")
-        except Exception as e:
-            logger.error(f"Failed to start service layer scheduler: {e}")
-
-    # Register a FastAPI shutdown event to coordinate graceful shutdown
-    # with the lifespan of the ASGI application managed by uvicorn.
-    @mcp.fastapi_app.on_event("shutdown")
-    async def on_fastapi_shutdown() -> None:
-        """Run cleanup when the ASGI application is shutting down."""
-        import asyncio as _asyncio
-
-        _shutdown_state["shutting_down"] = True
-        logger.info("ASGI shutdown event: marking server as not-ready")
-
-        # Give in-flight requests a brief window to complete
-        await _asyncio.sleep(2)
-
-        # NOTE: Database and Redis cleanup is handled by the registered
-        # shutdown_handler callbacks (cleanup_database, close_cache) below.
-        # Only mark shutdown state and drain here to avoid double-dispose.
-
-        logger.info("ASGI shutdown cleanup complete")
+    # NOTE: Startup/shutdown logic is handled by _server_lifespan passed to
+    # FastMCP(lifespan=...) — no on_event handlers needed.
 
     logger.info("Health endpoints registered at /health, /health/ready, /health/live")
 
@@ -594,22 +610,7 @@ def health_resource() -> str:
 
         from maverick_mcp.api.routers.health_enhanced import _get_detailed_health_status
 
-        loop_policy = asyncio.get_event_loop_policy()
-        try:
-            previous_loop = loop_policy.get_event_loop()
-        except RuntimeError:
-            previous_loop = None
-
-        loop = loop_policy.new_event_loop()
-        try:
-            asyncio.set_event_loop(loop)
-            health_status = loop.run_until_complete(_get_detailed_health_status())
-        finally:
-            loop.close()
-            if previous_loop is not None:
-                asyncio.set_event_loop(previous_loop)
-            else:
-                asyncio.set_event_loop(None)
+        health_status = asyncio.run(_get_detailed_health_status())
 
         # Add service-specific information
         health_status.update(
@@ -655,23 +656,7 @@ def status_dashboard_resource() -> str:
 
         from maverick_mcp.monitoring.status_dashboard import get_dashboard_data
 
-        loop_policy = asyncio.get_event_loop_policy()
-        try:
-            previous_loop = loop_policy.get_event_loop()
-        except RuntimeError:
-            previous_loop = None
-
-        loop = loop_policy.new_event_loop()
-        try:
-            asyncio.set_event_loop(loop)
-            dashboard_data = loop.run_until_complete(get_dashboard_data())
-        finally:
-            loop.close()
-            if previous_loop is not None:
-                asyncio.set_event_loop(previous_loop)
-            else:
-                asyncio.set_event_loop(None)
-
+        dashboard_data = asyncio.run(get_dashboard_data())
         return json.dumps(dashboard_data, default=str)
 
     except Exception as e:
@@ -1520,19 +1505,9 @@ if __name__ == "__main__":
         except Exception as e:
             logger.error(f"Failed to initialize performance systems: {e}")
 
-        # Initialize background health monitoring
-        logger.info("Starting background health monitoring...")
-        try:
-            from maverick_mcp.monitoring.health_monitor import start_health_monitoring
-
-            await start_health_monitoring()
-            logger.info("✅ Background health monitoring started")
-        except Exception as e:
-            logger.error(f"Failed to start health monitoring: {e}")
-
-        # NOTE: Scheduler start is deferred to the ASGI startup event
-        # (on_fastapi_startup below) so it binds to the long-lived server
-        # loop, not this transient asyncio.run() loop.
+        # NOTE: Both the scheduler and health monitoring are deferred to the
+        # ASGI startup event (on_fastapi_startup) so they bind to the
+        # long-lived server loop, not this transient asyncio.run() loop.
 
         # Register domain services and wire cross-domain events
         try:
@@ -1544,20 +1519,32 @@ if __name__ == "__main__":
             _reg.register("regime_detector", RegimeDetector())
 
             async def on_signal_for_risk(topic, data):
-                logger.debug("Risk: signal event for %s", data.get("ticker") if data else "unknown")
+                logger.debug(
+                    "Risk: signal event for %s",
+                    data.get("ticker") if data else "unknown",
+                )
 
             async def on_screening_change(topic, data):
-                logger.debug("Screening change: %s %s", data.get("change_type", "") if data else "", data.get("symbol", "") if data else "")
+                logger.debug(
+                    "Screening change: %s %s",
+                    data.get("change_type", "") if data else "",
+                    data.get("symbol", "") if data else "",
+                )
 
             async def on_regime_change(topic, data):
-                logger.info("Regime changed: %s (confidence: %s)",
-                    data.get("regime") if data else "unknown", data.get("confidence") if data else "unknown")
+                logger.info(
+                    "Regime changed: %s (confidence: %s)",
+                    data.get("regime") if data else "unknown",
+                    data.get("confidence") if data else "unknown",
+                )
 
             _eb.subscribe("signal.triggered", on_signal_for_risk)
             _eb.subscribe("screening.entry", on_screening_change)
             _eb.subscribe("screening.exit", on_screening_change)
             _eb.subscribe("regime.changed", on_regime_change)
-            logger.info("Service layer: domain services registered, event wiring complete")
+            logger.info(
+                "Service layer: domain services registered, event wiring complete"
+            )
         except Exception as e:
             logger.error(f"Failed to wire domain services: {e}")
 
@@ -1710,6 +1697,7 @@ if __name__ == "__main__":
             """Shutdown service layer scheduler."""
             try:
                 from maverick_mcp.services import scheduler as maverick_scheduler
+
                 maverick_scheduler.shutdown()
                 logger.info("Service layer scheduler stopped")
             except Exception as e:

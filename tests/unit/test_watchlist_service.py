@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from maverick_mcp.database.base import Base
-from maverick_mcp.data.models import TimestampMixin
-from maverick_mcp.services.signals.models import Signal, SignalEvent, RegimeEvent
-from maverick_mcp.services.watchlist.models import CatalystEvent, Watchlist, WatchlistItem
+from maverick_mcp.services.signals.models import Signal
+from maverick_mcp.services.watchlist.models import (
+    CatalystEvent,
+)
 from maverick_mcp.services.watchlist.service import WatchlistService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -41,7 +41,9 @@ def service(db_session):
 
 
 def test_create_watchlist(service):
-    wl = service.create_watchlist(name="Tech Plays", description="High-momentum tech stocks")
+    wl = service.create_watchlist(
+        name="Tech Plays", description="High-momentum tech stocks"
+    )
     assert wl.id is not None
     assert wl.name == "Tech Plays"
     assert wl.description == "High-momentum tech stocks"
@@ -55,7 +57,9 @@ def test_create_watchlist_no_description(service):
 
 def test_add_to_watchlist(service):
     wl = service.create_watchlist("My List")
-    item = service.add_to_watchlist(watchlist_id=wl.id, symbol="aapl", notes="Watch for breakout")
+    item = service.add_to_watchlist(
+        watchlist_id=wl.id, symbol="aapl", notes="Watch for breakout"
+    )
     assert item.id is not None
     assert item.watchlist_id == wl.id
     assert item.symbol == "AAPL"
@@ -157,7 +161,8 @@ def test_brief_returns_items_with_scores(db_session, service):
 
 
 def test_brief_detects_upcoming_catalyst(db_session, service):
-    from datetime import date, timedelta
+    from datetime import date
+
     wl = service.create_watchlist("Catalyst Test")
     service.add_to_watchlist(wl.id, "NVDA")
 
@@ -177,7 +182,8 @@ def test_brief_detects_upcoming_catalyst(db_session, service):
 
 
 def test_brief_no_catalyst_outside_window(db_session, service):
-    from datetime import date, timedelta
+    from datetime import date
+
     wl = service.create_watchlist("No Catalyst")
     service.add_to_watchlist(wl.id, "IBM")
 

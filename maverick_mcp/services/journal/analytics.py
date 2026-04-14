@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -45,9 +44,7 @@ class StrategyTracker:
             The upserted :class:`StrategyPerformance` instance.
         """
         closed_entries: list[JournalEntry] = (
-            self._db.query(JournalEntry)
-            .filter(JournalEntry.status == "closed")
-            .all()
+            self._db.query(JournalEntry).filter(JournalEntry.status == "closed").all()
         )
 
         # Filter entries that have the tag in their tags list

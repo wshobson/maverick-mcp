@@ -9,9 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from maverick_mcp.database.base import Base
 from maverick_mcp.services.event_bus import EventBus
 from maverick_mcp.services.journal.analytics import StrategyTracker
-from maverick_mcp.services.journal.models import JournalEntry, StrategyPerformance
 from maverick_mcp.services.journal.service import JournalService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -48,9 +46,18 @@ def tracker(db_session):
 # ---------------------------------------------------------------------------
 
 
-def _add_closed(service: JournalService, symbol: str, entry: float, exit: float, shares: float, tags: list[str]) -> None:
+def _add_closed(
+    service: JournalService,
+    symbol: str,
+    entry: float,
+    exit: float,
+    shares: float,
+    tags: list[str],
+) -> None:
     """Add a trade and immediately close it."""
-    e = service.add_trade(symbol=symbol, side="long", entry_price=entry, shares=shares, tags=tags)
+    e = service.add_trade(
+        symbol=symbol, side="long", entry_price=entry, shares=shares, tags=tags
+    )
     service.close_trade(e.id, exit_price=exit)
 
 
@@ -62,7 +69,9 @@ def _add_closed(service: JournalService, symbol: str, entry: float, exit: float,
 def test_recompute_with_mixed_results(service, tracker):
     """2 wins and 1 loss — verify all metrics are computed correctly."""
     # Win 1: PnL = (110 - 100) * 10 = 100
-    _add_closed(service, "AAPL", entry=100.0, exit=110.0, shares=10.0, tags=["momentum"])
+    _add_closed(
+        service, "AAPL", entry=100.0, exit=110.0, shares=10.0, tags=["momentum"]
+    )
     # Win 2: PnL = (120 - 100) * 5 = 100
     _add_closed(service, "GOOG", entry=100.0, exit=120.0, shares=5.0, tags=["momentum"])
     # Loss: PnL = (90 - 100) * 10 = -100
@@ -73,8 +82,8 @@ def test_recompute_with_mixed_results(service, tracker):
     assert perf.win_count == 2
     assert perf.loss_count == 1
     assert perf.total_pnl == pytest.approx(100.0)  # 100 + 100 - 100
-    assert perf.avg_win == pytest.approx(100.0)    # (100 + 100) / 2
-    assert perf.avg_loss == pytest.approx(100.0)   # abs(-100 / 1)
+    assert perf.avg_win == pytest.approx(100.0)  # (100 + 100) / 2
+    assert perf.avg_loss == pytest.approx(100.0)  # abs(-100 / 1)
 
     # expectancy = (2/3 * 100) - (1/3 * 100) = 66.67 - 33.33 = 33.33
     assert perf.expectancy == pytest.approx(100.0 / 3, rel=1e-4)
@@ -147,7 +156,9 @@ def test_recompute_excludes_open_trades(service, tracker):
     # Closed win
     _add_closed(service, "AAPL", entry=100.0, exit=110.0, shares=1.0, tags=["swing"])
     # Open trade (not closed)
-    service.add_trade(symbol="GOOG", side="long", entry_price=200.0, shares=1.0, tags=["swing"])
+    service.add_trade(
+        symbol="GOOG", side="long", entry_price=200.0, shares=1.0, tags=["swing"]
+    )
 
     perf = tracker.recompute("swing")
 

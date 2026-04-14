@@ -313,8 +313,15 @@ class MonitoringService:
         """Initialize Sentry error tracking."""
         sentry_dsn = os.getenv("SENTRY_DSN")
 
-        if not sentry_dsn:
-            if settings.environment == "production":
+        # Skip if DSN is missing or contains obvious placeholder values
+        if (
+            not sentry_dsn
+            or "project_id" in sentry_dsn
+            or sentry_dsn.strip().startswith("your-")
+        ):
+            if sentry_dsn:
+                logger.debug("Sentry DSN looks like a placeholder, skipping init")
+            elif settings.environment == "production":
                 logger.warning("Sentry DSN not configured in production")
             return
 

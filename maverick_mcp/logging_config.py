@@ -2,6 +2,7 @@
 Structured logging configuration with correlation IDs and error tracking.
 """
 
+import inspect
 import json
 import logging
 import sys
@@ -111,7 +112,7 @@ def with_correlation_id(func):
             CorrelationIDMiddleware.set_correlation_id()
         return await func(*args, **kwargs)
 
-    return async_wrapper if asyncio.iscoroutinefunction(func) else wrapper
+    return async_wrapper if inspect.iscoroutinefunction(func) else wrapper
 
 
 class ErrorLogger:

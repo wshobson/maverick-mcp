@@ -3,8 +3,8 @@ Decorators for easy circuit breaker integration.
 Provides convenient decorators for common external service patterns.
 """
 
-import asyncio
 import functools
+import inspect
 import logging
 from collections.abc import Callable
 from typing import TypeVar, cast
@@ -41,7 +41,7 @@ def with_stock_data_circuit_breaker(
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -110,7 +110,7 @@ def with_market_data_circuit_breaker(
         else:
             breaker = market_data_breaker
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -156,7 +156,7 @@ def with_economic_data_circuit_breaker(use_fallback: bool = True) -> Callable:
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -220,7 +220,7 @@ def with_news_circuit_breaker(use_fallback: bool = True) -> Callable:
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):
@@ -268,7 +268,7 @@ def with_http_circuit_breaker(
     """
 
     def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs):

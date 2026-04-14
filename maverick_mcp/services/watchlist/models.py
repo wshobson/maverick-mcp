@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 from sqlalchemy import Column, Date, DateTime, Integer, String, Text
 
-from maverick_mcp.database.base import Base
 from maverick_mcp.data.models import TimestampMixin
+from maverick_mcp.database.base import Base
 
 
 class Watchlist(Base, TimestampMixin):

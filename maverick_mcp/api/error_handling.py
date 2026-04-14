@@ -5,7 +5,7 @@ This module provides centralized error handling with structured responses,
 proper logging, monitoring integration, and client-friendly error messages.
 """
 
-import asyncio
+import inspect
 import uuid
 from collections.abc import Callable
 from typing import Any
@@ -453,7 +453,7 @@ def with_error_handling(context_fn: Callable[[Any], dict[str, Any]] | None = Non
                     raise
 
         # Return appropriate wrapper based on function type
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         else:
             return sync_wrapper

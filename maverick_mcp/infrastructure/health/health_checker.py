@@ -6,7 +6,7 @@ Single Responsibility Principle.
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from maverick_mcp.config.settings import settings
@@ -47,7 +47,7 @@ class HealthChecker:
 
         return {
             "status": overall_status,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "components": components,
             "system": self._get_system_info(),
         }

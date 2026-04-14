@@ -48,6 +48,11 @@ class StatusDashboard:
             # Get current health status
             health_status = await _get_detailed_health_status()
 
+            # Convert Pydantic models to dicts for .get() access
+            resource_usage = health_status.get("resource_usage")
+            if resource_usage is not None and hasattr(resource_usage, "model_dump"):
+                health_status["resource_usage"] = resource_usage.model_dump()
+
             # Get circuit breaker status
             circuit_breaker_status = get_all_circuit_breaker_status()
 

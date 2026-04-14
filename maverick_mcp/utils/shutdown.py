@@ -6,6 +6,7 @@ for all server components to ensure safe deployments and prevent data loss.
 """
 
 import asyncio
+import inspect
 import signal
 import sys
 import time
@@ -100,9 +101,14 @@ class GracefulShutdownHandler:
             )
             return
 
-        # Trigger async shutdown
-        if asyncio.get_event_loop().is_running():
-            asyncio.create_task(self._async_shutdown(signal_name))
+        # Trigger async shutdown if we're inside a running event loop
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is not None:
+            loop.create_task(self._async_shutdown(signal_name))
         else:
             # Fallback for non-async context
             self._sync_shutdown(signal_name)
@@ -153,7 +159,7 @@ class GracefulShutdownHandler:
         for callback in self._cleanup_callbacks:
             try:
                 logger.debug(f"Running cleanup: {callback.__name__}")
-                if asyncio.iscoroutinefunction(callback):
+                if inspect.iscoroutinefunction(callback):
                     await asyncio.wait_for(callback(), timeout=5.0)
                 else:
                     callback()
@@ -179,7 +185,7 @@ class GracefulShutdownHandler:
 
         # Run sync cleanup callbacks
         for callback in self._cleanup_callbacks:
-            if not asyncio.iscoroutinefunction(callback):
+            if not inspect.iscoroutinefunction(callback):
                 try:
                     callback()
                 except Exception as e:

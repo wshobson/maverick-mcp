@@ -514,7 +514,8 @@ class LazyDataFrame:
         if isinstance(self.data_source, str):
             # Read just the header and a sample
             sample = pd.read_csv(self.data_source, nrows=100)
-            total_rows = sum(1 for _ in open(self.data_source)) - 1  # Subtract header
+            with open(self.data_source) as fh:
+                total_rows = sum(1 for _ in fh) - 1  # Subtract header
 
             self._cached_info = {
                 "columns": sample.columns.tolist(),

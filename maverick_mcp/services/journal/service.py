@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -145,7 +144,7 @@ class JournalService:
         self._db.refresh(entry)
 
         # Recompute strategy performance for all tags on this entry
-        for tag in (entry.tags or []):
+        for tag in entry.tags or []:
             try:
                 self._tracker.recompute(tag)
             except Exception as exc:
@@ -182,7 +181,9 @@ class JournalService:
             query = query.filter(JournalEntry.status == status)
         # strategy_tag filter: done in Python because JSON contains queries
         # vary significantly across backends
-        entries: list[JournalEntry] = query.order_by(JournalEntry.entry_date.desc()).all()
+        entries: list[JournalEntry] = query.order_by(
+            JournalEntry.entry_date.desc()
+        ).all()
 
         if strategy_tag is not None:
             entries = [
@@ -199,8 +200,4 @@ class JournalService:
         Returns:
             The :class:`JournalEntry` or None if not found.
         """
-        return (
-            self._db.query(JournalEntry)
-            .filter(JournalEntry.id == entry_id)
-            .first()
-        )
+        return self._db.query(JournalEntry).filter(JournalEntry.id == entry_id).first()

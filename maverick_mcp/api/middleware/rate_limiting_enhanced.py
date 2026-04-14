@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import inspect
 import logging
 import time
 from collections import defaultdict, deque
@@ -457,7 +457,7 @@ def rate_limit(
     window_seconds = 60
 
     def decorator(func: Callable[..., Awaitable[Any]]):
-        if not asyncio.iscoroutinefunction(func):
+        if not inspect.iscoroutinefunction(func):
             raise TypeError(
                 "rate_limit decorator can only be applied to async callables"
             )

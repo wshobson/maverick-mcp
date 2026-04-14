@@ -276,7 +276,7 @@ class CacheWarmer:
             return_exceptions=True,
         )
 
-        end_time = asyncio.get_event_loop().time()
+        end_time = asyncio.get_running_loop().time()
 
         # Report results and performance
         successful_tasks = sum(1 for r in results if not isinstance(r, Exception))

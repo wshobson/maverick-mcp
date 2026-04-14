@@ -91,7 +91,10 @@ echo -e "${YELLOW}Transport: ${TRANSPORT}${NC}"
 
 # Run backend with FastMCP in development mode (show real-time output)
 echo -e "${YELLOW}Starting server with real-time output...${NC}"
-# Set PYTHONWARNINGS to suppress websockets deprecation warnings from uvicorn
+# PYTHONUNBUFFERED=1 ensures logs flush immediately through the tee pipe,
+# so the health-check grep below can detect tool-registration messages.
+# PYTHONWARNINGS suppresses websockets deprecation warnings from uvicorn.
+PYTHONUNBUFFERED=1 \
 PYTHONWARNINGS="ignore::DeprecationWarning:websockets.*,ignore::DeprecationWarning:uvicorn.*" \
 uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host ${HOST} --port ${PORT} 2>&1 | tee backend.log &
 BACKEND_PID=$!

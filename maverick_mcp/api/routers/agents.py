@@ -14,6 +14,7 @@ from fastmcp import FastMCP
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.agents.market_analysis import MarketAnalysisAgent
 from maverick_mcp.agents.supervisor import SupervisorAgent
+from maverick_mcp.utils.mcp_types import OptionalStrList
 
 logger = logging.getLogger(__name__)
 
@@ -259,7 +260,7 @@ async def deep_research_financial(
     research_topic: str,
     persona: str = "moderate",
     research_depth: str = "comprehensive",
-    focus_areas: list[str] | None = None,
+    focus_areas: OptionalStrList = None,
     timeframe: str = "30d",
     session_id: str | None = None,
 ) -> dict[str, Any]:

@@ -143,23 +143,30 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "DTZ", # flake8-datetimez — forbid naive datetime constructors (utcnow, utcfromtimestamp)
+    "ASYNC",  # flake8-async — flag blocking calls and deprecated asyncio patterns
 ]
 ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
     "B904",  # raise without from inside except
     "W191",  # indentation contains tabs
+    "DTZ005",  # datetime.now() without tz — too noisy for timestamps used as relative deltas
+    "DTZ007",  # strptime without %z — many financial data sources omit timezone
+    "DTZ011",  # date.today() — acceptable for date-only financial contexts
+    "ASYNC109",  # timeout parameter naming — false positives on methods that implement timeout logic
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["F403", "F405"]  # star imports allowed in tests
+"tests/*" = ["F403", "F405", "DTZ001"]  # star imports and naive datetime constructors allowed in tests
+"maverick_mcp/tests/*" = ["F403", "F405", "DTZ001"]  # same for in-package tests
 
 [tool.ruff.format]
 quote-style = "double"

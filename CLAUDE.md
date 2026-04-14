@@ -652,6 +652,7 @@ make redis-start
 - Implement graceful error handling
 - Use database caching for persistence
 - Follow FastMCP 2.0 patterns
+- **List parameters**: Use `StrList` / `OptionalStrList` from `maverick_mcp.utils.mcp_types` for any `list[str]` argument on a `@mcp.tool()` function. Bare `list[str]` fails for clients (e.g. Claude Desktop via `mcp-remote`) that JSON-stringify array arguments. The script `scripts/check_mcp_list_types.py` enforces this and runs as part of `make check`. See `docs/runbooks/mcp-client-serialization.md`.
 
 ## Troubleshooting
 

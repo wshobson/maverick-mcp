@@ -94,12 +94,6 @@ class BatchProcessingMixin:
                         f"Validation warnings for batch {batch_id}: {validation_errors}"
                     )
 
-        # Initialize executor
-        executor = StrategyExecutor(
-            max_concurrent_strategies=max_workers,
-            cache_manager=getattr(self, "cache", None),
-        )
-
         # Convert configs to execution contexts
         contexts = []
         for i, config in enumerate(batch_configs):
@@ -121,50 +115,52 @@ class BatchProcessingMixin:
         successful_results = []
         failed_results = []
 
-        for chunk_start in range(0, len(contexts), chunk_size):
-            chunk_end = min(chunk_start + chunk_size, len(contexts))
-            chunk_contexts = contexts[chunk_start:chunk_end]
+        # Use context manager so the aiohttp session is always closed
+        async with StrategyExecutor(
+            max_concurrent_strategies=max_workers,
+            cache_manager=getattr(self, "cache", None),
+        ) as executor:
+            for chunk_start in range(0, len(contexts), chunk_size):
+                chunk_end = min(chunk_start + chunk_size, len(contexts))
+                chunk_contexts = contexts[chunk_start:chunk_end]
 
-            logger.info(
-                f"Processing chunk {chunk_start // chunk_size + 1} ({len(chunk_contexts)} items)"
-            )
+                logger.info(
+                    f"Processing chunk {chunk_start // chunk_size + 1} ({len(chunk_contexts)} items)"
+                )
 
-            try:
-                # Execute chunk in parallel
-                chunk_results = await executor.execute_strategies(chunk_contexts)
+                try:
+                    # Execute chunk in parallel
+                    chunk_results = await executor.execute_strategies(chunk_contexts)
 
-                # Process results
-                for result in chunk_results:
-                    all_results.append(result)
-                    if result.success:
-                        successful_results.append(result)
-                    else:
-                        failed_results.append(result)
-                        if fail_fast:
-                            logger.error(f"Batch failed fast on: {result.error}")
-                            break
+                    # Process results
+                    for result in chunk_results:
+                        all_results.append(result)
+                        if result.success:
+                            successful_results.append(result)
+                        else:
+                            failed_results.append(result)
+                            if fail_fast:
+                                logger.error(f"Batch failed fast on: {result.error}")
+                                break
 
-                # Memory cleanup between chunks
-                if getattr(self, "enable_memory_profiling", False):
-                    cleanup_dataframes()
-                    gc.collect()
+                    # Memory cleanup between chunks
+                    if getattr(self, "enable_memory_profiling", False):
+                        cleanup_dataframes()
+                        gc.collect()
 
-            except Exception as e:
-                logger.error(f"Chunk processing failed: {e}")
-                if fail_fast:
-                    raise
-                # Add failed result for chunk
-                for context in chunk_contexts:
-                    failed_results.append(
-                        ExecutionResult(
-                            context=context,
-                            success=False,
-                            error=f"Chunk processing error: {e}",
+                except Exception as e:
+                    logger.error(f"Chunk processing failed: {e}")
+                    if fail_fast:
+                        raise
+                    # Add failed result for chunk
+                    for context in chunk_contexts:
+                        failed_results.append(
+                            ExecutionResult(
+                                context=context,
+                                success=False,
+                                error=f"Chunk processing error: {e}",
+                            )
                         )
-                    )
-
-        # Cleanup executor
-        await executor.cleanup()
 
         # Calculate summary statistics
         total_execution_time = time.time() - start_time

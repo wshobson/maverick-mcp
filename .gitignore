@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Local tooling/runtime state (not for source control)
+.claude-progress.md
+.remember/
+data/
+
 # Distribution / packaging
 .Python
 build/

@@ -8,7 +8,7 @@ This module provides middleware components that automatically track:
 - Anomaly detection triggers
 """
 
-import asyncio
+import inspect
 import time
 from collections.abc import Callable
 from contextlib import asynccontextmanager
@@ -93,7 +93,7 @@ class MetricsMiddleware:
                     )
 
             # Return appropriate wrapper based on function type
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 return async_wrapper
             else:
                 return sync_wrapper
@@ -151,7 +151,7 @@ class MetricsMiddleware:
                     return result
 
             # Return appropriate wrapper based on function type
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 return async_wrapper
             else:
                 return sync_wrapper
@@ -237,7 +237,7 @@ class MetricsMiddleware:
                     )
 
             # Return appropriate wrapper based on function type
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 return async_wrapper
             else:
                 return sync_wrapper
@@ -413,7 +413,7 @@ class MetricsCircuitBreaker:
                 )
 
         try:
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 result = await func(*args, **kwargs)
             else:
                 result = func(*args, **kwargs)

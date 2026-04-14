@@ -78,6 +78,10 @@ class ExternalAPIClient:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
+    def close(self):
+        """Close the underlying HTTP session."""
+        self.session.close()
+
     @with_market_data_circuit_breaker(use_fallback=False, service="external_api")
     def _make_request(self, endpoint: str, params: dict[str, Any] | None = None) -> Any:
         """Make API request with circuit breaker protection."""
@@ -306,7 +310,7 @@ def fetch_tiingo_tickers():
         try:
             asset_types = frozenset(["Stock", "ETF"])
             valid_exchanges = frozenset(["NYSE", "NASDAQ", "BATS", "NYSE ARCA", "AMEX"])
-            cutoff_date = datetime(2024, 7, 1)
+            cutoff_date = datetime(2024, 7, 1, tzinfo=UTC)
 
             tickers = tiingo_client.list_tickers(assetTypes=list(asset_types))
 
@@ -375,9 +379,13 @@ class MarketDataProvider:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
+    def close(self):
+        """Close the underlying HTTP session."""
+        self.session.close()
+
     async def _run_in_executor(self, func, *args) -> Any:
         """Run a blocking function in an executor to make it non-blocking."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, func, *args)
 
     def _fetch_data(

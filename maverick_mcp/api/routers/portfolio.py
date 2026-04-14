@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from maverick_mcp.data.models import PortfolioPosition, UserPortfolio, get_db
 from maverick_mcp.domain.portfolio import Portfolio
 from maverick_mcp.providers.stock_data import StockDataProvider
+from maverick_mcp.utils.mcp_types import OptionalStrList
 from maverick_mcp.utils.stock_helpers import get_stock_dataframe
 
 logger = logging.getLogger(__name__)
@@ -241,7 +242,7 @@ def risk_adjusted_analysis(
 
 
 def compare_tickers(
-    tickers: list[str] | None = None,
+    tickers: OptionalStrList = None,
     days: int = 90,
     user_id: str = "default",
     portfolio_name: str = "My Portfolio",
@@ -417,7 +418,7 @@ def compare_tickers(
 
 
 def portfolio_correlation_analysis(
-    tickers: list[str] | None = None,
+    tickers: OptionalStrList = None,
     days: int = 252,
     user_id: str = "default",
     portfolio_name: str = "My Portfolio",

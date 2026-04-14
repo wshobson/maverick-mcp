@@ -9,8 +9,8 @@ Provides structured logging for research agent orchestration with:
 - Resource usage monitoring
 """
 
-import asyncio
 import functools
+import inspect
 import logging
 import time
 import uuid
@@ -219,7 +219,7 @@ def log_method_call(
                 raise
 
         # Return appropriate wrapper based on function type
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
             return async_wrapper
         else:
             return sync_wrapper

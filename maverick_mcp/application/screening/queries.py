@@ -5,7 +5,7 @@ This module contains application service queries that orchestrate
 domain services and infrastructure adapters for screening operations.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from maverick_mcp.domain.screening.entities import (
@@ -69,7 +69,7 @@ class GetScreeningResultsQuery:
         for raw_result in raw_data:
             try:
                 result = self._screening_service.create_screening_result_from_raw_data(
-                    raw_result, datetime.utcnow()
+                    raw_result, datetime.now(UTC)
                 )
                 screening_results.append(result)
             except Exception as e:
@@ -252,7 +252,7 @@ class GetScreeningStatisticsQuery:
                 "statistics": self._screening_service.calculate_screening_statistics(
                     collection
                 ),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
         else:
@@ -266,7 +266,7 @@ class GetScreeningStatisticsQuery:
                     "total_results": sum(
                         len(c.results) for c in all_collections.values()
                     ),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 },
                 "by_strategy": {},
             }

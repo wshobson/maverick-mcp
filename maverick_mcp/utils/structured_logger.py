@@ -13,8 +13,8 @@ This module provides comprehensive structured logging capabilities with:
 - Multiple output handlers (console, file, remote)
 """
 
-import asyncio
 import gc
+import inspect
 import json
 import logging
 import logging.handlers
@@ -784,7 +784,7 @@ def with_structured_logging(
 
                 raise
 
-        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
 
     return decorator
 

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import pytest
 
 from maverick_mcp.services.signals.conditions import evaluate_condition
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -30,7 +28,9 @@ def _price_df(closes, volumes=None):
 
 def test_lt_triggered():
     df = _price_df([100.0] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "lt", "threshold": 110.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "lt", "threshold": 110.0}, df
+    )
     assert result["triggered"] is True
     assert result["current_value"] == pytest.approx(100.0)
     assert result["error"] is None
@@ -38,32 +38,42 @@ def test_lt_triggered():
 
 def test_lt_not_triggered():
     df = _price_df([120.0] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "lt", "threshold": 110.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "lt", "threshold": 110.0}, df
+    )
     assert result["triggered"] is False
 
 
 def test_gt_triggered():
     df = _price_df([150.0] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "gt", "threshold": 140.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "gt", "threshold": 140.0}, df
+    )
     assert result["triggered"] is True
     assert result["current_value"] == pytest.approx(150.0)
 
 
 def test_gt_not_triggered():
     df = _price_df([130.0] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "gt", "threshold": 140.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "gt", "threshold": 140.0}, df
+    )
     assert result["triggered"] is False
 
 
 def test_lte_triggered():
     df = _price_df([100.0] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "lte", "threshold": 100.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "lte", "threshold": 100.0}, df
+    )
     assert result["triggered"] is True
 
 
 def test_gte_triggered():
     df = _price_df([100.0] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "gte", "threshold": 100.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "gte", "threshold": 100.0}, df
+    )
     assert result["triggered"] is True
 
 
@@ -192,12 +202,16 @@ def test_unknown_indicator_returns_error():
 
 def test_result_includes_current_value():
     df = _price_df([123.45] * 30)
-    result = evaluate_condition({"indicator": "price", "operator": "gt", "threshold": 100.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "gt", "threshold": 100.0}, df
+    )
     assert result["current_value"] == pytest.approx(123.45)
 
 
 def test_empty_dataframe_returns_error():
     df = pd.DataFrame()
-    result = evaluate_condition({"indicator": "price", "operator": "gt", "threshold": 100.0}, df)
+    result = evaluate_condition(
+        {"indicator": "price", "operator": "gt", "threshold": 100.0}, df
+    )
     assert result["error"] is not None
     assert result["triggered"] is False

@@ -7,7 +7,7 @@ multiple backtests with proper error handling.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID, uuid4
@@ -96,7 +96,7 @@ class BacktestPersistenceManager:
                 backtest_id=uuid4(),
                 symbol=symbol,
                 strategy_type=strategy_type,
-                backtest_date=datetime.utcnow(),
+                backtest_date=datetime.now(UTC),
                 # Date range
                 start_date=pd.to_datetime(vectorbt_results.get("start_date")).date(),
                 end_date=pd.to_datetime(vectorbt_results.get("end_date")).date(),
@@ -559,7 +559,7 @@ class BacktestPersistenceManager:
             Dictionary with performance summary
         """
         try:
-            cutoff_date = datetime.utcnow() - timedelta(days=days_back)
+            cutoff_date = datetime.now(UTC) - timedelta(days=days_back)
 
             query = self.session.query(BacktestResult).filter(
                 BacktestResult.backtest_date >= cutoff_date,
@@ -752,7 +752,7 @@ def get_recent_backtests(symbol: str, days: int = 7) -> list[BacktestResult]:
         List of recent BacktestResult objects
     """
     with get_persistence_manager() as manager:
-        cutoff_date = datetime.utcnow() - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
         return (
             manager.session.query(BacktestResult)
             .filter(

@@ -45,7 +45,7 @@ class MarketDataAdapter(IMarketDataProvider):
         Returns:
             Dictionary with market index data including prices and changes
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._provider.get_market_summary)
 
     async def get_top_gainers(self, limit: int = 10) -> list[dict[str, Any]]:
@@ -58,7 +58,7 @@ class MarketDataAdapter(IMarketDataProvider):
         Returns:
             List of dictionaries with stock data for top gainers
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._provider.get_top_gainers, limit)
 
     async def get_top_losers(self, limit: int = 10) -> list[dict[str, Any]]:
@@ -71,7 +71,7 @@ class MarketDataAdapter(IMarketDataProvider):
         Returns:
             List of dictionaries with stock data for top losers
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._provider.get_top_losers, limit)
 
     async def get_most_active(self, limit: int = 10) -> list[dict[str, Any]]:
@@ -84,7 +84,7 @@ class MarketDataAdapter(IMarketDataProvider):
         Returns:
             List of dictionaries with stock data for most active stocks
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._provider.get_most_active, limit)
 
     async def get_sector_performance(self) -> dict[str, float]:
@@ -94,7 +94,7 @@ class MarketDataAdapter(IMarketDataProvider):
         Returns:
             Dictionary mapping sector names to performance percentages
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._provider.get_sector_performance)
 
     async def get_earnings_calendar(self, days: int = 7) -> list[dict[str, Any]]:
@@ -107,7 +107,7 @@ class MarketDataAdapter(IMarketDataProvider):
         Returns:
             List of dictionaries with earnings announcement data
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, self._provider.get_earnings_calendar, days
         )
@@ -128,7 +128,7 @@ class MarketDataAdapter(IMarketDataProvider):
         if hasattr(self._provider, "get_market_overview_async"):
             return await self._provider.get_market_overview_async()
         else:
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, self._provider.get_market_overview)
 
     def get_sync_provider(self) -> MarketDataProvider:

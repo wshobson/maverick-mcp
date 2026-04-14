@@ -7,7 +7,7 @@ separation between layers and dependency injection.
 
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -218,7 +218,7 @@ async def get_screening_results_ddd(
                 "error_code": "INVALID_STRATEGY",
                 "error_message": f"Invalid strategy: {request.strategy}",
                 "valid_strategies": [s.value for s in ScreeningStrategy],
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
         # Convert request to domain value objects
@@ -265,7 +265,7 @@ async def get_screening_results_ddd(
             "error_code": "SCREENING_FAILED",
             "error_message": str(e),
             "execution_time_ms": execution_time_ms,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
 
@@ -308,7 +308,7 @@ async def get_all_screening_results_ddd(
 
         # Convert collections to DTOs
         response = {
-            "screening_timestamp": datetime.utcnow().isoformat(),
+            "screening_timestamp": datetime.now(UTC).isoformat(),
             "strategies_executed": list(all_collections.keys()),
             "execution_time_ms": execution_time_ms,
             "status": "success",
@@ -355,7 +355,7 @@ async def get_all_screening_results_ddd(
         logger.error(f"Error in DDD all screening: {e}")
 
         return {
-            "screening_timestamp": datetime.utcnow().isoformat(),
+            "screening_timestamp": datetime.now(UTC).isoformat(),
             "strategies_executed": [],
             "status": "error",
             "error_code": "ALL_SCREENING_FAILED",
@@ -398,7 +398,7 @@ async def get_screening_statistics_ddd(
                     "error_code": "INVALID_STRATEGY",
                     "error_message": f"Invalid strategy: {request.strategy}",
                     "valid_strategies": [s.value for s in ScreeningStrategy],
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                 }
 
         # Execute statistics query
@@ -434,7 +434,7 @@ async def get_screening_statistics_ddd(
             "error_code": "STATISTICS_FAILED",
             "error_message": str(e),
             "execution_time_ms": execution_time_ms,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "analysis_scope": "failed",
             "results_analyzed": 0,
         }
@@ -465,14 +465,14 @@ async def get_repository_cache_stats(
                 "status": "success",
                 "cache_enabled": True,
                 "cache_statistics": cache_stats,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         else:
             return {
                 "status": "success",
                 "cache_enabled": False,
                 "message": "Repository does not support caching",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
     except Exception as e:
@@ -481,5 +481,5 @@ async def get_repository_cache_stats(
         return {
             "status": "error",
             "error_message": str(e),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }

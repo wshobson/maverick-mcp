@@ -235,7 +235,7 @@ class StrategyExecutor:
             )
 
             # Execute in thread pool to avoid blocking event loop
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(
                 self._thread_pool, self._run_backtest_sync, engine, context
             )

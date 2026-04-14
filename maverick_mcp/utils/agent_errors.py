@@ -5,8 +5,8 @@ This module provides decorators and utilities to catch common errors
 and provide actionable solutions for agents.
 """
 
-import asyncio
 import functools
+import inspect
 import traceback
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -197,7 +197,7 @@ def agent_friendly_errors[T](
                 return error_info  # type: ignore[return-value]
 
         # Add async support
-        if asyncio.iscoroutinefunction(f):
+        if inspect.iscoroutinefunction(f):
 
             @functools.wraps(f)
             async def async_wrapper(*args: Any, **kwargs: Any) -> T:

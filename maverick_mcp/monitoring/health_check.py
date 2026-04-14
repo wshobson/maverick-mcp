@@ -528,27 +528,23 @@ class HealthChecker:
         """
         import asyncio
 
+        # Detect whether we're inside a running event loop
         try:
-            # Try to get the current event loop
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # We're already in an async context, return simplified status
-                return {
-                    "status": "HEALTHY",
-                    "components": {
-                        name: {"status": "UNKNOWN", "message": "Check pending"}
-                        for name in self._component_checkers.keys()
-                    },
-                    "timestamp": datetime.now(UTC).isoformat(),
-                    "message": "Health check in async context",
-                    "uptime_seconds": time.time() - self.start_time,
-                }
-            else:
-                # Run the async check in the existing loop
-                result = loop.run_until_complete(self.check_health())
-                return self._health_to_dict(result)
+            asyncio.get_running_loop()
+            # We're already in an async context — return a lightweight status
+            # (cannot run_until_complete from within a running loop).
+            return {
+                "status": "HEALTHY",
+                "components": {
+                    name: {"status": "UNKNOWN", "message": "Check pending"}
+                    for name in self._component_checkers.keys()
+                },
+                "timestamp": datetime.now(UTC).isoformat(),
+                "message": "Health check in async context — use check_health() directly",
+                "uptime_seconds": time.time() - self.start_time,
+            }
         except RuntimeError:
-            # No event loop exists, create one
+            # No running loop — safe to use asyncio.run()
             result = asyncio.run(self.check_health())
             return self._health_to_dict(result)
 

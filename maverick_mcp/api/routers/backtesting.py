@@ -23,6 +23,7 @@ from maverick_mcp.backtesting.visualization import (
 )
 from maverick_mcp.utils.debug_utils import debug_operation
 from maverick_mcp.utils.logging import get_logger
+from maverick_mcp.utils.mcp_types import OptionalStrList, StrList
 from maverick_mcp.utils.structured_logger import (
     CorrelationIDGenerator,
     get_performance_logger,
@@ -429,7 +430,7 @@ def setup_backtesting_tools(mcp):
     async def compare_strategies(
         ctx: Context,
         symbol: str,
-        strategies: list[str] | str | None = None,
+        strategies: OptionalStrList = None,
         start_date: str | None = None,
         end_date: str | None = None,
     ) -> dict[str, Any]:
@@ -451,16 +452,6 @@ def setup_backtesting_tools(mcp):
             end_date = datetime.now().strftime("%Y-%m-%d")
         if not start_date:
             start_date = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
-
-        # Handle strategies as JSON string from some clients
-        if isinstance(strategies, str):
-            import json
-
-            try:
-                strategies = json.loads(strategies)
-            except json.JSONDecodeError:
-                # If it's not JSON, treat it as a single strategy
-                strategies = [strategies]
 
         # Default to comparing top strategies
         if not strategies:
@@ -551,7 +542,7 @@ def setup_backtesting_tools(mcp):
     @mcp.tool()
     async def backtest_portfolio(
         ctx: Context,
-        symbols: list[str],
+        symbols: StrList,
         strategy: str = "sma_cross",
         start_date: str | None = None,
         end_date: str | None = None,
@@ -1167,8 +1158,8 @@ def setup_backtesting_tools(mcp):
     @mcp.tool()
     async def create_strategy_ensemble(
         ctx: Context,
-        symbols: list[str],
-        base_strategies: list[str] | None = None,
+        symbols: StrList,
+        base_strategies: OptionalStrList = None,
         weighting_method: str = "performance",
         start_date: str | None = None,
         end_date: str | None = None,

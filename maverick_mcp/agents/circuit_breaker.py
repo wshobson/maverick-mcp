@@ -3,6 +3,7 @@ Circuit Breaker pattern for resilient external API calls.
 """
 
 import asyncio
+import inspect
 import logging
 import time
 from collections.abc import Callable
@@ -96,7 +97,7 @@ class CircuitBreaker:
 
         try:
             # Execute the function
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 result = await func(*args, **kwargs)
             else:
                 result = func(*args, **kwargs)
@@ -240,7 +241,7 @@ def circuit_breaker(
             name or f"{func.__module__}.{getattr(func, '__name__', 'unknown')}"
         )
 
-        if asyncio.iscoroutinefunction(func):
+        if inspect.iscoroutinefunction(func):
 
             async def async_wrapper(*args, **kwargs):
                 breaker = await circuit_manager.get_or_create(

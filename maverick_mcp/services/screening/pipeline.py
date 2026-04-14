@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
 from maverick_mcp.services.event_bus import EventBus
-from maverick_mcp.services.screening.models import ScheduledJob, ScreeningChange, ScreeningRun
+from maverick_mcp.services.screening.models import (
+    ScheduledJob,
+    ScreeningChange,
+    ScreeningRun,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +44,9 @@ class ScreeningPipelineService:
     # Run management
     # ------------------------------------------------------------------
 
-    def run_screen(self, screen_name: str, results: list[dict[str, Any]]) -> ScreeningRun:
+    def run_screen(
+        self, screen_name: str, results: list[dict[str, Any]]
+    ) -> ScreeningRun:
         """Snapshot screening results and detect entry/exit changes vs. previous run.
 
         Publishes ``screening.entry`` and ``screening.exit`` events for each change.
@@ -81,9 +86,7 @@ class ScreeningPipelineService:
 
         # 3. Diff old vs. new
         old_symbols: set[str] = {
-            r["symbol"].upper()
-            for r in (previous_run.results or [])
-            if r.get("symbol")
+            r["symbol"].upper() for r in (previous_run.results or []) if r.get("symbol")
         }
         new_symbols: set[str] = {
             r["symbol"].upper() for r in results if r.get("symbol")
@@ -170,9 +173,7 @@ class ScreeningPipelineService:
         query = self._db.query(ScreeningChange)
         if screen_name is not None:
             query = query.filter(ScreeningChange.screen_name == screen_name)
-        return (
-            query.order_by(ScreeningChange.detected_at.desc()).limit(limit).all()
-        )
+        return query.order_by(ScreeningChange.detected_at.desc()).limit(limit).all()
 
     # ------------------------------------------------------------------
     # History queries
@@ -202,9 +203,7 @@ class ScreeningPipelineService:
         history: list[dict[str, Any]] = []
         for run in runs:
             symbols_in_run = {
-                r["symbol"].upper()
-                for r in (run.results or [])
-                if r.get("symbol")
+                r["symbol"].upper() for r in (run.results or []) if r.get("symbol")
             }
             if symbol in symbols_in_run:
                 history.append(
@@ -230,7 +229,9 @@ class ScreeningPipelineService:
         """
         # Gather latest run per screen_name
         latest_runs: dict[str, ScreeningRun] = {}
-        all_runs = self._db.query(ScreeningRun).order_by(ScreeningRun.run_at.desc()).all()
+        all_runs = (
+            self._db.query(ScreeningRun).order_by(ScreeningRun.run_at.desc()).all()
+        )
         for run in all_runs:
             if run.screen_name not in latest_runs:
                 latest_runs[run.screen_name] = run
@@ -246,11 +247,7 @@ class ScreeningPipelineService:
         ]
 
         # Gather active scheduled jobs
-        jobs = (
-            self._db.query(ScheduledJob)
-            .filter(ScheduledJob.active.is_(True))
-            .all()
-        )
+        jobs = self._db.query(ScheduledJob).filter(ScheduledJob.active.is_(True)).all()
         scheduled_jobs = [
             {
                 "job_name": job.job_name,

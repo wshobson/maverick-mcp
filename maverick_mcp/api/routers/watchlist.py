@@ -6,6 +6,8 @@ import logging
 
 from fastmcp import FastMCP
 
+from maverick_mcp.utils.mcp_types import OptionalStrList
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,7 +91,11 @@ def register_watchlist_tools(mcp: FastMCP) -> None:
             with SessionLocal() as session:
                 svc = WatchlistService(db_session=session)
                 svc.remove_from_watchlist(watchlist_id=watchlist_id, symbol=symbol)
-                return {"removed": True, "watchlist_id": watchlist_id, "symbol": symbol.upper()}
+                return {
+                    "removed": True,
+                    "watchlist_id": watchlist_id,
+                    "symbol": symbol.upper(),
+                }
         except Exception as e:
             logger.error("watchlist_remove error: %s", e)
             return {"error": str(e)}
@@ -133,7 +139,7 @@ def register_watchlist_tools(mcp: FastMCP) -> None:
         ),
     )
     def get_upcoming_catalysts(
-        symbols: list[str] | None = None,
+        symbols: OptionalStrList = None,
         days_ahead: int = 30,
     ) -> dict:
         """Return upcoming catalyst events."""
@@ -152,7 +158,9 @@ def register_watchlist_tools(mcp: FastMCP) -> None:
                             "id": e.id,
                             "symbol": e.symbol,
                             "event_type": e.event_type,
-                            "event_date": e.event_date.isoformat() if e.event_date else None,
+                            "event_date": e.event_date.isoformat()
+                            if e.event_date
+                            else None,
                             "description": e.description,
                             "impact_assessment": e.impact_assessment,
                         }

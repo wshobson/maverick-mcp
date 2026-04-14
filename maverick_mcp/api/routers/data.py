@@ -26,6 +26,7 @@ from maverick_mcp.infrastructure.data_fetching import StockDataFetchingService
 from maverick_mcp.providers.stock_data import (
     StockDataProvider,
 )  # Kept for backward compatibility
+from maverick_mcp.utils.mcp_types import StrList
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ def fetch_stock_data(
 
 
 def fetch_stock_data_batch(
-    tickers: list[str],
+    tickers: StrList,
     start_date: str | None = None,
     end_date: str | None = None,
 ) -> dict[str, Any]:

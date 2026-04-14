@@ -151,7 +151,11 @@ typecheck:
 	@echo "Running type checker..."
 	@uv run --extra dev pyright
 
-check: lint typecheck
+check-mcp-types:
+	@echo "Checking MCP tool list[str] parameters use coercion aliases..."
+	@uv run python scripts/check_mcp_list_types.py
+
+check: lint typecheck check-mcp-types
 	@echo "All checks passed!"
 
 # Utility commands
