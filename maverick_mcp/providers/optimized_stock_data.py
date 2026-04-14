@@ -221,7 +221,7 @@ class OptimizedStockDataProvider:
                     {where_clause}
                     ORDER BY ms.combined_score DESC, ms.pattern_detected ASC
                     LIMIT :limit
-                """
+                """  # nosec B608 - where_clause is a static constant toggle; user input (min_score) uses :min_score bind parameter
                 )
 
                 result = await async_session.execute(query, params)
@@ -329,7 +329,7 @@ class OptimizedStockDataProvider:
                 {where_clause}
                 ORDER BY ms.momentum_score DESC
                 LIMIT :limit
-            """
+            """  # nosec B608 - where_clause is a static constant toggle; user input (min_momentum_score) uses :min_momentum_score bind parameter
             )
 
             result = await async_session.execute(query, params)

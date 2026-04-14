@@ -1070,7 +1070,7 @@ class CacheManager:
                 deleted_count = cast(int, deleted_result)
                 logger.debug(f"Batch deleted {deleted_count} keys from Redis cache")
             except Exception as e:
-                logger.warning(f"Error in batch delete from Redis: {e}")
+                logger.warning(f"Error in batch delete from Redis: {e}")  # nosec B608 - false positive: this is a Redis error log, not a SQL query
 
         # Also delete from memory cache
         for key in keys:

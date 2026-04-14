@@ -6,7 +6,7 @@ __pycache__/
 # Local tooling/runtime state (not for source control)
 .claude-progress.md
 .remember/
-data/
+/data/
 
 # Distribution / packaging
 .Python
