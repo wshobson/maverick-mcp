@@ -1,5 +1,6 @@
 """VectorBT backtesting engine implementation with memory management and structured logging."""
 
+import asyncio
 import gc
 import itertools
 from typing import Any
@@ -10,6 +11,7 @@ import vectorbt as vbt
 from pandas import DataFrame, Series
 
 from maverick_mcp.backtesting.batch_processing import BatchProcessingMixin
+from maverick_mcp.utils.circuit_breaker import circuit_breaker
 from maverick_mcp.data.cache import (
     CacheManager,
     ensure_timezone_naive,
@@ -109,8 +111,15 @@ class VectorBTEngine(BatchProcessingMixin):
             interval=interval,
         )
 
-        # Try cache first with improved deserialization
-        cached_data = await self.cache.get(cache_key)
+        # Try cache first — degrade gracefully on cache failures
+        try:
+            cached_data = await self.cache.get(cache_key)
+        except Exception as e:
+            logger.warning(
+                f"Cache read failed for {symbol}, bypassing cache: {e}"
+            )
+            cached_data = None
+
         if cached_data is not None:
             if isinstance(cached_data, pd.DataFrame):
                 # Already a DataFrame - ensure timezone-naive
@@ -159,9 +168,53 @@ class VectorBTEngine(BatchProcessingMixin):
         days_old = (datetime.now() - end_dt).days
         ttl = 86400 if days_old > 7 else 3600  # 24h for older data, 1h for recent
 
-        await self.cache.set(cache_key, data, ttl=ttl)
+        # Cache write is best-effort — don't fail the request if cache is down
+        try:
+            await self.cache.set(cache_key, data, ttl=ttl)
+        except Exception as e:
+            logger.warning(
+                f"Cache write failed for {symbol}, continuing: {e}"
+            )
 
         return data
+
+    @circuit_breaker(
+        name="vectorbt_engine.fetch",
+        failure_threshold=5,
+        recovery_timeout=30,
+        expected_exceptions=(ConnectionError, TimeoutError),
+    )
+    async def _fetch_with_retry(
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        interval: str = "1d",
+        max_retries: int = 3,
+    ) -> DataFrame:
+        """Retry wrapper around get_historical_data for transient network errors.
+
+        Wrapped in a circuit breaker so repeated upstream failures fast-fail
+        instead of incurring retry latency across calls.
+        """
+        last_error: Exception | None = None
+        for attempt in range(max_retries):
+            try:
+                return await self.get_historical_data(
+                    symbol, start_date, end_date, interval
+                )
+            except (ConnectionError, TimeoutError) as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    delay = 0.1 * (2**attempt)
+                    logger.warning(
+                        f"get_historical_data attempt {attempt + 1}/{max_retries} "
+                        f"failed for {symbol}: {e}. Retrying in {delay:.2f}s"
+                    )
+                    await asyncio.sleep(delay)
+        raise last_error if last_error else RuntimeError(
+            f"Failed to fetch data for {symbol}"
+        )
 
     async def _get_data_async(
         self, symbol: str, start_date: str, end_date: str, interval: str
@@ -215,7 +268,7 @@ class VectorBTEngine(BatchProcessingMixin):
         """
         with memory_context("backtest_execution"):
             # Fetch data
-            data = await self.get_historical_data(symbol, start_date, end_date)
+            data = await self._fetch_with_retry(symbol, start_date, end_date)
 
             # Check for large datasets and warn
             data_memory_mb = data.memory_usage(deep=True).sum() / (1024**2)
@@ -978,7 +1031,7 @@ class VectorBTEngine(BatchProcessingMixin):
         """
         with memory_context("parameter_optimization"):
             # Fetch data once
-            data = await self.get_historical_data(symbol, start_date, end_date)
+            data = await self._fetch_with_retry(symbol, start_date, end_date)
 
             # Create parameter combinations as list of dicts
             param_keys = list(param_grid.keys())

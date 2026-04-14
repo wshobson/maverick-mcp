@@ -37,31 +37,18 @@ class ChaosInjector:
     @staticmethod
     @contextmanager
     def api_failure_injection(failure_rate: float = 0.3):
-        """Inject API failures at specified rate."""
-        original_get_stock_data = None
+        """Inject API failures while preserving real data flow on success."""
+        original = VectorBTEngine.get_historical_data
 
-        def failing_get_stock_data(*args, **kwargs):
+        async def failing_wrapper(self, *args, **kwargs):
             if random.random() < failure_rate:
                 if random.random() < 0.5:
                     raise ConnectionError("Simulated API connection failure")
-                else:
-                    raise TimeoutError("Simulated API timeout")
-            return (
-                original_get_stock_data(*args, **kwargs)
-                if original_get_stock_data
-                else Mock()
-            )
+                raise TimeoutError("Simulated API timeout")
+            return await original(self, *args, **kwargs)
 
-        try:
-            # Store original method and replace with failing version
-            with patch.object(
-                VectorBTEngine,
-                "get_historical_data",
-                side_effect=failing_get_stock_data,
-            ):
-                yield
-        finally:
-            pass
+        with patch.object(VectorBTEngine, "get_historical_data", failing_wrapper):
+            yield
 
     @staticmethod
     @contextmanager
@@ -218,6 +205,7 @@ class TestChaosEngineering:
                     retry_delay *= 2  # Exponential backoff
 
         provider.get_stock_data.side_effect = resilient_get_data
+        provider.get_stock_data_async.side_effect = resilient_get_data
         return provider
 
     async def test_api_failures_and_recovery(
@@ -435,24 +423,24 @@ class TestChaosEngineering:
 
         for scenario in cache_scenarios:
             if scenario["inject_failure"]:
-                # Mock cache to randomly fail
-                def failing_cache_get(key):
+                # Mock cache to randomly fail (CacheManager.get/set are async)
+                async def failing_cache_get(key):
                     if random.random() < 0.4:  # 40% cache failure rate
                         raise ConnectionError("Cache connection failed")
                     return None  # Cache miss
 
-                def failing_cache_set(key, value, ttl=None):
+                async def failing_cache_set(key, value, ttl=None):
                     if random.random() < 0.3:  # 30% cache set failure rate
                         raise ConnectionError("Cache set operation failed")
                     return True
 
                 cache_patches = [
                     patch(
-                        "maverick_mcp.core.cache.CacheManager.get",
+                        "maverick_mcp.data.cache.CacheManager.get",
                         side_effect=failing_cache_get,
                     ),
                     patch(
-                        "maverick_mcp.core.cache.CacheManager.set",
+                        "maverick_mcp.data.cache.CacheManager.set",
                         side_effect=failing_cache_set,
                     ),
                 ]
@@ -551,8 +539,12 @@ class TestChaosEngineering:
                     raise Exception("Circuit breaker is OPEN")
 
                 try:
-                    # Inject failures for testing
-                    if random.random() < 0.4:  # 40% failure rate
+                    # Deterministic failure sequence: first 3 attempts fail so the
+                    # breaker reliably reaches its threshold (3) and trips to OPEN.
+                    circuit_breaker_state["attempt_count"] = (
+                        circuit_breaker_state.get("attempt_count", 0) + 1
+                    )
+                    if circuit_breaker_state["attempt_count"] <= 3:
                         raise ConnectionError("Simulated service failure")
 
                     result = await func(*args, **kwargs)
