@@ -275,8 +275,9 @@ if __name__ == "__main__":
             script_path = f.name
 
         try:
-            # Start subprocess
-            proc = subprocess.Popen(
+            # Start subprocess — synchronous Popen is intentional for signal/exit-code
+            # testing; async variant would not materially change what's being asserted.
+            proc = subprocess.Popen(  # noqa: ASYNC220
                 [sys.executable, script_path],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

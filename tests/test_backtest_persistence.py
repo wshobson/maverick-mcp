@@ -11,7 +11,7 @@ Tests cover:
 - Concurrent access and transaction handling
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from unittest.mock import Mock, patch
@@ -483,7 +483,7 @@ class TestBacktestPersistenceManager:
     ):
         """Test performance summary generation."""
         # Create backtests with different dates and performance
-        base_date = datetime.utcnow()
+        base_date = datetime.now(UTC)
 
         # Recent backtests (within 30 days)
         for i in range(3):
