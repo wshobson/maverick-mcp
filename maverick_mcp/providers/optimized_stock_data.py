@@ -12,6 +12,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from sqlalchemy import select, text
@@ -31,6 +32,10 @@ from maverick_mcp.data.performance import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Match the provider-layer convention: default "today" is anchored to
+# the NYSE trading timezone, not to naive local time or UTC.
+_US_EASTERN_ZI = ZoneInfo("America/New_York")
 
 
 class OptimizedStockDataProvider:
@@ -102,7 +107,7 @@ class OptimizedStockDataProvider:
             DataFrame with OHLCV data
         """
         if not end_date:
-            end_date = datetime.now().strftime("%Y-%m-%d")
+            end_date = datetime.now(_US_EASTERN_ZI).strftime("%Y-%m-%d")
 
         async with monitored_db_session("get_stock_price_data") as session:
             async_session: AsyncSession = session
@@ -373,7 +378,7 @@ class OptimizedStockDataProvider:
             List of high volume stock data
         """
         if not date:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = datetime.now(_US_EASTERN_ZI).strftime("%Y-%m-%d")
 
         async with monitored_db_session("get_high_volume_stocks") as session:
             async_session: AsyncSession = session
@@ -438,7 +443,7 @@ class OptimizedStockDataProvider:
             Dictionary mapping symbols to DataFrames
         """
         if not end_date:
-            end_date = datetime.now().strftime("%Y-%m-%d")
+            end_date = datetime.now(_US_EASTERN_ZI).strftime("%Y-%m-%d")
 
         # Convert symbols to uppercase for consistency
         symbols = [s.upper() for s in symbols]

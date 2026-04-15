@@ -25,15 +25,24 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
   - `api/`: MCP server implementation
     - `server.py`: Main FastMCP server (simple stock analysis mode)
     - `routers/`: Domain-specific routers for organized tool groups
-  - `config/`: Configuration and settings
-  - `core/`: Core financial analysis functions
-  - `data/`: Data handling, caching, and database models
-  - `providers/`: Stock, market, and macro data providers
+      - `backtesting.py`, `intelligent_backtesting.py`, `research.py`, `portfolio.py`, `data.py`, `technical.py`, `screening.py`, `screening_ddd.py`
+      - **Roadmap v1 domains**: `signals.py`, `screening_pipeline.py`, `journal.py`, `watchlist.py`, `risk_dashboard.py`
+      - `tool_registry.py`: Central registration point wiring router-level `register_*_tools` functions into the FastMCP app
+      - `health_tools.py`, `agents.py`, `mcp_prompts.py`, `introspection.py`
+  - `agents/`: Deep-research, market-analysis, supervisor, technical-analysis, optimized-research agents
+  - `application/`, `domain/`, `infrastructure/`: DDD layering for screening and health subsystems
+  - `backtesting/`: VectorBT engine, batch processing, strategy executor, persistence, visualization
+  - `config/`: Configuration and settings (incl. `logging_config.py`, `tool_estimation.py`)
+  - `core/`: Core financial analysis functions (technical analysis, visualization)
+  - `data/`: Data handling, caching, and database models (incl. `vector_store.py` for research)
+  - `memory/`: Agent memory primitives (incl. `checkpointer.py` for LangGraph state)
+  - `monitoring/`: Health checks, middleware, status dashboard
+  - `providers/`: Stock, market, and macro data providers (incl. `cost_tracking.py`)
   - `utils/`: Development utilities and performance optimizations
   - `tests/`: Comprehensive test suite
   - `validation/`: Request/response validation
 - `tools/`: Development tools for faster workflows
-- `docs/`: Architecture documentation
+- `docs/`: Architecture documentation (see `docs/ARCHITECTURE.md` for the Roadmap v1 service-layer design and `docs/security/DEPENDENCY_AUDIT.md` for the dep audit)
 - `scripts/`: Startup and utility scripts
 - `Makefile`: Central command interface
 
@@ -63,13 +72,14 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
 
    # Set up environment
    cp .env.example .env
-   # Add your Tiingo API key (required)
+   # Add your Tiingo API key (required — see note below)
    ```
 
 3. **Required Configuration** (add to `.env`):
 
    ```
-   # Required - Stock data provider (free tier available)
+   # Required — used for S&P 500 ticker metadata listing (NOT price data).
+   # Historical and real-time price data is fetched via yfinance.
    TIINGO_API_KEY=your-tiingo-key
    ```
 
@@ -93,7 +103,7 @@ MaverickMCP is a personal stock analysis MCP server built for Claude Desktop. It
    REDIS_PORT=6379
    ```
 
-   **Get a free Tiingo API key**: Sign up at [tiingo.com](https://tiingo.com) - free tier includes 500 requests/day.
+   **Get a free Tiingo API key**: Sign up at [tiingo.com](https://tiingo.com) — free tier includes 500 requests/day. This key is used to list S&P 500 ticker metadata (`providers/market_data.py`). Historical and real-time OHLCV price data is fetched via `yfinance` (`providers/stock_data.py`), which does not require an API key.
 
    **OpenRouter API (Recommended)**: Sign up at [openrouter.ai](https://openrouter.ai) for access to 400+ AI models with intelligent cost optimization. The system automatically selects optimal models based on task requirements.
 
@@ -433,7 +443,12 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 
 ## Available Tools
 
-All tools are organized into logical groups (39+ tools total):
+All tools are organized into logical groups (**~95 `@mcp.tool` decorators total**, spanning 11 routers plus inline tools in `server.py`). The MCP tool surface has **two registration sources of truth** that must both be considered when evaluating tool coverage:
+
+1. **`maverick_mcp/api/routers/tool_registry.py`** — the primary registry. Wires domain-level `register_*_tools(mcp)` functions into the FastMCP app.
+2. **`maverick_mcp/api/server.py`** — hosts ~22 inline `@mcp.tool()` decorators (composite/demo tools that delegate to router implementations, e.g. `get_rsi_analysis`, `get_my_portfolio`, `fetch_stock_data`). These are registered at server import time and do **not** flow through `tool_registry.py`.
+
+Any tool-coverage audit, deprecation audit, or "no tool loss" guarantee must enumerate decorators in **both** locations. The `scripts/check_mcp_list_types.py` check already traverses both. Upstream data provider note: `get_stock_data` reads/writes `PriceCache` via `yfinance`, not Tiingo.
 
 ### Data Tools (`/data/*`) - S&P 500 Pre-seeded
 
@@ -517,6 +532,35 @@ All tools are organized into logical groups (39+ tools total):
 
 - `get_market_overview` - Indices, sectors, market breadth
 - `get_watchlist` - Sample portfolio with real-time data
+
+### Signal Engine (`signals.py`) - Roadmap v1
+
+- Alert CRUD + dispatch tools (create, list, delete, enable/disable)
+- Market-regime detection tool
+- Event-bus–driven: signals emit events the other domains can subscribe to. See `docs/ARCHITECTURE.md`.
+
+### Screening Pipeline (`screening_pipeline.py`) - Roadmap v1
+
+- `get_screening_changes` - Recent screener symbol entries/exits, filterable by screen, newest-first
+- History, change-detection, and scheduled-rerun tools
+- Backs historical "what changed since last run" queries for any screener
+
+### Trade Journal (`journal.py`) - Roadmap v1
+
+- `journal_add_trade`, `journal_close_trade`, `journal_list_trades`, `journal_trade_review`
+- `get_strategy_performance`, `get_strategy_comparison` - expectancy and profit-factor analytics per strategy
+- Persists entries in `JournalEntry` / `StrategyPerformance` tables; `StrategyTracker` recomputes stats on close
+
+### Watchlist Intelligence (`watchlist.py`) - Roadmap v1
+
+- Watchlist CRUD (`watchlist_create`, `watchlist_add`, `watchlist_remove`, `watchlist_brief`)
+- Catalyst-event tracking (`get_upcoming_catalysts`, upcoming/past filters)
+- Integrates with the scheduler for pre-market catalyst briefings
+
+### Risk Dashboard (`risk_dashboard.py`) - Roadmap v1
+
+- Portfolio risk analytics, position sizing, and alerting tools
+- Pulls from the portfolio tracker + live prices; emits risk-threshold alerts via the event bus
 
 ## Development Commands
 
