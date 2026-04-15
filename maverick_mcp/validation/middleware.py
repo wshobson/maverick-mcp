@@ -81,7 +81,7 @@ class ValidationMiddleware(BaseHTTPMiddleware):
                 )
 
             return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 content=validation_error_response(errors=errors, trace_id=trace_id),
             )
 
@@ -108,7 +108,7 @@ class ValidationMiddleware(BaseHTTPMiddleware):
                 )
 
             return JSONResponse(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 content=validation_error_response(errors=errors, trace_id=trace_id),
             )
 

@@ -51,7 +51,7 @@ class ErrorHandler:
         return {
             # MaverickMCP exceptions
             ValidationError: {
-                "status_code": status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "status_code": status.HTTP_422_UNPROCESSABLE_CONTENT,
                 "code": "VALIDATION_ERROR",
                 "log_level": "warning",
             },
@@ -385,7 +385,7 @@ async def validation_exception_handler(
     )
 
     return JSONResponse(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         content=validation_error_response(errors, trace_id),
     )
 
