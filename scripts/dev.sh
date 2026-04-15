@@ -103,43 +103,72 @@ echo -e "${YELLOW}Backend PID: $BACKEND_PID${NC}"
 # Wait for backend to start
 echo -e "${YELLOW}Waiting for backend to start...${NC}"
 
-# Wait up to 45 seconds for the backend to start and tools to register
+# Wait up to 60 seconds for readiness.
+# Primary probe: GET /health/ready returns {"ready": true, "tools": N, ...}
+# once the DB is reachable AND tools are registered. The structured endpoint
+# survives log-message renames (unlike grepping backend.log).
+# Fallback: log-grep + port check, used only for the STDIO transport which
+# has no HTTP endpoint.
 TOOLS_REGISTERED=false
-for i in {1..45}; do
-    # Check if backend process is still running first
-    if ! kill -0 $BACKEND_PID 2>/dev/null; then
-        echo -e "${RED}Backend process died! Check output above for errors.${NC}"
-        exit 1
-    fi
-    
-    # Check if port is open
-    if nc -z localhost ${PORT} 2>/dev/null || curl -s http://localhost:${PORT}/health >/dev/null 2>&1; then
-        if [ "$TOOLS_REGISTERED" = false ]; then
-            echo -e "${GREEN}Backend port is open, checking for tool registration...${NC}"
-            
-            # Check backend.log for tool registration messages
-            if grep -q "Research tools registered successfully" backend.log 2>/dev/null || 
-               grep -q "Tool registration process completed" backend.log 2>/dev/null || 
-               grep -q "Tools registered successfully" backend.log 2>/dev/null; then
-                echo -e "${GREEN}Research tools successfully registered!${NC}"
+PORT_OPEN=false
+TOOL_COUNT=0
+READY_TIMEOUT=60
+
+# STDIO transport has no HTTP endpoint — rely on log signal + process liveness
+if [ "$TRANSPORT" = "stdio" ]; then
+    for i in $(seq 1 $READY_TIMEOUT); do
+        if ! kill -0 $BACKEND_PID 2>/dev/null; then
+            echo -e "${RED}Backend process died! Check output above for errors.${NC}"
+            exit 1
+        fi
+        if [ -f backend.log ] && grep -q "Tool registration process completed" backend.log 2>/dev/null; then
+            TOOLS_REGISTERED=true
+            echo -e "${GREEN}Tool registration complete (STDIO transport)${NC}"
+            break
+        fi
+        echo -e "${YELLOW}Waiting for STDIO backend... ($i/${READY_TIMEOUT})${NC}"
+        sleep 1
+    done
+else
+    for i in $(seq 1 $READY_TIMEOUT); do
+        if ! kill -0 $BACKEND_PID 2>/dev/null; then
+            echo -e "${RED}Backend process died! Check output above for errors.${NC}"
+            exit 1
+        fi
+
+        # Probe the structured readiness endpoint. Parse JSON via python3
+        # (portable across GNU/BSD; avoids sed `\+` dialect issue on macOS).
+        READY_JSON=$(curl -fsS --max-time 2 "http://localhost:${PORT}/health/ready" 2>/dev/null || true)
+        if [ -n "$READY_JSON" ]; then
+            PORT_OPEN=true
+            PARSED=$(printf '%s' "$READY_JSON" | python3 -c 'import json, sys
+try:
+    d = json.loads(sys.stdin.read())
+    print(str(d.get("ready", False)).lower(), d.get("tools", 0))
+except Exception:
+    print("false 0")
+' 2>/dev/null || echo "false 0")
+            READY_FLAG=$(echo "$PARSED" | awk '{print $1}')
+            TOOL_COUNT=$(echo "$PARSED" | awk '{print $2}')
+            if [ "$READY_FLAG" = "true" ]; then
                 TOOLS_REGISTERED=true
+                echo -e "${GREEN}Backend ready: tools=${TOOL_COUNT}${NC}"
                 break
-            else
-                echo -e "${YELLOW}Backend running but tools not yet registered... ($i/45)${NC}"
             fi
         fi
-    else
-        echo -e "${YELLOW}Still waiting for backend to start... ($i/45)${NC}"
-    fi
-    
-    if [ $i -eq 45 ]; then
-        echo -e "${RED}Backend failed to fully initialize after 45 seconds!${NC}"
-        echo -e "${RED}Server may be running but tools not registered. Check output above.${NC}"
-        # Don't exit - let it continue in case tools load later
-    fi
-    
-    sleep 1
-done
+
+        echo -e "${YELLOW}Waiting for backend... ($i/${READY_TIMEOUT}) port=${PORT_OPEN} ready=${TOOLS_REGISTERED}${NC}"
+
+        if [ $i -eq $READY_TIMEOUT ]; then
+            echo -e "${RED}Backend failed to become ready after ${READY_TIMEOUT} seconds!${NC}"
+            echo -e "${RED}Final state: port_open=${PORT_OPEN} tools_registered=${TOOLS_REGISTERED}${NC}"
+            echo -e "${RED}Check backend.log for errors.${NC}"
+            # Don't exit - let it continue in case tools load later
+        fi
+
+        sleep 1
+    done
+fi
 
 if [ "$TOOLS_REGISTERED" = true ]; then
     echo -e "${GREEN}Backend is ready with tools registered!${NC}"
