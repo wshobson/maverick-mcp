@@ -34,6 +34,11 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 - **Stock Data Access**: Historical and real-time stock data with intelligent caching
 - **Technical Analysis**: 20+ indicators including SMA, EMA, RSI, MACD, Bollinger Bands, and more
 - **Stock Screening**: Multiple strategies (Maverick Bullish/Bearish, Trending Breakouts) with parallel processing
+- **Screening Pipeline**: Change detection, history, and scheduled reruns on top of the screeners
+- **Signal Engine**: User-defined alerts and market-regime detection
+- **Trade Journal**: Entry/exit logging with strategy performance analytics (expectancy, profit factor)
+- **Watchlist Intelligence**: Managed watchlists with catalyst-event tracking
+- **Risk Dashboard**: Portfolio risk analytics, position sizing, and alerting
 - **Portfolio Tools**: Correlation analysis, returns calculation, and optimization
 - **Market Data**: Sector performance, market movers, and earnings information
 - **Smart Caching**: Redis-powered performance with automatic fallback to in-memory storage
@@ -300,7 +305,7 @@ The `mcp-remote` tool bridges the gap between STDIO-only clients (like Claude De
 
 ## Available Tools
 
-MaverickMCP provides 39+ financial analysis tools organized into focused categories, including advanced AI-powered research agents:
+MaverickMCP provides 60+ MCP tools organized into focused categories, including advanced AI-powered research agents and five feature domains introduced by [Roadmap v1](docs/ARCHITECTURE.md) (signals, screening pipeline, trade journal, watchlist intelligence, risk dashboard). See `CLAUDE.md` for the full, up-to-date per-domain listing.
 
 ### Development Commands
 
@@ -758,7 +763,20 @@ For issues or questions:
 
 ## Recent Updates
 
-### Production-Ready Backtesting Framework (NEW)
+### Roadmap v1 — Service Layer + 5 Feature Domains (NEW)
+
+Commit [`4f5dc53`](https://github.com/wshobson/maverick-mcp/commit/4f5dc53) introduced a service-layer gateway architecture on top of an async event bus, plus ~28 new MCP tools across five feature domains. See `docs/ARCHITECTURE.md` for the full design.
+
+- **Service-layer gateway** with an async event bus for cross-domain communication
+- **Signal Engine** (`signals.py`): create/manage alerts, market-regime detection
+- **Screening Pipeline** (`screening_pipeline.py`): change detection, history, scheduled reruns
+- **Trade Journal** (`journal.py`): trade entry/exit, strategy performance (`expectancy`, `profit_factor`)
+- **Watchlist Intelligence** (`watchlist.py`): managed watchlists with catalyst-event tracking
+- **Risk Dashboard** (`risk_dashboard.py`): portfolio risk analytics, position sizing, alerting
+- **Scheduler**: `apscheduler` integration, ASGI-loop–aware start/stop, ISO-serialized job listings
+- **Maverick Bot extension points**: infrastructure hooks for future automation
+
+### Production-Ready Backtesting Framework
 
 - **VectorBT Integration**: High-performance vectorized backtesting engine for institutional-grade performance
 - **15+ Built-in Strategies**: Including ML-powered adaptive, ensemble, and regime-aware algorithms
