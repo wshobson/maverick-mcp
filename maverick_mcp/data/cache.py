@@ -136,7 +136,13 @@ def _decode_json_payload(raw_data: str) -> Any:
 def normalize_timezone(index: pd.Index | Sequence[Any]) -> pd.DatetimeIndex:
     """Return a timezone-naive :class:`~pandas.DatetimeIndex` in UTC."""
 
-    dt_index = index if isinstance(index, pd.DatetimeIndex) else pd.DatetimeIndex(index)
+    if isinstance(index, pd.DatetimeIndex):
+        dt_index = index
+    elif isinstance(index, pd.Index):
+        dt_index = pd.DatetimeIndex(index)
+    else:
+        # pandas-stubs requires SequenceNotStr (rules out raw `str`); wrap in list.
+        dt_index = pd.DatetimeIndex(list(index))
 
     if dt_index.tz is not None:
         dt_index = dt_index.tz_convert("UTC").tz_localize(None)
