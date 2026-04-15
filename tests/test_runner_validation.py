@@ -118,9 +118,11 @@ class TestSuiteValidator:
                                 pass
                         # Call form: `@pytest.mark.asyncio(...)` wraps the same
                         # Attribute chain inside a Call(func=...).
-                        elif isinstance(decorator, ast.Call) and isinstance(
-                            decorator.func, ast.Attribute
-                        ) and isinstance(decorator.func.value, ast.Attribute):
+                        elif (
+                            isinstance(decorator, ast.Call)
+                            and isinstance(decorator.func, ast.Attribute)
+                            and isinstance(decorator.func.value, ast.Attribute)
+                        ):
                             if (
                                 decorator.func.value.attr == "mark"
                                 and decorator.func.attr == "asyncio"

@@ -39,11 +39,11 @@ from maverick_mcp.data.models import PriceCache, SessionLocal, Stock
 _SENTINEL = 9999.99
 
 
-def _find_recent_cached_row(
-    session, ticker: str
-) -> tuple[date, float] | None:
+def _find_recent_cached_row(session, ticker: str) -> tuple[date, float] | None:
     """Return (date, close_price) of the most recent cached bar for the ticker, or None."""
-    stock = session.query(Stock).filter(Stock.ticker_symbol == ticker.upper()).one_or_none()
+    stock = (
+        session.query(Stock).filter(Stock.ticker_symbol == ticker.upper()).one_or_none()
+    )
     if stock is None:
         return None
 
@@ -88,9 +88,7 @@ def main() -> int:
             return 0
 
         target_date, original_close = existing
-        print(
-            f"Found cached row: {ticker} @ {target_date} close={original_close}"
-        )
+        print(f"Found cached row: {ticker} @ {target_date} close={original_close}")
 
         if args.dry_run:
             print("DRY RUN: skipping clobber + refetch.")
@@ -164,9 +162,7 @@ def main() -> int:
             return 1
 
         _, refetched_close = after
-        print(
-            f"After refetch: {ticker} @ {target_date} close={refetched_close}"
-        )
+        print(f"After refetch: {ticker} @ {target_date} close={refetched_close}")
 
         if abs(refetched_close - _SENTINEL) < 1e-6:
             print(
@@ -176,8 +172,7 @@ def main() -> int:
             return 1
 
         print(
-            "OK: sentinel was overwritten by upsert. Phase 1 fix is "
-            "active end-to-end."
+            "OK: sentinel was overwritten by upsert. Phase 1 fix is active end-to-end."
         )
         return 0
 

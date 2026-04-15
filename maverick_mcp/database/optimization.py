@@ -205,9 +205,7 @@ class QueryOptimizer:
                         stmt = pg_insert(PriceCache).values(batch)
                         stmt = stmt.on_conflict_do_update(
                             index_elements=["stock_id", "date"],
-                            set_={
-                                k: getattr(stmt.excluded, k) for k in _UPDATE_KEYS
-                            },
+                            set_={k: getattr(stmt.excluded, k) for k in _UPDATE_KEYS},
                         )
                     else:
                         from sqlalchemy.dialects.sqlite import (
@@ -217,9 +215,7 @@ class QueryOptimizer:
                         stmt = sqlite_insert(PriceCache).values(batch)
                         stmt = stmt.on_conflict_do_update(
                             index_elements=["stock_id", "date"],
-                            set_={
-                                k: getattr(stmt.excluded, k) for k in _UPDATE_KEYS
-                            },
+                            set_={k: getattr(stmt.excluded, k) for k in _UPDATE_KEYS},
                         )
 
                     session.execute(stmt)

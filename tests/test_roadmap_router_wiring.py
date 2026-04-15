@@ -72,7 +72,9 @@ def _is_str_list_schema(schema: dict) -> bool:
 
 
 @pytest.mark.parametrize(
-    ("router_name", "register_fn"), _ROADMAP_ROUTERS, ids=[r[0] for r in _ROADMAP_ROUTERS]
+    ("router_name", "register_fn"),
+    _ROADMAP_ROUTERS,
+    ids=[r[0] for r in _ROADMAP_ROUTERS],
 )
 def test_router_registers_at_least_one_tool(
     router_name: str, register_fn: Callable[[FastMCP], None]
@@ -84,7 +86,9 @@ def test_router_registers_at_least_one_tool(
 
 
 @pytest.mark.parametrize(
-    ("router_name", "register_fn"), _ROADMAP_ROUTERS, ids=[r[0] for r in _ROADMAP_ROUTERS]
+    ("router_name", "register_fn"),
+    _ROADMAP_ROUTERS,
+    ids=[r[0] for r in _ROADMAP_ROUTERS],
 )
 def test_tools_have_substantive_descriptions(
     router_name: str, register_fn: Callable[[FastMCP], None]
@@ -94,9 +98,7 @@ def test_tools_have_substantive_descriptions(
     """
     tools = _list_registered_tools(register_fn)
     bad = [
-        t.name
-        for t in tools
-        if not t.description or len(t.description.strip()) < 20
+        t.name for t in tools if not t.description or len(t.description.strip()) < 20
     ]
     assert not bad, (
         f"{router_name}: tools with missing or too-short descriptions: {bad}"
@@ -104,7 +106,9 @@ def test_tools_have_substantive_descriptions(
 
 
 @pytest.mark.parametrize(
-    ("router_name", "register_fn"), _ROADMAP_ROUTERS, ids=[r[0] for r in _ROADMAP_ROUTERS]
+    ("router_name", "register_fn"),
+    _ROADMAP_ROUTERS,
+    ids=[r[0] for r in _ROADMAP_ROUTERS],
 )
 def test_list_string_params_use_strlist_alias(
     router_name: str, register_fn: Callable[[FastMCP], None]

@@ -59,7 +59,9 @@ def main() -> int:
 
     multi = {base: names for base, names in groups.items() if len(names) > 1}
     if not multi:
-        print("OK: no router-base has multiple _enhanced/_parallel/_ddd/_pipeline variants.")
+        print(
+            "OK: no router-base has multiple _enhanced/_parallel/_ddd/_pipeline variants."
+        )
         return 0
 
     print("Router variants detected (audit roadmap Phase 3 consolidation scope):")

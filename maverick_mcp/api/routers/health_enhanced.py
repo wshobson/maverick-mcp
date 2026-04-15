@@ -56,7 +56,9 @@ class ComponentStatus(BaseModel):
 class ResourceUsage(BaseModel):
     """System resource usage information."""
 
-    cpu_percent: float = Field(description="Host-wide CPU usage percentage (all cores, all processes)")
+    cpu_percent: float = Field(
+        description="Host-wide CPU usage percentage (all cores, all processes)"
+    )
     process_cpu_percent: float = Field(
         default=0.0,
         description="This server process's CPU usage percentage (0-100, normalized across cores)",

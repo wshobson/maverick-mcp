@@ -218,8 +218,12 @@ class HealthMonitor:
             if resource_usage.process_cpu_percent > _CPU_HIGH:
                 if self._high_cpu_since is None:
                     self._high_cpu_since = now
-                elif (now - self._high_cpu_since) >= ALERT_THRESHOLDS["high_cpu_duration"]:
-                    await self._handle_high_cpu_usage(resource_usage.process_cpu_percent)
+                elif (now - self._high_cpu_since) >= ALERT_THRESHOLDS[
+                    "high_cpu_duration"
+                ]:
+                    await self._handle_high_cpu_usage(
+                        resource_usage.process_cpu_percent
+                    )
             elif resource_usage.process_cpu_percent < _CPU_LOW:
                 self._high_cpu_since = None
             # In the HYSTERESIS band (_CPU_LOW, _CPU_HIGH]: hold state —
@@ -233,7 +237,9 @@ class HealthMonitor:
             if resource_usage.memory_percent > _MEM_HIGH:
                 if self._high_memory_since is None:
                     self._high_memory_since = now
-                elif (now - self._high_memory_since) >= ALERT_THRESHOLDS["high_memory_duration"]:
+                elif (now - self._high_memory_since) >= ALERT_THRESHOLDS[
+                    "high_memory_duration"
+                ]:
                     await self._handle_high_memory_usage(resource_usage.memory_percent)
             elif resource_usage.memory_percent < _MEM_LOW:
                 self._high_memory_since = None

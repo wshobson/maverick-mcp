@@ -160,7 +160,9 @@ async def test_exhausted_retries_logs_error(engine, caplog):
     )
 
     with patch("maverick_mcp.backtesting.vectorbt_engine.asyncio.sleep", AsyncMock()):
-        with caplog.at_level(logging.ERROR, logger="maverick_mcp.backtesting.vectorbt_engine"):
+        with caplog.at_level(
+            logging.ERROR, logger="maverick_mcp.backtesting.vectorbt_engine"
+        ):
             with pytest.raises(ConnectionError):
                 await engine._fetch_with_retry(
                     "AAPL", "2023-01-01", "2023-12-31", max_retries=2
@@ -170,7 +172,8 @@ async def test_exhausted_retries_logs_error(engine, caplog):
     # logger under the hood. Match the key phrase and symbol regardless of
     # exact formatting drift.
     error_records = [
-        r for r in caplog.records
+        r
+        for r in caplog.records
         if r.levelno >= logging.ERROR and "AAPL" in r.getMessage()
     ]
     assert len(error_records) >= 1, (
@@ -203,9 +206,7 @@ async def test_cache_read_failure_degrades_gracefully(sample_df):
     engine.cache.get = AsyncMock(side_effect=redis.RedisError("redis down"))
     engine.cache.set = AsyncMock()
 
-    result = await engine.get_historical_data(
-        "AAPL", "2023-01-01", "2023-12-31"
-    )
+    result = await engine.get_historical_data("AAPL", "2023-01-01", "2023-12-31")
 
     assert not result.empty
     engine.cache.get.assert_awaited_once()
@@ -223,9 +224,7 @@ async def test_cache_write_failure_degrades_gracefully(sample_df):
     engine.cache.get = AsyncMock(return_value=None)
     engine.cache.set = AsyncMock(side_effect=redis.RedisError("redis down"))
 
-    result = await engine.get_historical_data(
-        "AAPL", "2023-01-01", "2023-12-31"
-    )
+    result = await engine.get_historical_data("AAPL", "2023-01-01", "2023-12-31")
 
     assert not result.empty
     engine.cache.set.assert_awaited_once()
@@ -283,13 +282,9 @@ async def test_circuit_breaker_opens_after_sustained_failures(engine):
     # consecutive failures -> breaker opens") rather than the COMBINED
     # failure-rate branch that can fire early once total_calls >= 5.
     existing.reset()
-    existing._metrics = CircuitBreakerMetrics(
-        window_size=existing.config.window_size
-    )
+    existing._metrics = CircuitBreakerMetrics(window_size=existing.config.window_size)
     original_strategy = existing.config.detection_strategy
-    existing.config.detection_strategy = (
-        FailureDetectionStrategy.CONSECUTIVE_FAILURES
-    )
+    existing.config.detection_strategy = FailureDetectionStrategy.CONSECUTIVE_FAILURES
 
     engine.get_historical_data = AsyncMock(side_effect=ConnectionError("down"))
 

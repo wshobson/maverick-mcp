@@ -67,7 +67,10 @@ def main() -> int:
     exporter_major_minor = tuple(int(x) for x in exporter_version.split(".")[:2])
 
     # proto-common only required once exporter split it off (otel >= 1.12).
-    if exporter_major_minor >= (1, 12) and "opentelemetry-exporter-otlp-proto-common" not in required:
+    if (
+        exporter_major_minor >= (1, 12)
+        and "opentelemetry-exporter-otlp-proto-common" not in required
+    ):
         print(
             "ERROR: opentelemetry-exporter-otlp-proto-grpc is "
             f"{exporter_version} but opentelemetry-exporter-otlp-proto-common "
