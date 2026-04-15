@@ -145,6 +145,7 @@ def quick_cache(
 
             # Try to get from cache
             cached_value = await _cache.get(cache_key)
+            _maybe_emit_stats()
             if cached_value is not None:
                 if log_stats:
                     stats = _cache.get_stats()
@@ -203,6 +204,7 @@ def quick_cache(
 
             # Try to get from cache
             cached_value = _cache.get_sync(cache_key)
+            _maybe_emit_stats()
             if cached_value is not None:
                 if log_stats:
                     stats = _cache.get_stats()
@@ -238,6 +240,63 @@ def clear_cache():
     """Clear the global cache."""
     _cache.clear()
     logger.info("Cache cleared")
+
+
+# ── observability: automatic hit-rate emission ──────────────────────
+#
+# The audit flagged that ``hits`` / ``misses`` were being tracked but never
+# exposed: operators had no way to tell whether the cache was pulling its
+# weight. The original design required opt-in via ``log_stats=True`` on
+# each decorator call, which nobody set.
+#
+# We now emit a consolidated snapshot every ``_STATS_EMIT_INTERVAL_S`` or
+# every ``_STATS_EMIT_REQUEST_STEP`` requests, whichever comes first, at
+# INFO level. No new threads, no event loop — the hook piggybacks on the
+# hot path via ``_record_access``.
+
+_STATS_EMIT_INTERVAL_S = 300.0  # 5 minutes
+_STATS_EMIT_REQUEST_STEP = 500
+_last_stats_emit_t = time.time()
+_requests_since_emit = 0
+
+
+def _maybe_emit_stats() -> None:
+    """Emit a consolidated hit-rate snapshot if the interval has elapsed.
+
+    Cheap by design: two int reads, one wall-clock read, at most one log
+    line per interval. Called from the decorator wrappers on every
+    request — must not do anything heavy. Hidden behind ``settings.api.debug
+    or MAVERICK_QUICK_CACHE_STATS=1`` so a production STDIO transport does
+    not spam stdout.
+    """
+    import os as _os
+
+    enabled = settings.api.debug or _os.getenv("MAVERICK_QUICK_CACHE_STATS") == "1"
+    if not enabled:
+        return
+
+    global _last_stats_emit_t, _requests_since_emit
+    _requests_since_emit += 1
+
+    now = time.time()
+    if (
+        _requests_since_emit < _STATS_EMIT_REQUEST_STEP
+        and (now - _last_stats_emit_t) < _STATS_EMIT_INTERVAL_S
+    ):
+        return
+
+    stats = _cache.get_stats()
+    _last_stats_emit_t = now
+    _requests_since_emit = 0
+    logger.info(
+        "quick_cache stats",
+        extra={
+            "quick_cache_hits": stats["hits"],
+            "quick_cache_misses": stats["misses"],
+            "quick_cache_hit_rate_pct": stats["hit_rate"],
+            "quick_cache_size": stats["size"],
+        },
+    )
 
 
 # Convenience decorators with common TTLs

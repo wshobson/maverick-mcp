@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
+.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies test-smoke lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -80,6 +80,10 @@ test-all:
 	@echo "Running all tests (including integration)..."
 	@uv run pytest -v -m ""
 
+test-smoke:
+	@echo "Running dev.sh readiness smoke test..."
+	@./scripts/smoke_test_dev.sh
+
 test-watch:
 	@echo "Starting test watcher..."
 	@if ! uv pip show pytest-watch > /dev/null 2>&1; then \
@@ -155,7 +159,22 @@ check-mcp-types:
 	@echo "Checking MCP tool list[str] parameters use coercion aliases..."
 	@uv run python scripts/check_mcp_list_types.py
 
-check: lint typecheck check-mcp-types
+check-otel-versions:
+	@echo "Checking OpenTelemetry package versions are aligned in uv.lock..."
+	@uv run --no-sync python scripts/check_otel_versions.py
+
+# Warning-only lint surfaces. Exit 0 today so they surface gaps without
+# breaking merges; flip to --strict once the audit roadmap (Phase 2 for
+# descriptions, Phase 3 for router consolidation) has closed the backlog.
+check-mcp-descriptions:
+	@echo "Checking MCP @mcp.tool decorators have useful description= ..."
+	@uv run python scripts/check_mcp_descriptions.py
+
+check-router-variants:
+	@echo "Checking router-variant sprawl (_enhanced/_parallel/_ddd/_pipeline)..."
+	@uv run python scripts/check_router_variants.py
+
+check: lint typecheck check-mcp-types check-otel-versions check-mcp-descriptions check-router-variants
 	@echo "All checks passed!"
 
 # Utility commands

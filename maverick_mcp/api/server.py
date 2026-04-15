@@ -105,6 +105,7 @@ import argparse
 import asyncio as _asyncio
 import json
 import logging
+import os
 import sys
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -363,11 +364,21 @@ if hasattr(_fastmcp_instance, "custom_route"):
         except Exception as tool_err:
             logger.warning(f"Failed to enumerate MCP tools: {tool_err}")
 
-        ready = tool_count > 0
+        # Server-side minimum-tools floor. A partial registration failure
+        # (one router's import blowing up) can leave the process alive with,
+        # say, 3 tools registered — curl against readiness would report 200.
+        # scripts/smoke_test_dev.sh enforces MIN_TOOLS client-side, but any
+        # orchestrator that isn't our own smoke script gets no protection
+        # unless we gate server-side too. The default (1) preserves the
+        # previous "any tool registered == ready" behaviour so existing
+        # deploys don't flip to 503; operators can tighten via the env var.
+        min_tools_floor = max(1, int(os.getenv("MAVERICK_MIN_READY_TOOLS", "1")))
+        ready = tool_count >= min_tools_floor
         return _JSONResponse(
             content={
                 "ready": ready,
                 "tools": tool_count,
+                "min_tools": min_tools_floor,
                 "timestamp": _datetime.now(_UTC).isoformat(),
             },
             status_code=200 if ready else 503,
@@ -416,19 +427,46 @@ logger.info("Initializing enhanced connection management system...")
 # from maverick_mcp.infrastructure.connection_manager import initialize_connection_management
 # from maverick_mcp.infrastructure.sse_optimizer import apply_sse_optimizations
 
-# Register all tools from routers directly for basic functionality
-register_all_router_tools(_fastmcp_instance)
-logger.info("Tools registered successfully")
+# Register all tools from routers directly for basic functionality.
+#
+# Tool-registration is wrapped in a try/except so that a single router's
+# import failure (a stray new dependency, a broken feature flag) degrades
+# the tool surface rather than killing the whole server at boot. The
+# readiness endpoint's ``min_tools`` floor still gates traffic if the
+# surface ends up too thin. A crashing register_all_router_tools call
+# without this guard leaves the caller with no server at all — worse than
+# a degraded one that can report its own incompleteness.
+try:
+    register_all_router_tools(_fastmcp_instance)
+    logger.info("Tools registered successfully")
+except Exception as _tool_reg_err:
+    logger.error(
+        "Tool registration raised — server will boot with a degraded tool "
+        "surface; readiness min_tools gate will reflect this: %s",
+        _tool_reg_err,
+        exc_info=True,
+    )
 
 # Register monitoring and health endpoints directly with FastMCP
 from maverick_mcp.api.routers.health_enhanced import router as health_router
 from maverick_mcp.api.routers.monitoring import router as monitoring_router
 
-# Add monitoring and health endpoints to the FastMCP app's FastAPI instance
+# Add monitoring and health endpoints to the FastMCP app's FastAPI instance.
+# Same degrade-don't-crash posture as tool registration above.
 if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
-    mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
-    mcp.fastapi_app.include_router(health_router, tags=["health"])
-    logger.info("Monitoring and health endpoints registered with FastAPI application")
+    try:
+        mcp.fastapi_app.include_router(monitoring_router, tags=["monitoring"])
+        mcp.fastapi_app.include_router(health_router, tags=["health"])
+        logger.info(
+            "Monitoring and health endpoints registered with FastAPI application"
+        )
+    except Exception as _router_err:
+        logger.error(
+            "Monitoring/health router registration failed — these endpoints "
+            "will not be served: %s",
+            _router_err,
+            exc_info=True,
+        )
 
     # Register top-level health endpoints for Docker HEALTHCHECK, load balancers,
     # and Kubernetes probes. These use the existing HealthChecker plus circuit
