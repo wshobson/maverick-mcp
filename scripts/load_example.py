@@ -1,62 +1,61 @@
 #!/usr/bin/env python3
-"""
-Example usage of the Tiingo data loader.
+"""Example usage of the Tiingo data loader.
 
-This script demonstrates common usage patterns for loading market data
-from Tiingo API into the Maverick-MCP database.
+This script demonstrates common usage patterns for loading market data from the
+Tiingo API into the Maverick-MCP database. It is a thin demo wrapper around
+``scripts.load_tiingo_data.TiingoDataLoader`` and intentionally uses only that
+loader's public API — checkpointing is handled by the loader itself via the
+``checkpoint_file`` constructor argument, not a separate tracker.
 """
+
+from __future__ import annotations
 
 import asyncio
 import logging
 import os
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
-# Add parent directory to path
+# Add parent directory to path so the script is runnable as `python scripts/load_example.py`.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from maverick_mcp.data.models import SessionLocal
-from scripts.load_tiingo_data import ProgressTracker, TiingoDataLoader
+from maverick_mcp.data.models import (  # noqa: E402
+    MaverickStocks,
+    PriceCache,
+    SessionLocal,
+    Stock,
+    TechnicalCache,
+)
+from scripts.load_tiingo_data import TiingoDataLoader  # noqa: E402
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-async def load_sample_stocks():
+def _today_iso() -> str:
+    return datetime.now(tz=UTC).strftime("%Y-%m-%d")
+
+
+async def load_sample_stocks() -> None:
     """Load a small sample of stocks for testing."""
     symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA"]
 
     print(f"Loading sample stocks: {', '.join(symbols)}")
 
-    # Create progress tracker
-    progress = ProgressTracker("sample_load_progress.json")
-    progress.total_symbols = len(symbols)
-
-    async with TiingoDataLoader(
-        batch_size=10, max_concurrent=3, progress_tracker=progress
-    ) as loader:
-        # Load 1 year of data with indicators
-        start_date = "2023-01-01"
-
-        successful, failed = await loader.load_batch_symbols(
-            symbols, start_date, calculate_indicators=True, store_indicators=True
-        )
-
-        print(f"\nCompleted: {successful} successful, {failed} failed")
-
-        # Run screening
-        if successful > 0:
-            print("Running screening algorithms...")
-            with SessionLocal() as session:
-                screening_results = loader.run_screening_algorithms(session)
-
-                print("Screening results:")
-                for screen_type, count in screening_results.items():
-                    print(f"  {screen_type}: {count} stocks")
+    loader = TiingoDataLoader(checkpoint_file="sample_load_progress.json")
+    await loader.load_symbols(
+        symbols=symbols,
+        start_date="2023-01-01",
+        end_date=_today_iso(),
+        calculate_indicators=True,
+        run_screening=True,
+        max_concurrent=3,
+    )
+    print("Sample load complete.")
 
 
-async def load_sector_stocks():
+async def load_sector_stocks() -> None:
     """Load stocks from a specific sector."""
     from scripts.tiingo_config import MARKET_SECTORS
 
@@ -65,68 +64,57 @@ async def load_sector_stocks():
 
     print(f"Loading {sector} sector stocks: {len(symbols)} symbols")
 
-    progress = ProgressTracker(f"{sector}_load_progress.json")
-    progress.total_symbols = len(symbols)
-
-    async with TiingoDataLoader(
-        batch_size=5, max_concurrent=2, progress_tracker=progress
-    ) as loader:
-        # Load 2 years of data
-        start_date = "2022-01-01"
-
-        successful, failed = await loader.load_batch_symbols(
-            symbols, start_date, calculate_indicators=True, store_indicators=True
-        )
-
-        print(f"\nSector loading completed: {successful} successful, {failed} failed")
+    loader = TiingoDataLoader(checkpoint_file=f"{sector}_load_progress.json")
+    await loader.load_symbols(
+        symbols=symbols,
+        start_date="2022-01-01",
+        end_date=_today_iso(),
+        calculate_indicators=True,
+        run_screening=True,
+        max_concurrent=2,
+    )
+    print(f"{sector.title()} sector loading complete.")
 
 
-async def resume_interrupted_load():
-    """Demonstrate resuming from a checkpoint."""
+async def resume_interrupted_load() -> None:
+    """Demonstrate resuming from a checkpoint.
+
+    The loader transparently skips symbols already in the checkpoint file's
+    ``completed_symbols`` list, so resuming is just re-instantiating with the
+    same ``checkpoint_file`` and re-calling ``load_symbols``.
+    """
     checkpoint_file = "sample_load_progress.json"
 
-    if not os.path.exists(checkpoint_file):
+    if not await asyncio.to_thread(os.path.exists, checkpoint_file):
         print(f"No checkpoint file found: {checkpoint_file}")
         return
 
     print("Resuming from checkpoint...")
 
-    # Load progress
-    progress = ProgressTracker(checkpoint_file)
-    progress.load_checkpoint()
-
-    # Get remaining symbols (this would normally come from your original symbol list)
     all_symbols = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "ADBE"]
-    remaining_symbols = [s for s in all_symbols if s not in progress.completed_symbols]
 
-    if not remaining_symbols:
+    loader = TiingoDataLoader(checkpoint_file=checkpoint_file)
+    completed = set(loader.checkpoint_data.get("completed_symbols", []))
+    remaining = [s for s in all_symbols if s not in completed]
+
+    if not remaining:
         print("All symbols already completed!")
         return
 
-    print(f"Resuming with {len(remaining_symbols)} remaining symbols")
-
-    async with TiingoDataLoader(
-        batch_size=3, max_concurrent=2, progress_tracker=progress
-    ) as loader:
-        successful, failed = await loader.load_batch_symbols(
-            remaining_symbols,
-            "2023-01-01",
-            calculate_indicators=True,
-            store_indicators=True,
-        )
-
-        print(f"Resume completed: {successful} successful, {failed} failed")
-
-
-def print_database_stats():
-    """Print current database statistics."""
-    from maverick_mcp.data.models import (
-        MaverickStocks,
-        PriceCache,
-        Stock,
-        TechnicalCache,
+    print(f"Resuming with {len(remaining)} remaining symbols")
+    await loader.load_symbols(
+        symbols=remaining,
+        start_date="2023-01-01",
+        end_date=_today_iso(),
+        calculate_indicators=True,
+        run_screening=True,
+        max_concurrent=2,
     )
+    print("Resume complete.")
 
+
+def print_database_stats() -> None:
+    """Print current database statistics."""
     with SessionLocal() as session:
         stats = {
             "stocks": session.query(Stock).count(),
@@ -135,29 +123,25 @@ def print_database_stats():
             "maverick_stocks": session.query(MaverickStocks).count(),
         }
 
-        print("\n📊 Current Database Statistics:")
-        for key, value in stats.items():
-            print(f"   {key}: {value:,}")
+    print("\nCurrent Database Statistics:")
+    for key, value in stats.items():
+        print(f"   {key}: {value:,}")
 
 
-async def main():
+async def main() -> None:
     """Main demonstration function."""
     print("Tiingo Data Loader Examples")
     print("=" * 40)
 
-    # Check for API token
     if not os.getenv("TIINGO_API_TOKEN"):
-        print("❌ TIINGO_API_TOKEN environment variable not set")
+        print("TIINGO_API_TOKEN environment variable not set")
         print("Please set your Tiingo API token:")
         print("export TIINGO_API_TOKEN=your_token_here")
         return
 
-    print("✅ Tiingo API token found")
-
-    # Show current database stats
+    print("Tiingo API token found")
     print_database_stats()
 
-    # Menu of examples
     print("\nSelect an example to run:")
     print("1. Load sample stocks (5 symbols)")
     print("2. Load technology sector stocks (10 symbols)")
@@ -166,7 +150,8 @@ async def main():
     print("0. Exit")
 
     try:
-        choice = input("\nEnter your choice (0-4): ").strip()
+        raw_choice = await asyncio.to_thread(input, "\nEnter your choice (0-4): ")
+        choice = raw_choice.strip()
 
         if choice == "1":
             await load_sample_stocks()
@@ -183,7 +168,6 @@ async def main():
             print("Invalid choice")
             return
 
-        # Show updated stats
         print_database_stats()
 
     except KeyboardInterrupt:
