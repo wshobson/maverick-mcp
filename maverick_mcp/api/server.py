@@ -270,6 +270,13 @@ from maverick_mcp.config.logging_config import install_secrets_filter
 _secrets_filter = install_secrets_filter()
 
 
+# Shutdown flag consulted by readiness probes so load balancers can drain
+# traffic during graceful shutdown. Declared at module scope (rather than
+# inside the fastapi_app branch below) because _server_lifespan references
+# it at shutdown time, and the readiness custom_route handler uses it too.
+_shutdown_state: dict[str, bool] = {"shutting_down": False}
+
+
 # ---------------------------------------------------------------------------
 # ASGI lifespan — manages long-lived background tasks on the server's event loop.
 # This replaces the deprecated @app.on_event("startup") / ("shutdown") pattern.
@@ -316,36 +323,59 @@ _fastmcp_instance = FastMCP(
 )
 mcp = cast(FastMCPProtocol, _fastmcp_instance)
 
+
+# Register the structured readiness endpoint via FastMCP's custom_route so it
+# actually answers under streamable-http/SSE transports. (The legacy
+# mcp.fastapi_app.get("/health/ready", ...) below attaches to a FastAPI
+# sub-app that the streamable-http transport does not serve.) Startup
+# scripts and CI smoke tests poll this endpoint instead of grepping logs.
+if hasattr(_fastmcp_instance, "custom_route"):
+    from datetime import UTC as _UTC
+    from datetime import datetime as _datetime
+
+    from starlette.requests import Request as _Request
+    from starlette.responses import JSONResponse as _JSONResponse
+
+    @_fastmcp_instance.custom_route("/health/ready", methods=["GET"])
+    async def _health_ready_route(request: _Request) -> _JSONResponse:
+        """Readiness probe served under the MCP HTTP transport.
+
+        Returns 200 with `{"ready": true, "tools": N, ...}` once the tool
+        registry has entries and the server isn't draining for shutdown.
+        Returns 503 otherwise so orchestrators can gate traffic.
+        """
+        if _shutdown_state["shutting_down"]:
+            return _JSONResponse(
+                content={
+                    "ready": False,
+                    "reason": "server_shutting_down",
+                    "timestamp": _datetime.now(_UTC).isoformat(),
+                },
+                status_code=503,
+            )
+
+        tool_count = 0
+        try:
+            list_tools_fn = getattr(_fastmcp_instance, "list_tools", None)
+            if list_tools_fn is not None:
+                tools = await list_tools_fn()
+                tool_count = len(tools)
+        except Exception as tool_err:
+            logger.warning(f"Failed to enumerate MCP tools: {tool_err}")
+
+        ready = tool_count > 0
+        return _JSONResponse(
+            content={
+                "ready": ready,
+                "tools": tool_count,
+                "timestamp": _datetime.now(_UTC).isoformat(),
+            },
+            status_code=200 if ready else 503,
+        )
+
+
 # Initialize connection manager for stability
 connection_manager: "MCPConnectionManager | None" = None
-
-# TEMPORARILY DISABLED: MCP logging middleware - was breaking SSE transport
-# TODO: Fix middleware to work properly with SSE transport
-# logger.info("Adding comprehensive MCP logging middleware...")
-# try:
-#     from maverick_mcp.api.middleware.mcp_logging import add_mcp_logging_middleware
-#
-#     # Add logging middleware with debug mode based on settings
-#     include_payloads = settings.api.debug or settings.api.log_level.upper() == "DEBUG"
-#     import logging as py_logging
-#     add_mcp_logging_middleware(
-#         mcp,
-#         include_payloads=include_payloads,
-#         max_payload_length=3000,  # Larger payloads in debug mode
-#         log_level=getattr(py_logging, settings.api.log_level.upper())
-#     )
-#     logger.info("✅ MCP logging middleware added successfully")
-#
-#     # Add console notification
-#     print("🔧 MCP Server Enhanced Logging Enabled")
-#     print("   📊 Tool calls will be logged with execution details")
-#     print("   🔍 Protocol messages will be tracked for debugging")
-#     print("   ⏱️  Timeout detection and warnings active")
-#     print()
-#
-# except Exception as e:
-#     logger.warning(f"Failed to add MCP logging middleware: {e}")
-#     print("⚠️  Warning: MCP logging middleware could not be added")
 
 # Initialize monitoring and observability systems
 logger.info("Initializing monitoring and observability systems...")
@@ -409,10 +439,6 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
     from maverick_mcp.monitoring.health_check import HealthStatus, get_health_checker
 
     _health_checker = get_health_checker()
-
-    # Track whether the server is shutting down so readiness probes can drain traffic.
-    # Use a mutable container so nested functions can update the value without nonlocal.
-    _shutdown_state = {"shutting_down": False}
 
     @mcp.fastapi_app.get("/health", tags=["health"])
     async def docker_health_endpoint(request: Request) -> JSONResponse:
@@ -488,11 +514,25 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
                 HealthStatus.DEGRADED,
             )
 
-            ready = db_ok
+            # Structured tool-registration signal: count of registered MCP tools.
+            # Startup scripts and CI smoke tests poll this instead of grepping logs,
+            # which is brittle to log-message renames. FastMCP exposes list_tools()
+            # but FastMCPProtocol does not, so access via getattr.
+            tool_count = 0
+            try:
+                list_tools_fn = getattr(mcp, "list_tools", None)
+                if list_tools_fn is not None:
+                    tools = await list_tools_fn()
+                    tool_count = len(tools)
+            except Exception as tool_err:
+                logger.warning(f"Failed to enumerate MCP tools: {tool_err}")
+
+            ready = db_ok and tool_count > 0
             status_code = 200 if ready else 503
             return JSONResponse(
                 content={
                     "ready": ready,
+                    "tools": tool_count,
                     "dependencies": {
                         "database": db_component.status.value
                         if db_component
@@ -1617,12 +1657,11 @@ if __name__ == "__main__":
 
     logger.info(f"Starting {settings.app_name} simple stock analysis server")
 
-    # Add initialization delay for connection stability
-    import time
-
-    logger.info("Adding startup delay for connection stability...")
-    time.sleep(3)  # 3 second delay to ensure full initialization
-    logger.info("Startup delay completed, server ready for connections")
+    # Note: a 3-second `time.sleep` used to sit here "for connection stability".
+    # It was removed because tool registration and service-layer wiring both log
+    # completion before this point, and the sync sleep blocked uvicorn's port
+    # bind, causing flaky readiness detection in dev.sh. Readiness is now
+    # reported structurally via GET /health/ready (tools count + dependencies).
 
     # Use graceful shutdown handler
     with graceful_shutdown(f"{settings.app_name}-{args.transport}") as shutdown_handler:

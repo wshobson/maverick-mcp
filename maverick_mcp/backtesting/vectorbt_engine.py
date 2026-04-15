@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import itertools
+import random
 from typing import Any
 
 import numpy as np
@@ -11,7 +12,6 @@ import vectorbt as vbt
 from pandas import DataFrame, Series
 
 from maverick_mcp.backtesting.batch_processing import BatchProcessingMixin
-from maverick_mcp.utils.circuit_breaker import circuit_breaker
 from maverick_mcp.data.cache import (
     CacheManager,
     ensure_timezone_naive,
@@ -19,6 +19,7 @@ from maverick_mcp.data.cache import (
 )
 from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
 from maverick_mcp.utils.cache_warmer import CacheWarmer
+from maverick_mcp.utils.circuit_breaker import circuit_breaker
 from maverick_mcp.utils.data_chunking import DataChunker, optimize_dataframe_dtypes
 from maverick_mcp.utils.memory_profiler import (
     check_memory_leak,
@@ -197,6 +198,14 @@ class VectorBTEngine(BatchProcessingMixin):
         Wrapped in a circuit breaker so repeated upstream failures fast-fail
         instead of incurring retry latency across calls.
         """
+        # Exponential backoff + jitter. Jitter prevents a thundering-herd
+        # pattern when a batch of parallel backtests all hit a transient
+        # upstream blip at the same instant and retry in lockstep. Delay is
+        # capped to keep the tail latency bounded even if the caller bumps
+        # ``max_retries`` upward.
+        _BASE_DELAY_S = 0.1
+        _MAX_DELAY_S = 5.0
+
         last_error: Exception | None = None
         for attempt in range(max_retries):
             try:
@@ -206,7 +215,8 @@ class VectorBTEngine(BatchProcessingMixin):
             except (ConnectionError, TimeoutError) as e:
                 last_error = e
                 if attempt < max_retries - 1:
-                    delay = 0.1 * (2**attempt)
+                    base = min(_BASE_DELAY_S * (2**attempt), _MAX_DELAY_S)
+                    delay = base * random.uniform(0.5, 1.5)
                     logger.warning(
                         f"get_historical_data attempt {attempt + 1}/{max_retries} "
                         f"failed for {symbol}: {e}. Retrying in {delay:.2f}s"
