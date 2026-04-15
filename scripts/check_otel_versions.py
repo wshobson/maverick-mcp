@@ -23,8 +23,8 @@ Exit 0: aligned. Exit 1: drift detected (print the mismatch table).
 
 from __future__ import annotations
 
-import re
 import sys
+import tomllib
 from pathlib import Path
 
 # Stable packages that must track the same `1.X.Y`.
@@ -38,14 +38,16 @@ STABLE_PKGS = (
 
 LOCK_PATH = Path(__file__).resolve().parent.parent / "uv.lock"
 
-_BLOCK_RE = re.compile(
-    r'^name = "(?P<name>[^"]+)"\nversion = "(?P<version>[^"]+)"', re.MULTILINE
-)
 
+def parse_lockfile(lock_bytes: bytes) -> dict[str, str]:
+    """Return {package_name: version} for every [[package]] block in uv.lock.
 
-def parse_lockfile(lock_text: str) -> dict[str, str]:
-    """Return {package_name: version} for every [[package]] block in uv.lock."""
-    return {m["name"]: m["version"] for m in _BLOCK_RE.finditer(lock_text)}
+    Uses tomllib rather than a regex scan so that unusual formatting (e.g.
+    reordered keys, trailing comments, quoted names with escapes) cannot
+    silently drop a package from the drift check.
+    """
+    data = tomllib.loads(lock_bytes.decode("utf-8"))
+    return {pkg["name"]: pkg["version"] for pkg in data.get("package", [])}
 
 
 def main() -> int:
@@ -53,7 +55,7 @@ def main() -> int:
         print(f"ERROR: {LOCK_PATH} not found", file=sys.stderr)
         return 1
 
-    pins = parse_lockfile(LOCK_PATH.read_text())
+    pins = parse_lockfile(LOCK_PATH.read_bytes())
     found = {p: pins.get(p) for p in STABLE_PKGS}
 
     # proto-common only exists on modern otel (>=1.12). Absence is only a

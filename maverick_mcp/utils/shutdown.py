@@ -40,6 +40,21 @@ def _force_exit(exit_code: int) -> None:
 
     See docs/runbooks/asyncio-systemexit.md.
     """
+    # Flush Sentry if it's initialized. ``os._exit`` skips atexit handlers,
+    # which is how sentry-sdk normally drains its background transport — so
+    # without this call, events captured in the seconds before shutdown
+    # (including the cleanup-failure exception above) never reach Sentry.
+    # Guarded by a try/except since Sentry is an optional dependency and
+    # the shutdown path must not itself raise.
+    try:
+        import sentry_sdk
+
+        client = sentry_sdk.Hub.current.client
+        if client is not None:
+            sentry_sdk.flush(timeout=2.0)
+    except Exception:
+        pass
+
     logging.shutdown()
     try:
         sys.stdout.flush()

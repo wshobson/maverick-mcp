@@ -207,14 +207,20 @@ class HealthMonitor:
 
             # Alert on this process's CPU, not host-wide CPU. A noisy neighbor
             # on the host shouldn't trigger a service-level alert. Require the
-            # breach to persist for ALERT_THRESHOLDS["high_cpu_duration"]
-            # before firing, so single-reading spikes don't page anyone.
+            # breach to persist contiguously above ``_CPU_HIGH`` for
+            # ALERT_THRESHOLDS["high_cpu_duration"] before firing, so
+            # single-reading spikes don't page anyone.
             #
-            # Use hysteresis: set at > HIGH, clear at < LOW. Without it a
-            # CPU flapping at 79.9/80.1 resets ``_high_cpu_since`` on every
-            # dip and never fires the sustained-duration alert.
+            # Contiguous-above-HIGH semantics (no hysteresis band): any
+            # reading ≤ HIGH resets the breach clock. The previous
+            # "hold-in-band" behavior could fire a sustained alert after a
+            # single spike followed by long oscillation inside (LOW, HIGH],
+            # even though CPU was never contiguously high. We accept the
+            # trade-off that brief flapping at exactly 80% (79.9/80.1) may
+            # re-arm the clock each dip — that's a narrow failure mode and
+            # in practice such a workload is not "sustained high CPU"
+            # anyway, so a delayed page there is acceptable.
             _CPU_HIGH = 80
-            _CPU_LOW = 70
             if resource_usage.process_cpu_percent > _CPU_HIGH:
                 if self._high_cpu_since is None:
                     self._high_cpu_since = now
@@ -224,16 +230,13 @@ class HealthMonitor:
                     await self._handle_high_cpu_usage(
                         resource_usage.process_cpu_percent
                     )
-            elif resource_usage.process_cpu_percent < _CPU_LOW:
+            else:
                 self._high_cpu_since = None
-            # In the HYSTERESIS band (_CPU_LOW, _CPU_HIGH]: hold state —
-            # neither start nor reset the breach clock.
 
-            # Memory uses the same sustained-duration + hysteresis pattern.
+            # Memory uses the same contiguous-above-threshold pattern.
             # Host memory is fine to alert on because the process shares
             # that pool.
             _MEM_HIGH = 85
-            _MEM_LOW = 75
             if resource_usage.memory_percent > _MEM_HIGH:
                 if self._high_memory_since is None:
                     self._high_memory_since = now
@@ -241,7 +244,7 @@ class HealthMonitor:
                     "high_memory_duration"
                 ]:
                     await self._handle_high_memory_usage(resource_usage.memory_percent)
-            elif resource_usage.memory_percent < _MEM_LOW:
+            else:
                 self._high_memory_since = None
 
             # Disk fills slowly — a single reading above 90% is already actionable.

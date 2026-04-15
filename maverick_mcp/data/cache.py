@@ -1080,7 +1080,12 @@ class CacheManager:
                 # network blips to degrade to memory-cache delete below, but
                 # caller-induced programming errors (wrong key types, etc.)
                 # should still surface.
-                logger.warning(f"Error in batch delete from Redis: {e}")  # nosec B608 - false positive: this is a Redis error log, not a SQL query
+                # nosec B608 — false positive. Bandit's B608 heuristic is a
+                # regex that flags any string containing "delete from",
+                # including this Redis error-log message. There is no SQL
+                # here; the Redis client's ``delete`` method takes keys
+                # directly and the exception text is log output only.
+                logger.warning(f"Error in batch delete from Redis: {e}")  # nosec B608
 
         # Also delete from memory cache
         for key in keys:

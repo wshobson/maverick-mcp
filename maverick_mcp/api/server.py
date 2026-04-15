@@ -311,9 +311,19 @@ async def _server_lifespan(app: Any) -> AsyncIterator[None]:
     yield  # ── server is running ─────────────────────────────────────
 
     # ── shutdown ─────────────────────────────────────────────────────
+    # Drain window: flip readiness to 503 then sleep long enough for the
+    # load balancer to observe the state change and stop routing new
+    # traffic. 2s is fine for local dev; k8s deployments typically want
+    # terminationGracePeriodSeconds (30s+) minus a safety margin. Operators
+    # override via MAVERICK_SHUTDOWN_DRAIN_SECONDS.
     _shutdown_state["shutting_down"] = True
     logger.info("ASGI shutdown event: marking server as not-ready")
-    await _asyncio.sleep(2)  # give in-flight requests a brief window
+    try:
+        drain_seconds = float(os.getenv("MAVERICK_SHUTDOWN_DRAIN_SECONDS", "2"))
+    except ValueError:
+        drain_seconds = 2.0
+    drain_seconds = max(0.0, drain_seconds)
+    await _asyncio.sleep(drain_seconds)
     logger.info("ASGI shutdown cleanup complete")
 
 
@@ -378,6 +388,12 @@ if hasattr(_fastmcp_instance, "custom_route"):
             db_component = health_result.components.get("database")
             if db_component is not None:
                 db_status = db_component.status.value
+                # Readiness is a load-balancer drain signal, not a strict
+                # liveness check. DEGRADED (e.g. replica lag, slow query
+                # threshold) still serves traffic — removing the pod from
+                # the pool on every minor degradation would flap. Strict
+                # liveness lives on the legacy ``/health/ready`` below,
+                # which uses the same predicate today but could diverge.
                 db_ok = db_component.status in (
                     _HealthStatus.HEALTHY,
                     _HealthStatus.DEGRADED,
@@ -404,13 +420,13 @@ if hasattr(_fastmcp_instance, "custom_route"):
         # Server-side minimum-tools floor. A partial registration failure
         # (one router's import blowing up) can leave the process alive with,
         # say, 3 tools registered — curl against readiness would report 200.
-        # The default is sized below the actual registered-tool count
-        # (~95 across 11 routers per CLAUDE.md) but high enough that losing
-        # any single router drops us under the floor. Operators can override
-        # via ``MAVERICK_MIN_READY_TOOLS``; CI smoke tests pin the exact
-        # expected count. Bumping the default here is the one change that
-        # makes the gate non-vacuous without needing per-deploy env wiring.
-        min_tools_floor = max(1, int(os.getenv("MAVERICK_MIN_READY_TOOLS", "50")))
+        # The default is sized just below the actual registered-tool count
+        # (~95 across 11 routers per CLAUDE.md) so losing *any* router drops
+        # us under the floor. The previous default of 50 was loose enough
+        # that nearly half the tool surface could disappear unnoticed.
+        # Operators can override via ``MAVERICK_MIN_READY_TOOLS``; CI smoke
+        # tests pin the exact expected count.
+        min_tools_floor = max(1, int(os.getenv("MAVERICK_MIN_READY_TOOLS", "80")))
         tools_ok = tool_count >= min_tools_floor
         ready = db_ok and tools_ok
         return _JSONResponse(

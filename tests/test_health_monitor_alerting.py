@@ -117,6 +117,42 @@ async def test_sustained_process_cpu_fires_alert(
 
 
 @pytest.mark.asyncio
+async def test_in_band_reading_resets_cpu_clock(
+    monitor: HealthMonitor, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A reading ≤ CPU_HIGH resets the breach clock (no hysteresis band).
+
+    Regresses a bug where the prior (LOW, HIGH] hysteresis band held state,
+    so a single spike above 80 followed by long oscillation inside (70, 80]
+    could fire a "sustained high CPU" alert even though CPU was never
+    contiguously above HIGH for the duration window.
+    """
+    usage = {"process_cpu": 95.0}
+    monkeypatch.setattr(
+        "maverick_mcp.api.routers.health_enhanced._get_resource_usage",
+        lambda: _make_usage(process_cpu=usage["process_cpu"]),
+    )
+    handle = AsyncMock()
+    monkeypatch.setattr(monitor, "_handle_high_cpu_usage", handle)
+
+    # Spike above HIGH — clock starts.
+    await monitor._check_resource_usage()
+    assert monitor._high_cpu_since == 0.0
+
+    # Drop into the former hysteresis band (75% ∈ (70, 80]) — clock must reset.
+    usage["process_cpu"] = 75.0
+    monitor._now = 10.0  # type: ignore[attr-defined]
+    await monitor._check_resource_usage()
+    assert monitor._high_cpu_since is None
+
+    # Park in band past the duration window — still no alert.
+    monitor._now = ALERT_THRESHOLDS["high_cpu_duration"] + 100  # type: ignore[attr-defined]
+    await monitor._check_resource_usage()
+    handle.assert_not_called()
+    assert "high_cpu" not in monitor.alerts_sent
+
+
+@pytest.mark.asyncio
 async def test_recovery_clears_breach_tracker(
     monitor: HealthMonitor, monkeypatch: pytest.MonkeyPatch
 ) -> None:
