@@ -598,14 +598,23 @@ make test-watch           # Auto-run on changes
 
 # Using uv (recommended)
 uv run pytest                    # Manual pytest execution
-uv run pytest --cov=maverick_mcp # With coverage
+COVERAGE_CORE=sysmon uv run pytest --cov=maverick_mcp  # With coverage — see note below
 uv run pytest -m integration    # Integration tests (requires PostgreSQL/Redis)
 
 # Alternative: Direct pytest (if activated in venv)
 pytest                    # Manual pytest execution
-pytest --cov=maverick_mcp # With coverage
+COVERAGE_CORE=sysmon pytest --cov=maverick_mcp  # With coverage
 pytest -m integration    # Integration tests (requires PostgreSQL/Redis)
 ```
+
+> **`COVERAGE_CORE=sysmon` is required for `pytest --cov`.** The default
+> `sys.settrace`-based coverage core collides with `beartype`'s import
+> claw and crashes with `ImportError: cannot import name 'claw_state'
+> from partially initialized module 'beartype.claw._clawstate'`. Switching
+> to PEP 669 monitoring via `COVERAGE_CORE=sysmon` sidesteps the race and
+> is 2–5× faster. `make test-cov` sets it automatically; direct `pytest
+> --cov` invocations need the env var explicitly. Requires Python ≥ 3.12
+> and coverage ≥ 7.4, both already in our pins.
 
 ### Code Quality
 

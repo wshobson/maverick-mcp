@@ -125,7 +125,17 @@ def setup_intelligent_backtesting_tools(mcp):
                 "message": "Quick market analysis failed. Please check symbol and date range.",
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Describe the characteristics of a market regime label "
+            "(trending_up, choppy, high_vol, etc.) and list which "
+            "strategies historically perform well in it. Use to teach "
+            "the user what the intelligent-backtesting regime classifier "
+            "is doing; for the actual classification on live data use "
+            "``analyze_market_regime``. Returns {regime, characteristics, "
+            "suitable_strategies: [{name, rationale}], example_periods}."
+        )
+    )
     async def explain_market_regime(
         ctx: Context,
         regime: str,

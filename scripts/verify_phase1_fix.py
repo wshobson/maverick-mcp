@@ -108,19 +108,53 @@ def main() -> int:
         session.commit()
         print(f"CLOBBERED {ticker} @ {target_date} close -> {_SENTINEL}")
 
-        # 2. Invoke the provider — lazy import so this script runs with
-        #    a minimal env when the DB is fine but the provider stack
-        #    isn't (e.g. no TIINGO_API_KEY).
+        # 2. Invoke the provider with ``use_cache=False`` so the smart-cache
+        #    short-circuit is bypassed and yfinance is always hit. The
+        #    returned DataFrame flows back into ``_cache_price_data`` which
+        #    calls ``bulk_insert_price_data`` — that is exactly the upsert
+        #    path under test. Without ``use_cache=False`` we're at yfinance's
+        #    mercy for whether the guard's chosen date happens to overlap
+        #    with the clobbered date (and yfinance can return empty for
+        #    single-day requests right at a session boundary).
         from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
 
         provider = EnhancedStockDataProvider()
-        # Request a range that includes target_date. The freshness guard
-        # in the smart-cache path will always re-fetch the most recent
-        # completed trading session; a direct-range request is even
-        # surer.
-        start = (target_date - timedelta(days=2)).strftime("%Y-%m-%d")
+        # Request a multi-day range that includes target_date. A range of
+        # at least 5 calendar days works across weekends and holidays.
+        start = (target_date - timedelta(days=7)).strftime("%Y-%m-%d")
         end = (target_date + timedelta(days=1)).strftime("%Y-%m-%d")
-        provider.get_stock_data(ticker, start_date=start, end_date=end)
+        fetched = provider.get_stock_data(
+            ticker, start_date=start, end_date=end, use_cache=False
+        )
+        if fetched is None or fetched.empty:
+            print(
+                f"SKIP: yfinance returned no data for {ticker} in {start}..{end}. "
+                f"Cannot verify upsert without upstream data; try again later "
+                f"or pick a more-liquid ticker with --ticker."
+            )
+            # Restore the clobbered value so the cache isn't left poisoned
+            # by a SKIP run.
+            session.execute(
+                text(
+                    "UPDATE mcp_price_cache SET close_price = :orig "
+                    "WHERE date = :target_date "
+                    "AND stock_id = (SELECT stock_id FROM mcp_stocks WHERE ticker_symbol = :ticker)"
+                ),
+                {
+                    "orig": original_close,
+                    "target_date": target_date,
+                    "ticker": ticker,
+                },
+            )
+            session.commit()
+            return 0
+
+        # Persist the fetch into PriceCache — ``use_cache=False`` bypasses
+        # the smart-cache on the read path but still writes through on the
+        # way back (see EnhancedStockDataProvider._cache_price_data).
+        from maverick_mcp.data.models import bulk_insert_price_data
+
+        bulk_insert_price_data(session, ticker, fetched)
 
         # 3. Re-read the row.
         session.expire_all()

@@ -1,0 +1,72 @@
+name: Dependency Smoke Test
+
+# Catches split-version lockfile regressions that only manifest at import time.
+# See docs/runbooks/otel-protobuf-crash.md for the motivating incident.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/dep-smoke.yml"
+      - "scripts/check_otel_versions.py"
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/workflows/dep-smoke.yml"
+      - "scripts/check_otel_versions.py"
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Import smoke & lockfile assertions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies (all extras, frozen)
+        run: uv sync --all-extras --frozen
+
+      - name: Lockfile assertion — otel versions aligned
+        run: uv run --no-sync python scripts/check_otel_versions.py
+
+      - name: Import smoke test — chromadb + otel + vector_store
+        run: |
+          uv run --no-sync python - <<'PY'
+          from chromadb.auth.token_authn import TokenTransportHeader  # noqa: F401
+          from opentelemetry.proto.common.v1 import common_pb2  # noqa: F401
+          from maverick_mcp.data.vector_store import get_vector_store  # noqa: F401
+          from maverick_mcp.api.routers.tool_registry import (  # noqa: F401
+              register_all_router_tools,
+          )
+          print("import smoke OK")
+          PY
+
+      # Dependency vulnerability gate against the actually-resolved set.
+      # Running pip-audit against ``uv export`` (which includes every
+      # transitive pin) means a PR that drags in a CVE via a dependency
+      # bump fails this smoke check. No user-supplied input is reflected
+      # into any shell command here; all inputs are static file paths and
+      # tool flags.
+      - name: Install pip-audit
+        run: uv tool install pip-audit
+
+      - name: Dependency vulnerability audit
+        run: |
+          uv export --frozen --no-dev --format requirements-txt -o /tmp/resolved.txt
+          uv tool run pip-audit \
+            --strict \
+            --requirement /tmp/resolved.txt \
+            --disable-pip

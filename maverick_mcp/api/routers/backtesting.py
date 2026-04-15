@@ -229,7 +229,17 @@ def setup_backtesting_tools(mcp):
 
         return results
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Grid-search a single strategy's parameters over a date range "
+            "and report the best-performing configuration by a chosen "
+            "metric (default sharpe_ratio). Use when the user knows which "
+            "strategy to use and wants to tune it — distinct from "
+            "``compare_strategies`` (tests different strategies) and "
+            "``walk_forward_analysis`` (adds out-of-sample robustness). "
+            "Returns {best_params, best_metric, top_n, all_results}."
+        )
+    )
     @with_structured_logging(
         "optimize_strategy", include_performance=True, log_params=True
     )
@@ -288,7 +298,17 @@ def setup_backtesting_tools(mcp):
 
         return results
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Walk-forward (rolling-window) validation of a strategy. "
+            "Refits on each training window and scores on the immediate "
+            "out-of-sample window, reducing overfitting risk vs a single "
+            "``optimize_strategy`` grid. Pick this when the user asks "
+            "'does this strategy hold up out-of-sample'. Returns "
+            "{windows, out_of_sample_metrics, robustness_score, "
+            "parameter_stability}."
+        )
+    )
     async def walk_forward_analysis(
         ctx: Context,
         symbol: str,
@@ -339,7 +359,17 @@ def setup_backtesting_tools(mcp):
 
         return results
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Bootstrap / Monte Carlo resampling of a backtest's trade "
+            "stream to produce confidence intervals on Sharpe, max "
+            "drawdown, and terminal equity. Use when the user asks "
+            "'how stable are these results' or 'what's the worst case' "
+            "— it tells you how much of the headline Sharpe is luck. "
+            "Returns {iterations, metrics: {sharpe, max_drawdown, "
+            "return}: {mean, p5, p50, p95, std}}."
+        )
+    )
     async def monte_carlo_simulation(
         ctx: Context,
         symbol: str,
@@ -426,7 +456,17 @@ def setup_backtesting_tools(mcp):
 
         return mc_results
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Run multiple named strategies on the same symbol + date "
+            "range and return side-by-side metrics, ranked by a chosen "
+            "metric. Use when the user hasn't decided which strategy to "
+            "use — distinct from ``optimize_strategy`` (tunes ONE "
+            "strategy's params). Returns {strategies: [{name, params, "
+            "metrics: {sharpe, total_return, max_drawdown, win_rate}}], "
+            "ranked_by}."
+        )
+    )
     async def compare_strategies(
         ctx: Context,
         symbol: str,
@@ -485,7 +525,17 @@ def setup_backtesting_tools(mcp):
 
         return comparison
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Enumerate every built-in strategy the backtesting engine "
+            "supports (sma_cross, rsi_mean_reversion, bollinger_bands, ML "
+            "variants, etc.) with their tunable parameters and default "
+            "values. Use this first when the user asks 'what strategies "
+            "are available' or when the LLM needs a canonical list before "
+            "picking one for a downstream backtest call. Returns "
+            "{strategies: [{name, description, parameters}]}."
+        )
+    )
     async def list_strategies(ctx: Context) -> dict[str, Any]:
         """List all available VectorBT strategies with descriptions.
 
@@ -539,7 +589,16 @@ def setup_backtesting_tools(mcp):
                 "message": "Could not fully parse strategy, using defaults",
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Apply one strategy across a basket of symbols with equal "
+            "capital allocation and aggregate the results as if the user "
+            "held them as a portfolio. Use for multi-symbol hypotheses "
+            "('does this strategy work on the Mag 7'); for single-symbol "
+            "use ``run_backtest``. Returns {portfolio_metrics, "
+            "per_symbol: {sym: metrics}, correlations, aggregate_equity}."
+        )
+    )
     async def backtest_portfolio(
         ctx: Context,
         symbols: StrList,
@@ -654,7 +713,15 @@ def setup_backtesting_tools(mcp):
             "summary": f"Portfolio backtest of {len(portfolio_results)} symbols with {strategy} strategy",
         }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Render a standard set of visualisations for a completed "
+            "backtest — equity curve, drawdown, trade distribution, "
+            "rolling Sharpe. Follow-on to ``run_backtest``; use for "
+            "presenting results, not for hypothesis-testing. Returns "
+            "{charts: {equity, drawdown, trades, returns}: base64_png}."
+        )
+    )
     async def generate_backtest_charts(
         ctx: Context,
         symbol: str,
@@ -725,7 +792,15 @@ def setup_backtesting_tools(mcp):
 
         return charts
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Render heatmaps / 3-D surfaces of a grid-search result so "
+            "the user can see the shape of the parameter landscape (are "
+            "we on a plateau or a cliff?). Follow-on to "
+            "``optimize_strategy``. Returns {charts: {heatmap, "
+            "surface_3d, parameter_sensitivity}: base64_png}."
+        )
+    )
     async def generate_optimization_charts(
         ctx: Context,
         symbol: str,
@@ -775,7 +850,16 @@ def setup_backtesting_tools(mcp):
 
     # ============ ML-ENHANCED STRATEGY TOOLS ============
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Backtest one of the ML-enhanced strategies (adaptive, "
+            "ensemble, regime-aware). Heavier than ``run_backtest`` — "
+            "requires sklearn/xgboost-backed training — so reserve for "
+            "when the user explicitly wants ML, not for vanilla indicator "
+            "strategies. Returns {strategy_type, metrics, trades, "
+            "feature_importance (if available), training_diagnostics}."
+        )
+    )
     async def run_ml_strategy_backtest(
         ctx: Context,
         symbol: str,

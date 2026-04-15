@@ -169,13 +169,18 @@ check-otel-versions:
 	@echo "Checking OpenTelemetry package versions are aligned in uv.lock..."
 	@uv run --no-sync python scripts/check_otel_versions.py
 
-# Warning-only lint surfaces. Exit 0 today so they surface gaps without
-# breaking merges; flip to --strict once the audit roadmap (Phase 2 for
-# descriptions, Phase 3 for router consolidation) has closed the backlog.
+# check-mcp-descriptions is now --strict: Phase 2.1 of the audit
+# roadmap cleared the backlog, so new tools must ship with a
+# description= kwarg or a >=8-word docstring first line. Adding an
+# undocumented @mcp.tool will fail `make check`.
 check-mcp-descriptions:
 	@echo "Checking MCP @mcp.tool decorators have useful description= ..."
-	@uv run python scripts/check_mcp_descriptions.py
+	@uv run python scripts/check_mcp_descriptions.py --strict
 
+# check-router-variants stays warning-only until Phase 3 consolidation
+# lands — removing --strict prematurely would fail CI on every commit
+# while the four known variant groups still exist. See
+# docs/audit/follow-ups.md items 3.1–3.4.
 check-router-variants:
 	@echo "Checking router-variant sprawl (_enhanced/_parallel/_ddd/_pipeline)..."
 	@uv run python scripts/check_router_variants.py

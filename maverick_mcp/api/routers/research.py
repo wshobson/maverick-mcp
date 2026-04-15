@@ -1040,7 +1040,18 @@ def create_research_router(mcp: FastMCP | None = None) -> FastMCP:
                 "timestamp": datetime.now().isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Full-depth research on a single public company: "
+            "fundamentals, recent news, sentiment, competitive "
+            "position, catalysts — synthesised into an investable "
+            "thesis with credibility-ranked sources. Heavier sibling of "
+            "``research_company``; reserve for 'I'm about to make a "
+            "trade on this name' queries. Returns {symbol, thesis, "
+            "fundamentals, news_analysis, sentiment, risks, sources: "
+            "[{url, credibility_score}]}."
+        )
+    )
     async def research_company_comprehensive(
         symbol: str,
         include_competitive_analysis: bool = False,

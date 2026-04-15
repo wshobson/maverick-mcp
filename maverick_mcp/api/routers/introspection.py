@@ -380,7 +380,17 @@ def register_introspection_tools(mcp: FastMCP) -> None:
 
         return strategies  # Return array
 
-    @mcp.tool(name="get_strategy_help")
+    @mcp.tool(
+        name="get_strategy_help",
+        description=(
+            "Long-form help text for ONE named strategy: what it does, "
+            "parameter semantics, when it works well, known failure "
+            "modes. Use when the user asks 'how does strategy X work' "
+            "— for the catalog of all strategies use ``list_strategies``. "
+            "Returns {strategy_type, overview, parameters: [{name, type, "
+            "default, description}], best_regimes, failure_modes}."
+        ),
+    )
     async def get_strategy_help(strategy_type: str) -> dict[str, Any]:
         """
         Get detailed help for a specific strategy.

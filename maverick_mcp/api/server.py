@@ -874,7 +874,15 @@ async def get_user_portfolio_summary() -> dict[str, Any]:
     }
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Sample hand-curated watchlist with live quotes. Distinct from "
+        "``watchlist_brief`` / the user's personal watchlists — this is "
+        "the built-in demo basket. Use when the user asks 'what's on the "
+        "watchlist' with no named list. Returns {count, stocks: [{symbol, "
+        "price, change, change_pct, volume}]}."
+    )
+)
 async def get_watchlist(limit: int = 20) -> dict[str, Any]:
     """
     Get sample watchlist with real-time stock data.
@@ -1002,7 +1010,15 @@ async def get_market_overview() -> dict[str, Any]:
         return {"error": str(e), "status": "error"}
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Upcoming US economic events (CPI, NFP, FOMC, etc.) over the "
+        "next N days with consensus vs. prior. Use for macro-aware "
+        "trade planning — NOT for earnings (see "
+        "``get_upcoming_catalysts`` for company-level catalysts). "
+        "Returns {events: [{date, event, consensus, prior, importance}]}."
+    )
+)
 async def get_economic_calendar(days_ahead: int = 7) -> dict[str, Any]:
     """
     Get upcoming economic events and indicators.
@@ -1086,7 +1102,16 @@ async def get_mcp_connection_status() -> dict[str, Any]:
 # --- Phase 1: Core Analysis & Screening ---
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Relative Strength Index analysis: current RSI, overbought/"
+        "oversold signal, divergence detection, and recent peaks/"
+        "troughs. Use when the user asks about RSI specifically — for "
+        "MACD use ``get_macd_analysis`` and for a full indicator battery "
+        "use ``get_full_technical_analysis``. Returns {ticker, current_rsi, "
+        "signal: 'overbought'|'oversold'|'neutral', divergence, recent}."
+    )
+)
 async def get_rsi_analysis(
     ticker: str, period: int = 14, days: int = 365
 ) -> dict[str, Any]:
@@ -1102,7 +1127,16 @@ async def get_rsi_analysis(
     return await _fn(ticker, period, days)
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Moving Average Convergence Divergence analysis: MACD line, "
+        "signal line, histogram, crossover events, and divergence "
+        "against price. Use for trend-change hypotheses — complements "
+        "``get_rsi_analysis`` (momentum) and ``get_support_resistance`` "
+        "(structure). Returns {ticker, macd, signal, histogram, "
+        "crossover: 'bullish'|'bearish'|None, divergence}."
+    )
+)
 async def get_macd_analysis(
     ticker: str,
     fast_period: int = 12,
@@ -1124,7 +1158,16 @@ async def get_macd_analysis(
     return await _fn(ticker, fast_period, slow_period, signal_period, days)
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Algorithmically-detected support and resistance price levels "
+        "with strength scores and recent touches. Use for entry/exit "
+        "planning and stop-loss placement; does NOT predict direction "
+        "(use RSI/MACD for that). Returns {ticker, levels: [{price, "
+        "type: 'support'|'resistance', strength, recent_touches}], "
+        "nearest_support, nearest_resistance}."
+    )
+)
 async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]:
     """Get key support and resistance price levels.
 
@@ -1137,7 +1180,16 @@ async def get_support_resistance(ticker: str, days: int = 365) -> dict[str, Any]
     return await _fn(ticker, days)
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Pre-computed bullish-momentum screen from the seeded S&P 500 "
+        "database. Use for 'what's showing strong momentum right now'; "
+        "see ``get_maverick_bear_recommendations`` for the short-side "
+        "equivalent and ``get_trending_breakout_recommendations`` for "
+        "breakout patterns. Returns {stocks: [{symbol, combined_score, "
+        "momentum_score, pattern, squeeze_status}], as_of_date}."
+    )
+)
 async def get_maverick_stocks(limit: int = 20) -> dict[str, Any]:
     """Screen S&P 500 for bullish momentum setups.
 
@@ -1208,7 +1260,16 @@ async def get_maverick_bear_stocks(limit: int = 20) -> dict[str, Any]:
     return await asyncio.to_thread(_fn, limit)
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Pre-computed screen for stocks in confirmed accumulation/"
+        "breakout phases (Stan Weinstein stage-2-like patterns) from the "
+        "seeded S&P 500 universe. Use for trend-following / breakout "
+        "trade ideas; distinct from ``get_maverick_stocks`` which ranks "
+        "by general momentum. Returns {stocks: [{symbol, breakout_type, "
+        "stage, volume_confirmation}], as_of_date}."
+    )
+)
 async def get_supply_demand_breakouts(
     limit: int = 20, filter_moving_averages: bool = False
 ) -> dict[str, Any]:
@@ -1276,7 +1337,16 @@ async def add_portfolio_position(
     )
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Remove some or all shares of a ticker from the persisted "
+        "portfolio (cost-basis-tracked). Pass ``shares`` to sell a "
+        "partial lot; omit to close the position entirely. Use "
+        "``portfolio_clear_portfolio`` to wipe the whole portfolio. "
+        "Returns {status, removed: {ticker, shares, remaining_shares, "
+        "realized_pnl}}."
+    )
+)
 async def remove_portfolio_position(
     ticker: str, shares: float | None = None
 ) -> dict[str, Any]:
@@ -1299,7 +1369,16 @@ async def remove_portfolio_position(
     )
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Pearson correlation matrix across the user's current portfolio "
+        "holdings — auto-pulled from the persisted positions, no ticker "
+        "list required. Use for diversification checks ('am I all in "
+        "one factor?'). For ad-hoc baskets use ``compare_tickers``. "
+        "Returns {tickers, correlation_matrix, highly_correlated_pairs: "
+        "[{ticker_a, ticker_b, r}], mean_correlation}."
+    )
+)
 async def portfolio_correlation_analysis(days: int = 252) -> dict[str, Any]:
     """Analyze correlation between all portfolio holdings.
 
@@ -1323,7 +1402,16 @@ async def portfolio_correlation_analysis(days: int = 252) -> dict[str, Any]:
     )
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "Side-by-side comparison of 2+ tickers on technicals and returns "
+        "over a chosen window. If ``tickers`` is None, falls back to "
+        "the user's portfolio so the LLM can answer 'compare my "
+        "holdings'. For pure correlation use "
+        "``portfolio_correlation_analysis``. Returns {period, tickers, "
+        "comparison: {ticker: {return_pct, rsi, trend, volatility, ...}}}."
+    )
+)
 async def compare_tickers(
     tickers: list[str] | None = None, days: int = 90
 ) -> dict[str, Any]:
@@ -1408,7 +1496,16 @@ async def get_stock_info(ticker: str) -> dict[str, Any]:
     return await asyncio.to_thread(_fn, ticker)
 
 
-@mcp.tool()
+@mcp.tool(
+    description=(
+        "News sentiment roll-up for a ticker over a recent window: "
+        "bullish/bearish/neutral share, top headlines, article count. "
+        "For free-text research use ``research_company`` / "
+        "``research_comprehensive``; this is a fast numeric snapshot "
+        "suitable for dashboards. Returns {ticker, period_days, sentiment: "
+        "{score, bullish_pct, bearish_pct, neutral_pct}, top_articles}."
+    )
+)
 async def get_news_sentiment(
     ticker: str, timeframe: str = "7d", limit: int = 10
 ) -> dict[str, Any]:

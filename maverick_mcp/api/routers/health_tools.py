@@ -21,7 +21,16 @@ settings = get_settings()
 def register_health_tools(mcp: FastMCP):
     """Register all health monitoring tools with the MCP server."""
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Aggregated health snapshot for the MaverickMCP server: overall "
+            "status plus every component's individual status, the circuit "
+            "breaker roll-up, and current resource usage. Use when the user "
+            "asks 'is everything working' or before a long-running operation. "
+            "Returns {status, data: {status, components, resource_usage, "
+            "circuit_breakers, performance_metrics}, timestamp}."
+        )
+    )
     async def get_system_health() -> dict[str, Any]:
         """
         Get comprehensive system health status.
@@ -107,7 +116,16 @@ def register_health_tools(mcp: FastMCP):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Circuit-breaker state across every external-API-guarded path "
+            "(yfinance, Tiingo listing, OpenRouter, Exa search). Use when "
+            "users report flaky upstream errors or before kicking off a "
+            "parallel research / backtesting run. Returns {status, data: "
+            "{breaker_name: {state, metrics, failure_rate}}, summary: "
+            "{total_breakers, states: {closed, open, half_open}}}."
+        )
+    )
     async def get_circuit_breaker_status() -> dict[str, Any]:
         """
         Get status of all circuit breakers.
@@ -157,7 +175,18 @@ def register_health_tools(mcp: FastMCP):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Current server resource utilisation (CPU, RAM, disk). Measures "
+            "both host-wide CPU and the server's own process CPU — alerts "
+            "use the process metric to ignore noisy-neighbor spikes. Use "
+            "when users ask 'is the server overloaded' or before a "
+            "memory-heavy backtest/research call. Returns {status, data: "
+            "{cpu_percent, process_cpu_percent, memory_percent, disk_percent, "
+            "memory_used_mb, disk_used_gb}, alerts: {high_cpu, high_memory, "
+            "high_disk}}."
+        )
+    )
     async def get_resource_usage() -> dict[str, Any]:
         """
         Get current system resource usage.
@@ -192,7 +221,16 @@ def register_health_tools(mcp: FastMCP):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Full status-dashboard snapshot: health + performance + active "
+            "alerts + recent historical trends, in one call. Heavier than "
+            "``get_system_health`` — pick it when the user wants a full "
+            "operational picture rather than a yes/no health check. Returns "
+            "{status, data: {health, performance, alerts, historical}, "
+            "timestamp}."
+        )
+    )
     async def get_status_dashboard() -> dict[str, Any]:
         """
         Get comprehensive status dashboard data.
@@ -222,7 +260,16 @@ def register_health_tools(mcp: FastMCP):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Manually close (reset) one named circuit breaker after the "
+            "user has confirmed the upstream is healthy. Narrow surgical "
+            "action — prefer resolving the upstream issue over resetting. "
+            "Use ``get_circuit_breaker_status`` first to enumerate open "
+            "breakers. Returns {status, message | error, breaker_name, "
+            "timestamp}."
+        )
+    )
     async def reset_circuit_breaker(breaker_name: str) -> dict[str, Any]:
         """
         Reset a specific circuit breaker.
@@ -263,7 +310,16 @@ def register_health_tools(mcp: FastMCP):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Rolling time-series of the last 24h of health snapshots — "
+            "useful for 'what changed recently' investigations. For a "
+            "point-in-time snapshot pick ``get_system_health`` instead. "
+            "Returns {status, data: {monitoring_status, historical_data: "
+            "{data: [...], summary: {timespan_hours}}, trends: {data_points, "
+            "timespan_hours}}}."
+        )
+    )
     async def get_health_history() -> dict[str, Any]:
         """
         Get historical health data for trend analysis.
@@ -310,7 +366,16 @@ def register_health_tools(mcp: FastMCP):
                 "timestamp": datetime.now(UTC).isoformat(),
             }
 
-    @mcp.tool()
+    @mcp.tool(
+        description=(
+            "Run the full diagnostic sweep — checks every component, every "
+            "circuit breaker, resource usage — and returns actionable "
+            "recommendations ranked by severity. Heaviest health tool; use "
+            "when an issue needs a write-up rather than a glance. Returns "
+            "{status, data: {health, circuit_breakers, monitoring, "
+            "recommendations: [{type, severity, message, action}]}}."
+        )
+    )
     async def run_health_diagnostics() -> dict[str, Any]:
         """
         Run comprehensive health diagnostics.

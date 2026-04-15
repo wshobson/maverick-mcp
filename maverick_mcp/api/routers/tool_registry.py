@@ -634,7 +634,18 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     return {"error": f"Temporary error, please retry: {e}"}
                 raise
 
-        @mcp.tool(name="agents_compare_personas_analysis")
+        @mcp.tool(
+            name="agents_compare_personas_analysis",
+            description=(
+                "Run the same query across multiple investor personas "
+                "(conservative, aggressive, value, growth, day-trader) "
+                "and return side-by-side analyses so the user can see "
+                "how framing changes conclusions. Use when the user asks "
+                "'how would different investors see this'. Returns "
+                "{query, personas: [{persona, analysis, recommendation, "
+                "risk_assessment}]}."
+            ),
+        )
         async def _agents_compare_personas_analysis(
             query: str, session_id: str | None = None
         ) -> dict:
@@ -686,7 +697,19 @@ def register_agent_tools(mcp: FastMCP) -> None:
                     return {"error": f"Temporary error, please retry: {e}"}
                 raise
 
-        @mcp.tool(name="agents_orchestrated_analysis")
+        @mcp.tool(
+            name="agents_orchestrated_analysis",
+            description=(
+                "Multi-agent supervisor pattern: spawns specialist agents "
+                "(technical, macro, sentiment, fundamental), coordinates "
+                "their work, and synthesises a unified recommendation "
+                "with confidence + cost telemetry. Use for 'full "
+                "workup' queries on a single ticker; simpler alternative "
+                "is ``research_comprehensive``. Returns {query, "
+                "synthesis, agent_outputs: [{agent, findings, "
+                "confidence}], cost_tracking, execution_time_s}."
+            ),
+        )
         async def _agents_orchestrated_analysis(
             query: str,
             persona: str = "moderate",
@@ -1024,7 +1047,19 @@ def register_research_tools(mcp: FastMCP) -> None:
 
         # Enhanced company research (imported above)
 
-        @mcp.tool(name="research_company_comprehensive")
+        @mcp.tool(
+            name="research_company_comprehensive",
+            description=(
+                "Deep, multi-source research on a single company: "
+                "fundamentals, news, sentiment, competitive position, "
+                "recent catalysts — synthesised into a structured report. "
+                "Heavier than ``research_company`` (broader sources, more "
+                "LLM passes). Adaptive timeout 120-600s depending on "
+                "depth. Returns {symbol, company_overview, "
+                "fundamentals, news_analysis, sentiment, risks, "
+                "investment_thesis, sources: [{url, credibility}]}."
+            ),
+        )
         async def research_company_comprehensive(
             symbol: str,
             include_competitive_analysis: bool = False,
@@ -1213,7 +1248,18 @@ def register_decision_log_tools(mcp: FastMCP) -> None:
     """Register decision audit trail tools directly on main server."""
     from maverick_mcp.utils.decision_logger import decision_logger
 
-    @mcp.tool(name="get_decision_log")
+    @mcp.tool(
+        name="get_decision_log",
+        description=(
+            "Audit trail of agent reasoning steps: every decision the "
+            "orchestrator made, the inputs it considered, the model "
+            "output, and the cost. Use for post-mortems when the user "
+            "asks 'why did the agent pick X' or 'why did this cost so "
+            "much'. Filterable by session_id and time range. Returns "
+            "{entries: [{timestamp, session_id, agent, decision, "
+            "rationale, cost_usd}]}."
+        ),
+    )
     def get_decision_log(
         session_id: str | None = None,
         limit: int = 20,
