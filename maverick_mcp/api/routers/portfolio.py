@@ -17,6 +17,7 @@ import pandas_ta as ta
 from fastmcp import FastMCP
 from sqlalchemy.orm import Session
 
+from maverick_mcp.api.routers._error_handling import tool_error_response
 from maverick_mcp.data.models import PortfolioPosition, UserPortfolio, get_db
 from maverick_mcp.domain.portfolio import Portfolio
 from maverick_mcp.providers.stock_data import StockDataProvider
@@ -237,8 +238,7 @@ def risk_adjusted_analysis(
 
         return analysis
     except Exception as e:
-        logger.error(f"Error performing risk analysis for {ticker}: {e}")
-        return {"error": str(e)}
+        return tool_error_response("risk_adjusted_analysis", e, logger)
 
 
 def compare_tickers(

@@ -330,6 +330,43 @@ class TestCircuitBreakerDecorator:
         with pytest.raises(CircuitBreakerError):
             await async_test_func()
 
+    @pytest.mark.asyncio
+    async def test_decorator_recognises_wrapped_coroutine(self):
+        """Decorator must use ``inspect.iscoroutinefunction`` (not
+        ``asyncio.iscoroutinefunction``) so a ``@functools.wraps``-decorated
+        coroutine is still routed to the async wrapper.
+
+        Regression guard: the original code used
+        ``asyncio.iscoroutinefunction`` which returns ``False`` for a
+        coroutine wrapped with ``functools.wraps``, silently collapsing the
+        decorator to the sync path (which returns a coroutine object instead
+        of awaiting it).
+        """
+        import functools
+        import inspect
+
+        def passthrough(func):
+            @functools.wraps(func)
+            async def inner(*args, **kwargs):
+                return await func(*args, **kwargs)
+
+            return inner
+
+        @circuit_breaker(name="wrapped_coro_test", failure_threshold=3)
+        @passthrough
+        async def wrapped_async() -> str:
+            return "ok"
+
+        # If the decorator misdetected the function as sync, the sync wrapper
+        # would return a coroutine object and we'd have to await twice. Assert
+        # a single await yields the expected string directly.
+        result = await wrapped_async()
+        assert result == "ok"
+        assert not inspect.iscoroutine(result), (
+            "Expected awaited string, got a coroutine — decorator collapsed "
+            "to sync path for a wrapped coroutine"
+        )
+
 
 class TestCircuitBreakerRegistry:
     """Test global circuit breaker registry."""

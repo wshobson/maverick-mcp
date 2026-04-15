@@ -1075,7 +1075,11 @@ class CacheManager:
                 deleted_result = client.delete(*keys)
                 deleted_count = cast(int, deleted_result)
                 logger.debug(f"Batch deleted {deleted_count} keys from Redis cache")
-            except Exception as e:
+            except (redis.RedisError, ConnectionError, TimeoutError, OSError) as e:
+                # Narrowed from bare ``Exception``: we want Redis outages /
+                # network blips to degrade to memory-cache delete below, but
+                # caller-induced programming errors (wrong key types, etc.)
+                # should still surface.
                 logger.warning(f"Error in batch delete from Redis: {e}")  # nosec B608 - false positive: this is a Redis error log, not a SQL query
 
         # Also delete from memory cache

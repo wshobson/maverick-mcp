@@ -145,3 +145,84 @@ def test_smart_cache_guard_returns_fresh_over_stale_cached_row(
         "keep='last' must retain the freshly-fetched row over the stale cached row"
     )
     assert deduped.loc[target, "Volume"] == 100_000
+
+
+def test_smart_cache_end_to_end_serves_fresh_row_after_stale_cache(
+    provider: EnhancedStockDataProvider,
+) -> None:
+    """End-to-end: drive ``_get_data_with_smart_cache`` with a stale cached
+    row for the most-recent session + a fresh yfinance row, and assert the
+    value RETURNED to the caller (not just what the DB sees) carries the
+    fresh Close.
+
+    This is stronger than the dedup-semantics test above because it exercises
+    the actual ordering of ``all_dfs`` assembly and the freshness-guard
+    short-circuit. A refactor that swaps concat order or re-orders the
+    missing-ranges list would pass the focused dedup test but fail here.
+    """
+    start = "2026-04-01"
+    end = "2026-04-08"
+    target = pd.Timestamp("2026-04-08")
+    symbol = "AAPL"
+
+    # Stale cached tail: one row at the target date with an obviously-wrong
+    # Close, spanning a range wide enough that the end matches ``end_dt``.
+    cached_df = pd.DataFrame(
+        {
+            "Open": [9998.0],
+            "High": [9999.0],
+            "Low": [9997.0],
+            "Close": [9999.0],
+            "Volume": [1],
+            "Dividends": [0.0],
+            "Stock Splits": [0.0],
+        },
+        index=pd.DatetimeIndex([target]),
+    )
+
+    # Fresh yfinance row for the same date — this is what a real provider
+    # would return on the freshness-guard re-fetch.
+    fresh_df = pd.DataFrame(
+        {
+            "Open": [150.0],
+            "High": [151.0],
+            "Low": [149.0],
+            "Close": [150.5],
+            "Volume": [100_000],
+        },
+        index=pd.DatetimeIndex([target]),
+    )
+
+    with (
+        patch.object(provider, "_get_cached_data_flexible", return_value=cached_df),
+        patch.object(
+            provider,
+            "_get_most_recent_completed_trading_session",
+            return_value=target,
+        ),
+        patch.object(
+            provider, "_fetch_stock_data_from_yfinance", return_value=fresh_df
+        ) as mock_fetch,
+        patch.object(provider, "_cache_price_data"),
+        patch.object(provider, "_get_db_session", return_value=(None, False)),
+    ):
+        result = provider._get_data_with_smart_cache(symbol, start, end, "1d")
+
+    # The returned DataFrame must carry the fresh Close, not the stale cached
+    # one. This is the ops-visible failure mode: a mid-session provisional
+    # row would otherwise follow the user to the chart/analysis view.
+    assert target in result.index, "expected target date in returned DF"
+    assert result.loc[target, "Close"] == pytest.approx(150.5), (
+        "smart-cache end-to-end must return the fresh row, not the stale "
+        "cached provisional row — regression of the keep='last' dedup fix"
+    )
+    assert result.loc[target, "Volume"] == 100_000
+
+    # The freshness guard must have triggered a fetch for exactly the target
+    # date — otherwise the "fresh over stale" contract is accidentally
+    # satisfied by some other code path.
+    assert mock_fetch.called, "freshness guard must trigger a re-fetch"
+    call_args = mock_fetch.call_args_list[-1].args
+    assert target.strftime("%Y-%m-%d") in call_args, (
+        f"expected freshness-guard fetch for {target}, got args {call_args}"
+    )

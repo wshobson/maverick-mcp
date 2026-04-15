@@ -206,25 +206,36 @@ class HealthMonitor:
             now = time.time()
 
             # Alert on this process's CPU, not host-wide CPU. A noisy neighbor
-            # on the host shouldn't trigger a service-level alert. Also require
-            # the breach to persist for ALERT_THRESHOLDS["high_cpu_duration"]
+            # on the host shouldn't trigger a service-level alert. Require the
+            # breach to persist for ALERT_THRESHOLDS["high_cpu_duration"]
             # before firing, so single-reading spikes don't page anyone.
-            if resource_usage.process_cpu_percent > 80:
+            #
+            # Use hysteresis: set at > HIGH, clear at < LOW. Without it a
+            # CPU flapping at 79.9/80.1 resets ``_high_cpu_since`` on every
+            # dip and never fires the sustained-duration alert.
+            _CPU_HIGH = 80
+            _CPU_LOW = 70
+            if resource_usage.process_cpu_percent > _CPU_HIGH:
                 if self._high_cpu_since is None:
                     self._high_cpu_since = now
                 elif (now - self._high_cpu_since) >= ALERT_THRESHOLDS["high_cpu_duration"]:
                     await self._handle_high_cpu_usage(resource_usage.process_cpu_percent)
-            else:
+            elif resource_usage.process_cpu_percent < _CPU_LOW:
                 self._high_cpu_since = None
+            # In the HYSTERESIS band (_CPU_LOW, _CPU_HIGH]: hold state —
+            # neither start nor reset the breach clock.
 
-            # Memory uses the same sustained-duration pattern. Host memory is
-            # fine to alert on because the process shares that pool.
-            if resource_usage.memory_percent > 85:
+            # Memory uses the same sustained-duration + hysteresis pattern.
+            # Host memory is fine to alert on because the process shares
+            # that pool.
+            _MEM_HIGH = 85
+            _MEM_LOW = 75
+            if resource_usage.memory_percent > _MEM_HIGH:
                 if self._high_memory_since is None:
                     self._high_memory_since = now
                 elif (now - self._high_memory_since) >= ALERT_THRESHOLDS["high_memory_duration"]:
                     await self._handle_high_memory_usage(resource_usage.memory_percent)
-            else:
+            elif resource_usage.memory_percent < _MEM_LOW:
                 self._high_memory_since = None
 
             # Disk fills slowly — a single reading above 90% is already actionable.

@@ -8,6 +8,8 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from maverick_mcp.api.routers._error_handling import tool_error_response
+
 logger = logging.getLogger(__name__)
 
 
@@ -20,8 +22,16 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
 
     def _fetch_portfolio_positions(
         portfolio_name: str, user_id: str = "default"
-    ) -> list[dict[str, Any]]:
-        """Fetch positions from the portfolio DB and return as risk-service dicts."""
+    ) -> tuple[list[dict[str, Any]], list[str]]:
+        """Fetch positions from the portfolio DB and return as risk-service dicts.
+
+        Returns ``(positions, stale_symbols)`` where ``stale_symbols`` lists
+        tickers for which the live price fetch failed or returned empty data.
+        For those symbols, ``current_price`` falls back to ``cost_basis`` so
+        downstream risk calculations still produce a number — but callers MUST
+        surface ``stale_symbols`` in the response so the user knows the P&L /
+        VaR was computed on cost basis, not live prices.
+        """
         from maverick_mcp.data.models import PortfolioPosition, UserPortfolio, get_db
         from maverick_mcp.providers.stock_data import StockDataProvider
 
@@ -34,7 +44,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
                 .first()
             )
             if not portfolio_db:
-                return []
+                return [], []
 
             positions_db = (
                 db.query(PortfolioPosition)
@@ -43,9 +53,12 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             )
 
             positions: list[dict[str, Any]] = []
+            stale_symbols: list[str] = []
             for pos in positions_db:
-                # Try to fetch current price
+                # Try to fetch current price. If unavailable, fall back to cost
+                # basis and record the symbol as stale so the caller can flag it.
                 current_price = float(pos.average_cost_basis)
+                price_is_stale = True
                 try:
                     df = provider.get_stock_data(
                         pos.ticker,
@@ -56,8 +69,12 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
                     )
                     if df is not None and not df.empty:
                         current_price = float(df["Close"].iloc[-1])
+                        price_is_stale = False
                 except Exception as exc:
                     logger.warning("Could not fetch price for %s: %s", pos.ticker, exc)
+
+                if price_is_stale:
+                    stale_symbols.append(pos.ticker)
 
                 positions.append(
                     {
@@ -68,7 +85,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
                         "sector": "Unknown",  # sector info not stored on position
                     }
                 )
-            return positions
+            return positions, stale_symbols
         finally:
             db.close()
 
@@ -90,7 +107,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.services.risk.service import RiskService
 
-            positions = _fetch_portfolio_positions(portfolio_name)
+            positions, stale_symbols = _fetch_portfolio_positions(portfolio_name)
             if not positions:
                 return {
                     "status": "empty",
@@ -105,11 +122,13 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             return {
                 "status": "ok",
                 "portfolio_name": portfolio_name,
+                # Signal that VaR/PnL for these symbols used cost basis because
+                # the live price fetch failed. Empty list = all prices are live.
+                "stale_prices": stale_symbols,
                 **dashboard,
             }
         except Exception as e:
-            logger.error("get_portfolio_risk_dashboard error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("get_portfolio_risk_dashboard", e, logger)
 
     # ------------------------------------------------------------------
     # Tool 2: Pre-trade position risk check
@@ -133,7 +152,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.services.risk.service import RiskService
 
-            positions = _fetch_portfolio_positions(portfolio_name)
+            positions, stale_symbols = _fetch_portfolio_positions(portfolio_name)
 
             with SessionLocal() as session:
                 svc = RiskService(db_session=session)
@@ -147,11 +166,11 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             return {
                 "status": "ok",
                 "portfolio_name": portfolio_name,
+                "stale_prices": stale_symbols,
                 **result,
             }
         except Exception as e:
-            logger.error("get_position_risk_check error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("get_position_risk_check", e, logger)
 
     # ------------------------------------------------------------------
     # Tool 3: Regime-adjusted position sizing
@@ -210,8 +229,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
                 **sizing,
             }
         except Exception as e:
-            logger.error("get_regime_adjusted_sizing error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("get_regime_adjusted_sizing", e, logger)
 
     # ------------------------------------------------------------------
     # Tool 4: Risk alerts
@@ -231,7 +249,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.services.risk.service import RiskService
 
-            positions = _fetch_portfolio_positions(portfolio_name)
+            positions, stale_symbols = _fetch_portfolio_positions(portfolio_name)
             if not positions:
                 return {
                     "status": "empty",
@@ -247,6 +265,7 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
             return {
                 "status": "ok",
                 "portfolio_name": portfolio_name,
+                "stale_prices": stale_symbols,
                 "alert_count": len(alerts),
                 "alerts": [
                     {
@@ -259,5 +278,4 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
                 ],
             }
         except Exception as e:
-            logger.error("get_risk_alerts error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("get_risk_alerts", e, logger)

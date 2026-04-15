@@ -1588,7 +1588,7 @@ def bulk_insert_price_data(
             index_elements=["stock_id", "date"],
             set_={key: getattr(stmt.excluded, key) for key in update_set_keys},
         )
-    else:
+    elif "sqlite" in DATABASE_URL:
         # SQLite 3.24+ supports ON CONFLICT DO UPDATE via the sqlite dialect.
         from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -1597,10 +1597,51 @@ def bulk_insert_price_data(
             index_elements=["stock_id", "date"],
             set_={key: getattr(stmt.excluded, key) for key in update_set_keys},
         )
+    else:
+        # Fail loudly for unsupported backends. Previously any non-postgres
+        # URL silently received a SQLite-dialect statement, which produced a
+        # confusing "dialect mismatch" error at execute-time instead of a
+        # clear "this backend isn't supported" error at dispatch-time.
+        backend = DATABASE_URL.split(":", 1)[0] if DATABASE_URL else "unknown"
+        raise NotImplementedError(
+            f"bulk_insert_price_data upsert not implemented for backend "
+            f"'{backend}' (only postgresql and sqlite are supported)"
+        )
 
-    result = session.execute(stmt)
-    session.commit()
-    return result.rowcount
+    # Commit inside a try/except so a failure doesn't leave the caller's
+    # session in a dirty state. Callers in ``stock_data.py`` reuse the same
+    # session for follow-up queries; without rollback those queries would
+    # hit "transaction aborted" errors on PostgreSQL.
+    try:
+        result = session.execute(stmt)
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+    # ``result.rowcount`` semantics vary by backend: SQLite executemany can
+    # return ``-1`` in some versions, and upserts may report 1-per-row even
+    # when rows are unchanged. Clamp negatives to 0 and warn on mismatch so
+    # callers get a trustworthy diagnostic rather than "upserted -1 records".
+    rowcount = result.rowcount
+    if rowcount is None or rowcount < 0:
+        logger.warning(
+            "bulk_insert_price_data: backend reported rowcount=%s for %d records "
+            "(%s); returning 0 as a best-effort diagnostic.",
+            rowcount,
+            len(records),
+            ticker_symbol,
+        )
+        return 0
+    if rowcount != len(records):
+        logger.debug(
+            "bulk_insert_price_data: rowcount=%d for %d records on %s "
+            "(expected for unchanged upserts on some backends).",
+            rowcount,
+            len(records),
+            ticker_symbol,
+        )
+    return rowcount
 
 
 def get_latest_maverick_screening(days_back: int = 1) -> dict:

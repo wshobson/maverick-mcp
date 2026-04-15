@@ -8,6 +8,7 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+import redis
 import vectorbt as vbt
 from pandas import DataFrame, Series
 
@@ -36,6 +37,21 @@ from maverick_mcp.utils.structured_logger import (
 
 logger = get_structured_logger(__name__)
 performance_logger = get_performance_logger("vectorbt_engine")
+
+# Cache backends (Redis + in-memory fallback) degrade gracefully — but only for
+# transient/serialization failures. We intentionally do NOT catch base
+# ``Exception`` here: that would mask programming errors (e.g. a pyarrow
+# schema drift surfacing as ``TypeError``) and defeat the purpose of caching
+# as an optimization rather than a silent data pipeline.
+# ``ValueError`` covers msgpack.ExtraData/UnpackValueError and similar
+# serialization drift without adding a direct msgpack import.
+_CACHE_EXCEPTIONS: tuple[type[BaseException], ...] = (
+    redis.RedisError,
+    ConnectionError,
+    TimeoutError,
+    OSError,
+    ValueError,
+)
 
 
 class VectorBTEngine(BatchProcessingMixin):
@@ -112,10 +128,11 @@ class VectorBTEngine(BatchProcessingMixin):
             interval=interval,
         )
 
-        # Try cache first — degrade gracefully on cache failures
+        # Try cache first — degrade gracefully on transient cache failures.
+        # See ``_CACHE_EXCEPTIONS`` at module level for the catch set.
         try:
             cached_data = await self.cache.get(cache_key)
-        except Exception as e:
+        except _CACHE_EXCEPTIONS as e:
             logger.warning(
                 f"Cache read failed for {symbol}, bypassing cache: {e}"
             )
@@ -169,10 +186,12 @@ class VectorBTEngine(BatchProcessingMixin):
         days_old = (datetime.now() - end_dt).days
         ttl = 86400 if days_old > 7 else 3600  # 24h for older data, 1h for recent
 
-        # Cache write is best-effort — don't fail the request if cache is down
+        # Cache write is best-effort — don't fail the request if cache is down.
+        # Narrowed to transient/serialization errors so real programming bugs
+        # (TypeError/AttributeError from upstream refactors) still surface.
         try:
             await self.cache.set(cache_key, data, ttl=ttl)
-        except Exception as e:
+        except _CACHE_EXCEPTIONS as e:
             logger.warning(
                 f"Cache write failed for {symbol}, continuing: {e}"
             )
@@ -229,6 +248,13 @@ class VectorBTEngine(BatchProcessingMixin):
         except ImportError:
             retry_errors = (ConnectionError, TimeoutError, OSError)
 
+        # A non-positive retry budget silently returned RuntimeError before;
+        # reject up-front so callers can't accidentally disable the retry path.
+        if max_retries <= 0:
+            raise ValueError(
+                f"max_retries must be a positive integer, got {max_retries}"
+            )
+
         last_error: Exception | None = None
         for attempt in range(max_retries):
             try:
@@ -248,9 +274,18 @@ class VectorBTEngine(BatchProcessingMixin):
                         f"failed for {symbol}: {e}. Retrying in {delay:.2f}s"
                     )
                     await asyncio.sleep(delay)
-        raise last_error if last_error else RuntimeError(
-            f"Failed to fetch data for {symbol}"
+
+        # Retries exhausted. Log once at error level so the failure is visible
+        # to ops even if the caller suppresses the exception, then re-raise
+        # the last error. ``raise last_error`` preserves its ``__traceback__``.
+        assert last_error is not None  # unreachable when max_retries > 0
+        logger.error(
+            "get_historical_data failed for %s after %d attempts: %s",
+            symbol,
+            max_retries,
+            last_error,
         )
+        raise last_error
 
     async def _get_data_async(
         self, symbol: str, start_date: str, end_date: str, interval: str

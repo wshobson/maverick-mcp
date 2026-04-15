@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from fastmcp import FastMCP
 
+from maverick_mcp.api.routers._error_handling import tool_error_response
 from maverick_mcp.utils.mcp_types import OptionalStrList
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,7 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "notes": entry.notes,
                 }
         except Exception as e:
-            logger.error("journal_add_trade error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("journal_add_trade", e, logger)
 
     @mcp.tool(
         name="journal_close_trade",
@@ -120,11 +120,8 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "status": entry.status,
                     "notes": entry.notes,
                 }
-        except ValueError as e:
-            return {"error": str(e)}
         except Exception as e:
-            logger.error("journal_close_trade error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("journal_close_trade", e, logger)
 
     @mcp.tool(
         name="journal_list_trades",
@@ -178,8 +175,7 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "count": len(entries),
                 }
         except Exception as e:
-            logger.error("journal_list_trades error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("journal_list_trades", e, logger)
 
     # ------------------------------------------------------------------
     # Strategy performance tools
@@ -222,8 +218,7 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "profit_factor": perf.profit_factor,
                 }
         except Exception as e:
-            logger.error("get_strategy_performance error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("get_strategy_performance", e, logger)
 
     @mcp.tool(
         name="get_strategy_comparison",
@@ -261,8 +256,7 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "count": len(strategies),
                 }
         except Exception as e:
-            logger.error("get_strategy_comparison error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("get_strategy_comparison", e, logger)
 
     # ------------------------------------------------------------------
     # Trade review
@@ -326,5 +320,4 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "notes": entry.notes,
                 }
         except Exception as e:
-            logger.error("journal_trade_review error: %s", e)
-            return {"error": str(e)}
+            return tool_error_response("journal_trade_review", e, logger)

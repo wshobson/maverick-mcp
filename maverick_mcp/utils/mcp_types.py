@@ -10,11 +10,14 @@ signatures stay expressive without each site needing manual string handling.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Annotated, Any, TypeVar
 
 from pydantic import BeforeValidator
 
 T = TypeVar("T")
+
+_logger = logging.getLogger(__name__)
 
 
 def _coerce_json_list(value: Any) -> Any:
@@ -34,6 +37,13 @@ def _coerce_json_list(value: Any) -> Any:
         except json.JSONDecodeError:
             return value
         return parsed
+    # Bare-string fallback. Convenient for chat UIs that send a single symbol,
+    # but it also masks client bugs where a list was *intended* and got
+    # flattened to a string somewhere. Log at DEBUG so support can trace the
+    # coercion without spamming production logs.
+    _logger.debug(
+        "_coerce_json_list: wrapping bare string %r as single-item list", value
+    )
     return [value]
 
 

@@ -154,8 +154,12 @@ class GracefulShutdownHandler:
                 for task in self._active_requests:
                     task.cancel()
 
-        # Phase 3: Run cleanup callbacks
+        # Phase 3: Run cleanup callbacks. Collect failures so we can propagate
+        # a non-zero exit code — graceful shutdown is meaningless if the caller
+        # (systemd, orchestrator) can't distinguish "clean exit" from "tried to
+        # clean up but something went wrong."
         logger.info(f"{self.name}: Phase 3 - Running cleanup callbacks")
+        cleanup_failures: list[str] = []
         for callback in self._cleanup_callbacks:
             try:
                 logger.debug(f"Running cleanup: {callback.__name__}")
@@ -164,16 +168,27 @@ class GracefulShutdownHandler:
                 else:
                     callback()
             except Exception as e:
-                logger.error(f"Error in cleanup callback {callback.__name__}: {e}")
+                logger.error(
+                    f"Error in cleanup callback {callback.__name__}: {e}"
+                )
+                cleanup_failures.append(callback.__name__)
 
         # Phase 4: Final shutdown
         shutdown_duration = time.time() - shutdown_start
-        logger.info(
-            f"{self.name}: Graceful shutdown completed in {shutdown_duration:.1f}s"
-        )
+        exit_code = 1 if cleanup_failures else 0
+        if cleanup_failures:
+            logger.error(
+                f"{self.name}: Graceful shutdown completed in "
+                f"{shutdown_duration:.1f}s with cleanup failures: "
+                f"{', '.join(cleanup_failures)} (exit code {exit_code})"
+            )
+        else:
+            logger.info(
+                f"{self.name}: Graceful shutdown completed in "
+                f"{shutdown_duration:.1f}s"
+            )
 
-        # Exit the process
-        sys.exit(0)
+        sys.exit(exit_code)
 
     def _sync_shutdown(self, signal_name: str) -> None:
         """Perform synchronous shutdown (fallback)."""
@@ -183,16 +198,27 @@ class GracefulShutdownHandler:
         self._shutdown_in_progress = True
         logger.info(f"{self.name}: Starting sync shutdown (signal: {signal_name})")
 
-        # Run sync cleanup callbacks
+        # Run sync cleanup callbacks and collect failures for the exit code.
+        cleanup_failures: list[str] = []
         for callback in self._cleanup_callbacks:
             if not inspect.iscoroutinefunction(callback):
                 try:
                     callback()
                 except Exception as e:
-                    logger.error(f"Error in cleanup callback: {e}")
+                    logger.error(
+                        f"Error in cleanup callback {callback.__name__}: {e}"
+                    )
+                    cleanup_failures.append(callback.__name__)
 
-        logger.info(f"{self.name}: Sync shutdown completed")
-        sys.exit(0)
+        exit_code = 1 if cleanup_failures else 0
+        if cleanup_failures:
+            logger.error(
+                f"{self.name}: Sync shutdown completed with cleanup failures: "
+                f"{', '.join(cleanup_failures)} (exit code {exit_code})"
+            )
+        else:
+            logger.info(f"{self.name}: Sync shutdown completed")
+        sys.exit(exit_code)
 
     async def _wait_for_requests(self) -> None:
         """Wait for all active requests to complete."""

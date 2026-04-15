@@ -18,6 +18,7 @@ from typing import Any
 from fastmcp import FastMCP
 from fastmcp.server.dependencies import get_access_token
 
+from maverick_mcp.api.routers._error_handling import tool_error_response
 from maverick_mcp.core.technical_analysis import (
     analyze_bollinger_bands,
     analyze_macd,
@@ -280,8 +281,7 @@ async def get_stock_chart_analysis(ticker: str) -> dict[str, Any]:
         )
         return chart_content
     except Exception as e:
-        logger.error(f"Error generating chart analysis for {ticker}: {e}")
-        return {"error": str(e)}
+        return tool_error_response("generate_chart_analysis", e, logger)
 
 
 def _generate_chart_mcp_format(df, ticker: str) -> dict[str, Any]:
