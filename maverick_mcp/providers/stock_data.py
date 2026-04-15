@@ -215,10 +215,16 @@ class EnhancedStockDataProvider:
                         # Cache the new data
                         self._cache_price_data(session, symbol, missing_df)
 
-                # Combine all data
+                # Combine all data. ``all_dfs`` is built as [cached_df, *fresh_fetches],
+                # so a date that appears in both the cache and a freshness-guard
+                # re-fetch will have the cached row first and the fresh row after.
+                # ``keep="last"`` picks the freshly-fetched row, making the guard
+                # actually effective for the current call — otherwise the DB
+                # would be corrected by the upsert while this call's return
+                # value still carries the stale provisional bar. See commit
+                # 39b665a for the Phase 1 context.
                 combined_df = pd.concat(all_dfs).sort_index()
-                # Remove any duplicates (keep first)
-                combined_df = combined_df[~combined_df.index.duplicated(keep="first")]
+                combined_df = combined_df[~combined_df.index.duplicated(keep="last")]
 
                 # Filter to requested range - ensure index is timezone-naive
                 combined_df.index = pd.to_datetime(combined_df.index).tz_localize(None)
