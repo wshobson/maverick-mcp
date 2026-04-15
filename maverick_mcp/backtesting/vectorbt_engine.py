@@ -53,6 +53,26 @@ _CACHE_EXCEPTIONS: tuple[type[BaseException], ...] = (
     ValueError,
 )
 
+# Exceptions that ``_fetch_with_retry`` retries AND that the wrapping
+# circuit breaker counts as failures. Kept as a single module-level
+# constant so the decorator's ``expected_exceptions`` and the runtime
+# retry tuple cannot drift — otherwise a sustained upstream failure
+# could be retried per-call but never trip the breaker, defeating the
+# fast-fail guarantee. ``requests.exceptions.RequestException`` is
+# included explicitly: it subclasses ``OSError`` today, but pinning
+# the type protects against future requests/urllib3 reshuffling.
+try:
+    from requests.exceptions import RequestException as _RequestsException
+
+    _RETRY_EXCEPTIONS: tuple[type[Exception], ...] = (
+        ConnectionError,
+        TimeoutError,
+        OSError,
+        _RequestsException,
+    )
+except ImportError:
+    _RETRY_EXCEPTIONS = (ConnectionError, TimeoutError, OSError)
+
 
 class VectorBTEngine(BatchProcessingMixin):
     """High-performance backtesting engine using VectorBT with memory management."""
@@ -84,13 +104,22 @@ class VectorBTEngine(BatchProcessingMixin):
             chunk_size_mb=chunk_size_mb, optimize_chunks=True, auto_gc=True
         )
 
-        # Configure VectorBT settings for optimal performance and memory usage
+        # Configure VectorBT settings for optimal performance and memory usage.
+        # Only catch the two expected failure modes: ``KeyError`` when a
+        # settings subsection is renamed by a vbt upgrade, and
+        # ``AttributeError`` when the top-level ``settings`` shape changes.
+        # The previous ``except (KeyError, Exception)`` swallowed every
+        # programming error (typo on the LHS, import-time init bug, etc.)
+        # and masked them as "Could not configure VectorBT settings." In a
+        # resilience-themed module that's exactly the anti-pattern the rest
+        # of this file is structured to avoid — and ``logger.exception``
+        # preserves the traceback a bare ``{e}`` interpolation would drop.
         try:
             vbt.settings.array_wrapper["freq"] = "D"
             vbt.settings.caching["enabled"] = True  # Enable VectorBT's internal caching
             # Don't set whitelist to avoid cache condition issues
-        except (KeyError, Exception) as e:
-            logger.warning(f"Could not configure VectorBT settings: {e}")
+        except (KeyError, AttributeError):
+            logger.exception("Could not configure VectorBT settings")
 
         logger.info(
             f"VectorBT engine initialized with memory profiling: {enable_memory_profiling}"
@@ -133,9 +162,7 @@ class VectorBTEngine(BatchProcessingMixin):
         try:
             cached_data = await self.cache.get(cache_key)
         except _CACHE_EXCEPTIONS as e:
-            logger.warning(
-                f"Cache read failed for {symbol}, bypassing cache: {e}"
-            )
+            logger.warning(f"Cache read failed for {symbol}, bypassing cache: {e}")
             cached_data = None
 
         if cached_data is not None:
@@ -192,9 +219,7 @@ class VectorBTEngine(BatchProcessingMixin):
         try:
             await self.cache.set(cache_key, data, ttl=ttl)
         except _CACHE_EXCEPTIONS as e:
-            logger.warning(
-                f"Cache write failed for {symbol}, continuing: {e}"
-            )
+            logger.warning(f"Cache write failed for {symbol}, continuing: {e}")
 
         return data
 
@@ -202,12 +227,12 @@ class VectorBTEngine(BatchProcessingMixin):
         name="vectorbt_engine.fetch",
         failure_threshold=5,
         recovery_timeout=30,
-        # ``OSError`` covers ``requests.exceptions.ConnectionError`` in
-        # requests >= 2.26, plus stdlib socket errors. The narrow
-        # ``(ConnectionError, TimeoutError)`` set missed real yfinance
-        # transient errors because requests.exceptions.Timeout doesn't
-        # always subclass stdlib TimeoutError on older requests builds.
-        expected_exceptions=(ConnectionError, TimeoutError, OSError),
+        # MUST stay aligned with the retry loop's catch set. If the
+        # retry tuple grows (e.g. a yfinance-specific exception class)
+        # but the breaker's set does not, sustained upstream failures
+        # will be retried per call yet never trip the breaker —
+        # silently defeating the fast-fail guarantee.
+        expected_exceptions=_RETRY_EXCEPTIONS,
     )
     async def _fetch_with_retry(
         self,
@@ -220,10 +245,9 @@ class VectorBTEngine(BatchProcessingMixin):
         """Retry wrapper around get_historical_data for transient network errors.
 
         Wrapped in a circuit breaker so repeated upstream failures fast-fail
-        instead of incurring retry latency across calls. The caught
-        exception set intentionally includes ``requests.exceptions.
-        RequestException`` (when available) so yfinance's HTTP errors fire
-        the retry/jitter path instead of propagating on the first blip.
+        instead of incurring retry latency across calls. The retried set is
+        ``_RETRY_EXCEPTIONS`` (module-level), shared with the breaker
+        decorator above so the two cannot drift.
         """
         # Exponential backoff + jitter. Jitter prevents a thundering-herd
         # pattern when a batch of parallel backtests all hit a transient
@@ -232,21 +256,6 @@ class VectorBTEngine(BatchProcessingMixin):
         # ``max_retries`` upward.
         _BASE_DELAY_S = 0.1
         _MAX_DELAY_S = 5.0
-
-        # Add ``requests.exceptions.RequestException`` to the caught set
-        # when ``requests`` is importable (always true via yfinance, but
-        # guard keeps this file usable in bare unit-test environments).
-        try:
-            from requests.exceptions import RequestException as _RequestsException
-
-            retry_errors: tuple[type[BaseException], ...] = (
-                ConnectionError,
-                TimeoutError,
-                OSError,
-                _RequestsException,
-            )
-        except ImportError:
-            retry_errors = (ConnectionError, TimeoutError, OSError)
 
         # A non-positive retry budget silently returned RuntimeError before;
         # reject up-front so callers can't accidentally disable the retry path.
@@ -261,7 +270,7 @@ class VectorBTEngine(BatchProcessingMixin):
                 return await self.get_historical_data(
                     symbol, start_date, end_date, interval
                 )
-            except retry_errors as e:
+            except _RETRY_EXCEPTIONS as e:
                 last_error = e
                 if attempt < max_retries - 1:
                     base = min(_BASE_DELAY_S * (2**attempt), _MAX_DELAY_S)

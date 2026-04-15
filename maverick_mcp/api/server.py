@@ -341,9 +341,13 @@ if hasattr(_fastmcp_instance, "custom_route"):
     async def _health_ready_route(request: _Request) -> _JSONResponse:
         """Readiness probe served under the MCP HTTP transport.
 
-        Returns 200 with `{"ready": true, "tools": N, ...}` once the tool
-        registry has entries and the server isn't draining for shutdown.
-        Returns 503 otherwise so orchestrators can gate traffic.
+        Returns 200 once (a) the server isn't draining, (b) the database is
+        reachable, and (c) the tool registry holds at least ``min_tools_floor``
+        entries. Returns 503 otherwise so orchestrators can gate traffic.
+
+        Gating on DB + min-tools mirrors the legacy ``fastapi_app`` handler
+        below; without it, streamable-http deployments would report healthy
+        with a dead database or a half-registered tool surface.
         """
         if _shutdown_state["shutting_down"]:
             return _JSONResponse(
@@ -355,30 +359,69 @@ if hasattr(_fastmcp_instance, "custom_route"):
                 status_code=503,
             )
 
+        # Lazy import: the health_check module pulls in DB/cache probes and
+        # we don't want to eagerly import it until the transport layer is up.
+        from maverick_mcp.monitoring.health_check import (
+            HealthStatus as _HealthStatus,
+        )
+        from maverick_mcp.monitoring.health_check import (
+            get_health_checker as _get_health_checker,
+        )
+
+        db_status = "unknown"
+        cache_status = "unknown"
+        db_ok = False
+        try:
+            health_result = await _get_health_checker().check_health(
+                ["database", "cache"]
+            )
+            db_component = health_result.components.get("database")
+            if db_component is not None:
+                db_status = db_component.status.value
+                db_ok = db_component.status in (
+                    _HealthStatus.HEALTHY,
+                    _HealthStatus.DEGRADED,
+                )
+            cache_component = health_result.components.get("cache")
+            if cache_component is not None:
+                cache_status = cache_component.status.value
+        except Exception:
+            # A failed health check is itself a readiness signal — fail closed.
+            logger.exception("Readiness health check failed")
+
         tool_count = 0
         try:
             list_tools_fn = getattr(_fastmcp_instance, "list_tools", None)
             if list_tools_fn is not None:
                 tools = await list_tools_fn()
                 tool_count = len(tools)
-        except Exception as tool_err:
-            logger.warning(f"Failed to enumerate MCP tools: {tool_err}")
+        except Exception:
+            # Use ``logger.exception`` (not warning) — ``list_tools()`` failing
+            # at runtime is a contract bug, not a degradation. The traceback
+            # belongs in Sentry/logs so on-call can diagnose without repro.
+            logger.exception("Failed to enumerate MCP tools")
 
         # Server-side minimum-tools floor. A partial registration failure
         # (one router's import blowing up) can leave the process alive with,
         # say, 3 tools registered — curl against readiness would report 200.
-        # scripts/smoke_test_dev.sh enforces MIN_TOOLS client-side, but any
-        # orchestrator that isn't our own smoke script gets no protection
-        # unless we gate server-side too. The default (1) preserves the
-        # previous "any tool registered == ready" behaviour so existing
-        # deploys don't flip to 503; operators can tighten via the env var.
-        min_tools_floor = max(1, int(os.getenv("MAVERICK_MIN_READY_TOOLS", "1")))
-        ready = tool_count >= min_tools_floor
+        # The default is sized below the actual registered-tool count
+        # (~95 across 11 routers per CLAUDE.md) but high enough that losing
+        # any single router drops us under the floor. Operators can override
+        # via ``MAVERICK_MIN_READY_TOOLS``; CI smoke tests pin the exact
+        # expected count. Bumping the default here is the one change that
+        # makes the gate non-vacuous without needing per-deploy env wiring.
+        min_tools_floor = max(1, int(os.getenv("MAVERICK_MIN_READY_TOOLS", "50")))
+        tools_ok = tool_count >= min_tools_floor
+        ready = db_ok and tools_ok
         return _JSONResponse(
             content={
                 "ready": ready,
                 "tools": tool_count,
                 "min_tools": min_tools_floor,
+                "dependencies": {
+                    "database": db_status,
+                    "cache": cache_status,
+                },
                 "timestamp": _datetime.now(_UTC).isoformat(),
             },
             status_code=200 if ready else 503,
@@ -562,8 +605,9 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
                 if list_tools_fn is not None:
                     tools = await list_tools_fn()
                     tool_count = len(tools)
-            except Exception as tool_err:
-                logger.warning(f"Failed to enumerate MCP tools: {tool_err}")
+            except Exception:
+                # Contract bug, not degradation — capture the traceback.
+                logger.exception("Failed to enumerate MCP tools")
 
             ready = db_ok and tool_count > 0
             status_code = 200 if ready else 503

@@ -7,6 +7,8 @@ for all server components to ensure safe deployments and prevent data loss.
 
 import asyncio
 import inspect
+import logging
+import os
 import signal
 import sys
 import time
@@ -17,6 +19,37 @@ from typing import Any
 from maverick_mcp.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+def _force_exit(exit_code: int) -> None:
+    """Flush buffers and exit the process with ``exit_code``.
+
+    Uses ``os._exit`` rather than ``sys.exit`` because the shutdown path
+    runs inside a coroutine scheduled via ``loop.create_task(...)`` from
+    the signal handler (see ``_signal_handler``). ``sys.exit`` raises
+    ``SystemExit``, which asyncio stores on the Task result instead of
+    propagating to the interpreter — the process keeps running and the
+    non-zero exit-code guarantee silently breaks for orchestrators
+    (systemd, Kubernetes) that rely on it to distinguish clean exit
+    from cleanup failure. ``os._exit`` bypasses Python's normal unwind
+    and actually terminates the process.
+
+    We flush logging and stdio first so the post-mortem log line that
+    explains *why* we're exiting non-zero actually reaches disk/stderr
+    before the process disappears.
+
+    See docs/runbooks/asyncio-systemexit.md.
+    """
+    logging.shutdown()
+    try:
+        sys.stdout.flush()
+    except Exception:
+        pass
+    try:
+        sys.stderr.flush()
+    except Exception:
+        pass
+    os._exit(exit_code)
 
 
 class GracefulShutdownHandler:
@@ -167,10 +200,13 @@ class GracefulShutdownHandler:
                     await asyncio.wait_for(callback(), timeout=5.0)
                 else:
                     callback()
-            except Exception as e:
-                logger.error(
-                    f"Error in cleanup callback {callback.__name__}: {e}"
-                )
+            except Exception:
+                # ``logger.exception`` attaches the active traceback via
+                # ``sys.exc_info()``. Shutdown-path failures are exactly where
+                # we want the full stack — losing it to ``{e}`` string
+                # interpolation contradicts ``_error_handling.py``'s own stated
+                # policy and hides root causes from post-mortem log diffs.
+                logger.exception("Error in cleanup callback %s", callback.__name__)
                 cleanup_failures.append(callback.__name__)
 
         # Phase 4: Final shutdown
@@ -184,11 +220,10 @@ class GracefulShutdownHandler:
             )
         else:
             logger.info(
-                f"{self.name}: Graceful shutdown completed in "
-                f"{shutdown_duration:.1f}s"
+                f"{self.name}: Graceful shutdown completed in {shutdown_duration:.1f}s"
             )
 
-        sys.exit(exit_code)
+        _force_exit(exit_code)
 
     def _sync_shutdown(self, signal_name: str) -> None:
         """Perform synchronous shutdown (fallback)."""
@@ -204,10 +239,9 @@ class GracefulShutdownHandler:
             if not inspect.iscoroutinefunction(callback):
                 try:
                     callback()
-                except Exception as e:
-                    logger.error(
-                        f"Error in cleanup callback {callback.__name__}: {e}"
-                    )
+                except Exception:
+                    # See async branch: preserve tracebacks on cleanup failure.
+                    logger.exception("Error in cleanup callback %s", callback.__name__)
                     cleanup_failures.append(callback.__name__)
 
         exit_code = 1 if cleanup_failures else 0
@@ -218,7 +252,12 @@ class GracefulShutdownHandler:
             )
         else:
             logger.info(f"{self.name}: Sync shutdown completed")
-        sys.exit(exit_code)
+        # Use the same hard-exit helper as the async path. The sync branch
+        # doesn't hit the asyncio ``SystemExit``-absorption trap, but keeping
+        # a single exit primitive means the two paths can't diverge and
+        # on-call has one invariant to reason about: "shutdown exits via
+        # ``_force_exit``." Consistency > micro-optimization.
+        _force_exit(exit_code)
 
     async def _wait_for_requests(self) -> None:
         """Wait for all active requests to complete."""

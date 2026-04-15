@@ -198,12 +198,19 @@ class ResourceManager:
         # Force garbage collection
         force_garbage_collection()
 
-        # Run cleanup callbacks
+        # Run cleanup callbacks. Use ``logger.exception`` so the traceback
+        # survives — mirrors the fix in ``utils/shutdown.py``. Losing the
+        # stack on cleanup-callback failures forced post-mortems to go
+        # spelunking through old PRs to figure out what an "Error in
+        # cleanup callback: KeyError" actually meant.
         for callback in self.cleanup_callbacks:
             try:
                 callback()
-            except Exception as e:
-                logger.error(f"Error in cleanup callback: {e}")
+            except Exception:
+                logger.exception(
+                    "Error in cleanup callback %s",
+                    getattr(callback, "__name__", repr(callback)),
+                )
 
         # Clear memory profiler snapshots
         try:
@@ -244,12 +251,19 @@ class ResourceManager:
         """Run all cleanup callbacks and garbage collection."""
         logger.info("Running comprehensive resource cleanup")
 
-        # Run cleanup callbacks
+        # Run cleanup callbacks. Use ``logger.exception`` so the traceback
+        # survives — mirrors the fix in ``utils/shutdown.py``. Losing the
+        # stack on cleanup-callback failures forced post-mortems to go
+        # spelunking through old PRs to figure out what an "Error in
+        # cleanup callback: KeyError" actually meant.
         for callback in self.cleanup_callbacks:
             try:
                 callback()
-            except Exception as e:
-                logger.error(f"Error in cleanup callback: {e}")
+            except Exception:
+                logger.exception(
+                    "Error in cleanup callback %s",
+                    getattr(callback, "__name__", repr(callback)),
+                )
 
         # Force garbage collection
         force_garbage_collection()
@@ -286,12 +300,23 @@ class ResourceManager:
             },
         }
 
-        # Add memory profiler stats if available
+        # Add memory profiler stats if available. ``get_memory_stats`` can
+        # fail when tracemalloc isn't started or when an optional backend
+        # (psutil, ``resource`` on Windows) is missing. Previously this
+        # swallowed the exception with ``except: pass``, which silently
+        # dropped a whole section of the report — monitoring dashboards
+        # would render "memory_profiler: missing" as if the code hadn't
+        # run at all, making a real regression (e.g. psutil import
+        # blowing up) look identical to the documented optional case.
+        # Capture the reason at DEBUG (this is a known-optional feature)
+        # and preserve the report shape with a typed ``error`` slot so
+        # downstream consumers can distinguish "unavailable" from "never
+        # collected."
         try:
-            memory_stats = get_memory_stats()
-            report["memory_profiler"] = memory_stats
-        except Exception:
-            pass
+            report["memory_profiler"] = get_memory_stats()
+        except Exception as exc:
+            logger.debug("memory_profiler stats unavailable: %s", exc)
+            report["memory_profiler"] = {"error": str(exc)}
 
         return report
 

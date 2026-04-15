@@ -10,6 +10,7 @@ This module tests all public MCP tools exposed by the server including:
 - Multi-ticker comparison
 """
 
+import ast
 from datetime import datetime
 from unittest.mock import patch
 
@@ -75,7 +76,7 @@ class TestMCPTools:
                 )
 
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "ticker" in data
                 assert data["ticker"] == "AAPL"
                 assert "record_count" in data
@@ -94,7 +95,7 @@ class TestMCPTools:
                 )
 
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "analysis" in data
                 assert "ticker" in data
                 assert data["ticker"] == "AAPL"
@@ -122,7 +123,7 @@ class TestMCPTools:
                 )
 
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "analysis" in data
                 assert "ticker" in data
                 assert data["ticker"] == "MSFT"
@@ -177,7 +178,7 @@ class TestMCPTools:
                 )
 
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "results" in data
                 assert "success_count" in data
                 assert "error_count" in data
@@ -243,7 +244,7 @@ class TestMCPTools:
                 )
 
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "stocks" in data
                 assert len(data["stocks"]) == 2
                 assert data["stocks"][0]["stock"] == "AAPL"
@@ -273,7 +274,7 @@ class TestMCPTools:
                 )
 
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "ticker" in data
                 assert data["ticker"] == "AAPL"
 

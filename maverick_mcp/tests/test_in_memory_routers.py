@@ -5,6 +5,7 @@ Tests individual router functionality in isolation using FastMCP's
 in-memory testing capabilities via the main MCP server.
 """
 
+import ast
 import asyncio
 from unittest.mock import Mock, patch
 
@@ -236,7 +237,7 @@ class TestTechnicalRouter:
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "analysis" in data
                 assert "histogram" in data["analysis"]
                 assert "indicator" in data["analysis"]
@@ -276,7 +277,7 @@ class TestTechnicalRouter:
 
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert "support_levels" in data
                 assert "resistance_levels" in data
                 assert len(data["support_levels"]) > 0
@@ -296,7 +297,7 @@ class TestScreeningRouter:
 
             assert len(result.content) > 0
             assert result.content[0].text is not None
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
 
             assert "stocks" in data
             assert len(data["stocks"]) == 2  # AAPL and MSFT
@@ -316,7 +317,7 @@ class TestScreeningRouter:
 
             assert len(result.content) > 0
             assert result.content[0].text is not None
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
 
             assert "stocks" in data
             assert len(data["stocks"]) == 1  # Only GOOGL
@@ -336,7 +337,7 @@ class TestScreeningRouter:
 
             assert len(result.content) > 0
             assert result.content[0].text is not None
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
 
             assert "maverick_stocks" in data
             assert "maverick_bear_stocks" in data
@@ -462,7 +463,7 @@ class TestDataRouter:
 
             assert len(result.content) > 0
             assert result.content[0].text is not None
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
             assert "results" in data
             assert len(data["results"]) == 2
 

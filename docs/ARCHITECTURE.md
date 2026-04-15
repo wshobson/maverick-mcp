@@ -1,6 +1,6 @@
 # Maverick MCP Architecture — Roadmap v1
 
-**Status:** current as of `4f5dc53 feat: Maverick MCP roadmap v1 — service layer + 5 feature domains` (PR #121, 2026-03-29).
+**Status:** Roadmap v1 (2026-Q1) — service layer + 5 feature domains.
 
 This document describes the service-layer architecture introduced by Roadmap v1. Prior to this change the codebase was organized as a flat set of `@mcp.tool`-decorated functions in a handful of routers. Roadmap v1 adds a thin service layer, an async event bus for cross-domain communication, a job scheduler, and five feature domains built on top.
 

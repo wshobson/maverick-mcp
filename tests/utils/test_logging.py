@@ -220,6 +220,39 @@ class TestRequestContextLogger:
         assert call_args[0][0] == logging.CRITICAL
         assert call_args[0][1] == "Critical message"
 
+    def test_exception_logging_attaches_traceback(self, context_logger, mock_logger):
+        """``.exception()`` must log at ERROR with ``exc_info=True`` attached.
+
+        This pins the contract against future refactors of
+        ``_log_with_context`` that might drop the ``exc_info`` kwarg — a
+        regression would silently lose tracebacks across every
+        ``tool_error_response`` call site that relies on the wrapper's
+        ``logging.Logger``-compatible surface.
+        """
+        try:
+            raise ValueError("boom")
+        except ValueError:
+            context_logger.exception("Something failed")
+
+        mock_logger.log.assert_called_once()
+        call_args = mock_logger.log.call_args
+
+        assert call_args[0][0] == logging.ERROR
+        assert call_args[0][1] == "Something failed"
+        assert call_args[1].get("exc_info") is True
+
+    def test_exception_logging_preserves_caller_exc_info(
+        self, context_logger, mock_logger
+    ):
+        """If a caller passes ``exc_info`` explicitly (e.g. a stored
+        exception tuple), ``setdefault`` must not clobber it."""
+        explicit = (ValueError, ValueError("stored"), None)
+        context_logger.exception("Replaying stored failure", exc_info=explicit)
+
+        call_args = mock_logger.log.call_args
+        assert call_args[0][0] == logging.ERROR
+        assert call_args[1].get("exc_info") == explicit
+
 
 class TestLoggingSetup:
     """Test logging setup functions."""

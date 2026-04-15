@@ -183,6 +183,7 @@ class EnhancedStockDataProvider:
                 # this is idempotent: fresh rows overwrite themselves, stale
                 # provisional rows are corrected.
                 most_recent_session = self._get_most_recent_completed_trading_session()
+                guard_range: tuple[str, str] | None = None
                 if most_recent_session <= end_dt:
                     guard_str = most_recent_session.strftime("%Y-%m-%d")
                     guard_range = (guard_str, guard_str)
@@ -214,6 +215,27 @@ class EnhancedStockDataProvider:
                         all_dfs.append(missing_df)
                         # Cache the new data
                         self._cache_price_data(session, symbol, missing_df)
+                    elif (
+                        guard_range is not None
+                        and (miss_start, miss_end) == guard_range
+                    ):
+                        # The freshness-guard re-fetch for the most recent
+                        # completed trading session returned nothing. The
+                        # cached row for that date (if any) is still in
+                        # ``combined_df`` and will be served — which means
+                        # the caller may receive a provisional/stale bar
+                        # despite the guard. Surface it loudly; silent
+                        # fallback to stale data would defeat the whole
+                        # point of the guard. Callers observing this log
+                        # repeatedly should escalate: network path to
+                        # yfinance is broken for same-day refresh.
+                        logger.warning(
+                            "Freshness-guard re-fetch returned empty for %s on %s; "
+                            "serving possibly-stale cached bar (yfinance may be "
+                            "rate-limiting or down for same-day data)",
+                            symbol,
+                            miss_start,
+                        )
 
                 # Combine all data. ``all_dfs`` is built as [cached_df, *fresh_fetches],
                 # so a date that appears in both the cache and a freshness-guard

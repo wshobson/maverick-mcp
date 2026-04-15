@@ -114,6 +114,42 @@ def test_returns_pd_timestamp_at_midnight(
     assert result.hour == 0 and result.minute == 0 and result.second == 0
 
 
+@pytest.mark.parametrize(
+    ("frozen", "expected_today"),
+    [
+        # Spring forward: Sunday 2026-03-08 in the US. Test the trading day
+        # AFTER (Monday 2026-03-09) at 16:30 EDT. ZoneInfo must resolve the
+        # 4 PM gate against EDT, not EST. If the gate is built from a fixed
+        # UTC offset instead of wall-clock time, this returns the wrong
+        # answer for the entire summer.
+        (datetime(2026, 3, 9, 16, 30, tzinfo=_EASTERN), pd.Timestamp("2026-03-09")),
+        # Fall back: Sunday 2026-11-01. Test Monday 2026-11-02 at 16:30 EST.
+        (datetime(2026, 11, 2, 16, 30, tzinfo=_EASTERN), pd.Timestamp("2026-11-02")),
+    ],
+    ids=["post-DST-spring-EDT", "post-DST-fall-EST"],
+)
+def test_close_gate_holds_across_dst_transitions(
+    provider: EnhancedStockDataProvider,
+    monkeypatch: pytest.MonkeyPatch,
+    frozen: datetime,
+    expected_today: pd.Timestamp,
+) -> None:
+    """The 4 PM ET close gate must work under both EST and EDT.
+
+    ZoneInfo handles the wall-clock shift transparently — but only if the
+    code uses ``datetime.now(_US_EASTERN_ZI)`` and ``.replace(hour=16, ...)``
+    on the localized object (which it does). A future refactor to a fixed
+    UTC offset (e.g. ``timezone(timedelta(hours=-5))``) would silently
+    break for half the year. This test pins that contract.
+    """
+    _patch_now(monkeypatch, frozen)
+
+    with patch.object(provider, "_is_trading_day", return_value=True):
+        result = provider._get_most_recent_completed_trading_session()
+
+    assert result == expected_today
+
+
 def test_smart_cache_guard_returns_fresh_over_stale_cached_row(
     provider: EnhancedStockDataProvider,
 ) -> None:
@@ -127,11 +163,23 @@ def test_smart_cache_guard_returns_fresh_over_stale_cached_row(
     """
     target = pd.Timestamp("2026-04-08")
     cached_df = pd.DataFrame(
-        {"Open": [9998.0], "High": [9999.0], "Low": [9997.0], "Close": [9999.0], "Volume": [1]},
+        {
+            "Open": [9998.0],
+            "High": [9999.0],
+            "Low": [9997.0],
+            "Close": [9999.0],
+            "Volume": [1],
+        },
         index=pd.DatetimeIndex([target]),
     )
     fresh_df = pd.DataFrame(
-        {"Open": [150.0], "High": [151.0], "Low": [149.0], "Close": [150.5], "Volume": [100_000]},
+        {
+            "Open": [150.0],
+            "High": [151.0],
+            "Low": [149.0],
+            "Close": [150.5],
+            "Volume": [100_000],
+        },
         index=pd.DatetimeIndex([target]),
     )
 
@@ -226,3 +274,76 @@ def test_smart_cache_end_to_end_serves_fresh_row_after_stale_cache(
     assert target.strftime("%Y-%m-%d") in call_args, (
         f"expected freshness-guard fetch for {target}, got args {call_args}"
     )
+
+
+def test_empty_freshness_refetch_logs_warning_and_does_not_silently_serve_stale(
+    provider: EnhancedStockDataProvider,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """When the same-day re-fetch returns an empty DataFrame (network blip,
+    yfinance rate limit, etc.), the cached stale bar is still served — but
+    we MUST emit a WARNING so on-call can correlate "stale charts" with
+    "upstream provider flaking." Silently falling back to the stale bar
+    was the original issue; tests pinning silent-success paths are exactly
+    what hide it.
+    """
+    import logging
+
+    start = "2026-04-01"
+    end = "2026-04-08"
+    target = pd.Timestamp("2026-04-08")
+    symbol = "AAPL"
+
+    cached_df = pd.DataFrame(
+        {
+            "Open": [9998.0],
+            "High": [9999.0],
+            "Low": [9997.0],
+            "Close": [9999.0],
+            "Volume": [1],
+            "Dividends": [0.0],
+            "Stock Splits": [0.0],
+        },
+        index=pd.DatetimeIndex([target]),
+    )
+
+    # Simulate yfinance returning nothing for the freshness-guard window.
+    empty_df = pd.DataFrame()
+
+    with (
+        patch.object(provider, "_get_cached_data_flexible", return_value=cached_df),
+        patch.object(
+            provider,
+            "_get_most_recent_completed_trading_session",
+            return_value=target,
+        ),
+        patch.object(
+            provider, "_fetch_stock_data_from_yfinance", return_value=empty_df
+        ),
+        patch.object(provider, "_cache_price_data"),
+        patch.object(provider, "_get_db_session", return_value=(None, False)),
+        caplog.at_level(logging.WARNING, logger="maverick_mcp.providers.stock_data"),
+    ):
+        result = provider._get_data_with_smart_cache(symbol, start, end, "1d")
+
+    # The WARNING is the contract under test. If this assertion fails,
+    # operators have lost the only signal that a stale bar is being served.
+    warnings_for_symbol = [
+        rec
+        for rec in caplog.records
+        if rec.levelno == logging.WARNING
+        and "Freshness-guard re-fetch returned empty" in rec.getMessage()
+    ]
+    assert warnings_for_symbol, (
+        "expected WARNING when freshness-guard re-fetch returns empty; "
+        "silent fallback to stale cached row is the anti-pattern we're "
+        "guarding against"
+    )
+    assert symbol in warnings_for_symbol[0].getMessage()
+    assert target.strftime("%Y-%m-%d") in warnings_for_symbol[0].getMessage()
+
+    # Sanity: the stale row is indeed what gets served (documenting the
+    # behavior so a future refactor that starts raising here flips the
+    # contract visibly rather than silently).
+    assert target in result.index
+    assert result.loc[target, "Close"] == pytest.approx(9999.0)

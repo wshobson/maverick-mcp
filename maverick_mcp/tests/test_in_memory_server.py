@@ -5,6 +5,7 @@ These tests demonstrate how to test the server without external processes
 or network calls, using FastMCP's in-memory transport capabilities.
 """
 
+import ast
 import asyncio
 import json
 from datetime import datetime, timedelta
@@ -168,7 +169,7 @@ class TestInMemoryServer:
             assert len(result.content) > 0
             assert result.content[0].text is not None
             # Result should contain stock data
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
             assert data["ticker"] == "AAPL"
             assert "record_count" in data
 
@@ -183,7 +184,7 @@ class TestInMemoryServer:
             assert len(result.content) > 0
             assert result.content[0].text is not None
             # Should contain RSI data
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
             assert "analysis" in data
             assert "ticker" in data
             assert data["ticker"] == "AAPL"
@@ -203,7 +204,7 @@ class TestInMemoryServer:
 
             assert len(result.content) > 0
             assert result.content[0].text is not None
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
 
             assert "results" in data
             assert "AAPL" in data["results"]
@@ -227,7 +228,7 @@ class TestInMemoryServer:
             # Should return empty data for invalid ticker
             assert len(result.content) > 0
             assert result.content[0].text is not None
-            data = eval(result.content[0].text)
+            data = ast.literal_eval(result.content[0].text)
             # Invalid ticker returns empty data
             assert data["record_count"] == 0
             assert len(data["data"]) == 0
@@ -273,7 +274,7 @@ class TestInMemoryServer:
             for result in results:
                 assert len(result.content) > 0
                 assert result.content[0].text is not None
-                data = eval(result.content[0].text)
+                data = ast.literal_eval(result.content[0].text)
                 assert data["ticker"] == "AAPL"
 
 

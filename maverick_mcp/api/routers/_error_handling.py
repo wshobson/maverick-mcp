@@ -29,6 +29,7 @@ class _LoggerLike(Protocol):
 
     def exception(self, msg: object, *args: object, **kwargs: object) -> None: ...
 
+
 # Types that represent caller mistakes (bad input) — safe to echo the
 # message because it describes what the caller did wrong, not internal
 # state. Everything else gets a generic message and the detail goes to
@@ -63,22 +64,27 @@ def tool_error_response(
         ``{"status": "error", "error_code": ..., "error_id": ..., "message": ...}``
     """
     error_id = uuid.uuid4().hex[:12]
-    logger.exception(
-        "%s failed [error_id=%s]: %s", tool_name, error_id, exc
-    )
+    logger.exception("%s failed [error_id=%s]: %s", tool_name, error_id, exc)
 
-    if isinstance(exc, _SAFE_TO_ECHO):
+    is_validation = isinstance(exc, _SAFE_TO_ECHO)
+    if is_validation:
         message = str(exc) or exc.__class__.__name__
     else:
         # Don't echo internal exception text to the client — only the error_id
         # that a user can quote to an operator who then searches the logs.
         message = (
-            f"{tool_name} failed due to an internal error "
-            f"(reference id: {error_id})"
+            f"{tool_name} failed due to an internal error (reference id: {error_id})"
         )
 
+    # ``kind`` is a programmatic discriminator so MCP clients can branch on
+    # "fix your input" vs. "the server broke" without parsing the message.
+    # Without this, every error looks identical structurally and a client
+    # has to either string-match or treat all failures as opaque — which
+    # makes user-fixable mistakes (bad ticker, missing threshold) feel
+    # like server bugs and bloats on-call noise.
     return {
         "status": "error",
+        "kind": "validation" if is_validation else "internal",
         "error_code": error_code or f"{tool_name}_error",
         "error_id": error_id,
         "message": message,
