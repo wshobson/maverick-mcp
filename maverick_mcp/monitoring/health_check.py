@@ -110,7 +110,16 @@ class HealthChecker:
             try:
                 component_results[component_name] = await task
             except Exception as e:
-                logger.error(f"Health check failed for {component_name}: {e}")
+                # Use ``logger.exception`` so the stack trace reaches the log.
+                # The prior ``logger.error(f"...: {e}")`` printed only the
+                # message — which is how the stale ``maverick_mcp.data.database``
+                # import survived seven months: the ``ModuleNotFoundError``
+                # was stringified into ``message`` but no traceback pointed at
+                # the offending import line. Keep the message-only copy in the
+                # ComponentHealth payload (it's what the readiness JSON shows).
+                logger.exception(
+                    "Health check failed for %s", component_name
+                )
                 component_results[component_name] = ComponentHealth(
                     name=component_name,
                     status=HealthStatus.UNHEALTHY,
@@ -162,11 +171,19 @@ class HealthChecker:
         """Check database health."""
         start_time = time.time()
 
+        from sqlalchemy import text
+
+        # The `purge billing artifacts` refactor (439dca1, 2025-09-22) renamed
+        # ``data/database.py`` → ``data/session_management.py`` but missed this
+        # one call site. The old except-Exception around the import swallowed
+        # the resulting ``ModuleNotFoundError`` as "database unhealthy", which
+        # kept ``/health/ready`` at 503 for seven months without anyone noticing
+        # (SSE/tool traffic doesn't consult readiness). Keep the import at
+        # module-load position below so a future rename fails at import time,
+        # not inside the probe where it gets mistaken for a DB outage.
+        from maverick_mcp.data.session_management import get_db_session
+
         try:
-            from sqlalchemy import text
-
-            from maverick_mcp.data.database import get_db_session
-
             with get_db_session() as session:
                 # Simple query to test database connectivity
                 result = session.execute(text("SELECT 1 as health_check"))

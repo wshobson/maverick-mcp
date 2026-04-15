@@ -158,10 +158,21 @@ from fastmcp.server import http as fastmcp_http
 
 def apply_sse_trailing_slash_patch() -> None:
     """
-    Patch FastMCP's `create_sse_app` so both `/sse` and `/sse/` routes are registered.
+    Patch FastMCP's `create_sse_app` so both `/sse` and `/sse/` routes are
+    registered, and inject the shutdown-gate middleware at the front of the
+    middleware stack.
 
-    This prevents 307 redirects that can cause tool registration failures with mcp-remote.
-    The patch is idempotent and must be applied explicitly (typically when starting SSE).
+    Two fixes in one patch because both require intercepting the same
+    ``create_sse_app`` call:
+
+    * Trailing-slash: prevents 307 redirects that break mcp-remote tool
+      registration.
+    * Shutdown gate: returns 503 for new HTTP requests once
+      ``_shutdown_state["shutting_down"]`` flips, stopping the ASGI
+      double-start RuntimeError seen when POST /messages is in-flight at
+      SIGTERM (see ``maverick_mcp/api/middleware/shutdown_gate.py``).
+
+    Idempotent; must be applied explicitly (typically when starting SSE).
     """
     if (
         getattr(fastmcp_http.create_sse_app, "__name__", "")
@@ -181,7 +192,19 @@ def apply_sse_trailing_slash_patch() -> None:
         routes: list[BaseRoute] | None = None,
         middleware: list[Middleware] | None = None,
     ) -> Any:
-        """Register both path variants for the SSE endpoint."""
+        """Register both path variants for the SSE endpoint and prepend
+        the shutdown-gate middleware."""
+        from maverick_mcp.api.middleware.shutdown_gate import (
+            ShutdownGateMiddleware,
+        )
+
+        # Prepend so the gate runs FIRST (outer-most). The state dict is
+        # the module-level ``_shutdown_state`` defined below; the gate
+        # only reads it.
+        gate = Middleware(ShutdownGateMiddleware, state=_shutdown_state)
+        combined_middleware: list[Middleware] = (
+            [gate, *middleware] if middleware else [gate]
+        )
         app = original_create_sse_app(
             server=server,
             message_path=message_path,
@@ -189,7 +212,7 @@ def apply_sse_trailing_slash_patch() -> None:
             auth=auth,
             debug=debug,
             routes=routes,
-            middleware=middleware,
+            middleware=combined_middleware,
         )
 
         sse_endpoint = None

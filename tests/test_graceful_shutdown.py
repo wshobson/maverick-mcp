@@ -255,6 +255,43 @@ class TestGracefulShutdown:
             # Restore original handler
             signal.signal(signal.SIGHUP, original_sighup)
 
+    async def test_rapid_repeat_signal_does_not_schedule_duplicate_task(self):
+        """Regression: two SIGTERMs in quick succession must not schedule
+        two ``_async_shutdown`` tasks.
+
+        Incident 2026-04-15 09:08:31 showed two "Received SIGTERM" log
+        lines 102ms apart. The prior gate checked ``_shutdown_in_progress``,
+        which is only set *inside* ``_async_shutdown`` (after the first
+        loop iteration after the task is scheduled). Any second signal
+        landing in that window passed the gate and scheduled a second
+        shutdown task. The new ``_signal_received`` flag is set
+        synchronously inside the handler itself, closing the race.
+        """
+        handler = GracefulShutdownHandler("test")
+
+        scheduled: list[str] = []
+
+        class _FakeLoop:
+            def create_task(self, coro):
+                # Record without running so we can count scheduling attempts.
+                scheduled.append(getattr(coro, "__qualname__", "coro"))
+                # Close the coroutine so pytest doesn't warn about an
+                # un-awaited coroutine.
+                coro.close()
+                return object()
+
+        fake_loop = _FakeLoop()
+
+        with patch.object(asyncio, "get_running_loop", return_value=fake_loop):
+            handler._signal_handler(signal.SIGTERM, None)
+            handler._signal_handler(signal.SIGTERM, None)
+
+        assert len(scheduled) == 1, (
+            f"expected exactly one shutdown task scheduled, got {len(scheduled)}: "
+            f"{scheduled}. The second SIGTERM must be ignored."
+        )
+        assert handler._signal_received is True
+
 
 @pytest.mark.integration
 class TestGracefulShutdownIntegration:

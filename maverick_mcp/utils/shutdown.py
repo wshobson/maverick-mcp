@@ -91,6 +91,15 @@ class GracefulShutdownHandler:
         self._cleanup_callbacks: list[Callable] = []
         self._active_requests: set[asyncio.Task] = set()
         self._original_handlers: dict[int, Any] = {}
+        # ``_signal_received`` is set synchronously in ``_signal_handler``
+        # so a second signal arriving before the first ``_async_shutdown``
+        # task gets a chance to run can't schedule a duplicate.
+        # ``_shutdown_in_progress`` is set when the async shutdown actually
+        # *starts executing* — the two are distinct because the async task
+        # is scheduled via ``loop.create_task`` and may run an arbitrary
+        # time after the signal (see 2026-04-15 backend.log: two SIGTERMs
+        # landed 102ms apart, both scheduled shutdown tasks).
+        self._signal_received = False
         self._shutdown_in_progress = False
         self._start_time = time.time()
 
@@ -143,11 +152,20 @@ class GracefulShutdownHandler:
         signal_name = signal.Signals(signum).name
         logger.info(f"{self.name}: Received {signal_name} signal")
 
-        if self._shutdown_in_progress:
+        # Deduplicate here (not just inside ``_async_shutdown``). The async
+        # task scheduled by ``loop.create_task`` runs at some later loop
+        # iteration; a second signal arriving before that task starts
+        # executing would otherwise schedule a duplicate shutdown — exactly
+        # what the 2026-04-15 incident log showed (two "Received SIGTERM"
+        # lines 102ms apart because both invocations passed the old gate
+        # on ``_shutdown_in_progress``, which is only set *inside* the
+        # task).
+        if self._signal_received or self._shutdown_in_progress:
             logger.warning(
                 f"{self.name}: Shutdown already in progress, ignoring signal"
             )
             return
+        self._signal_received = True
 
         # Trigger async shutdown if we're inside a running event loop
         try:
