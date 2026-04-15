@@ -13,6 +13,19 @@ import os
 
 os.environ["MAVERICK_TEST_ENV"] = "true"
 
+# Pre-import beartype to force its claw import-hook modules to register
+# BEFORE pytest-cov (which wraps sys.settrace) starts instrumenting.
+# Without this, running ``pytest --cov`` can crash inside
+# ``beartype.claw._clawimpload`` with ``ImportError: cannot import name
+# 'claw_state' from partially initialized module 'beartype.claw._clawstate'``
+# because coverage's trace handler intercepts mid-initialisation. See
+# pyproject.toml's ``[tool.coverage.run] omit`` for the companion fix.
+try:
+    import beartype.claw._clawimpload  # noqa: F401
+    import beartype.claw._clawstate  # noqa: F401
+except Exception:  # noqa: BLE001 — best-effort pre-import; any failure is non-fatal.
+    pass
+
 import sys
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path

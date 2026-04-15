@@ -109,8 +109,14 @@ test-parallel:
 	@uv run pytest -v -n auto
 
 test-cov:
-	@echo "Running tests with coverage..."
-	@uv run pytest --cov=maverick_mcp --cov-report=html --cov-report=term
+	@echo "Running tests with coverage (sysmon core; see pyproject.toml)..."
+	# COVERAGE_CORE=sysmon uses Python 3.12+'s PEP 669 monitoring instead of
+	# sys.settrace, which sidesteps a circular-import collision between
+	# coverage.py's trace hook and beartype's import-claw. Without this the
+	# run crashes inside beartype.claw._clawimpload trying to import
+	# _clawstate mid-initialisation. sysmon is also 2-5x faster. Requires
+	# coverage >= 7.4 (already in our lockfile).
+	@COVERAGE_CORE=sysmon uv run pytest --cov=maverick_mcp --cov-report=html --cov-report=term
 
 test-fixes:
 	@echo "Running MCP tool fixes validation..."

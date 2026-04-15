@@ -14,7 +14,6 @@ import uuid
 from collections.abc import AsyncGenerator, Sequence
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 from sqlalchemy import (
@@ -47,11 +46,10 @@ from maverick_mcp.database.base import Base
 logger = logging.getLogger("maverick_mcp.data.models")
 settings = get_settings()
 
-# NYSE trading calendar reference timezone. Used for default end_date
-# resolution so that "today" matches the user's expectation of the most
-# recent US trading day, not a UTC-rolled-forward date that the market
-# calendar would then roll backward and cache as "newest".
-_US_EASTERN = ZoneInfo("America/New_York")
+# NYSE trading-calendar anchor. Shared across provider + data layers so a
+# future calendar change (LSE, TSE) is a one-file refactor. See the
+# stale-data audit for context: docs/audit/2026-04-14-mcp-audit-roadmap.md.
+from maverick_mcp.utils.timezones import US_EASTERN as _US_EASTERN  # noqa: E402
 
 
 # Helper function to get the right integer type for autoincrement primary keys

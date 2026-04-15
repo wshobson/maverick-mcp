@@ -183,7 +183,12 @@ class VectorBTEngine(BatchProcessingMixin):
         name="vectorbt_engine.fetch",
         failure_threshold=5,
         recovery_timeout=30,
-        expected_exceptions=(ConnectionError, TimeoutError),
+        # ``OSError`` covers ``requests.exceptions.ConnectionError`` in
+        # requests >= 2.26, plus stdlib socket errors. The narrow
+        # ``(ConnectionError, TimeoutError)`` set missed real yfinance
+        # transient errors because requests.exceptions.Timeout doesn't
+        # always subclass stdlib TimeoutError on older requests builds.
+        expected_exceptions=(ConnectionError, TimeoutError, OSError),
     )
     async def _fetch_with_retry(
         self,
@@ -196,7 +201,10 @@ class VectorBTEngine(BatchProcessingMixin):
         """Retry wrapper around get_historical_data for transient network errors.
 
         Wrapped in a circuit breaker so repeated upstream failures fast-fail
-        instead of incurring retry latency across calls.
+        instead of incurring retry latency across calls. The caught
+        exception set intentionally includes ``requests.exceptions.
+        RequestException`` (when available) so yfinance's HTTP errors fire
+        the retry/jitter path instead of propagating on the first blip.
         """
         # Exponential backoff + jitter. Jitter prevents a thundering-herd
         # pattern when a batch of parallel backtests all hit a transient
@@ -206,17 +214,35 @@ class VectorBTEngine(BatchProcessingMixin):
         _BASE_DELAY_S = 0.1
         _MAX_DELAY_S = 5.0
 
+        # Add ``requests.exceptions.RequestException`` to the caught set
+        # when ``requests`` is importable (always true via yfinance, but
+        # guard keeps this file usable in bare unit-test environments).
+        try:
+            from requests.exceptions import RequestException as _RequestsException
+
+            retry_errors: tuple[type[BaseException], ...] = (
+                ConnectionError,
+                TimeoutError,
+                OSError,
+                _RequestsException,
+            )
+        except ImportError:
+            retry_errors = (ConnectionError, TimeoutError, OSError)
+
         last_error: Exception | None = None
         for attempt in range(max_retries):
             try:
                 return await self.get_historical_data(
                     symbol, start_date, end_date, interval
                 )
-            except (ConnectionError, TimeoutError) as e:
+            except retry_errors as e:
                 last_error = e
                 if attempt < max_retries - 1:
                     base = min(_BASE_DELAY_S * (2**attempt), _MAX_DELAY_S)
-                    delay = base * random.uniform(0.5, 1.5)
+                    # nosec B311 — backoff jitter, not cryptography.
+                    # ``random.uniform`` is the textbook choice here;
+                    # ``secrets`` would add no security value.
+                    delay = base * random.uniform(0.5, 1.5)  # noqa: S311  # nosec B311
                     logger.warning(
                         f"get_historical_data attempt {attempt + 1}/{max_retries} "
                         f"failed for {symbol}: {e}. Retrying in {delay:.2f}s"

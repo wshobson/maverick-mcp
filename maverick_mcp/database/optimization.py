@@ -154,29 +154,78 @@ class QueryOptimizer:
             price_data_list: list[dict[str, Any]],
             batch_size: int = 1000,
         ):
-            """
-            Optimized bulk insert for price data with batching.
+            """Batched upsert for price data.
+
+            Mirrors the conflict-handling semantics of
+            ``maverick_mcp.data.models.bulk_insert_price_data``: on
+            conflict against the ``(stock_id, date)`` uniqueness
+            constraint, overwrite OHLCV + ``updated_at`` rather than
+            skip or raise. The pre-Phase-1 version used
+            ``session.bulk_insert_mappings`` which raised ``IntegrityError``
+            on duplicate keys — a foot-gun for any caller wiring the
+            optimization layer after the upsert change.
 
             Args:
-                session: Database session
-                price_data_list: List of price data dictionaries
-                batch_size: Number of records per batch
+                session: Database session.
+                price_data_list: List of price-data dictionaries. Each
+                    must contain at least ``stock_id`` and ``date``; all
+                    other OHLCV columns are optional and merged into
+                    ``on_conflict`` SET.
+                batch_size: Rows per round trip. 1000 is a pragmatic
+                    default for both SQLite and Postgres.
             """
             if not price_data_list:
                 return
 
-            logger.info(f"Bulk inserting {len(price_data_list)} price records")
+            # Match models.bulk_insert_price_data: update all OHLCV +
+            # updated_at on conflict; preserve created_at by not listing it.
+            _UPDATE_KEYS = (
+                "open_price",
+                "high_price",
+                "low_price",
+                "close_price",
+                "volume",
+                "updated_at",
+            )
+
+            logger.info(f"Upserting {len(price_data_list)} price records")
             start_time = time.time()
 
             try:
-                # Process in batches to avoid memory issues
+                from maverick_mcp.data.models import DATABASE_URL
+
                 for i in range(0, len(price_data_list), batch_size):
                     batch = price_data_list[i : i + batch_size]
 
-                    # Use bulk_insert_mappings for better performance
-                    session.bulk_insert_mappings(PriceCache, batch)
+                    if "postgresql" in DATABASE_URL:
+                        from sqlalchemy.dialects.postgresql import (
+                            insert as pg_insert,
+                        )
 
-                    # Commit each batch to free up memory
+                        stmt = pg_insert(PriceCache).values(batch)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["stock_id", "date"],
+                            set_={
+                                k: getattr(stmt.excluded, k) for k in _UPDATE_KEYS
+                            },
+                        )
+                    else:
+                        from sqlalchemy.dialects.sqlite import (
+                            insert as sqlite_insert,
+                        )
+
+                        stmt = sqlite_insert(PriceCache).values(batch)
+                        stmt = stmt.on_conflict_do_update(
+                            index_elements=["stock_id", "date"],
+                            set_={
+                                k: getattr(stmt.excluded, k) for k in _UPDATE_KEYS
+                            },
+                        )
+
+                    session.execute(stmt)
+
+                    # Flush between batches to keep memory bounded; commit
+                    # only at the end so the whole upload is atomic.
                     if i + batch_size < len(price_data_list):
                         session.flush()
 
@@ -184,12 +233,12 @@ class QueryOptimizer:
 
                 elapsed = time.time() - start_time
                 logger.info(
-                    f"Bulk insert completed in {elapsed:.2f}s "
+                    f"Upsert completed in {elapsed:.2f}s "
                     f"({len(price_data_list) / elapsed:.0f} records/sec)"
                 )
 
             except Exception as e:
-                logger.error(f"Bulk insert failed: {e}")
+                logger.error(f"Bulk upsert failed: {e}")
                 session.rollback()
                 raise
 

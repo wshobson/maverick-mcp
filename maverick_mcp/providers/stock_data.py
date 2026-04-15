@@ -8,7 +8,6 @@ Provides comprehensive stock data retrieval with database caching and maverick s
 
 import logging
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pandas_market_calendars as mcal
@@ -36,11 +35,10 @@ from maverick_mcp.utils.yfinance_pool import get_yfinance_pool
 # Load environment variables
 logger = logging.getLogger("maverick_mcp.stock_data")
 
-# Single source of truth for "what day is it on the NYSE calendar". Using
-# US/Eastern for default ``end_date`` resolution prevents UTC-boundary bugs
-# where early-morning UTC callers get a date the market calendar then rolls
-# backward, and the rolled-back date is cached as the freshest row.
-_US_EASTERN_ZI = ZoneInfo("America/New_York")
+# NYSE trading-calendar anchor. Shared across provider + data layers —
+# see maverick_mcp/utils/timezones.py and the stale-data audit for why
+# "today in Eastern" (not UTC, not local) is the right default anchor.
+from maverick_mcp.utils.timezones import US_EASTERN as _US_EASTERN_ZI  # noqa: E402
 
 
 class EnhancedStockDataProvider:
@@ -556,14 +554,16 @@ class EnhancedStockDataProvider:
             if not cache_df.empty:
                 logger.debug(f"Sample row: {cache_df.iloc[0].to_dict()}")
 
-            # Insert data
+            # Upsert data. ``count`` reflects rows affected by the upsert,
+            # which includes both fresh inserts and overwrites of
+            # previously-cached (possibly provisional) bars — so the log
+            # line says "upserted", not "new". Misattributing updates as
+            # new rows was how the stale-data bug hid for so long.
             count = bulk_insert_price_data(session, symbol, cache_df)
             if count == 0:
-                logger.info(
-                    f"No new records cached for {symbol} (data may already exist)"
-                )
+                logger.info(f"No price records to upsert for {symbol}")
             else:
-                logger.info(f"Cached {count} new price records for {symbol}")
+                logger.info(f"Upserted {count} price records for {symbol}")
 
         except Exception as e:
             logger.error(f"Error caching price data for {symbol}: {e}", exc_info=True)

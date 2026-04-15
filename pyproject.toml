@@ -97,10 +97,21 @@ dev = [
     "safety>=3.0.0",
     "types-requests>=2.31.0",
     "types-pytz>=2024.1.0",
+    "pandas-stubs>=2.0.0",
+    "msgpack-types>=0.7.0",
     "ty>=0.0.1a19",
 ]
 vectors = [
     "chromadb>=0.5.0",
+    # Regression guard: chromadb only caps opentelemetry-exporter-otlp-proto-grpc
+    # at >=1.2.0, so uv's resolver has (rarely) picked 1.11.1 alongside a much
+    # newer opentelemetry-api/sdk. That version ships _pb2.py files generated
+    # with protoc<3.19 which the modern protobuf runtime rejects with
+    # "Descriptors cannot be created directly". Pinning the exporter forces a
+    # matched otel set and keeps protobuf on the 6.x line. See
+    # docs/runbooks/otel-protobuf-crash.md.
+    "opentelemetry-exporter-otlp-proto-grpc>=1.30.0",
+    "opentelemetry-proto>=1.30.0",
 ]
 
 [build-system]
@@ -109,6 +120,37 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 include = ["*.py"]
+
+# Coverage config. The ``omit`` list exists to work around a coverage+
+# beartype interaction: ``beartype``'s import-claw hook
+# (``beartype.claw._clawimpload``) and ``coverage.py``'s trace function
+# both intercept module imports, and under some ordering of the two the
+# claw tries to import ``beartype.claw._clawstate`` while that module is
+# still being initialised — ``ImportError: cannot import name
+# 'claw_state' from partially initialized module``. Omitting beartype
+# from coverage measurement sidesteps the collision without disabling
+# coverage on our own code.
+[tool.coverage.run]
+source = ["maverick_mcp"]
+branch = true
+omit = [
+    "*/beartype/*",
+    "*/tests/*",
+    "*/site-packages/*",
+    "*/__pycache__/*",
+    "*/alembic/versions/*",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -136,6 +178,25 @@ addopts = [
 # Async configuration
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+# Filter known-irreducible warnings. Each entry must have a comment justifying
+# why the warning is suppressed rather than fixed.
+filterwarnings = [
+    # Pool size warnings are emitted *intentionally* by DatabasePoolConfig
+    # validators when the configured pool size is below the expected demand.
+    # `tests/test_database_pool_config*.py` exercise these scenarios on purpose
+    # to verify the warnings fire — we don't want them in the summary on top
+    # of the assertions that already check them.
+    "ignore:Pool size .* may be insufficient for expected load:UserWarning",
+    # pandas-ta still calls `pd.set_option('mode.copy_on_write', ...)` which is
+    # a no-op (and Pandas4Warning) on pandas >= 3. Upstream issue, no action
+    # we can take. Remove this line once pandas-ta drops the option.
+    "ignore:The 'mode.copy_on_write' option is deprecated:DeprecationWarning",
+    # testcontainers' `@wait_container_is_ready` decorator has been deprecated
+    # in favor of structured wait strategies. Used transitively by our redis
+    # testcontainer fixtures; upstream migration path is open. Re-evaluate when
+    # we bump testcontainers.
+    "ignore:The @wait_container_is_ready decorator is deprecated:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 88

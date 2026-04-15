@@ -12,7 +12,6 @@ import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime
 from typing import Any
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 from sqlalchemy import select, text
@@ -31,11 +30,12 @@ from maverick_mcp.data.performance import (
     request_cache,
 )
 
-logger = logging.getLogger(__name__)
+# Shared NYSE-calendar anchor — see maverick_mcp/utils/timezones.py. The
+# historical per-module copies diverged in naming (_US_EASTERN vs
+# _US_EASTERN_ZI); one source prevents drift.
+from maverick_mcp.utils.timezones import US_EASTERN as _US_EASTERN_ZI
 
-# Match the provider-layer convention: default "today" is anchored to
-# the NYSE trading timezone, not to naive local time or UTC.
-_US_EASTERN_ZI = ZoneInfo("America/New_York")
+logger = logging.getLogger(__name__)
 
 
 class OptimizedStockDataProvider:
