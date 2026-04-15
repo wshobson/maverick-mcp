@@ -156,6 +156,8 @@ ERROR_HANDLING_SCENARIOS = [
 class TestResult:
     """Container for individual test results."""
 
+    __test__ = False  # Helper class, not a pytest test class.
+
     def __init__(self, test_name: str, tool_name: str):
         self.test_name = test_name
         self.tool_name = tool_name
@@ -554,7 +556,13 @@ class IntegrationTestSuite:
                             isinstance(response, dict)
                             and response.get("status") != "error"
                         )
-                        result.mark_completed(success, response)
+                        # `asyncio.gather(return_exceptions=True)` returns
+                        # either the awaited value or an Exception; the dict
+                        # guard above also pins the runtime type for the type
+                        # checker.
+                        result.mark_completed(
+                            success, response if isinstance(response, dict) else None
+                        )
 
                     result.validation_results = {"concurrent_execution": success}
                     self.logger.info(f"✓ {task_name}: {'PASS' if success else 'FAIL'}")
@@ -801,8 +809,10 @@ class IntegrationTestSuite:
         execution_times = [
             r.execution_time_ms for r in self.results if r.execution_time_ms
         ]
-        if execution_times:
-            avg_time = sum(execution_times) / len(execution_times)
+        avg_time: float | None = (
+            sum(execution_times) / len(execution_times) if execution_times else None
+        )
+        if execution_times and avg_time is not None:
             print("\nPerformance Summary:")
             print(f"  Average execution time: {avg_time:.0f}ms")
             print(f"  Fastest test: {min(execution_times):.0f}ms")

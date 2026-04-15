@@ -14,6 +14,8 @@ from typing import Any
 class TestSuiteValidator:
     """Validator for test suite structure and patterns."""
 
+    __test__ = False  # Helper class, not a pytest test class.
+
     def __init__(self, test_file_path: str):
         self.test_file_path = Path(test_file_path)
         self.content = self.test_file_path.read_text()
@@ -104,18 +106,23 @@ class TestSuiteValidator:
                 # Check if async test functions are properly marked
                 if node.name.startswith("test_"):
                     for decorator in node.decorator_list:
-                        if isinstance(decorator, ast.Attribute):
+                        # Dotted decorator: `@pytest.mark.asyncio` parses to
+                        # Attribute(value=Attribute(..., attr="mark"), attr="asyncio").
+                        if isinstance(decorator, ast.Attribute) and isinstance(
+                            decorator.value, ast.Attribute
+                        ):
                             if (
-                                hasattr(decorator.value, "attr")
-                                and decorator.value.attr == "mark"
+                                decorator.value.attr == "mark"
                                 and decorator.attr == "asyncio"
                             ):
                                 pass
-                        elif isinstance(decorator, ast.Call):
+                        # Call form: `@pytest.mark.asyncio(...)` wraps the same
+                        # Attribute chain inside a Call(func=...).
+                        elif isinstance(decorator, ast.Call) and isinstance(
+                            decorator.func, ast.Attribute
+                        ) and isinstance(decorator.func.value, ast.Attribute):
                             if (
-                                isinstance(decorator.func, ast.Attribute)
-                                and hasattr(decorator.func.value, "attr")
-                                and decorator.func.value.attr == "mark"
+                                decorator.func.value.attr == "mark"
                                 and decorator.func.attr == "asyncio"
                             ):
                                 pass

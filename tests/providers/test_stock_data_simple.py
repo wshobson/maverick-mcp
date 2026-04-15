@@ -134,16 +134,17 @@ class TestEnhancedStockDataProviderCore:
         assert isinstance(result, dict)
         assert result.get("symbol") == "AAPL"
 
-    @pytest.mark.skip(reason="Flaky test with external dependencies")
-    @patch("maverick_mcp.providers.stock_data.yf.Ticker")
-    def test_get_stock_info_exception(self, mock_ticker, provider):
-        """Test getting stock information with exception."""
-        mock_ticker.side_effect = Exception("API Error")
+    def test_get_stock_info_exception(self, provider):
+        """Test getting stock information when the pool raises an exception.
 
-        result = provider.get_stock_info("INVALID")
-
-        assert isinstance(result, dict)
-        assert result == {}
+        ``get_stock_info`` delegates to ``self._yf_pool.get_info`` and does
+        not swallow errors, so the exception should propagate to the caller.
+        """
+        with patch.object(
+            provider._yf_pool, "get_info", side_effect=Exception("API Error")
+        ):
+            with pytest.raises(Exception, match="API Error"):
+                provider.get_stock_info("INVALID")
 
     @patch("maverick_mcp.providers.stock_data.yf.Ticker")
     def test_get_realtime_data_success(self, mock_ticker, provider):
@@ -333,16 +334,24 @@ class TestStockDataProviderErrorHandling:
 
                 assert isinstance(result, pd.DataFrame)
 
-    @pytest.mark.skip(reason="Flaky test with external dependencies")
     def test_empty_symbol(self):
-        """Test with empty symbol."""
+        """Test with empty symbol.
+
+        yfinance is mocked via the pool so the test does not hit the network.
+        The provider should still return a DataFrame (empty) rather than raise.
+        """
         with patch("maverick_mcp.providers.stock_data.get_db_session_read_only"):
             with patch("maverick_mcp.providers.stock_data.mcal.get_calendar"):
                 provider = EnhancedStockDataProvider()
 
-                result = provider.get_stock_data(
-                    "", "2024-01-01", "2024-01-31", use_cache=False
-                )
+                with patch.object(
+                    provider._yf_pool,
+                    "get_history",
+                    return_value=pd.DataFrame(),
+                ):
+                    result = provider.get_stock_data(
+                        "", "2024-01-01", "2024-01-31", use_cache=False
+                    )
 
                 assert isinstance(result, pd.DataFrame)
 

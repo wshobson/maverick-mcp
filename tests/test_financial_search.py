@@ -10,11 +10,20 @@ import asyncio
 import os
 import sys
 from datetime import datetime
+from unittest.mock import MagicMock
+
+import pytest
+from langchain_core.language_models import BaseChatModel
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from maverick_mcp.agents.deep_research import DeepResearchAgent, ExaSearchProvider
+
+# These tests hit the real Exa API (EXA_API_KEY) and leak HTTP client sockets
+# the ResourceWarning machinery picks up. Mark them `external` so they only run
+# under explicit opt-in (e.g. `pytest -m external`); skipped by default `make test`.
+pytestmark = pytest.mark.external
 
 
 async def test_financial_search_strategies():
@@ -181,9 +190,12 @@ async def test_deep_research_agent_integration():
         return
 
     try:
-        # Initialize the agent
+        # `_perform_financial_search` doesn't touch the LLM — only the search
+        # provider — so a typed Mock is sufficient and avoids requiring an
+        # OpenRouter/Anthropic key for this Exa-only test.
+        mock_llm = MagicMock(spec=BaseChatModel)
         agent = DeepResearchAgent(
-            llm=None,  # Will be set by initialize if needed
+            llm=mock_llm,
             persona="financial_analyst",
             exa_api_key=exa_api_key,
         )
