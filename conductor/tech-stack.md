@@ -41,7 +41,7 @@
 | ------------------------ | -------------------------------------- |
 | langchain / langgraph    | Research and agent orchestration       |
 | anthropic / openai       | LLM providers                          |
-| exa-py                   | Web search provider (optional)         |
+| exa-py                   | Web search API for AI (optional)       |
 
 ### Persistence + Caching
 
