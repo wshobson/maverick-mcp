@@ -40,7 +40,7 @@ dependencies = [
     "redis>=6.2.0",
     "hiredis>=3.2.1",
     "msgpack>=1.0.7",
-    "certifi>=2024.2.2",
+    "certifi>=2026.4.22",
     # Financial data and analysis (core)
     "numpy>=1.26.4",
     "pandas>=2.2.3",
