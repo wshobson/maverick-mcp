@@ -1568,6 +1568,17 @@ if __name__ == "__main__":
             _eb.subscribe("screening.entry", on_screening_change)
             _eb.subscribe("screening.exit", on_screening_change)
             _eb.subscribe("regime.changed", on_regime_change)
+
+            # Phase 3.1: subscribe signal delivery notifiers (MCP resource
+            # buffer always-on; outbound webhook opt-in via env var).
+            from maverick_mcp.services.signals.notifiers import (
+                register_default_notifiers,
+            )
+
+            signal_notifiers = register_default_notifiers(_eb)
+            if signal_notifiers:
+                _reg.register("signal_notifiers", signal_notifiers)
+
             logger.info(
                 "Service layer: domain services registered, event wiring complete"
             )

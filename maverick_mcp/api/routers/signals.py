@@ -3,11 +3,31 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_float(value: object, fallback: float = 0.0) -> float:
+    """Coerce a metric to a JSON-serializable float, mapping NaN/inf to ``fallback``.
+
+    vectorbt returns NaN for several metrics on degenerate portfolios
+    (no entries fired, single bar of data, constant returns,
+    all-breakeven trades). ``float(nan)`` succeeds silently, so without
+    explicit coercion the NaN leaks into the response and crashes
+    FastMCP's JSON serializer *after* the tool returns — past the outer
+    except, surfacing as an opaque MCP error to the client.
+    """
+    try:
+        f = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return fallback
+    if math.isnan(f) or math.isinf(f):
+        return fallback
+    return f
 
 
 def register_signal_tools(mcp: FastMCP) -> None:
@@ -276,4 +296,135 @@ def register_signal_tools(mcp: FastMCP) -> None:
                 }
         except Exception as e:
             logger.error("get_regime_history error: %s", e)
+            return {"error": str(e)}
+
+    # ------------------------------------------------------------------
+    # Backtest a saved signal definition (Phase 3.2)
+    # ------------------------------------------------------------------
+
+    @mcp.tool(
+        name="backtest_signal",
+        description=(
+            "Backtest a saved signal definition against historical OHLCV "
+            "data. Walks the data bar-by-bar through the live signal "
+            "evaluation engine so the entry/exit edges match what the "
+            "signal would produce in production. Returns trade list and "
+            "summary metrics (total return, win rate, Sharpe, max drawdown)."
+        ),
+    )
+    def backtest_signal(
+        signal_id: int,
+        start_date: str,
+        end_date: str,
+        initial_capital: float = 10_000.0,
+    ) -> dict:
+        """Backtest a saved Signal against historical OHLCV data.
+
+        Args:
+            signal_id: ID of the persisted signal whose condition will
+                be replayed.
+            start_date: Backtest window start (YYYY-MM-DD).
+            end_date: Backtest window end (YYYY-MM-DD).
+            initial_capital: Starting cash for the simulated portfolio.
+
+        Returns:
+            dict with ``signal_id``, ``ticker``, ``label``, ``metrics``
+            (total_return_pct, win_rate, sharpe_ratio, max_drawdown_pct),
+            and a compact ``trades`` list. Returns ``{"error": ...}`` on
+            any failure (missing signal, no data, vectorbt error).
+        """
+        try:
+            import vectorbt as vbt
+
+            from maverick_mcp.data.models import SessionLocal
+            from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
+            from maverick_mcp.services.signals.backtest_adapter import (
+                SignalConditionStrategy,
+            )
+            from maverick_mcp.services.signals.models import Signal
+
+            # 1. Load the signal definition
+            with SessionLocal() as session:
+                signal = session.query(Signal).filter(Signal.id == signal_id).first()
+                if signal is None:
+                    return {"error": f"Signal {signal_id} not found"}
+                ticker = str(signal.ticker)
+                label = str(signal.label)
+                condition = dict(signal.condition or {})
+
+            # 2. Fetch OHLCV
+            data = EnhancedStockDataProvider().get_stock_data(
+                ticker, start_date=start_date, end_date=end_date
+            )
+            if data is None or data.empty:
+                return {
+                    "error": (
+                        f"No price data for {ticker} between "
+                        f"{start_date} and {end_date}"
+                    )
+                }
+
+            # 3. Run the strategy. Normalize once up front so the
+            # column probe below uses a single canonical name and
+            # raises a clear error if the provider returned a frame
+            # without a close column at all (instead of silently
+            # KeyError-ing inside the outer except).
+            from maverick_mcp.services.signals.backtest_adapter import (
+                normalize_ohlcv_columns,
+            )
+
+            data = normalize_ohlcv_columns(data)
+            if "close" not in data.columns:
+                return {
+                    "error": (
+                        f"OHLCV data for {ticker} is missing a 'close' column "
+                        f"(got: {list(data.columns)})"
+                    )
+                }
+
+            strategy = SignalConditionStrategy(condition, label=label)
+            entries, exits = strategy.generate_signals(data)
+            close_prices = data["close"]
+
+            portfolio = vbt.Portfolio.from_signals(
+                close=close_prices,
+                entries=entries,
+                exits=exits,
+                init_cash=initial_capital,
+                freq="D",
+            )
+
+            # 4. Extract metrics — coerce NaN/inf via _safe_float so a
+            # degenerate portfolio cannot crash FastMCP's JSON serializer.
+            total_return = _safe_float(portfolio.total_return())
+            try:
+                sharpe = _safe_float(portfolio.sharpe_ratio())
+            except Exception:
+                sharpe = 0.0
+            max_dd = _safe_float(portfolio.max_drawdown())
+            trades_records = portfolio.trades.records_readable
+            trade_count = int(len(trades_records))
+            win_rate = (
+                _safe_float(portfolio.trades.win_rate()) if trade_count > 0 else 0.0
+            )
+
+            return {
+                "signal_id": signal_id,
+                "ticker": ticker,
+                "label": label,
+                "condition": condition,
+                "start_date": start_date,
+                "end_date": end_date,
+                "metrics": {
+                    "total_return_pct": round(total_return * 100, 4),
+                    "sharpe_ratio": round(sharpe, 4),
+                    "max_drawdown_pct": round(max_dd * 100, 4),
+                    "win_rate_pct": round(win_rate * 100, 2),
+                    "trade_count": trade_count,
+                },
+                "entry_count": int(entries.sum()),
+                "exit_count": int(exits.sum()),
+            }
+        except Exception as e:
+            logger.exception("backtest_signal error: %s", e)
             return {"error": str(e)}

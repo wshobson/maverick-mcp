@@ -2,28 +2,21 @@ name: Claude Code Review
 
 on:
   pull_request:
-    types: [opened, synchronize]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+    types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
   claude-review:
-    if: github.event.pull_request.user.login != 'dependabot[bot]'
-
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
       id-token: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
@@ -32,59 +25,66 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          track_progress: true
+
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            You are a focused code reviewer for a Python MCP server (FastMCP + SQLAlchemy + pandas).
-            Do NOT use any plugins or external tools beyond what is explicitly allowed below.
+            You are reviewing a PR for MaverickMCP — a personal-use MCP
+            server for Claude Desktop providing stock analysis, technical
+            indicators, screening, portfolio tracking, backtesting, and
+            multi-agent research. The stack is Python 3.12 + FastMCP +
+            SQLAlchemy + pandas + LangChain/LangGraph + vectorbt. Read
+            `CLAUDE.md` at the repo root for full architecture and
+            conventions before starting.
 
-            ## Review Process
+            ## Review checklist (priority order)
 
-            1. Run `gh pr diff ${{ github.event.pull_request.number }}` to get the full diff
-            2. Read any modified files that need more context using the Read tool
-            3. Focus your review ONLY on the changed lines and their immediate context
+            1. **Runtime bugs** — NameErrors, TypeErrors, unhandled
+               `None`, wrong awaits (e.g. `asyncio.to_thread` on an async
+               function), NaN/inf leaking into JSON responses,
+               unbounded retries, deadlocks in async code.
 
-            ## What to Review (in priority order)
+            2. **Silent failures** — Error paths that swallow exceptions
+               or mask real failures; fallbacks that hide downstream
+               outages; bare `except:` blocks; wide `except Exception`
+               that turns a programmer error into a user-facing message.
 
-            1. **Runtime bugs**: NameErrors, TypeErrors, unhandled None, wrong awaits (e.g. asyncio.to_thread on async functions)
-            2. **Silent failures**: Error paths that swallow exceptions, fallbacks that mask real issues
-            3. **API contract violations**: MCP tool return types, JSON serialization of non-stdlib types (Pydantic models, numpy/pandas types)
-            4. **Duplicate registrations**: Tool name collisions between routers and server.py wrappers
-            5. **Test regressions**: Tests that no longer test what their name says, eval() instead of json.loads()
+            3. **API contract violations** — MCP tool return types must
+               be JSON-serializable (no Pydantic models, numpy arrays,
+               pandas Series leaking out unconverted). Tool name
+               collisions between routers and `server.py`. Schema drift
+               between SQLAlchemy models and the queries against them.
 
-            ## What NOT to review
+            4. **Security & boundary issues** — SQL injection in raw
+               queries, command injection in CI, leaked secrets, unsafe
+               deserialization, missing input validation at MCP-tool
+               boundaries.
 
-            - Style, formatting, naming (ruff handles this)
-            - Type annotations on unchanged code
-            - Documentation completeness
-            - Architecture opinions ("this file is too big")
-            - Generic best-practice advice
+            5. **Tests** — New behavior should have tests in `tests/`
+               (markers: `not integration and not slow and not external`
+               for the unit lane). Flag missing coverage only for
+               non-trivial changes. Watch for tests that no longer
+               assert what their name claims (e.g. `eval` vs
+               `json.loads`).
 
-            ## Output Format
+            ## Output rules
 
-            Leave your review as a SINGLE `gh pr comment` with this structure:
+            - Use inline comments
+              (`mcp__github_inline_comment__create_inline_comment`) for
+              issues tied to a specific line. One sentence per finding.
+            - End with a single `gh pr comment` summary, ≤10 lines,
+              grouping findings by severity (Bugs / Warnings / Notes).
+              If clean, post a one-line LGTM with what looks good.
+            - Only report issues you have HIGH confidence in (>80%). No
+              speculation.
+            - Do NOT comment on formatting, import order, or naming —
+              ruff handles that.
+            - Do NOT suggest doc additions.
+            - Do NOT make architecture critiques unrelated to the diff
+              ("this file is too big", "consider extracting…").
 
-            ```
-            ## Code Review
-
-            ### Bugs (must fix)
-            - **[file:line]** Brief description of the actual bug and why it fails at runtime
-
-            ### Warnings (should fix)
-            - **[file:line]** Brief description and the risk if left unfixed
-
-            ### Notes
-            - Any non-blocking observations worth mentioning (max 3)
-            ```
-
-            Rules:
-            - Only report issues you have HIGH confidence in (>80%). No speculation.
-            - Each issue must reference a specific file and line number.
-            - Keep the entire comment under 80 lines. Concise > comprehensive.
-            - If there are no bugs or warnings, just say "LGTM" with a one-line summary.
-
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://docs.claude.com/en/docs/claude-code/cli-reference for available options
-          claude_args: '--allowed-tools "Bash(gh issue view:*),Bash(gh search:*),Bash(gh issue list:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*)"'
-
+          claude_args: |
+            --model claude-opus-4-6
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),Read,Grep,Glob"
