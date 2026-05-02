@@ -54,10 +54,13 @@ class TechnicalAnalysisService:
         avg_gain = gains.rolling(window=period).mean()
         avg_loss = losses.rolling(window=period).mean()
 
-        # Calculate RS and RSI
-        # Handle edge case where there are no losses
-        rs = avg_gain / avg_loss if avg_loss.iloc[-1] != 0 else np.inf
-        rsi = 100 - (100 / (1 + rs))
+        # Calculate RS and RSI. Replacing zeros with NaN keeps `rs`
+        # (and therefore `rsi`) as a Series even when there are no
+        # losses in the window, which avoids a Series-vs-scalar type
+        # split downstream. NaN entries are then mapped to RSI=100
+        # (canonical "no losses ⇒ maximum strength" semantic).
+        rs = avg_gain / avg_loss.replace(0, np.nan)
+        rsi = (100 - (100 / (1 + rs))).fillna(100.0)
 
         # Get the latest RSI value
         current_rsi = float(rsi.iloc[-1])
