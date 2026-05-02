@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String
+from sqlalchemy import JSON, DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
 
 from maverick_mcp.database.base import Base
 
@@ -14,15 +16,15 @@ class ScreeningRun(Base):
 
     __tablename__ = "screening_runs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    screen_name = Column(String(255), nullable=False, index=True)
-    run_at = Column(
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    screen_name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    run_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
     )
-    result_count = Column(Integer, nullable=False, default=0)
-    results = Column(JSON, nullable=False, default=list)
+    result_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    results: Mapped[list[Any]] = mapped_column(JSON, nullable=False, default=list)
 
 
 class ScreeningChange(Base):
@@ -30,14 +32,15 @@ class ScreeningChange(Base):
 
     __tablename__ = "screening_changes"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    run_id = Column(Integer, nullable=False, index=True)
-    symbol = Column(String(20), nullable=False, index=True)
-    change_type = Column(String(20), nullable=False)  # "entry" | "exit" | "rank_change"
-    screen_name = Column(String(255), nullable=False)
-    previous_rank = Column(Integer, nullable=True)
-    new_rank = Column(Integer, nullable=True)
-    detected_at = Column(
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(nullable=False, index=True)
+    symbol: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    # "entry" | "exit" | "rank_change"
+    change_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    screen_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    previous_rank: Mapped[int | None] = mapped_column(nullable=True)
+    new_rank: Mapped[int | None] = mapped_column(nullable=True)
+    detected_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),
         nullable=False,
@@ -49,9 +52,13 @@ class ScheduledJob(Base):
 
     __tablename__ = "scheduled_jobs"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    job_name = Column(String(255), nullable=False, unique=True)
-    job_type = Column(String(100), nullable=False)
-    schedule_config = Column(JSON, nullable=False, default=dict)
-    active = Column(Boolean, nullable=False, default=True)
-    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    job_name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    job_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    schedule_config: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False, default=dict
+    )
+    active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

@@ -380,11 +380,17 @@ class StockAnalysisService:
         if isinstance(end_date, str):
             end_date = pd.to_datetime(end_date)
 
-        # Get valid trading days from market calendar
+        # Get valid trading days from market calendar. The schedule
+        # frame is indexed by trading days, so the index is always a
+        # DatetimeIndex at runtime even though pandas' generic type
+        # is `Index`.
         schedule = self.market_calendar.schedule(
             start_date=start_date, end_date=end_date
         )
-        return schedule.index
+        index = schedule.index
+        if not isinstance(index, pd.DatetimeIndex):
+            index = pd.DatetimeIndex(index)
+        return index
 
     def _get_last_trading_day(self, date) -> pd.Timestamp:
         """

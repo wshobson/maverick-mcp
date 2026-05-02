@@ -46,18 +46,30 @@ class TechnicalAnalysisService:
         # Calculate price changes
         delta = prices.diff()
 
-        # Separate gains and losses
-        gains = delta.where(delta > 0, 0)
-        losses = -delta.where(delta < 0, 0)
+        # Separate gains and losses, but preserve NaN from missing
+        # input data so it propagates through the rolling mean and
+        # downstream RSI value (rather than being silently treated
+        # as a zero-gain or zero-loss bar).
+        gains = delta.where(delta > 0, 0).where(delta.notna())
+        losses = (-delta).where(delta < 0, 0).where(delta.notna())
 
         # Calculate average gains and losses
         avg_gain = gains.rolling(window=period).mean()
         avg_loss = losses.rolling(window=period).mean()
 
-        # Calculate RS and RSI
-        # Handle edge case where there are no losses
-        rs = avg_gain / avg_loss if avg_loss.iloc[-1] != 0 else np.inf
+        # Calculate RS and RSI. Replacing zeros with NaN keeps `rs`
+        # (and therefore `rsi`) as a Series even when there are no
+        # losses in the window, which avoids a Series-vs-scalar type
+        # split downstream. We then map ONLY the zero-divisor case
+        # to RSI=100 (canonical "no losses ⇒ maximum strength"). NaN
+        # arising from missing input data (where avg_gain itself is
+        # NaN, e.g. trailing NaNs in an incomplete fetch) must
+        # propagate so callers can decide how to handle it — coercing
+        # it to 100 would silently fabricate an overbought signal.
+        rs = avg_gain / avg_loss.replace(0, np.nan)
         rsi = 100 - (100 / (1 + rs))
+        no_loss_with_gain = (avg_loss == 0) & avg_gain.notna()
+        rsi = rsi.mask(no_loss_with_gain, 100.0)
 
         # Get the latest RSI value
         current_rsi = float(rsi.iloc[-1])
