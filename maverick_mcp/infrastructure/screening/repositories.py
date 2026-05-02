@@ -107,7 +107,7 @@ class PostgresStockRepository(IStockRepository):
                         "atr": float(stock.atr) if stock.atr else 0.0,
                         "pat": stock.pat,
                         "sqz": stock.sqz,
-                        "vcp": stock.vcp,
+                        "vcp": stock.consolidation_status,
                         "entry": stock.entry,
                         "compression_score": int(stock.compression_score)
                         if stock.compression_score
@@ -205,7 +205,7 @@ class PostgresStockRepository(IStockRepository):
                         else False,
                         "score": int(stock.score) if stock.score else 0,
                         "sqz": stock.sqz,
-                        "vcp": stock.vcp,
+                        "vcp": stock.consolidation_status,
                     }
                     result.append(stock_dict)
                 except (ValueError, TypeError) as e:

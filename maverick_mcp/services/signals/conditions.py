@@ -155,20 +155,20 @@ def _apply_operator(
     """Return (triggered, new_state) for the given operator."""
 
     if operator == "lt":
-        _require_threshold(threshold, operator)
-        return current_value < threshold, None  # type: ignore[operator]
+        thr = _require_threshold(threshold, operator)
+        return current_value < thr, None
 
     if operator == "gt":
-        _require_threshold(threshold, operator)
-        return current_value > threshold, None  # type: ignore[operator]
+        thr = _require_threshold(threshold, operator)
+        return current_value > thr, None
 
     if operator == "lte":
-        _require_threshold(threshold, operator)
-        return current_value <= threshold, None  # type: ignore[operator]
+        thr = _require_threshold(threshold, operator)
+        return current_value <= thr, None
 
     if operator == "gte":
-        _require_threshold(threshold, operator)
-        return current_value >= threshold, None  # type: ignore[operator]
+        thr = _require_threshold(threshold, operator)
+        return current_value >= thr, None
 
     if operator == "spike":
         return _evaluate_spike(current_value, data, indicator, period, std_devs), None
@@ -184,9 +184,16 @@ def _apply_operator(
     raise ValueError(f"Unknown operator: {operator!r}")
 
 
-def _require_threshold(threshold: float | None, operator: str) -> None:
+def _require_threshold(threshold: float | None, operator: str) -> float:
+    """Validate that *threshold* is set, returning it as a non-optional ``float``.
+
+    Returning the value (instead of raising-only) lets the type checker
+    narrow ``threshold`` to ``float`` at the call site without a cast or
+    assertion.
+    """
     if threshold is None:
         raise ValueError(f"Operator '{operator}' requires a threshold value")
+    return float(threshold)
 
 
 def _evaluate_spike(

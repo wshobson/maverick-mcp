@@ -154,7 +154,7 @@ class SignalService:
 
     async def evaluate_all(
         self,
-        data_fetcher: Callable[[str, int], Awaitable[Any]],
+        data_fetcher: Callable[..., Awaitable[Any]],
     ) -> list[dict[str, Any]]:
         """Evaluate all active signals against fresh market data.
 
