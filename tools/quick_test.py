@@ -42,7 +42,7 @@ async def test_stock_data():
     from maverick_mcp.providers.stock_data import StockDataProvider
 
     print("\n🧪 Testing StockDataProvider...")
-    provider = StockDataProvider(use_cache=False)  # Skip cache for testing
+    provider = StockDataProvider()
 
     # Test getting stock data
     df = provider.get_stock_data("AAPL", "2024-01-01", "2024-01-10")

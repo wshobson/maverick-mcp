@@ -55,7 +55,7 @@ def get_stochastic_analysis(symbol: str, period: int = 14) -> dict[str, Any]:
     This demonstrates adding a new technical indicator tool.
     """
     # Simulate getting data
-    provider = StockDataProvider(use_cache=False)
+    provider = StockDataProvider()
     data = provider.get_stock_data(symbol, "2023-10-01", "2024-01-01")
 
     stoch = calculate_stochastic(data, k_period=period)
@@ -146,7 +146,7 @@ def screen_golden_cross(symbol: str) -> dict[str, Any]:
     """
     Screen for Golden Cross pattern (50 SMA crosses above 200 SMA).
     """
-    provider = StockDataProvider(use_cache=False)
+    provider = StockDataProvider()
     data = provider.get_stock_data(symbol, "2023-01-01", "2024-01-01")
 
     if len(data) < 200:

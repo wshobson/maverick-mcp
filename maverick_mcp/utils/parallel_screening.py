@@ -176,7 +176,7 @@ def example_momentum_screen(symbol: str) -> dict[str, Any]:
 
     try:
         # Get stock data
-        provider = StockDataProvider(use_cache=False)
+        provider = StockDataProvider()
         data = provider.get_stock_data(
             symbol, start_date="2023-01-01", end_date="2024-01-01"
         )
