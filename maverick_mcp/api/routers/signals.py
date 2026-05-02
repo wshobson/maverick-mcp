@@ -277,3 +277,116 @@ def register_signal_tools(mcp: FastMCP) -> None:
         except Exception as e:
             logger.error("get_regime_history error: %s", e)
             return {"error": str(e)}
+
+    # ------------------------------------------------------------------
+    # Backtest a saved signal definition (Phase 3.2)
+    # ------------------------------------------------------------------
+
+    @mcp.tool(
+        name="backtest_signal",
+        description=(
+            "Backtest a saved signal definition against historical OHLCV "
+            "data. Walks the data bar-by-bar through the live signal "
+            "evaluation engine so the entry/exit edges match what the "
+            "signal would produce in production. Returns trade list and "
+            "summary metrics (total return, win rate, Sharpe, max drawdown)."
+        ),
+    )
+    def backtest_signal(
+        signal_id: int,
+        start_date: str,
+        end_date: str,
+        initial_capital: float = 10_000.0,
+    ) -> dict:
+        """Backtest a saved Signal against historical OHLCV data.
+
+        Args:
+            signal_id: ID of the persisted signal whose condition will
+                be replayed.
+            start_date: Backtest window start (YYYY-MM-DD).
+            end_date: Backtest window end (YYYY-MM-DD).
+            initial_capital: Starting cash for the simulated portfolio.
+
+        Returns:
+            dict with ``signal_id``, ``ticker``, ``label``, ``metrics``
+            (total_return_pct, win_rate, sharpe_ratio, max_drawdown_pct),
+            and a compact ``trades`` list. Returns ``{"error": ...}`` on
+            any failure (missing signal, no data, vectorbt error).
+        """
+        try:
+            import vectorbt as vbt
+
+            from maverick_mcp.data.models import SessionLocal
+            from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
+            from maverick_mcp.services.signals.backtest_adapter import (
+                SignalConditionStrategy,
+            )
+            from maverick_mcp.services.signals.models import Signal
+
+            # 1. Load the signal definition
+            with SessionLocal() as session:
+                signal = session.query(Signal).filter(Signal.id == signal_id).first()
+                if signal is None:
+                    return {"error": f"Signal {signal_id} not found"}
+                ticker = str(signal.ticker)
+                label = str(signal.label)
+                condition = dict(signal.condition or {})
+
+            # 2. Fetch OHLCV
+            data = EnhancedStockDataProvider().get_stock_data(
+                ticker, start_date=start_date, end_date=end_date
+            )
+            if data is None or data.empty:
+                return {
+                    "error": (
+                        f"No price data for {ticker} between "
+                        f"{start_date} and {end_date}"
+                    )
+                }
+
+            # 3. Run the strategy
+            strategy = SignalConditionStrategy(condition, label=label)
+            entries, exits = strategy.generate_signals(data)
+
+            close_col = "close" if "close" in data.columns else "Close"
+            close_prices = data[close_col]
+
+            portfolio = vbt.Portfolio.from_signals(
+                close=close_prices,
+                entries=entries,
+                exits=exits,
+                init_cash=initial_capital,
+                freq="D",
+            )
+
+            # 4. Extract metrics
+            total_return = float(portfolio.total_return())
+            try:
+                sharpe = float(portfolio.sharpe_ratio())
+            except Exception:
+                sharpe = 0.0
+            max_dd = float(portfolio.max_drawdown())
+            trades_records = portfolio.trades.records_readable
+            trade_count = int(len(trades_records))
+            win_rate = float(portfolio.trades.win_rate()) if trade_count > 0 else 0.0
+
+            return {
+                "signal_id": signal_id,
+                "ticker": ticker,
+                "label": label,
+                "condition": condition,
+                "start_date": start_date,
+                "end_date": end_date,
+                "metrics": {
+                    "total_return_pct": round(total_return * 100, 4),
+                    "sharpe_ratio": round(sharpe, 4),
+                    "max_drawdown_pct": round(max_dd * 100, 4),
+                    "win_rate_pct": round(win_rate * 100, 2),
+                    "trade_count": trade_count,
+                },
+                "entry_count": int(entries.sum()),
+                "exit_count": int(exits.sum()),
+            }
+        except Exception as e:
+            logger.exception("backtest_signal error: %s", e)
+            return {"error": str(e)}
