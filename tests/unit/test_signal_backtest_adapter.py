@@ -9,11 +9,14 @@ adapter's vectorized output.
 
 from __future__ import annotations
 
+import json
+import math
 from typing import Any
 
 import pandas as pd
 import pytest
 
+from maverick_mcp.api.routers.signals import _safe_float
 from maverick_mcp.services.signals.backtest_adapter import SignalConditionStrategy
 from maverick_mcp.services.signals.conditions import evaluate_condition
 
@@ -210,3 +213,49 @@ def test_inclusive_threshold_operators(
 
     assert walked == expected
     _assert_edges_match(walked, entries, exits)
+
+
+# ---------------------------------------------------------------------------
+# _safe_float — guards backtest_signal against NaN/inf vectorbt returns
+# ---------------------------------------------------------------------------
+
+
+def test_safe_float_passes_finite_values_through() -> None:
+    assert _safe_float(1.5) == 1.5
+    assert _safe_float(0) == 0.0
+    assert _safe_float(-3.14) == -3.14
+
+
+def test_safe_float_coerces_nan_to_fallback() -> None:
+    assert _safe_float(float("nan")) == 0.0
+    assert _safe_float(float("nan"), fallback=-1.0) == -1.0
+
+
+def test_safe_float_coerces_inf_to_fallback() -> None:
+    assert _safe_float(float("inf")) == 0.0
+    assert _safe_float(float("-inf")) == 0.0
+
+
+def test_safe_float_handles_unconvertible_values() -> None:
+    assert _safe_float("not a number") == 0.0
+    assert _safe_float(None) == 0.0
+
+
+def test_safe_float_output_is_json_serializable() -> None:
+    """Regression: a NaN leaking into the metrics dict crashed
+    FastMCP's JSON encoder downstream of `backtest_signal`."""
+    metrics = {
+        "total_return_pct": _safe_float(float("nan")),
+        "sharpe_ratio": _safe_float(float("nan")),
+        "max_drawdown_pct": _safe_float(float("nan")),
+        "win_rate_pct": _safe_float(float("nan")),
+    }
+
+    # json.dumps must succeed and not produce "NaN" tokens.
+    encoded = json.dumps(metrics)
+    assert "NaN" not in encoded
+    assert "Infinity" not in encoded
+    decoded = json.loads(encoded)
+    for value in decoded.values():
+        assert isinstance(value, (int, float))
+        assert not math.isnan(value)

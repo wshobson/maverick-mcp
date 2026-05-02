@@ -3,11 +3,31 @@
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 from fastmcp import FastMCP
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_float(value: object, fallback: float = 0.0) -> float:
+    """Coerce a metric to a JSON-serializable float, mapping NaN/inf to ``fallback``.
+
+    vectorbt returns NaN for several metrics on degenerate portfolios
+    (no entries fired, single bar of data, constant returns,
+    all-breakeven trades). ``float(nan)`` succeeds silently, so without
+    explicit coercion the NaN leaks into the response and crashes
+    FastMCP's JSON serializer *after* the tool returns — past the outer
+    except, surfacing as an opaque MCP error to the client.
+    """
+    try:
+        f = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return fallback
+    if math.isnan(f) or math.isinf(f):
+        return fallback
+    return f
 
 
 def register_signal_tools(mcp: FastMCP) -> None:
@@ -359,16 +379,19 @@ def register_signal_tools(mcp: FastMCP) -> None:
                 freq="D",
             )
 
-            # 4. Extract metrics
-            total_return = float(portfolio.total_return())
+            # 4. Extract metrics — coerce NaN/inf via _safe_float so a
+            # degenerate portfolio cannot crash FastMCP's JSON serializer.
+            total_return = _safe_float(portfolio.total_return())
             try:
-                sharpe = float(portfolio.sharpe_ratio())
+                sharpe = _safe_float(portfolio.sharpe_ratio())
             except Exception:
                 sharpe = 0.0
-            max_dd = float(portfolio.max_drawdown())
+            max_dd = _safe_float(portfolio.max_drawdown())
             trades_records = portfolio.trades.records_readable
             trade_count = int(len(trades_records))
-            win_rate = float(portfolio.trades.win_rate()) if trade_count > 0 else 0.0
+            win_rate = (
+                _safe_float(portfolio.trades.win_rate()) if trade_count > 0 else 0.0
+            )
 
             return {
                 "signal_id": signal_id,
