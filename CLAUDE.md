@@ -433,7 +433,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 
 ## Available Tools
 
-All tools are organized into logical groups (39+ tools total):
+All tools are organized into logical groups (~72 tools total across domain routers):
 
 ### Data Tools (`/data/*`) - S&P 500 Pre-seeded
 
@@ -794,9 +794,9 @@ Once connected to Claude Desktop, test the backtesting framework:
 
 ### Testing & Quality
 
-- **84% Test Coverage**: 93 tests with comprehensive coverage
-- **Zero Linting Errors**: Fixed 947 issues for clean codebase
-- **Full Type Annotations**: Complete type coverage for research components
+- **Comprehensive Test Suite**: ~195 unit test functions across the `tests/` tree
+- **Zero Lint Errors**: Clean ruff baseline maintained in CI
+- **Full Type Annotations**: Type coverage for research and service components
 - **Error Recovery Testing**: Comprehensive failure scenario coverage
 
 ### Personal Use Optimization
