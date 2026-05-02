@@ -5,7 +5,7 @@ This module contains pure business logic services that operate on
 screening entities and value objects without any external dependencies.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Protocol
 
@@ -65,7 +65,7 @@ class ScreeningService:
         a properly validated domain entity.
         """
         if screening_date is None:
-            screening_date = datetime.utcnow()
+            screening_date = datetime.now(UTC)
 
         return ScreeningResult(
             stock_symbol=raw_data.get("stock", ""),
@@ -301,7 +301,7 @@ class ScreeningService:
         return ScreeningResultCollection(
             results=results,
             strategy_used=strategy.value,
-            screening_timestamp=datetime.utcnow(),
+            screening_timestamp=datetime.now(UTC),
             total_candidates_analyzed=total_candidates,
         )
 

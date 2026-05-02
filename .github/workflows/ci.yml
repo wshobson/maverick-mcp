@@ -37,13 +37,19 @@ jobs:
           enable-cache: true
       - name: Sync dependencies
         run: uv sync --extra dev --frozen
-      # Baseline run: do not block PRs while the LangChain/LangGraph
-      # integration surface still emits the bulk of diagnostics.
-      # Phase 2.4 will add a strict gate over maverick_mcp/services
-      # and maverick_mcp/domain.
-      - name: ty check (informational)
+      # Baseline run over the full package: do not block PRs while
+      # the LangChain/LangGraph integration surface still emits the
+      # bulk of diagnostics (~790 today).
+      - name: ty check, full package (informational)
         continue-on-error: true
         run: uv run ty check maverick_mcp
+      # Strict-zone run over the v1 service-layer and domain packages.
+      # Currently 21 diagnostics — kept informational until they're
+      # burned down. Once at 0, flip `continue-on-error` to false to
+      # gate PRs on regressions inside the strict zone.
+      - name: ty check, strict zone (services/ + domain/)
+        continue-on-error: true
+        run: uv run ty check maverick_mcp/services maverick_mcp/domain
 
   test-unit:
     name: Unit tests (pytest)
