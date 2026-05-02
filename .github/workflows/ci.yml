@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --extra dev --frozen
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Type check (ty, baseline)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies
+        run: uv sync --extra dev --frozen
+      # Baseline run: do not block PRs while the LangChain/LangGraph
+      # integration surface still emits the bulk of diagnostics.
+      # Phase 2.4 will add a strict gate over maverick_mcp/services
+      # and maverick_mcp/domain.
+      - name: ty check (informational)
+        continue-on-error: true
+        run: uv run ty check maverick_mcp
+
+  test-unit:
+    name: Unit tests (pytest)
+    runs-on: ubuntu-latest
+    env:
+      MAVERICK_TEST_ENV: "true"
+      TIINGO_API_KEY: "ci-dummy-key"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Sync dependencies
+        # `--extra dev` pulls in pytest, testcontainers, etc. Required
+        # because tests/conftest.py imports `testcontainers.postgres`
+        # at collection time even though those fixtures are not used
+        # by the unit-only marker selection below.
+        run: uv sync --extra dev --frozen
+      - name: Run unit tests
+        run: |
+          uv run pytest \
+            -m "not integration and not slow and not external" \
+            --maxfail=5 \
+            --timeout=60
