@@ -428,3 +428,51 @@ def register_signal_tools(mcp: FastMCP) -> None:
         except Exception as e:
             logger.exception("backtest_signal error: %s", e)
             return {"error": str(e)}
+
+    # ------------------------------------------------------------------
+    # MCP resources (Phase 3.1 follow-up)
+    # ------------------------------------------------------------------
+
+    @mcp.resource("signals://recent")
+    def recent_signal_events() -> dict:
+        """Most recent in-memory signal events captured by the resource notifier.
+
+        Reads from the ``MCPResourceNotifier`` registered with the
+        service registry under ``"signal_notifiers"`` during server
+        startup. The buffer is bounded (default 100 events) and is
+        in-process only — restarting the server clears it. Use
+        ``list_signal_events`` for the persistent DB-backed history.
+
+        Returns an empty list with a note when notifiers are disabled
+        (``MAVERICK_SIGNAL_MCP_RESOURCE=0``) or the registry has no
+        ``signal_notifiers`` entry — the resource always succeeds.
+        """
+        try:
+            from maverick_mcp.services import registry as _reg
+
+            notifiers = _reg.get_optional("signal_notifiers")
+            if not notifiers:
+                return {
+                    "events": [],
+                    "count": 0,
+                    "note": (
+                        "Signal notifiers not registered. Set "
+                        "MAVERICK_SIGNAL_MCP_RESOURCE=1 (default) and "
+                        "restart the server."
+                    ),
+                }
+            mcp_resource = notifiers.get("mcp_resource")
+            if mcp_resource is None:
+                return {
+                    "events": [],
+                    "count": 0,
+                    "note": (
+                        "MCP resource notifier not registered. Check "
+                        "MAVERICK_SIGNAL_MCP_RESOURCE environment variable."
+                    ),
+                }
+            events = mcp_resource.recent()
+            return {"events": events, "count": len(events)}
+        except Exception as e:
+            logger.error("recent_signal_events resource error: %s", e)
+            return {"events": [], "count": 0, "error": str(e)}

@@ -236,3 +236,104 @@ def test_register_default_notifiers_enables_webhook_when_url_set(
     assert set(notifiers) == {"webhook"}
     assert isinstance(notifiers["webhook"], WebhookNotifier)
     assert notifiers["webhook"].url == "https://example.test/w"
+
+
+# ---------------------------------------------------------------------------
+# signals://recent MCP resource (Phase 3.1 follow-up)
+# ---------------------------------------------------------------------------
+
+
+def _capture_signals_resource() -> dict:
+    """Register `register_signal_tools` against a fake mcp and return the
+    captured `recent_signal_events` resource handler."""
+
+    captured: dict[str, object] = {}
+
+    class FakeMCP:
+        def tool(self, *_args, **_kwargs):
+            def decorator(fn):
+                return fn
+
+            return decorator
+
+        def resource(self, uri):
+            def decorator(fn):
+                captured[uri] = fn
+                return fn
+
+            return decorator
+
+    from maverick_mcp.api.routers.signals import register_signal_tools
+
+    register_signal_tools(FakeMCP())  # type: ignore[arg-type]
+    return captured
+
+
+def test_signals_recent_resource_returns_empty_when_registry_empty() -> None:
+    """If no notifiers are registered, the resource succeeds with a hint."""
+    from maverick_mcp.services import registry
+
+    # Snapshot + clean the relevant slot so we exercise the empty path
+    # without disturbing other tests.
+    saved = registry._services.pop("signal_notifiers", None)
+    try:
+        captured = _capture_signals_resource()
+        recent = captured["signals://recent"]
+        result = recent()  # type: ignore[operator]
+
+        assert result["events"] == []
+        assert result["count"] == 0
+        assert "note" in result
+    finally:
+        if saved is not None:
+            registry._services["signal_notifiers"] = saved
+
+
+@pytest.mark.asyncio
+async def test_signals_recent_resource_reads_buffer_when_registered() -> None:
+    """When the MCPResourceNotifier is registered, the resource returns its buffer."""
+    from maverick_mcp.services import registry
+
+    notifier = MCPResourceNotifier()
+    await notifier.notify(
+        "signal.triggered",
+        {"signal_id": 7, "ticker": "NVDA", "price": 800.0},
+    )
+
+    saved = registry._services.pop("signal_notifiers", None)
+    try:
+        registry.register("signal_notifiers", {"mcp_resource": notifier})
+
+        captured = _capture_signals_resource()
+        recent = captured["signals://recent"]
+        result = recent()  # type: ignore[operator]
+
+        assert result["count"] == 1
+        assert result["events"][0]["topic"] == "signal.triggered"
+        assert result["events"][0]["ticker"] == "NVDA"
+    finally:
+        registry._services.pop("signal_notifiers", None)
+        if saved is not None:
+            registry._services["signal_notifiers"] = saved
+
+
+def test_signals_recent_resource_handles_missing_mcp_resource_key() -> None:
+    """If signal_notifiers is registered but lacks the mcp_resource key, return a hint."""
+    from maverick_mcp.services import registry
+
+    saved = registry._services.pop("signal_notifiers", None)
+    try:
+        # Webhook-only setup.
+        registry.register("signal_notifiers", {"webhook": object()})
+
+        captured = _capture_signals_resource()
+        recent = captured["signals://recent"]
+        result = recent()  # type: ignore[operator]
+
+        assert result["events"] == []
+        assert result["count"] == 0
+        assert "note" in result
+    finally:
+        registry._services.pop("signal_notifiers", None)
+        if saved is not None:
+            registry._services["signal_notifiers"] = saved
