@@ -5,6 +5,7 @@ These are immutable objects representing technical analysis concepts
 in the domain layer. They contain no infrastructure dependencies.
 """
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 
@@ -37,7 +38,11 @@ class RSIIndicator:
     period: int = 14
 
     def __post_init__(self):
-        if not 0 <= self.value <= 100:
+        # NaN is the canonical "unknown" sentinel — used when the
+        # input window contains missing data (incomplete fetch). The
+        # signals pipeline downstream is NaN-aware (cf. `_safe_float`
+        # in `api/routers/signals.py`).
+        if not math.isnan(self.value) and not 0 <= self.value <= 100:
             raise ValueError("RSI must be between 0 and 100")
         if self.period <= 0:
             raise ValueError("Period must be positive")

@@ -21,7 +21,9 @@ class Signal(Base, TimestampMixin):
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     ticker: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
     condition: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    interval_seconds: Mapped[int] = mapped_column(default=300)
+    # Nullable preserved from pre-Mapped Column(Integer, default=300); rows
+    # always get a default at insert time but the column is nominally nullable.
+    interval_seconds: Mapped[int | None] = mapped_column(default=300)
     active: Mapped[bool] = mapped_column(default=True, nullable=False)
     previous_state: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
 

@@ -5,6 +5,8 @@ These tests demonstrate that the domain service can be tested
 without any infrastructure dependencies (no mocks needed).
 """
 
+import math
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -73,6 +75,31 @@ class TestTechnicalAnalysisService:
 
         with pytest.raises(ValueError, match="Need at least 14 prices"):
             service.calculate_rsi(prices, period=14)
+
+    def test_calculate_rsi_no_losses_returns_100(self, service):
+        """Strictly monotonic gains ⇒ avg_loss=0 ⇒ RSI=100 (max strength)."""
+        prices = pd.Series([100.0 + i for i in range(20)])  # +1 every bar
+
+        rsi = service.calculate_rsi(prices, period=14)
+
+        assert rsi.value == 100.0
+
+    def test_calculate_rsi_propagates_missing_data(self, service):
+        """NaN from incomplete fetches must NOT be coerced to 100.
+
+        Regression for PR #163 review: an earlier `fillna(100.0)` call
+        replaced *every* NaN, including ones arising from missing
+        input data, silently fabricating a max-strength signal where
+        the real answer is "we don't know".
+        """
+        # Fifteen valid prices followed by a NaN at the tail.
+        prices = pd.Series([100.0 + i for i in range(15)] + [float("nan")])
+
+        rsi = service.calculate_rsi(prices, period=14)
+
+        assert math.isnan(rsi.value), (
+            f"Trailing NaN in input must propagate to RSI; got {rsi.value}"
+        )
 
     def test_calculate_macd(self, service, sample_prices):
         """Test MACD calculation."""
