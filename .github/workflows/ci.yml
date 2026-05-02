@@ -47,11 +47,8 @@ jobs:
         continue-on-error: true
         run: uv run ty check maverick_mcp
       # Strict-zone run over the v1 service-layer and domain packages.
-      # Currently 21 diagnostics — kept informational until they're
-      # burned down. Once at 0, flip `continue-on-error` to false to
-      # gate PRs on regressions inside the strict zone.
+      # Now gated: any new diagnostic in this scope fails the job.
       - name: ty check, strict zone (services/ + domain/)
-        continue-on-error: true
         run: uv run ty check maverick_mcp/services maverick_mcp/domain
 
   test-unit:
