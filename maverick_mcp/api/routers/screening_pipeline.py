@@ -28,7 +28,9 @@ def register_screening_pipeline_tools(mcp: FastMCP) -> None:
         try:
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.services import event_bus
-            from maverick_mcp.services.screening.pipeline import ScreeningPipelineService
+            from maverick_mcp.services.screening.pipeline import (
+                ScreeningPipelineService,
+            )
 
             with SessionLocal() as session:
                 svc = ScreeningPipelineService(db_session=session, event_bus=event_bus)
@@ -43,7 +45,9 @@ def register_screening_pipeline_tools(mcp: FastMCP) -> None:
                             "screen_name": c.screen_name,
                             "previous_rank": c.previous_rank,
                             "new_rank": c.new_rank,
-                            "detected_at": c.detected_at.isoformat() if c.detected_at else None,
+                            "detected_at": c.detected_at.isoformat()
+                            if c.detected_at
+                            else None,
                         }
                         for c in changes
                     ],
@@ -69,7 +73,9 @@ def register_screening_pipeline_tools(mcp: FastMCP) -> None:
         try:
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.services import event_bus
-            from maverick_mcp.services.screening.pipeline import ScreeningPipelineService
+            from maverick_mcp.services.screening.pipeline import (
+                ScreeningPipelineService,
+            )
 
             with SessionLocal() as session:
                 svc = ScreeningPipelineService(db_session=session, event_bus=event_bus)
@@ -152,7 +158,9 @@ def register_screening_pipeline_tools(mcp: FastMCP) -> None:
         try:
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.services import event_bus
-            from maverick_mcp.services.screening.pipeline import ScreeningPipelineService
+            from maverick_mcp.services.screening.pipeline import (
+                ScreeningPipelineService,
+            )
 
             with SessionLocal() as session:
                 svc = ScreeningPipelineService(db_session=session, event_bus=event_bus)

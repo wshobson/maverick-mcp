@@ -804,9 +804,9 @@ For issues or questions:
 
 ### Testing & Quality
 
-- **84% Test Coverage**: 93 tests with comprehensive coverage
-- **Zero Linting Errors**: Fixed 947 issues for clean codebase
-- **Full Type Annotations**: Complete type coverage for research components
+- **Comprehensive Test Suite**: ~195 unit test functions across the `tests/` tree
+- **Zero Lint Errors**: Clean ruff baseline maintained in CI
+- **Full Type Annotations**: Type coverage for research and service components
 - **Error Recovery Testing**: Comprehensive failure scenario coverage
 
 ### Personal Use Optimization

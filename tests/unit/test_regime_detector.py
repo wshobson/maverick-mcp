@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from maverick_mcp.services.signals.regime import RegimeDetector
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -79,7 +77,12 @@ def test_drivers_dict_has_expected_keys():
     detector = RegimeDetector()
     prices = _uptrend()
     result = detector.classify(prices, vix_level=15.0)
-    assert set(result["drivers"].keys()) == {"trend", "volatility", "momentum", "breadth"}
+    assert set(result["drivers"].keys()) == {
+        "trend",
+        "volatility",
+        "momentum",
+        "breadth",
+    }
     assert set(result["votes"].keys()) == {"trend", "volatility", "momentum", "breadth"}
 
 

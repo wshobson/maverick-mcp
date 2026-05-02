@@ -497,6 +497,7 @@ if hasattr(mcp, "fastapi_app") and mcp.fastapi_app:
         """Start the scheduler on the ASGI server's event loop."""
         try:
             from maverick_mcp.services import scheduler as maverick_scheduler
+
             maverick_scheduler.start()
             logger.info("Service layer scheduler started on server loop")
         except Exception as e:
@@ -1544,20 +1545,32 @@ if __name__ == "__main__":
             _reg.register("regime_detector", RegimeDetector())
 
             async def on_signal_for_risk(topic, data):
-                logger.debug("Risk: signal event for %s", data.get("ticker") if data else "unknown")
+                logger.debug(
+                    "Risk: signal event for %s",
+                    data.get("ticker") if data else "unknown",
+                )
 
             async def on_screening_change(topic, data):
-                logger.debug("Screening change: %s %s", data.get("change_type", "") if data else "", data.get("symbol", "") if data else "")
+                logger.debug(
+                    "Screening change: %s %s",
+                    data.get("change_type", "") if data else "",
+                    data.get("symbol", "") if data else "",
+                )
 
             async def on_regime_change(topic, data):
-                logger.info("Regime changed: %s (confidence: %s)",
-                    data.get("regime") if data else "unknown", data.get("confidence") if data else "unknown")
+                logger.info(
+                    "Regime changed: %s (confidence: %s)",
+                    data.get("regime") if data else "unknown",
+                    data.get("confidence") if data else "unknown",
+                )
 
             _eb.subscribe("signal.triggered", on_signal_for_risk)
             _eb.subscribe("screening.entry", on_screening_change)
             _eb.subscribe("screening.exit", on_screening_change)
             _eb.subscribe("regime.changed", on_regime_change)
-            logger.info("Service layer: domain services registered, event wiring complete")
+            logger.info(
+                "Service layer: domain services registered, event wiring complete"
+            )
         except Exception as e:
             logger.error(f"Failed to wire domain services: {e}")
 
@@ -1710,6 +1723,7 @@ if __name__ == "__main__":
             """Shutdown service layer scheduler."""
             try:
                 from maverick_mcp.services import scheduler as maverick_scheduler
+
                 maverick_scheduler.shutdown()
                 logger.info("Service layer scheduler stopped")
             except Exception as e:

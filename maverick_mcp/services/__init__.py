@@ -8,4 +8,11 @@ event_bus = EventBus()
 registry = ServiceRegistry()
 scheduler = MaverickScheduler()
 
-__all__ = ["EventBus", "MaverickScheduler", "ServiceRegistry", "event_bus", "registry", "scheduler"]
+__all__ = [
+    "EventBus",
+    "MaverickScheduler",
+    "ServiceRegistry",
+    "event_bus",
+    "registry",
+    "scheduler",
+]

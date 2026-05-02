@@ -87,7 +87,11 @@ def evaluate_condition(
             previous_state=previous_state,
         )
     except ValueError as exc:
-        return {**_empty_result, "current_value": float(current_value), "error": str(exc)}
+        return {
+            **_empty_result,
+            "current_value": float(current_value),
+            "error": str(exc),
+        }
 
     return {
         "triggered": triggered,
@@ -200,11 +204,15 @@ def _evaluate_spike(
     elif indicator == "rsi":
         rsi_period = period or 14
         rsi_series = ta.rsi(data["close"], length=rsi_period)
-        series = rsi_series.dropna() if rsi_series is not None else pd.Series(dtype=float)
+        series = (
+            rsi_series.dropna() if rsi_series is not None else pd.Series(dtype=float)
+        )
     elif indicator == "sma":
         sma_period = period or 20
         sma_series = ta.sma(data["close"], length=sma_period)
-        series = sma_series.dropna() if sma_series is not None else pd.Series(dtype=float)
+        series = (
+            sma_series.dropna() if sma_series is not None else pd.Series(dtype=float)
+        )
     else:
         raise ValueError(f"Unknown indicator for spike: {indicator!r}")
 

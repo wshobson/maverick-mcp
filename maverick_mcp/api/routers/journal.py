@@ -59,7 +59,9 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "side": entry.side,
                     "entry_price": entry.entry_price,
                     "shares": entry.shares,
-                    "entry_date": entry.entry_date.isoformat() if entry.entry_date else None,
+                    "entry_date": entry.entry_date.isoformat()
+                    if entry.entry_date
+                    else None,
                     "tags": entry.tags,
                     "status": entry.status,
                     "rationale": entry.rationale,
@@ -106,8 +108,12 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "shares": entry.shares,
                     "pnl": entry.pnl,
                     "r_multiple": entry.r_multiple,
-                    "entry_date": entry.entry_date.isoformat() if entry.entry_date else None,
-                    "exit_date": entry.exit_date.isoformat() if entry.exit_date else None,
+                    "entry_date": entry.entry_date.isoformat()
+                    if entry.entry_date
+                    else None,
+                    "exit_date": entry.exit_date.isoformat()
+                    if entry.exit_date
+                    else None,
                     "tags": entry.tags,
                     "status": entry.status,
                     "notes": entry.notes,
@@ -158,8 +164,12 @@ def register_journal_tools(mcp: FastMCP) -> None:
                             "pnl": e.pnl,
                             "status": e.status,
                             "tags": e.tags,
-                            "entry_date": e.entry_date.isoformat() if e.entry_date else None,
-                            "exit_date": e.exit_date.isoformat() if e.exit_date else None,
+                            "entry_date": e.entry_date.isoformat()
+                            if e.entry_date
+                            else None,
+                            "exit_date": e.exit_date.isoformat()
+                            if e.exit_date
+                            else None,
                         }
                         for e in entries
                     ],
@@ -280,11 +290,15 @@ def register_journal_tools(mcp: FastMCP) -> None:
                 if entry.exit_price is not None and entry.entry_price:
                     if entry.side == "long":
                         pnl_pct = (
-                            (entry.exit_price - entry.entry_price) / entry.entry_price * 100
+                            (entry.exit_price - entry.entry_price)
+                            / entry.entry_price
+                            * 100
                         )
                     else:
                         pnl_pct = (
-                            (entry.entry_price - entry.exit_price) / entry.entry_price * 100
+                            (entry.entry_price - entry.exit_price)
+                            / entry.entry_price
+                            * 100
                         )
 
                 return {
@@ -296,8 +310,12 @@ def register_journal_tools(mcp: FastMCP) -> None:
                     "entry_price": entry.entry_price,
                     "exit_price": entry.exit_price,
                     "shares": entry.shares,
-                    "entry_date": entry.entry_date.isoformat() if entry.entry_date else None,
-                    "exit_date": entry.exit_date.isoformat() if entry.exit_date else None,
+                    "entry_date": entry.entry_date.isoformat()
+                    if entry.entry_date
+                    else None,
+                    "exit_date": entry.exit_date.isoformat()
+                    if entry.exit_date
+                    else None,
                     "pnl": entry.pnl,
                     "pnl_pct": pnl_pct,
                     "r_multiple": entry.r_multiple,

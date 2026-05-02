@@ -161,7 +161,9 @@ def register_signal_tools(mcp: FastMCP) -> None:
         """Evaluate all active signals immediately."""
         try:
             import asyncio
+
             import pandas as pd
+
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
             from maverick_mcp.services import event_bus
@@ -207,7 +209,6 @@ def register_signal_tools(mcp: FastMCP) -> None:
     def get_market_regime() -> dict:
         """Classify current market regime using SPY data."""
         try:
-            import pandas as pd
             from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
             from maverick_mcp.services.signals.regime import RegimeDetector
 
@@ -220,7 +221,9 @@ def register_signal_tools(mcp: FastMCP) -> None:
             # Normalise column names
             close_col = next(
                 (c for c in spy_data.columns if c.lower() == "close"),
-                spy_data.columns[3] if len(spy_data.columns) > 3 else spy_data.columns[0],
+                spy_data.columns[3]
+                if len(spy_data.columns) > 3
+                else spy_data.columns[0],
             )
             prices = spy_data[close_col].dropna()
 

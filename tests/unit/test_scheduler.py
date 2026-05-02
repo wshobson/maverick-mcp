@@ -8,7 +8,6 @@ import pytest
 
 from maverick_mcp.services.scheduler import Scheduler
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -67,7 +66,9 @@ async def test_add_multiple_jobs_all_listed(started_scheduler: Scheduler) -> Non
 
 
 @pytest.mark.asyncio
-async def test_list_jobs_returns_dict_with_expected_keys(started_scheduler: Scheduler) -> None:
+async def test_list_jobs_returns_dict_with_expected_keys(
+    started_scheduler: Scheduler,
+) -> None:
     async def my_job() -> None:
         pass
 

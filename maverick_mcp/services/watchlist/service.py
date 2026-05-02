@@ -7,7 +7,11 @@ from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
-from maverick_mcp.services.watchlist.models import CatalystEvent, Watchlist, WatchlistItem
+from maverick_mcp.services.watchlist.models import (
+    CatalystEvent,
+    Watchlist,
+    WatchlistItem,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +100,7 @@ class WatchlistService:
             Dict with watchlist metadata and list of items.
         """
         watchlist = (
-            self._db.query(Watchlist)
-            .filter(Watchlist.id == watchlist_id)
-            .first()
+            self._db.query(Watchlist).filter(Watchlist.id == watchlist_id).first()
         )
         if watchlist is None:
             return {}

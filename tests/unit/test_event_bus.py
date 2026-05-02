@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from maverick_mcp.services.event_bus import EventBus
-
 
 # ---------------------------------------------------------------------------
 # Helpers

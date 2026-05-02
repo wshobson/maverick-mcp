@@ -440,7 +440,9 @@ class CostTrackingLLM:
             )
         return rid
 
-    async def _post_call_record(self, response: Any, request_id: str | None = None) -> None:
+    async def _post_call_record(
+        self, response: Any, request_id: str | None = None
+    ) -> None:
         """Record actual token usage from an AIMessage response."""
         rid = request_id or self._get_request_id()
         try:
@@ -459,7 +461,9 @@ class CostTrackingLLM:
                 exc_info=True,
             )
 
-    async def _post_call_record_generation(self, response: Any, request_id: str | None = None) -> None:
+    async def _post_call_record_generation(
+        self, response: Any, request_id: str | None = None
+    ) -> None:
         """Record actual token usage from a generate() LLMResult response."""
         rid = request_id or self._get_request_id()
         try:

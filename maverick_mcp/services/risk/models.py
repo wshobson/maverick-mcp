@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Float, Integer, String, Text
 
-from maverick_mcp.database.base import Base
 from maverick_mcp.data.models import TimestampMixin
+from maverick_mcp.database.base import Base
 
 
 class RiskAlert(Base, TimestampMixin):

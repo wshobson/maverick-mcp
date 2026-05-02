@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from typing import Any
 
 from fastmcp import FastMCP
@@ -50,7 +49,9 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
                 try:
                     df = provider.get_stock_data(
                         pos.ticker,
-                        start_date=(datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d"),
+                        start_date=(datetime.now(UTC) - timedelta(days=7)).strftime(
+                            "%Y-%m-%d"
+                        ),
                         end_date=datetime.now(UTC).strftime("%Y-%m-%d"),
                     )
                     if df is not None and not df.empty:
@@ -172,7 +173,6 @@ def register_risk_dashboard_tools(mcp: FastMCP) -> None:
     ) -> dict:
         """Compute regime-adjusted position size."""
         try:
-            import pandas as pd
             from maverick_mcp.data.models import SessionLocal
             from maverick_mcp.providers.stock_data import EnhancedStockDataProvider
             from maverick_mcp.services.risk.service import RiskService
