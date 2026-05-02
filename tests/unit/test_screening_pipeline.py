@@ -8,9 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from maverick_mcp.database.base import Base
 from maverick_mcp.services.event_bus import EventBus
-from maverick_mcp.services.screening.models import ScreeningChange, ScreeningRun, ScheduledJob
 from maverick_mcp.services.screening.pipeline import ScreeningPipelineService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -151,7 +149,7 @@ def test_get_history_filters_by_screen(service):
 
 def test_get_latest_run(service):
     """get_latest_run returns the most recent run for a given screen."""
-    run1 = service.run_screen("maverick_bullish", _make_results("AAPL"))
+    service.run_screen("maverick_bullish", _make_results("AAPL"))
     run2 = service.run_screen("maverick_bullish", _make_results("AAPL", "MSFT"))
 
     latest = service.get_latest_run("maverick_bullish")
@@ -187,7 +185,9 @@ def test_get_pipeline_status_with_runs(service, db_session):
     assert "screen_a" in screen_names
     assert "screen_b" in screen_names
 
-    screen_a_status = next(s for s in status["screens"] if s["screen_name"] == "screen_a")
+    screen_a_status = next(
+        s for s in status["screens"] if s["screen_name"] == "screen_a"
+    )
     assert screen_a_status["last_result_count"] == 2
 
 

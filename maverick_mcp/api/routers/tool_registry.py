@@ -194,9 +194,13 @@ class ToolRateLimiter:
                     continue
                 # Prune stale entries while computing counts
                 if key in self._minute_counts:
-                    self._minute_counts[key] = [t for t in self._minute_counts[key] if now - t < 60]
+                    self._minute_counts[key] = [
+                        t for t in self._minute_counts[key] if now - t < 60
+                    ]
                 if key in self._hour_counts:
-                    self._hour_counts[key] = [t for t in self._hour_counts[key] if now - t < 3600]
+                    self._hour_counts[key] = [
+                        t for t in self._hour_counts[key] if now - t < 3600
+                    ]
                 status[key] = {
                     "calls_this_minute": len(self._minute_counts.get(key, [])),
                     "limit_per_minute": config.max_calls_per_minute,
@@ -1344,13 +1348,17 @@ def register_all_router_tools(mcp: FastMCP) -> None:
 
     try:
         from maverick_mcp.api.routers.signals import register_signal_tools
+
         register_signal_tools(mcp)
         logger.info("Signal tools registered successfully")
     except Exception as e:
         logger.error(f"Failed to register signal tools: {e}")
 
     try:
-        from maverick_mcp.api.routers.screening_pipeline import register_screening_pipeline_tools
+        from maverick_mcp.api.routers.screening_pipeline import (
+            register_screening_pipeline_tools,
+        )
+
         register_screening_pipeline_tools(mcp)
         logger.info("Screening pipeline tools registered successfully")
     except Exception as e:
@@ -1358,6 +1366,7 @@ def register_all_router_tools(mcp: FastMCP) -> None:
 
     try:
         from maverick_mcp.api.routers.journal import register_journal_tools
+
         register_journal_tools(mcp)
         logger.info("Trade journal tools registered successfully")
     except Exception as e:
@@ -1365,13 +1374,17 @@ def register_all_router_tools(mcp: FastMCP) -> None:
 
     try:
         from maverick_mcp.api.routers.watchlist import register_watchlist_tools
+
         register_watchlist_tools(mcp)
         logger.info("Watchlist tools registered successfully")
     except Exception as e:
         logger.error(f"Failed to register watchlist tools: {e}")
 
     try:
-        from maverick_mcp.api.routers.risk_dashboard import register_risk_dashboard_tools
+        from maverick_mcp.api.routers.risk_dashboard import (
+            register_risk_dashboard_tools,
+        )
+
         register_risk_dashboard_tools(mcp)
         logger.info("Risk dashboard tools registered successfully")
     except Exception as e:

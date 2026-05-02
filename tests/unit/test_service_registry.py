@@ -6,7 +6,6 @@ import pytest
 
 from maverick_mcp.services.registry import ServiceRegistry
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -52,13 +51,17 @@ def test_register_with_replace_true_overwrites(registry: ServiceRegistry) -> Non
 # ---------------------------------------------------------------------------
 
 
-def test_get_optional_returns_service_when_registered(registry: ServiceRegistry) -> None:
+def test_get_optional_returns_service_when_registered(
+    registry: ServiceRegistry,
+) -> None:
     service = object()
     registry.register("opt_svc", service)
     assert registry.get_optional("opt_svc") is service
 
 
-def test_get_optional_returns_none_when_not_registered(registry: ServiceRegistry) -> None:
+def test_get_optional_returns_none_when_not_registered(
+    registry: ServiceRegistry,
+) -> None:
     assert registry.get_optional("nonexistent") is None
 
 

@@ -56,9 +56,7 @@ class MemoryStore:
         self._lock = threading.Lock()
 
         # Persistent connection (reused for all reads/writes)
-        self._conn = sqlite3.connect(
-            self._db_path, timeout=10, check_same_thread=False
-        )
+        self._conn = sqlite3.connect(self._db_path, timeout=10, check_same_thread=False)
         self._conn.execute("PRAGMA journal_mode=WAL")
 
         # Initialize the persistent store and load existing data

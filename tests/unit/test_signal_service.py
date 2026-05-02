@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime
-
 import pandas as pd
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from maverick_mcp.database.base import Base
-from maverick_mcp.data.models import TimestampMixin
 from maverick_mcp.services.event_bus import EventBus
-from maverick_mcp.services.signals.models import Signal, SignalEvent, RegimeEvent
 from maverick_mcp.services.signals.service import SignalService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -75,15 +69,23 @@ def test_list_signals_empty(service):
 
 
 def test_list_signals_returns_all(service):
-    service.create_signal("A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100})
-    service.create_signal("B", "GOOG", {"indicator": "price", "operator": "gt", "threshold": 200})
+    service.create_signal(
+        "A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100}
+    )
+    service.create_signal(
+        "B", "GOOG", {"indicator": "price", "operator": "gt", "threshold": 200}
+    )
     sigs = service.list_signals()
     assert len(sigs) == 2
 
 
 def test_list_signals_active_only(service):
-    sig1 = service.create_signal("A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100})
-    sig2 = service.create_signal("B", "GOOG", {"indicator": "price", "operator": "gt", "threshold": 200})
+    sig1 = service.create_signal(
+        "A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100}
+    )
+    sig2 = service.create_signal(
+        "B", "GOOG", {"indicator": "price", "operator": "gt", "threshold": 200}
+    )
     service.update_signal(sig2.id, active=False)
 
     active = service.list_signals(active_only=True)
@@ -92,7 +94,9 @@ def test_list_signals_active_only(service):
 
 
 def test_get_signal_found(service):
-    sig = service.create_signal("A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100})
+    sig = service.create_signal(
+        "A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100}
+    )
     fetched = service.get_signal(sig.id)
     assert fetched is not None
     assert fetched.id == sig.id
@@ -103,7 +107,9 @@ def test_get_signal_not_found(service):
 
 
 def test_update_signal(service):
-    sig = service.create_signal("A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100})
+    sig = service.create_signal(
+        "A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100}
+    )
     updated = service.update_signal(sig.id, label="New Label", interval_seconds=120)
     assert updated.label == "New Label"
     assert updated.interval_seconds == 120
@@ -115,7 +121,9 @@ def test_update_signal_not_found_raises(service):
 
 
 def test_delete_signal(service):
-    sig = service.create_signal("A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100})
+    sig = service.create_signal(
+        "A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100}
+    )
     service.delete_signal(sig.id)
     assert service.get_signal(sig.id) is None
 
@@ -125,7 +133,9 @@ def test_delete_signal_nonexistent_is_noop(service):
 
 
 def test_record_trigger(service):
-    sig = service.create_signal("A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100})
+    sig = service.create_signal(
+        "A", "AAPL", {"indicator": "price", "operator": "gt", "threshold": 100}
+    )
     evt = service.record_trigger(sig, price=155.0, snapshot={"triggered": True})
     assert evt.id is not None
     assert evt.signal_id == sig.id
@@ -152,7 +162,9 @@ async def test_evaluate_all_triggers_signal(service, event_bus):
     )
 
     triggered_events = []
-    event_bus.subscribe("signal.triggered", lambda topic, data: triggered_events.append(data))
+    event_bus.subscribe(
+        "signal.triggered", lambda topic, data: triggered_events.append(data)
+    )
 
     async def fetcher(ticker, days=60):
         return _make_price_df(150.0)
@@ -174,7 +186,9 @@ async def test_evaluate_all_no_trigger(service, event_bus):
     )
 
     triggered_events = []
-    event_bus.subscribe("signal.triggered", lambda topic, data: triggered_events.append(data))
+    event_bus.subscribe(
+        "signal.triggered", lambda topic, data: triggered_events.append(data)
+    )
 
     async def fetcher(ticker, days=60):
         return _make_price_df(150.0)
@@ -192,10 +206,14 @@ async def test_evaluate_all_publishes_cleared_event(service, event_bus):
         {"indicator": "price", "operator": "gt", "threshold": 200.0},
     )
     # Simulate previous trigger state
-    service.update_signal(sig.id, previous_state={"last_triggered": True, "last_value": 210.0})
+    service.update_signal(
+        sig.id, previous_state={"last_triggered": True, "last_value": 210.0}
+    )
 
     cleared_events = []
-    event_bus.subscribe("signal.cleared", lambda topic, data: cleared_events.append(data))
+    event_bus.subscribe(
+        "signal.cleared", lambda topic, data: cleared_events.append(data)
+    )
 
     async def fetcher(ticker, days=60):
         return _make_price_df(150.0)  # now below threshold

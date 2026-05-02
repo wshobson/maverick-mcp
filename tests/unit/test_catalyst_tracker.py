@@ -9,10 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from maverick_mcp.database.base import Base
-from maverick_mcp.data.models import TimestampMixin
-from maverick_mcp.services.watchlist.models import CatalystEvent, Watchlist, WatchlistItem
 from maverick_mcp.services.watchlist.catalysts import CatalystTracker
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -58,7 +55,9 @@ def test_add_catalyst(tracker):
 
 def test_add_catalyst_minimal(tracker):
     event_date = date.today() + timedelta(days=3)
-    catalyst = tracker.add_catalyst(symbol="MSFT", event_type="ex_div", event_date=event_date)
+    catalyst = tracker.add_catalyst(
+        symbol="MSFT", event_type="ex_div", event_date=event_date
+    )
     assert catalyst.id is not None
     assert catalyst.description is None
     assert catalyst.impact_assessment is None

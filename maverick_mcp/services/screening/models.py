@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, JSON, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String
 
 from maverick_mcp.database.base import Base
 

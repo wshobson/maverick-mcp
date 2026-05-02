@@ -2,17 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from maverick_mcp.database.base import Base
 from maverick_mcp.services.event_bus import EventBus
-from maverick_mcp.services.journal.models import JournalEntry, StrategyPerformance
 from maverick_mcp.services.journal.service import JournalService
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -144,7 +140,7 @@ def test_list_trades_filter_by_symbol(service):
 
 
 def test_list_trades_filter_by_strategy_tag(service):
-    e1 = service.add_trade(
+    service.add_trade(
         symbol="AAPL", side="long", entry_price=100.0, shares=1.0, tags=["momentum"]
     )
     service.add_trade(

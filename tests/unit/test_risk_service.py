@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 from maverick_mcp.database.base import Base
 from maverick_mcp.services.risk.service import RiskService
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -33,6 +32,7 @@ def service(db_session):
 # ---------------------------------------------------------------------------
 # Sample data helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_positions():
     """Three-position portfolio across two sectors."""
@@ -242,7 +242,7 @@ def test_generate_alerts_single_position_oversized(service):
 def test_check_position_risk(service):
     """Adding a new position should change projected metrics."""
     positions = _make_balanced_positions()
-    current = service.compute_dashboard(positions)
+    service.compute_dashboard(positions)
 
     result = service.check_position_risk(
         portfolio_positions=positions,

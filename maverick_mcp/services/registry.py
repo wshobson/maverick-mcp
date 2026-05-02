@@ -34,8 +34,7 @@ class ServiceRegistry:
         """
         if name in self._services and not replace:
             raise ValueError(
-                f"Service {name!r} is already registered. "
-                "Use replace=True to override."
+                f"Service {name!r} is already registered. Use replace=True to override."
             )
         self._services[name] = service
 

@@ -45,7 +45,9 @@ class RiskService:
     # Dashboard computation
     # ------------------------------------------------------------------
 
-    def compute_dashboard(self, portfolio_positions: list[dict[str, Any]]) -> dict[str, Any]:
+    def compute_dashboard(
+        self, portfolio_positions: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Compute risk metrics for a portfolio.
 
         Args:
@@ -103,7 +105,9 @@ class RiskService:
 
         return {
             "total_value": round(total_value, 2),
-            "sector_concentration": {k: round(v, 4) for k, v in sector_concentration.items()},
+            "sector_concentration": {
+                k: round(v, 4) for k, v in sector_concentration.items()
+            },
             "max_sector_pct": round(max_sector_pct, 4),
             "portfolio_var_95": round(portfolio_var_95, 2),
             "portfolio_var_99": round(portfolio_var_99, 2),
@@ -153,7 +157,8 @@ class RiskService:
                 existing_cb = float(pos.get("cost_basis", 0))
                 total_shares = existing_shares + new_shares
                 avg_cb = (
-                    (existing_shares * existing_cb + new_shares * new_price) / total_shares
+                    (existing_shares * existing_cb + new_shares * new_price)
+                    / total_shares
                     if total_shares > 0
                     else new_price
                 )
@@ -287,7 +292,9 @@ class RiskService:
         # Single position size check
         if total_value > 0:
             for pos in portfolio_positions:
-                pos_value = float(pos.get("shares", 0)) * float(pos.get("current_price", 0))
+                pos_value = float(pos.get("shares", 0)) * float(
+                    pos.get("current_price", 0)
+                )
                 pos_pct = pos_value / total_value
                 ticker = pos.get("symbol", pos.get("ticker", "?"))
                 if pos_pct > _POSITION_WARN_PCT:
@@ -349,7 +356,9 @@ def _estimate_portfolio_std(
     variance = 0.0
     for pos in positions:
         weight = (
-            float(pos.get("shares", 0)) * float(pos.get("current_price", 0)) / total_value
+            float(pos.get("shares", 0))
+            * float(pos.get("current_price", 0))
+            / total_value
         )
         variance += (weight * daily_vol_per_position) ** 2
 
