@@ -1,6 +1,6 @@
 # Requirements for the Tiingo data loader
 # Core dependencies
-aiohttp>=3.8.0
+aiohttp>=3.13.4
 pandas>=2.0.0
 pandas-ta>=0.3.14b0
 sqlalchemy>=2.0.0
