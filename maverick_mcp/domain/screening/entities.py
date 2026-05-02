@@ -182,7 +182,7 @@ class ScreeningResult:
         score = 0
 
         # Momentum Score contribution (0-40 points)
-        score += int(self.momentum_score * 0.4)
+        score += int(float(self.momentum_score) * 0.4)
 
         # Volume quality (0-20 points)
         if self.avg_volume_30d >= 1_000_000:
@@ -215,7 +215,7 @@ class ScreeningResult:
             "adr_percentage": float(self.adr_percentage),
             "pattern": self.pattern,
             "squeeze": self.squeeze,
-            "vcp": self.vcp,
+            "consolidation": self.consolidation,
             "entry_signal": self.entry_signal,
             "combined_score": self.combined_score,
             "bear_score": self.bear_score,

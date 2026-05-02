@@ -87,7 +87,7 @@ class ScreeningService:
             atr=Decimal(str(raw_data.get("atr", 0))),
             pattern=raw_data.get("pat"),
             squeeze=raw_data.get("sqz"),
-            vcp=raw_data.get("vcp"),
+            consolidation=raw_data.get("vcp") or raw_data.get("consolidation"),
             entry_signal=raw_data.get("entry"),
             combined_score=int(raw_data.get("combined_score", 0)),
             bear_score=int(raw_data.get("score", 0)),  # Bear score uses 'score' field
@@ -201,9 +201,11 @@ class ScreeningService:
                 if r.squeeze is not None and r.squeeze.strip()
             ]
 
-        if criteria.require_vcp:
+        if criteria.require_consolidation:
             filtered_results = [
-                r for r in filtered_results if r.vcp is not None and r.vcp.strip()
+                r
+                for r in filtered_results
+                if r.consolidation is not None and r.consolidation.strip()
             ]
 
         if criteria.require_entry_signal:
@@ -274,13 +276,15 @@ class ScreeningService:
             reverse=sorting.descending,
         )
 
-        # Apply secondary sort if specified
-        if sorting.secondary_field:
+        # Apply secondary sort if specified. Bind to a local so the
+        # type narrowing reaches the lambda below.
+        secondary_field = sorting.secondary_field
+        if secondary_field is not None:
             sorted_results = sorted(
                 sorted_results,
                 key=lambda r: (
                     get_sort_value(r, sorting.field),
-                    get_sort_value(r, sorting.secondary_field),
+                    get_sort_value(r, secondary_field),
                 ),
                 reverse=sorting.descending,
             )
