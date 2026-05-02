@@ -24,6 +24,26 @@ from maverick_mcp.backtesting.strategies.base import Strategy
 from maverick_mcp.services.signals.conditions import evaluate_condition
 
 
+def normalize_ohlcv_columns(data: pd.DataFrame) -> pd.DataFrame:
+    """Return a view of ``data`` with lowercase ``close``/``volume`` columns.
+
+    Real-world OHLCV data from yfinance / Tiingo often arrives with
+    title-cased columns (``Close``, ``Volume``) — the signals engine
+    expects them lowercase. Public helper so callers (e.g. the
+    ``backtest_signal`` MCP tool) can normalize the same way the
+    strategy does internally instead of probing for column casing
+    themselves.
+    """
+    rename: dict[str, str] = {}
+    for col in data.columns:
+        lower = str(col).lower()
+        if lower in {"close", "volume"} and col != lower:
+            rename[col] = lower
+    if rename:
+        return data.rename(columns=rename)
+    return data
+
+
 class SignalConditionStrategy(Strategy):
     """Bar-by-bar adapter from a Signal.condition dict to a vectorbt Strategy.
 
@@ -73,10 +93,15 @@ class SignalConditionStrategy(Strategy):
 
         Returns:
             (entries, exits) — boolean ``Series`` of the same length as
-            ``data``. The first observation is never an entry/exit edge
-            (no prior state to compare against).
+            ``data``. The first observation can be an entry if the
+            condition is already true on bar 0 (matches live
+            ``SignalService`` behavior, which fires
+            ``signal.triggered`` on the first evaluation when the
+            condition is true). Stateful operators
+            (``crosses_above`` / ``crosses_below``) never fire on bar
+            0 because their first call seeds state without comparing.
         """
-        normalized = _normalize_columns(data)
+        normalized = normalize_ohlcv_columns(data)
 
         triggered_mask: list[bool] = []
         previous_state: dict[str, Any] | None = None
@@ -96,21 +121,3 @@ class SignalConditionStrategy(Strategy):
         entries = triggered & ~prior
         exits = ~triggered & prior
         return entries, exits
-
-
-def _normalize_columns(data: pd.DataFrame) -> pd.DataFrame:
-    """Return a view of ``data`` with lowercase ``close``/``volume`` columns.
-
-    The signal conditions engine looks up ``data["close"]`` and
-    ``data["volume"]``. Real-world OHLCV data from yfinance / Tiingo
-    often arrives with title-cased columns (``Close``, ``Volume``) — this
-    helper bridges the two without copying the underlying values.
-    """
-    rename: dict[str, str] = {}
-    for col in data.columns:
-        lower = str(col).lower()
-        if lower in {"close", "volume"} and col != lower:
-            rename[col] = lower
-    if rename:
-        return data.rename(columns=rename)
-    return data

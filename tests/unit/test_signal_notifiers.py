@@ -73,6 +73,21 @@ async def test_mcp_resource_handles_non_dict_payload() -> None:
     assert record["payload"] == "raw-string"
 
 
+@pytest.mark.asyncio
+async def test_mcp_resource_payload_cannot_shadow_topic() -> None:
+    """Regression: a stray ``topic`` key in payload must not override the routing topic."""
+    notifier = MCPResourceNotifier()
+    await notifier.notify(
+        "signal.triggered",
+        {"signal_id": 1, "topic": "evil.topic", "received_at": "2000-01-01"},
+    )
+
+    [record] = notifier.recent()
+    assert record["topic"] == "signal.triggered"
+    assert record["received_at"] != "2000-01-01"
+    assert record["signal_id"] == 1
+
+
 def test_mcp_resource_clear_and_len() -> None:
     notifier = MCPResourceNotifier()
     notifier._buffer.append({"x": 1})  # type: ignore[attr-defined]
@@ -118,6 +133,25 @@ async def test_webhook_posts_with_topic_and_payload() -> None:
         "ticker": "MSFT",
         "price": 410.0,
     }
+
+
+@pytest.mark.asyncio
+async def test_webhook_payload_cannot_shadow_topic() -> None:
+    """Regression: a stray ``topic`` key in payload must not override the routing topic."""
+    client = AsyncMock()
+    client.post.return_value = httpx.Response(
+        200, request=httpx.Request("POST", "https://example.test/x")
+    )
+
+    notifier = WebhookNotifier(url="https://example.test/x", client=client)
+    await notifier.notify(
+        "signal.triggered",
+        {"signal_id": 1, "topic": "evil.topic"},
+    )
+
+    sent_body = client.post.call_args.kwargs["json"]
+    assert sent_body["topic"] == "signal.triggered"
+    assert sent_body["signal_id"] == 1
 
 
 @pytest.mark.asyncio

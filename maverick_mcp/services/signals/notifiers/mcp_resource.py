@@ -33,14 +33,16 @@ class MCPResourceNotifier:
             topic: The event topic.
             payload: The event data dict.
         """
-        record: dict[str, Any] = {
-            "topic": topic,
-            "received_at": datetime.now(UTC).isoformat(),
-        }
+        # Build the payload first, then overlay our authoritative
+        # metadata fields so a stray ``topic`` / ``received_at`` key
+        # in the payload cannot shadow them.
+        record: dict[str, Any] = {}
         if isinstance(payload, dict):
             record.update(payload)
         else:
             record["payload"] = payload
+        record["topic"] = topic
+        record["received_at"] = datetime.now(UTC).isoformat()
         self._buffer.append(record)
 
     def recent(self, limit: int | None = None) -> list[dict[str, Any]]:

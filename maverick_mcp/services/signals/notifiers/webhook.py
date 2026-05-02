@@ -49,11 +49,14 @@ class WebhookNotifier:
             topic: The event topic.
             payload: The event data — should be JSON-serializable.
         """
-        body: dict[str, Any] = {"topic": topic}
+        # Build the payload first, then overlay ``topic`` so a stray
+        # ``topic`` key in the payload cannot shadow our routing field.
+        body: dict[str, Any] = {}
         if isinstance(payload, dict):
             body.update(payload)
         else:
             body["payload"] = payload
+        body["topic"] = topic
 
         try:
             if self._client is not None:

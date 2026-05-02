@@ -53,11 +53,22 @@ def _assert_edges_match(
     entries: pd.Series,
     exits: pd.Series,
 ) -> None:
-    """Verify (entries, exits) reconstruct from triggered_mask."""
+    """Verify (entries, exits) reconstruct from triggered_mask.
+
+    Mirrors the implementation's invariant: an entry is the rising
+    edge of ``triggered`` (with the prior bar treated as ``False``
+    before bar 0), and an exit is the falling edge. Bar 0 *can* be
+    an entry when the condition is already true on the first bar —
+    matching live ``SignalService`` behavior, which fires
+    ``signal.triggered`` on the first evaluation.
+    """
     expected_entries = [
-        False if i == 0 else (triggered_mask[i] and not triggered_mask[i - 1])
+        triggered_mask[0]
+        if i == 0
+        else (triggered_mask[i] and not triggered_mask[i - 1])
         for i in range(len(triggered_mask))
     ]
+    # Exits are never possible on bar 0 (no prior triggered state).
     expected_exits = [
         False if i == 0 else (not triggered_mask[i] and triggered_mask[i - 1])
         for i in range(len(triggered_mask))
@@ -154,6 +165,26 @@ def test_rsi_gt_matches_live_evaluation() -> None:
     entries, exits = SignalConditionStrategy(cond).generate_signals(data)
     walked = _walk(cond, data)
 
+    _assert_edges_match(walked, entries, exits)
+
+
+def test_bar_zero_triggered_emits_entry_on_first_bar() -> None:
+    """Documented invariant: a condition true on bar 0 emits an entry on bar 0.
+
+    This matches live `SignalService.evaluate_one`, which fires
+    `signal.triggered` on the first evaluation when the condition
+    holds and there's no prior state.
+    """
+    cond = {"indicator": "price", "operator": "gt", "threshold": 100.0}
+    # First bar already above threshold.
+    data = _make_frame([105, 110, 95, 92])
+
+    entries, exits = SignalConditionStrategy(cond).generate_signals(data)
+    walked = _walk(cond, data)
+
+    assert walked == [True, True, False, False]
+    assert entries.tolist() == [True, False, False, False]
+    assert exits.tolist() == [False, False, True, False]
     _assert_edges_match(walked, entries, exits)
 
 

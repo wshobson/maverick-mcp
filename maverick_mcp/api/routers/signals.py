@@ -364,12 +364,27 @@ def register_signal_tools(mcp: FastMCP) -> None:
                     )
                 }
 
-            # 3. Run the strategy
+            # 3. Run the strategy. Normalize once up front so the
+            # column probe below uses a single canonical name and
+            # raises a clear error if the provider returned a frame
+            # without a close column at all (instead of silently
+            # KeyError-ing inside the outer except).
+            from maverick_mcp.services.signals.backtest_adapter import (
+                normalize_ohlcv_columns,
+            )
+
+            data = normalize_ohlcv_columns(data)
+            if "close" not in data.columns:
+                return {
+                    "error": (
+                        f"OHLCV data for {ticker} is missing a 'close' column "
+                        f"(got: {list(data.columns)})"
+                    )
+                }
+
             strategy = SignalConditionStrategy(condition, label=label)
             entries, exits = strategy.generate_signals(data)
-
-            close_col = "close" if "close" in data.columns else "Close"
-            close_prices = data[close_col]
+            close_prices = data["close"]
 
             portfolio = vbt.Portfolio.from_signals(
                 close=close_prices,
