@@ -61,6 +61,28 @@ def test_provider_fetches_selected_sources(monkeypatch):
     ]
 
 
+def test_provider_deduplicates_sources_before_request(monkeypatch):
+    calls = []
+
+    def fake_get(url, headers, params, timeout):
+        calls.append(url)
+        return MockResponse(payload={"sentiment_score": 0.42})
+
+    monkeypatch.setattr("requests.get", fake_get)
+
+    provider = AdanosSentimentProvider(api_key="test-key")
+    result = provider.get_sentiment(
+        ticker="AAPL",
+        sources=["reddit", "Reddit", "news", "reddit"],
+    )
+
+    assert list(result["sources"]) == ["reddit", "news"]
+    assert calls == [
+        "https://api.adanos.org/reddit/stocks/v1/stock/AAPL",
+        "https://api.adanos.org/stock/AAPL",
+    ]
+
+
 def test_provider_fetches_market_sentiment(monkeypatch):
     requested_urls = []
 

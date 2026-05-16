@@ -74,13 +74,14 @@ class AdanosSentimentProvider:
             return list(self.SOURCE_PATHS)
 
         normalized = [source.strip().lower() for source in sources if source.strip()]
-        unknown = sorted(set(normalized) - set(self.SOURCE_PATHS))
+        unique_normalized = list(dict.fromkeys(normalized))
+        unknown = sorted(set(unique_normalized) - set(self.SOURCE_PATHS))
         if unknown:
             valid = ", ".join(self.SOURCE_PATHS)
             raise ValueError(
                 f"Unknown Adanos source(s): {', '.join(unknown)}. Use: {valid}."
             )
-        return normalized
+        return unique_normalized
 
     def _request_source(
         self,
