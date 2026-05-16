@@ -1366,6 +1366,26 @@ async def get_news_sentiment(
     return await _fn(ticker, timeframe, limit)
 
 
+@mcp.tool()
+async def get_adanos_market_sentiment(
+    ticker: str | None = None,
+    days: int = 7,
+    sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """Get optional Adanos sentiment from Reddit, X / FinTwit, News, and Polymarket.
+
+    Args:
+        ticker: Optional stock ticker. Omit for market-wide sentiment.
+        days: Lookback window in days.
+        sources: Optional sources: reddit, x, news, polymarket.
+    """
+    import asyncio
+
+    from maverick_mcp.api.routers.data import get_adanos_market_sentiment as _fn
+
+    return await asyncio.to_thread(_fn, ticker, days, sources)
+
+
 # run_backtest is already registered via setup_backtesting_tools() in tool_registry.py
 
 
