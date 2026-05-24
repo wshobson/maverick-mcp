@@ -1974,7 +1974,6 @@ dependencies = [
     { name = "tiktoken" },
     { name = "uvicorn" },
     { name = "vectorbt" },
-    { name = "watchdog" },
     { name = "yfinance" },
 ]
 
@@ -1997,6 +1996,7 @@ dev = [
     { name = "types-pytz" },
     { name = "types-requests" },
     { name = "vcrpy" },
+    { name = "watchdog" },
 ]
 vectors = [
     { name = "chromadb" },
@@ -2076,7 +2076,7 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.48.0" },
     { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=8.1.1" },
     { name = "vectorbt", specifier = ">=1.0.0" },
-    { name = "watchdog", specifier = ">=6.0.0" },
+    { name = "watchdog", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "yfinance", specifier = ">=1.4.0" },
 ]
 provides-extras = ["dev", "vectors"]
