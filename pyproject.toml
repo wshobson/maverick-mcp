@@ -68,7 +68,7 @@ dependencies = [
     "tiingo>=0.16.1",
     # Visualization (essential only)
     "matplotlib>=3.10.3",
-    "plotly>=5.0.0",
+    "plotly>=6.7.0",
     "seaborn>=0.13.2",
     "kaleido>=0.2.1", # Required for Plotly image export
     # Development tools
