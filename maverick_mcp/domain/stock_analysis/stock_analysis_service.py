@@ -233,15 +233,17 @@ class StockAnalysisService:
                     f"No trading days found between {start_date} and {end_date}"
                 )
                 return pd.DataFrame(
-                    columns=[
-                        "Open",
-                        "High",
-                        "Low",
-                        "Close",
-                        "Volume",
-                        "Dividends",
-                        "Stock Splits",
-                    ]
+                    columns=pd.Index(
+                        [
+                            "Open",
+                            "High",
+                            "Low",
+                            "Close",
+                            "Volume",
+                            "Dividends",
+                            "Stock Splits",
+                        ]
+                    )
                 )
 
             # Fetch data only for the trading day range
