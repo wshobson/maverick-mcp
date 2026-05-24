@@ -7,7 +7,7 @@ on:
 jobs:
   claude-review:
     # Forked pull_request runs do not receive repository secrets/OIDC, so keep
-    # the action off for forks and skip it below if the credential is not configured.
+    # the action off for forks and skip it below if the token is not configured.
     if: >
       github.event.pull_request.draft == false &&
       github.actor != 'dependabot[bot]' &&
@@ -19,22 +19,22 @@ jobs:
       issues: read
       id-token: write
     env:
-      HAS_ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+      HAS_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
 
     steps:
       - name: Skip Claude Code Review
-        if: env.HAS_ANTHROPIC_API_KEY != 'true'
-        run: echo "Skipping Claude Code Review because ANTHROPIC_API_KEY is not configured."
+        if: env.HAS_CLAUDE_CODE_OAUTH_TOKEN != 'true'
+        run: echo "Skipping Claude Code Review because CLAUDE_CODE_OAUTH_TOKEN is not configured."
 
       - name: Checkout repository
-        if: env.HAS_ANTHROPIC_API_KEY == 'true'
+        if: env.HAS_CLAUDE_CODE_OAUTH_TOKEN == 'true'
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Detect Claude review workflow changes
-        if: env.HAS_ANTHROPIC_API_KEY == 'true'
+        if: env.HAS_CLAUDE_CODE_OAUTH_TOKEN == 'true'
         id: claude-workflow
         shell: bash
         env:
@@ -47,15 +47,15 @@ jobs:
           fi
 
       - name: Skip Claude Code Review for workflow changes
-        if: env.HAS_ANTHROPIC_API_KEY == 'true' && steps.claude-workflow.outputs.changed == 'true'
+        if: env.HAS_CLAUDE_CODE_OAUTH_TOKEN == 'true' && steps.claude-workflow.outputs.changed == 'true'
         run: echo "Skipping Claude Code Review because this PR changes the Claude review workflow."
 
       - name: Run Claude Code Review
-        if: env.HAS_ANTHROPIC_API_KEY == 'true' && steps.claude-workflow.outputs.changed != 'true'
+        if: env.HAS_CLAUDE_CODE_OAUTH_TOKEN == 'true' && steps.claude-workflow.outputs.changed != 'true'
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
 
           prompt: |
