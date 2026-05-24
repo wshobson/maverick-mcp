@@ -18,7 +18,7 @@ class AdanosSentimentProvider:
     SOURCE_PATHS = {
         "reddit": "/reddit/stocks/v1",
         "x": "/x/stocks/v1",
-        "news": "",
+        "news": "/news/stocks/v1",
         "polymarket": "/polymarket/stocks/v1",
     }
 
