@@ -414,6 +414,7 @@ def register_data_tools(mcp: FastMCP) -> None:
         clear_cache,
         fetch_stock_data,
         fetch_stock_data_batch,
+        get_adanos_market_sentiment,
         get_cached_price_data,
         get_chart_links,
         get_stock_info,
@@ -427,6 +428,7 @@ def register_data_tools(mcp: FastMCP) -> None:
     mcp.tool(name="data_fetch_stock_data")(fetch_stock_data)
     mcp.tool(name="data_fetch_stock_data_batch")(fetch_stock_data_batch)
     mcp.tool(name="data_get_stock_info")(get_stock_info)
+    mcp.tool(name="data_get_adanos_market_sentiment")(get_adanos_market_sentiment)
 
     # Use enhanced news sentiment that doesn't rely on EXTERNAL_DATA_API_KEY
     @mcp.tool(name="data_get_news_sentiment")

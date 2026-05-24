@@ -398,6 +398,10 @@ Configure MaverickMCP via `.env` file or environment variables:
 - `ANTHROPIC_API_KEY` - Direct Anthropic access (fallback)
 - `FRED_API_KEY` - Federal Reserve economic data
 - `TAVILY_API_KEY` - Alternative web search provider
+- `ADANOS_API_KEY` - Optional Adanos Market Sentiment API access for stock sentiment from Reddit, X / FinTwit, News, and Polymarket ([docs](https://api.adanos.org/docs))
+- `ADANOS_API_BASE_URL` - Optional Adanos API base URL override; defaults to `https://api.adanos.org`
+
+When configured, use the `data_get_adanos_market_sentiment` MCP tool for ticker-level sentiment (`ticker="AAPL"`) or market-wide sentiment (`ticker=null`). Optional `sources` values are `reddit`, `x`, `news`, and `polymarket`.
 
 **Performance:**
 

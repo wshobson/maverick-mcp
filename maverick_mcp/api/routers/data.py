@@ -23,6 +23,7 @@ from maverick_mcp.data.session_management import get_db_session_read_only
 from maverick_mcp.domain.stock_analysis import StockAnalysisService
 from maverick_mcp.infrastructure.caching import CacheManagementService
 from maverick_mcp.infrastructure.data_fetching import StockDataFetchingService
+from maverick_mcp.providers.adanos_sentiment import AdanosSentimentProvider
 from maverick_mcp.providers.stock_data import (
     StockDataProvider,
 )  # Kept for backward compatibility
@@ -310,6 +311,32 @@ def get_news_sentiment(
             "sentiment": "unavailable",
             "status": "error",
         }
+
+
+def get_adanos_market_sentiment(
+    ticker: str | None = None,
+    days: int = 7,
+    sources: list[str] | None = None,
+) -> dict[str, Any]:
+    """
+    Get optional Adanos market sentiment data for stocks.
+
+    Args:
+        ticker: Optional stock ticker. If omitted, returns market-wide sentiment.
+        days: Lookback window in days.
+        sources: Optional list of Adanos sources: reddit, x, news, polymarket.
+
+    Returns:
+        Dictionary containing Adanos sentiment data or configuration status.
+    """
+    try:
+        provider = AdanosSentimentProvider()
+        return provider.get_sentiment(ticker=ticker, days=days, sources=sources)
+    except ValueError as exc:
+        return {"status": "invalid_request", "error": str(exc), "provider": "adanos"}
+    except Exception as exc:
+        logger.error(f"Error fetching Adanos sentiment data: {exc}")
+        return {"status": "error", "error": str(exc), "provider": "adanos"}
 
 
 def get_cached_price_data(
