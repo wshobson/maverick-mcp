@@ -11,7 +11,21 @@ import logging
 from typing import Any
 
 import pandas as pd
-import pandas_ta as ta  # noqa: F401 — registers pandas accessor
+
+try:
+    import pandas_ta as ta  # noqa: F401 - registers pandas accessor
+except ImportError:
+    ta = None  # pandas_ta requires numba (Python <3.14)
+
+
+def _require_ta():
+    """Raise ImportError if pandas_ta is not available."""
+    if ta is None:
+        raise ImportError(
+            "pandas_ta is required for this feature. "
+            "Install it with: pip install pandas_ta (requires Python <3.14)"
+        )
+
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +65,7 @@ def evaluate_condition(
         A dict with keys:
         - ``triggered`` (bool)
         - ``current_value`` (float)
-        - ``new_state`` (dict | None) — updated state to persist for next call
+        - ``new_state`` (dict | None) - updated state to persist for next call
         - ``error`` (str | None)
     """
     _empty_result: dict[str, Any] = {
@@ -120,6 +134,7 @@ def _compute_indicator(
         return float(data["volume"].iloc[-1])
 
     if indicator == "rsi":
+        _require_ta()
         rsi_period = period or 14
         rsi_series = ta.rsi(data["close"], length=rsi_period)
         if rsi_series is None or rsi_series.dropna().empty:
@@ -127,6 +142,7 @@ def _compute_indicator(
         return float(rsi_series.dropna().iloc[-1])
 
     if indicator == "sma":
+        _require_ta()
         sma_period = period or 20
         sma_series = ta.sma(data["close"], length=sma_period)
         if sma_series is None or sma_series.dropna().empty:
@@ -209,12 +225,14 @@ def _evaluate_spike(
     elif indicator == "price":
         series = data["close"].dropna()
     elif indicator == "rsi":
+        _require_ta()
         rsi_period = period or 14
         rsi_series = ta.rsi(data["close"], length=rsi_period)
         series = (
             rsi_series.dropna() if rsi_series is not None else pd.Series(dtype=float)
         )
     elif indicator == "sma":
+        _require_ta()
         sma_period = period or 20
         sma_series = ta.sma(data["close"], length=sma_period)
         series = (
@@ -249,7 +267,7 @@ def _evaluate_crossing(
     new_state = {"was_above": is_above_now, "last_value": current_value}
 
     if previous_state is None:
-        # No history yet — record state but do not trigger
+        # No history yet - record state but do not trigger
         return False, new_state
 
     was_above = bool(previous_state.get("was_above", not is_above_now))
