@@ -40,8 +40,8 @@ def configure_plotly_defaults() -> None:
         # Configure additional defaults that don't trigger deprecation warnings
         if hasattr(pio.defaults, "mathjax"):
             pio.defaults.mathjax = None
-        if hasattr(pio.defaults, "plotlyjs"):
-            pio.defaults.plotlyjs = "auto"
+        # Leave pio.defaults.plotlyjs unset. Kaleido 1.3 treats the string "auto"
+        # as a filesystem path and fails image export with "auto does not exist".
 
         # Note: We avoid setting kaleido.scope properties directly to prevent warnings
         # The modern pio.defaults API should be used instead

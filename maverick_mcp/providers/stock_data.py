@@ -216,15 +216,17 @@ class EnhancedStockDataProvider:
                         f"No trading days found between {start_date} and {end_date}"
                     )
                     return pd.DataFrame(
-                        columns=[  # type: ignore[arg-type]
-                            "Open",
-                            "High",
-                            "Low",
-                            "Close",
-                            "Volume",
-                            "Dividends",
-                            "Stock Splits",
-                        ]
+                        columns=pd.Index(
+                            [
+                                "Open",
+                                "High",
+                                "Low",
+                                "Close",
+                                "Volume",
+                                "Dividends",
+                                "Stock Splits",
+                            ]
+                        )
                     )
 
                 # Fetch data only for the trading day range
@@ -359,7 +361,7 @@ class EnhancedStockDataProvider:
             start_date=start_date, end_date=end_date
         )
         # Return timezone-naive index
-        return schedule.index.tz_localize(None)
+        return pd.DatetimeIndex(schedule.index).tz_localize(None)
 
     def _get_last_trading_day(self, date) -> pd.Timestamp:
         """
@@ -672,7 +674,7 @@ class EnhancedStockDataProvider:
         if df.empty:
             logger.warning(f"Empty dataframe returned for {symbol}")
             return pd.DataFrame(
-                columns=["Open", "High", "Low", "Close", "Volume"]  # type: ignore[arg-type]
+                columns=pd.Index(["Open", "High", "Low", "Close", "Volume"])
             )
 
         # Ensure all expected columns exist
@@ -1214,13 +1216,15 @@ class EnhancedStockDataProvider:
 
             if not news:
                 return pd.DataFrame(
-                    columns=[  # type: ignore[arg-type]
-                        "title",
-                        "publisher",
-                        "link",
-                        "providerPublishTime",
-                        "type",
-                    ]
+                    columns=pd.Index(
+                        [
+                            "title",
+                            "publisher",
+                            "link",
+                            "providerPublishTime",
+                            "type",
+                        ]
+                    )
                 )
 
             df = pd.DataFrame(news[:limit])
@@ -1235,7 +1239,9 @@ class EnhancedStockDataProvider:
         except Exception as e:
             logger.error(f"Error fetching news for {symbol}: {str(e)}")
             return pd.DataFrame(
-                columns=["title", "publisher", "link", "providerPublishTime", "type"]  # type: ignore[arg-type]
+                columns=pd.Index(
+                    ["title", "publisher", "link", "providerPublishTime", "type"]
+                )
             )
 
     def get_earnings(self, symbol: str) -> dict:
@@ -1264,12 +1270,16 @@ class EnhancedStockDataProvider:
             recommendations = ticker.recommendations
 
             if recommendations is None or recommendations.empty:
-                return pd.DataFrame(columns=["firm", "toGrade", "fromGrade", "action"])  # type: ignore[arg-type]
+                return pd.DataFrame(
+                    columns=pd.Index(["firm", "toGrade", "fromGrade", "action"])
+                )
 
             return recommendations
         except Exception as e:
             logger.error(f"Error fetching recommendations for {symbol}: {str(e)}")
-            return pd.DataFrame(columns=["firm", "toGrade", "fromGrade", "action"])  # type: ignore[arg-type]
+            return pd.DataFrame(
+                columns=pd.Index(["firm", "toGrade", "fromGrade", "action"])
+            )
 
     def is_etf(self, symbol: str) -> bool:
         """Check if a given symbol is an ETF."""

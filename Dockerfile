@@ -5,13 +5,16 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies and TA-Lib
-RUN apt-get update && apt-get install -yqq \
+# Install system dependencies, Chromium for Kaleido v1 image export, and TA-Lib
+RUN apt-get update && apt-get install -yqq --no-install-recommends \
   build-essential \
-  python3-dev \
-  libpq-dev \
-  wget \
+  ca-certificates \
+  chromium \
   curl \
+  fonts-liberation \
+  libpq-dev \
+  python3-dev \
+  wget \
   && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast Python package management
@@ -42,6 +45,7 @@ COPY alembic.ini setup.py ./
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV BROWSER_PATH=/usr/bin/chromium
 
 # Create non-root user
 RUN groupadd -g 1000 maverick && \
