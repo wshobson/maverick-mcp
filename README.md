@@ -237,7 +237,7 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
     }
   }
 }

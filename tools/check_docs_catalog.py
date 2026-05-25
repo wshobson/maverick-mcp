@@ -37,6 +37,7 @@ CONCISE_LIMITS = {
 }
 
 LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
+CATALOG_TOKEN_RE = re.compile(r"`([^`]+)`")
 EXTERNAL_SCHEMES = (
     "http://",
     "https://",
@@ -54,8 +55,6 @@ def git_ls_docs() -> list[Path]:
             "git",
             "ls-files",
             "--cached",
-            "--others",
-            "--exclude-standard",
             "--",
             "*.md",
             "*.mdx",
@@ -89,6 +88,7 @@ def is_allowlisted(path: Path) -> bool:
 def validate_catalog(paths: list[Path]) -> list[str]:
     errors: list[str] = []
     catalog = CATALOG_PATH.read_text(encoding="utf-8")
+    catalog_entries = set(CATALOG_TOKEN_RE.findall(catalog))
 
     for path in paths:
         path_str = path.as_posix()
@@ -96,7 +96,7 @@ def validate_catalog(paths: list[Path]) -> list[str]:
             continue
         if path_str.startswith("docs/"):
             catalog_key = path_str.removeprefix("docs/")
-            if catalog_key not in catalog:
+            if catalog_key not in catalog_entries:
                 errors.append(f"{path_str} is missing from docs/CATALOG.md")
             continue
         errors.append(f"{path_str} is a tracked doc outside approved locations")
@@ -120,6 +120,25 @@ def should_skip_link(target: str) -> bool:
     )
 
 
+def without_fenced_code_blocks(text: str) -> str:
+    lines = text.splitlines(keepends=True)
+    filtered: list[str] = []
+    fence_marker: str | None = None
+
+    for line in lines:
+        stripped = line.lstrip()
+        if fence_marker:
+            if stripped.startswith(fence_marker):
+                fence_marker = None
+            continue
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            fence_marker = stripped[:3]
+            continue
+        filtered.append(line)
+
+    return "".join(filtered)
+
+
 def validate_links(paths: list[Path]) -> list[str]:
     errors: list[str] = []
 
@@ -128,7 +147,7 @@ def validate_links(paths: list[Path]) -> list[str]:
             continue
 
         full_path = REPO_ROOT / path
-        text = full_path.read_text(encoding="utf-8")
+        text = without_fenced_code_blocks(full_path.read_text(encoding="utf-8"))
         for match in LINK_RE.finditer(text):
             target = normalize_link(match.group(1))
             if should_skip_link(target):

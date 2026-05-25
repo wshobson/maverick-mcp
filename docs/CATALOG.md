@@ -47,7 +47,7 @@ Status labels:
 
 | Old path | Status | Replacement |
 | --- | --- | --- |
-| `../PLANS.md` | deleted | Removed as unrelated ToolCall_V2/Rust parser placeholder content. |
+| `../PLANS.md` | deleted | Removed as unrelated Rust parser placeholder content. |
 | `../DATABASE_SETUP.md` | deleted | `runbooks/database-setup.md` |
 | `BACKTESTING.md` | deleted | `api/backtesting.md` |
 | `COST_BASIS_SPECIFICATION.md` | deleted | `features/portfolio.md` |
