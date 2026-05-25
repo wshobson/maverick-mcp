@@ -10,14 +10,14 @@ shipped through April 2026: service-layer infrastructure (`event_bus`,
 `registry`, `scheduler`) plus all five domains
 (`signals`, `screening`, `journal`, `watchlist`, `risk`).
 
-The post-v1 forward plan (this directory's session at
-`/Users/wshobson/.claude/plans/read-in-any-roadmaps-eventual-flamingo.md`)
-delivered Phase 1 (CI bootstrap, doc accuracy, type-bug fixes), Phase 2.1/2.2/2.4
-(dead-code purge, type-safety beachhead), and Phase 3.1/3.2
-(signal notifier scaffold + `backtest_signal` MCP tool with parity
-testing). Phase 2.3 (refactors of `deep_research.py` and
+The post-v1 forward plan delivered Phase 1 (CI bootstrap, doc accuracy,
+type-bug fixes), Phase 2.1/2.2/2.4 (dead-code purge, type-safety beachhead),
+and Phase 3.1/3.2 (signal notifier scaffold + `backtest_signal` MCP tool with
+parity testing). Phase 2.3 (refactors of `deep_research.py` and
 `llm_optimization.py`) was deliberately deferred for its own
-characterization-test-driven PR series.
+characterization-test-driven PR series. The old private local planning path was
+intentionally removed from repo docs; Git history is the archive for that
+session note.
 
 This doc captures what's natural to pick up *after* that work, so the
 next plan doesn't start from a blank page.

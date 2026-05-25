@@ -45,7 +45,7 @@ Concrete “golden path” commands/config (to be codified in a follow-on implem
 - **Too many entrypoints / server modes**: a large “everything” MCP server in `maverick_mcp/api/server.py` plus a separate simplified FastAPI server in `maverick_mcp/api/api_server.py` plus additional SSE/inspector variants in `maverick_mcp/api/`.
 - **Compatibility hacks are embedded in core startup** (monkey-patching FastMCP SSE route handling, heavy warning suppression, and `print()` diagnostics): `maverick_mcp/api/server.py`
 - **Multiple router variants** (`*_enhanced`, `*_ddd`, `*_parallel`) without a clear deprecation path creates duplication and ambiguity for “the right” implementation: `maverick_mcp/api/routers/`
-- **Documentation drift / contradictions** around recommended transports (SSE vs streamable HTTP) and client compatibility: compare `CLAUDE.md` vs `maverick_mcp/README.md`
+- **Documentation drift / contradictions** around recommended transports were resolved by the docs tidying pass; active guidance now lives in `../../../docs/runbooks/claude-desktop.md`.
 - **Global side effects in library modules** (e.g., `logging.basicConfig()`, `load_dotenv()`), which can interfere with consumers/tests and makes behavior harder to predict: `maverick_mcp/providers/stock_data.py`, `maverick_mcp/config/settings.py`
 - **Partially-finished “registry” concepts** (LangChain ToolRegistry default tool init TODO): `maverick_mcp/langchain_tools/registry.py`
 
@@ -57,7 +57,7 @@ Once the golden path is adopted, the following should be explicitly labeled **le
 
 - `maverick_mcp/api/api_server.py` (separate simplified FastAPI server)
 - `maverick_mcp/api/simple_sse.py`, `maverick_mcp/api/inspector_sse.py`, `maverick_mcp/api/inspector_compatible_sse.py` (SSE variants)
-- Any transport-specific “dev” guidance that contradicts the golden path (currently seen across `CLAUDE.md` and `maverick_mcp/README.md`)
+- Any transport-specific “dev” guidance that contradicts the golden path in `../../../docs/runbooks/claude-desktop.md`.
 
 ### Transport-specific compatibility hacks
 
@@ -78,7 +78,7 @@ This is a repo-grounded sequencing plan intended to minimize risk and reduce amb
 
 ### P0 (clarity + stability first)
 
-- **Codify the golden path** (entrypoint + transport + client setup) and reconcile contradictions in `CLAUDE.md` vs `maverick_mcp/README.md`.
+- **Codify the golden path** (entrypoint + transport + client setup) and keep `../../../docs/runbooks/claude-desktop.md` current.
 - **Upgrade FastMCP within stable 2.x** and re-validate transport behavior (goal: remove SSE monkey-patch or confine it to an isolated shim).
 - **Centralize startup side effects** (logging and environment loading) into a single bootstrap path (no module-level `basicConfig()` / `load_dotenv()` in library modules).
 - **Declare canonical tool registration** (keep `tool_registry.py` as the only supported strategy unless/until client issues are proven resolved upstream).

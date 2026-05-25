@@ -1,6 +1,14 @@
 # Backtesting API Documentation
 
+This is the canonical backtesting documentation. The former
+`docs/BACKTESTING.md` overview was consolidated here during the documentation
+tidying pass.
+
 ## Overview
+
+MaverickMCP provides VectorBT-powered backtesting with traditional technical
+strategies, ML-enhanced strategies, optimization, walk-forward analysis,
+Monte Carlo simulation, chart generation, and portfolio backtesting.
 
 The MaverickMCP backtesting system provides comprehensive strategy backtesting capabilities powered by VectorBT. It offers both traditional technical analysis strategies and advanced ML-enhanced approaches, with extensive optimization, validation, and analysis tools.
 
