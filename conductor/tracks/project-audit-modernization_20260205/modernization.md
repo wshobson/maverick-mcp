@@ -24,8 +24,8 @@
 These should be the first changes when you start implementation work (aim: low risk, high clarity):
 
 1. **Choose the golden path** and encode it in docs + Make targets:
-   - Decide whether Claude Desktop will be supported via `streamable-http` (likely) and/or SSE.
-   - Reconcile the current contradiction between `CLAUDE.md` and `maverick_mcp/README.md`.
+   - Current docs now prefer STDIO for Claude Desktop, Streamable HTTP for bridge/remote workflows, and SSE for legacy/debug only.
+   - See `../../../docs/runbooks/claude-desktop.md` for the active transport guidance.
 2. **Upgrade FastMCP within stable 2.x**, then re-test transports/tool registration:
    - Re-evaluate whether `maverick_mcp/api/server.py` still needs the SSE trailing-slash monkey-patch.
 3. **Centralize startup side effects**:

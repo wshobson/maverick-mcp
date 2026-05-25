@@ -154,49 +154,9 @@ make dev
 
 ### Connect to Claude Desktop
 
-**Recommended: SSE Connection (Stable and Reliable)**
+**Recommended: STDIO connection**
 
-This configuration provides stable tool registration and prevents tools from disappearing:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
-    }
-  }
-}
-```
-
-> [!WARNING]
-> **Windows Claude Desktop Users**
-> Claude Desktop on Windows currently has a bug where it ignores the `"cwd"` configuration parameter, which can cause the server to crash with a `ModuleNotFoundError` when running via `uv`. 
-> 
-> To bypass this, wrap the command in `cmd.exe` to force the directory change:
-> ```json
-> "maverick-mcp": {
->   "command": "cmd.exe",
->   "args": [
->     "/c",
->     "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick_mcp.api.server --transport stdio"
->   ]
-> }
-> ```
-
-> **Important**: Note the trailing slash in `/sse/` - this is REQUIRED to prevent redirect issues!
-
-**Config File Location:**
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-**Why This Configuration Works Best:**
-- Stable tool registration - tools don't disappear after initial connection
-- Reliable connection management through SSE transport
-- Proper session persistence for long-running analysis tasks
-- All 29+ financial tools available consistently
-
-**Alternative: Direct STDIO Connection (Development Only)**
+Claude Desktop works best with direct STDIO for local use:
 
 ```json
 {
@@ -217,33 +177,73 @@ This configuration provides stable tool registration and prevents tools from dis
 }
 ```
 
-> **Important**: Always **restart Claude Desktop** after making configuration changes. The SSE configuration via mcp-remote has been tested and confirmed to provide stable, persistent tool access without connection drops.
+> [!WARNING]
+> **Windows Claude Desktop Users**
+> Claude Desktop on Windows currently has a bug where it ignores the `"cwd"` configuration parameter, which can cause the server to crash with a `ModuleNotFoundError` when running via `uv`. 
+> 
+> To bypass this, wrap the command in `cmd.exe` to force the directory change:
+> ```json
+> "maverick-mcp": {
+>   "command": "cmd.exe",
+>   "args": [
+>     "/c",
+>     "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick_mcp.api.server --transport stdio"
+>   ]
+> }
+> ```
 
-That's it! MaverickMCP tools will now be available in your Claude Desktop interface.
-
-#### Claude Desktop (Most Popular) - Recommended Configuration
-
-**Config Location**:
-
+**Config File Location:**
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-#### Cursor IDE - STDIO and SSE
+Always restart Claude Desktop after making configuration changes.
 
-**Option 1: STDIO (via mcp-remote)**:
+**Alternative: Streamable HTTP with `mcp-remote`**
+
+Start the server:
+
+```bash
+make dev
+```
+
+Then configure a bridge:
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/sse/"]
+      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
     }
   }
 }
 ```
 
-**Option 2: Direct SSE**:
+That's it! MaverickMCP tools will now be available in your Claude Desktop interface.
+
+#### Claude Desktop Configuration
+
+**Config Location**:
+
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+#### Cursor IDE
+
+**Option 1: Streamable HTTP bridge**:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
+    }
+  }
+}
+```
+
+**Option 2: Legacy direct SSE**:
 
 ```json
 {
@@ -259,27 +259,27 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 
 #### Claude Code CLI - All Transports
 
-**HTTP Transport (Recommended)**:
+**HTTP transport**:
 
 ```bash
 claude mcp add --transport http maverick-mcp http://localhost:8003/mcp/
 ```
 
-**SSE Transport (Alternative)**:
+**SSE transport (legacy/debug)**:
 
 ```bash
 claude mcp add --transport sse maverick-mcp http://localhost:8003/sse/
 ```
 
-**STDIO Transport (Development)**:
+**STDIO transport**:
 
 ```bash
 claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
 ```
 
-#### Windsurf IDE - STDIO and SSE
+#### Windsurf IDE
 
-**Option 1: STDIO (via mcp-remote)**:
+**Option 1: Streamable HTTP bridge**:
 
 ```json
 {
@@ -292,7 +292,7 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 }
 ```
 
-**Option 2: Direct SSE**:
+**Option 2: Legacy direct SSE**:
 
 ```json
 {
@@ -308,7 +308,8 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
 
 #### Why mcp-remote is Needed
 
-The `mcp-remote` tool bridges the gap between STDIO-only clients (like Claude Desktop) and HTTP/SSE servers. Without it, these clients cannot connect to remote MCP servers:
+The `mcp-remote` tool bridges clients that launch local STDIO commands to a
+server that is already running over HTTP:
 
 - **Without mcp-remote**: Client tries STDIO → Server expects HTTP → Connection fails
 - **With mcp-remote**: Client uses STDIO → mcp-remote converts to HTTP → Server receives HTTP → Success

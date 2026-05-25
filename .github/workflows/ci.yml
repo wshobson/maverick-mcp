@@ -17,8 +17,10 @@ jobs:
     name: Lint (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
         with:
           python-version: "3.12"
           enable-cache: true
@@ -29,12 +31,28 @@ jobs:
       - name: Ruff format check
         run: uv run ruff format --check .
 
+  docs:
+    name: Docs catalog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Check docs catalog
+        run: make docs-check
+
   typecheck:
     name: Type check (ty, baseline)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
         with:
           python-version: "3.12"
           enable-cache: true
@@ -58,8 +76,10 @@ jobs:
       MAVERICK_TEST_ENV: "true"
       TIINGO_API_KEY: "ci-dummy-key"
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
         with:
           python-version: "3.12"
           enable-cache: true

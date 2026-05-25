@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
+.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck docs-check clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -30,6 +30,7 @@ help:
 	@echo "  make lint         - Run code quality checks"
 	@echo "  make format       - Auto-format code"
 	@echo "  make typecheck    - Run type checking"
+	@echo "  make docs-check   - Validate documentation catalog and links"
 	@echo "  make check        - Run all checks (lint + type check)"
 	@echo ""
 	@echo "  make tail-log     - Follow backend logs"
@@ -150,6 +151,10 @@ format:
 typecheck:
 	@echo "Running type checker..."
 	@uv run --extra dev pyright
+
+docs-check:
+	@echo "Checking documentation catalog..."
+	@uv run python tools/check_docs_catalog.py
 
 check: lint typecheck
 	@echo "All checks passed!"
