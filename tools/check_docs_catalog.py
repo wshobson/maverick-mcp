@@ -50,6 +50,7 @@ EXTERNAL_SCHEMES = (
 
 
 def git_ls_docs() -> list[Path]:
+    """Return tracked Markdown and text documentation paths."""
     result = subprocess.run(
         [
             "git",
@@ -75,6 +76,7 @@ def git_ls_docs() -> list[Path]:
 
 
 def is_allowlisted(path: Path) -> bool:
+    """Return whether a tracked doc path is allowed outside the catalog."""
     path_str = path.as_posix()
     return (
         path_str in ROOT_DOCS
@@ -86,6 +88,7 @@ def is_allowlisted(path: Path) -> bool:
 
 
 def validate_catalog(paths: list[Path]) -> list[str]:
+    """Validate that tracked docs are allowlisted or cataloged exactly."""
     errors: list[str] = []
     catalog = CATALOG_PATH.read_text(encoding="utf-8")
     catalog_entries = set(CATALOG_TOKEN_RE.findall(catalog))
@@ -105,6 +108,7 @@ def validate_catalog(paths: list[Path]) -> list[str]:
 
 
 def normalize_link(target: str) -> str:
+    """Normalize a Markdown link target before resolution."""
     target = target.strip()
     if target.startswith("<") and target.endswith(">"):
         target = target[1:-1]
@@ -112,6 +116,7 @@ def normalize_link(target: str) -> str:
 
 
 def should_skip_link(target: str) -> bool:
+    """Return whether a Markdown link target should not be file-resolved."""
     return (
         not target
         or target.startswith("#")
@@ -121,18 +126,27 @@ def should_skip_link(target: str) -> bool:
 
 
 def without_fenced_code_blocks(text: str) -> str:
+    """Remove fenced code blocks while preserving non-code Markdown text."""
     lines = text.splitlines(keepends=True)
     filtered: list[str] = []
-    fence_marker: str | None = None
+    fence_char: str | None = None
+    fence_length = 0
 
     for line in lines:
         stripped = line.lstrip()
-        if fence_marker:
-            if stripped.startswith(fence_marker):
-                fence_marker = None
+        fence_match = re.match(r"(`{3,}|~{3,})", stripped)
+        if fence_char:
+            if (
+                fence_match
+                and fence_match.group(1)[0] == fence_char
+                and len(fence_match.group(1)) >= fence_length
+            ):
+                fence_char = None
+                fence_length = 0
             continue
-        if stripped.startswith("```") or stripped.startswith("~~~"):
-            fence_marker = stripped[:3]
+        if fence_match:
+            fence_char = fence_match.group(1)[0]
+            fence_length = len(fence_match.group(1))
             continue
         filtered.append(line)
 
@@ -140,6 +154,7 @@ def without_fenced_code_blocks(text: str) -> str:
 
 
 def validate_links(paths: list[Path]) -> list[str]:
+    """Validate relative Markdown links in tracked Markdown files."""
     errors: list[str] = []
 
     for path in paths:
@@ -174,6 +189,7 @@ def validate_links(paths: list[Path]) -> list[str]:
 
 
 def validate_concise_entrypoints() -> list[str]:
+    """Validate root agent entrypoints stay concise."""
     errors: list[str] = []
 
     for path_str, limit in CONCISE_LIMITS.items():
@@ -186,6 +202,7 @@ def validate_concise_entrypoints() -> list[str]:
 
 
 def main() -> int:
+    """Run all documentation catalog checks."""
     paths = git_ls_docs()
     errors = [
         *validate_catalog(paths),

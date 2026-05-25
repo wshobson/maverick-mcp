@@ -43,7 +43,7 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Check docs catalog
-        run: uv run python tools/check_docs_catalog.py
+        run: make docs-check
 
   typecheck:
     name: Type check (ty, baseline)
