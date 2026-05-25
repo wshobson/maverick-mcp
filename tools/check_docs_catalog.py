@@ -134,12 +134,13 @@ def without_fenced_code_blocks(text: str) -> str:
 
     for line in lines:
         stripped = line.lstrip()
-        fence_match = re.match(r"(`{3,}|~{3,})", stripped)
+        fence_match = re.match(r"(`{3,}|~{3,})(.*)$", stripped)
         if fence_char:
             if (
                 fence_match
                 and fence_match.group(1)[0] == fence_char
                 and len(fence_match.group(1)) >= fence_length
+                and not fence_match.group(2).strip()
             ):
                 fence_char = None
                 fence_length = 0
