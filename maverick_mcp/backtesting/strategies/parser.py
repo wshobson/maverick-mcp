@@ -12,7 +12,7 @@ from .templates import STRATEGY_TEMPLATES
 class StrategyParser:
     """Parser for converting natural language to VectorBT strategies."""
 
-    def __init__(self, llm: ChatAnthropic | None = None):
+    def __init__(self, llm: Any | None = None):
         """Initialize strategy parser.
 
         Args:

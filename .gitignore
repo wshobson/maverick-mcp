@@ -69,9 +69,20 @@ Thumbs.db
 /generated/
 /openapi-spec.json
 
-# database
+# Database files
 *.db
+*.sqlite
+*.sqlite3
+
 # Docker local overrides
 docker-compose.override.yml
 ta-lib/
 ta-lib-0.4.0-src.tar.gz
+
+# Personal financial data — never commit
+portfolio/
+
+# Secrets and local config
+.env.*
+!.env.example
+secrets/
