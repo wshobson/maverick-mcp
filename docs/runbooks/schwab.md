@@ -88,6 +88,11 @@ The Schwab router registers these read-only tools:
 - `schwab_get_account_summary`
 - `schwab_get_positions`
 - `schwab_sync_portfolio`
+- `schwab_refresh_and_analyze_portfolio`
+
+The MCP prompt registry also includes Schwab workflow prompts for refresh and
+review, risk checks, single-position review, and non-executing trade-plan
+drafting.
 
 The tools intentionally avoid order placement, cancellation, replacement, and
 other trading actions. Any future trading support should be implemented as a

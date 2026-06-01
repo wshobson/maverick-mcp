@@ -232,3 +232,34 @@ def register_schwab_tools(mcp: FastMCP) -> None:
         except Exception as e:
             logger.error("schwab_sync_portfolio error: %s", e)
             return {"status": "error", "error": str(e)}
+
+    @mcp.tool(
+        name="schwab_refresh_and_analyze_portfolio",
+        description=(
+            "Refresh live Schwab positions into Maverick's local portfolio database "
+            "and return read-only portfolio summary, P&L, cash, concentration, and "
+            "top-position analysis. Does not place trades."
+        ),
+    )
+    def schwab_refresh_and_analyze_portfolio(
+        portfolio_name: str = "Schwab",
+        user_id: str = "default",
+        top_n: int = 10,
+    ) -> dict[str, Any]:
+        try:
+            from maverick_mcp.providers.schwab import SchwabClient
+            from maverick_mcp.providers.schwab.analysis import (
+                refresh_and_analyze_portfolio,
+            )
+
+            config, store = _load_schwab()
+            client = SchwabClient(config, store)
+            return refresh_and_analyze_portfolio(
+                client,
+                portfolio_name=portfolio_name,
+                user_id=user_id,
+                top_n=top_n,
+            )
+        except Exception as e:
+            logger.error("schwab_refresh_and_analyze_portfolio error: %s", e)
+            return {"status": "error", "error": str(e)}

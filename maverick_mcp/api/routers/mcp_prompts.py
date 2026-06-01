@@ -224,6 +224,133 @@ Then customize if needed:
 - ML strategies are experimental but fun to try
 """
 
+    # Schwab portfolio workflow prompts
+    @mcp.prompt()
+    async def schwab_refresh_and_review():
+        """Workflow for refreshing and reviewing the live Schwab portfolio."""
+        return """
+# Schwab Refresh And Review
+
+Use this workflow when the user wants a current look at their Schwab portfolio.
+
+## Tool Sequence
+
+1. Call `schwab_auth_status`.
+2. If authorization is missing or expired, ask the user to run the local Schwab
+   authorization flow.
+3. Call `schwab_refresh_and_analyze_portfolio`.
+4. Summarize:
+   - account count and position count
+   - cash percentage
+   - total cost basis and unrealized P&L
+   - top positions by market value
+   - concentration warnings
+
+## Response Rules
+
+- Treat the output as educational/informational only.
+- Do not recommend a trade as an instruction.
+- Do not place orders.
+- Ask before using external research or news tools.
+- If data is stale or authorization fails, say so plainly and stop.
+"""
+
+    @mcp.prompt()
+    async def schwab_risk_check():
+        """Workflow for checking portfolio risk after Schwab sync."""
+        return """
+# Schwab Portfolio Risk Check
+
+Use this workflow when the user asks whether their current Schwab portfolio is
+balanced, concentrated, or exposed to avoidable risk.
+
+## Tool Sequence
+
+1. Call `schwab_refresh_and_analyze_portfolio`.
+2. Call `portfolio_get_my_portfolio` with `portfolio_name="Schwab"` and
+   `include_current_prices=false`.
+3. If needed, call risk dashboard or correlation tools using
+   `portfolio_name="Schwab"`.
+
+## Focus Areas
+
+- largest single-position allocations
+- cash versus invested balance
+- unrealized P&L distribution
+- clustered themes or correlated positions
+- positions that deserve deeper technical review
+
+## Response Rules
+
+- Separate observations from possible actions.
+- Use language like "consider reviewing" rather than "buy" or "sell".
+- Do not place, preview, cancel, or replace orders.
+- Highlight uncertainty and missing data.
+"""
+
+    @mcp.prompt()
+    async def schwab_position_review():
+        """Workflow for reviewing one Schwab holding in context."""
+        return """
+# Schwab Position Review
+
+Use this workflow when the user names one holding and wants context against the
+live Schwab portfolio.
+
+## Tool Sequence
+
+1. Call `schwab_refresh_and_analyze_portfolio`.
+2. Confirm the ticker exists in the returned top positions or synced portfolio.
+3. Call technical analysis tools for the ticker if the user wants chart context.
+4. Optionally compare the ticker against other holdings using portfolio tools.
+
+## Review Shape
+
+- current shares, cost basis, market value, allocation, and P&L if available
+- technical trend and key levels
+- how the position affects concentration
+- questions to answer before changing size
+
+## Response Rules
+
+- Do not infer tax advice.
+- Do not place orders.
+- If the ticker is not in the Schwab portfolio, say so and ask whether to
+  analyze it as a watchlist or candidate instead.
+"""
+
+    @mcp.prompt()
+    async def schwab_trade_plan_draft():
+        """Workflow for drafting a non-executing trade plan."""
+        return """
+# Schwab Trade Plan Draft
+
+Use this workflow when the user wants to think through a possible adjustment.
+This is a planning workflow only.
+
+## Tool Sequence
+
+1. Call `schwab_refresh_and_analyze_portfolio`.
+2. Identify the affected ticker and current portfolio context.
+3. Use technical, risk, and portfolio tools as needed.
+4. Draft a plan with scenarios, invalidation levels, and risks.
+
+## Plan Must Include
+
+- thesis and counter-thesis
+- current exposure and concentration impact
+- possible sizing ranges, if requested
+- risk controls and invalidation points
+- what information is missing before action
+
+## Hard Limits
+
+- Do not place orders.
+- Do not imply execution happened.
+- Do not call any future trading action unless the user explicitly asks and the
+  repo has a separate safety-gated trading tool available.
+"""
+
     # Register a resources endpoint for better discovery
     @mcp.prompt()
     async def strategy_reference():

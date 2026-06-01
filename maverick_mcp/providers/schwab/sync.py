@@ -63,9 +63,10 @@ def sync_schwab_portfolio(
     *,
     portfolio_name: str = "Schwab",
     user_id: str = "default",
+    positions: list[SchwabPosition] | None = None,
 ) -> dict[str, Any]:
     """Snapshot live Schwab positions into Maverick's local portfolio storage."""
-    positions = fetch_schwab_positions(client)
+    positions = positions if positions is not None else fetch_schwab_positions(client)
     synced_at = datetime.now(UTC)
 
     with SessionLocal() as session:
