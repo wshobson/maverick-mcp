@@ -27,6 +27,7 @@ Status labels:
 | `features/deep-research.md` | current | engineering | Research agent behavior and configuration. |
 | `runbooks/claude-desktop.md` | current | operations | MCP client setup and transport guidance. |
 | `runbooks/database-setup.md` | current | operations | Database setup, migrations, and seeding. |
+| `runbooks/schwab.md` | current | operations | Schwab Trader API OAuth setup and portfolio sync. |
 | `runbooks/self-contained-setup.md` | current | operations | Full local setup. |
 | `runbooks/tiingo-loader.md` | current | operations | Tiingo loader setup and usage. |
 | `testing/README.md` | current | engineering | Canonical test commands and marker policy. |

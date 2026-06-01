@@ -1392,4 +1392,12 @@ def register_all_router_tools(mcp: FastMCP) -> None:
     except Exception as e:
         logger.error(f"Failed to register risk dashboard tools: {e}")
 
+    try:
+        from maverick_mcp.api.routers.schwab import register_schwab_tools
+
+        register_schwab_tools(mcp)
+        logger.info("Schwab tools registered successfully")
+    except Exception as e:
+        logger.error(f"Failed to register Schwab tools: {e}")
+
     logger.info("Tool registration process completed")
