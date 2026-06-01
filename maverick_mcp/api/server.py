@@ -1238,13 +1238,17 @@ async def remove_portfolio_position(
 
 
 @mcp.tool()
-async def portfolio_correlation_analysis(days: int = 252) -> dict[str, Any]:
+async def portfolio_correlation_analysis(
+    days: int = 252,
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
     """Analyze correlation between all portfolio holdings.
 
     Auto-detects your portfolio positions. No need to specify tickers.
 
     Args:
         days: Number of trading days for correlation window (default 252 = ~1 year)
+        portfolio_name: Portfolio name to analyze (default "My Portfolio")
     """
     import asyncio
 
@@ -1257,7 +1261,7 @@ async def portfolio_correlation_analysis(days: int = 252) -> dict[str, Any]:
         tickers=None,
         days=days,
         user_id="default",
-        portfolio_name="My Portfolio",
+        portfolio_name=portfolio_name,
     )
 
 
