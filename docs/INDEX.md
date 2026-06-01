@@ -22,6 +22,7 @@ use this index as the map to deeper, versioned sources of truth.
   configuration.
 - `runbooks/database-setup.md` - SQLite/PostgreSQL setup, migrations, and
   seeding.
+- `runbooks/schwab.md` - Schwab Trader API OAuth setup and portfolio sync.
 - `runbooks/self-contained-setup.md` - full local setup with market data.
 - `runbooks/tiingo-loader.md` - Tiingo data-loader setup and usage.
 

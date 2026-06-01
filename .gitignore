@@ -85,4 +85,6 @@ portfolio/
 # Secrets and local config
 .env.*
 !.env.example
+.local/
+.gitnexus/
 secrets/
