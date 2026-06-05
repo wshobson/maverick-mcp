@@ -92,7 +92,7 @@ dev = [
     "safety>=3.7.0",
     "types-requests>=2.33.0.20260518",
     "types-pytz>=2026.2.0.20260518",
-    "ty>=0.0.39",
+    "ty>=0.0.43",
 ]
 vectors = [
     "chromadb>=1.5.9",
