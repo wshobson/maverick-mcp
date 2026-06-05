@@ -53,9 +53,10 @@ jobs:
       - name: Run Claude Code Review
         if: env.HAS_CLAUDE_CODE_OAUTH_TOKEN == 'true' && steps.claude-workflow.outputs.changed != 'true'
         id: claude-review
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251 # v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ github.token }}
           track_progress: true
 
           prompt: |
