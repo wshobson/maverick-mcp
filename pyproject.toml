@@ -55,7 +55,7 @@ dependencies = [
     "scipy>=1.17.1",
     "pytz>=2026.2",
     # Security (basic cryptography for data security)
-    "cryptography>=48.0.0",
+    "cryptography>=48.0.1",
     # System monitoring (basic)
     "psutil>=7.2.2",
     "sentry-sdk[fastapi]>=2.60.0",
