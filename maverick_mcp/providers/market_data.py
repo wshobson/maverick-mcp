@@ -59,7 +59,7 @@ class ExternalAPIClient:
 
     def __init__(self):
         self.api_key = os.getenv("CAPITAL_COMPANION_API_KEY")
-        self.base_url = "https://capitalcompanion.io"
+        self.base_url = "https://capitalcompanion.ai"
         self.session = requests.Session()
         self.session.headers.update(
             {"X-API-KEY": self.api_key}
