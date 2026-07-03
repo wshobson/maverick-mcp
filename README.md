@@ -11,6 +11,16 @@
 
 The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with HTTP/SSE/STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
 
+## Skip the setup — hosted version
+
+Self-hosting MaverickMCP means TA-Lib, a Tiingo API key, Redis, and MCP client
+config. If you just want the analysis, [Capital Companion](https://capitalcompanion.ai)
+is the hosted product built on the same engine: AI technical analysis, trade-plan
+review sheets with outcome tracking, and price alerts. **25 free analyses,
+no credit card.**
+
+Self-hosting instructions continue below.
+
 ## Why MaverickMCP?
 
 MaverickMCP provides professional-grade financial analysis tools directly within your Claude Desktop interface. Perfect for individual traders and investors who want comprehensive stock analysis capabilities without the complexity of expensive platforms or commercial services.
