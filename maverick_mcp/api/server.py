@@ -116,6 +116,8 @@ from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.routing import BaseRoute, Route
 
+from maverick_mcp.providers.fxmacrodata_calendar import FXMacroDataCalendarProvider
+
 load_dotenv()
 
 from maverick_mcp.api.middleware.rate_limiting_enhanced import (
@@ -941,20 +943,32 @@ async def get_market_overview() -> dict[str, Any]:
 
 
 @mcp.tool()
-async def get_economic_calendar(days_ahead: int = 7) -> dict[str, Any]:
+async def get_economic_calendar(
+    days_ahead: int = 7,
+    currency: str = "usd",
+    min_tier: int | None = 2,
+) -> dict[str, Any]:
     """
-    Get upcoming economic events and indicators.
+    Get upcoming economic events and indicators from FXMacroData.
 
-    Provides full access to economic calendar data.
+    Provides official-source release-calendar data for macro-aware market
+    analysis. The days_ahead argument is retained for backward compatibility;
+    FXMacroData returns the next scheduled rows through its calendar endpoint.
     """
     try:
-        # Get economic calendar events (placeholder implementation)
-        events: list[
-            dict[str, Any]
-        ] = []  # macro_provider doesn't have get_economic_calendar method
+        provider = FXMacroDataCalendarProvider()
+        calendar = await provider.get_economic_calendar(
+            currency=currency,
+            limit=max(days_ahead * 8, 25),
+            min_tier=min_tier,
+        )
+        events = calendar["events"]
 
         return {
             "events": events,
+            "currency": calendar["currency"],
+            "timezone": calendar["timezone"],
+            "data_quality": calendar["data_quality"],
             "days_ahead": days_ahead,
             "event_count": len(events),
             "mode": "simple_stock_analysis",
