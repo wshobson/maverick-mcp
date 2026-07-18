@@ -16,7 +16,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastmcp import FastMCP
-from fastmcp.server.dependencies import get_access_token
 
 from maverick_mcp.core.technical_analysis import (
     analyze_bollinger_bands,
@@ -189,28 +188,6 @@ async def get_full_technical_analysis(ticker: str, days: int = 365) -> dict[str,
         Dictionary containing complete technical analysis
     """
     try:
-        # Access authentication context if available (optional for this tool)
-        # This demonstrates optional authentication - tool works without auth
-        # but provides enhanced features for authenticated users
-        has_premium = False
-        try:
-            access_token = get_access_token()
-            if access_token is None:
-                raise ValueError("No access token available")
-
-            # Log authenticated user
-            logger.info(
-                f"Technical analysis requested by authenticated user: {access_token.client_id}",
-                extra={"scopes": access_token.scopes},
-            )
-
-            # Check for premium features based on scopes
-            has_premium = "premium:access" in access_token.scopes
-            logger.info(f"Has premium: {has_premium}")
-        except Exception:
-            # Authentication is optional for this tool
-            logger.debug("Technical analysis requested by unauthenticated user")
-
         df = await get_stock_dataframe_async(ticker, days)
 
         # Perform all analyses

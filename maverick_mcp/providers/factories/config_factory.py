@@ -60,7 +60,6 @@ class ConfigurationFactory:
                     "REDIS_DB": "1",  # Use different DB for tests
                     "CACHE_ENABLED": "false",  # Disable cache in tests by default
                     "AUTH_ENABLED": "false",
-                    "JWT_SECRET_KEY": "test-secret-key",
                     "LOG_LEVEL": "DEBUG",
                     "ENVIRONMENT": "test",
                     "REQUEST_TIMEOUT": "5",
@@ -120,11 +119,6 @@ class ConfigurationFactory:
                         "AUTH_ENABLED", self._defaults["AUTH_ENABLED"]
                     ).lower()
                     == "true"
-                )
-
-            def get_jwt_secret_key(self) -> str:
-                return self._overrides.get(
-                    "JWT_SECRET_KEY", self._defaults["JWT_SECRET_KEY"]
                 )
 
             def get_log_level(self) -> str:

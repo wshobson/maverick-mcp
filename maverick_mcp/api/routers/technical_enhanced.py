@@ -15,7 +15,6 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastmcp import FastMCP
-from fastmcp.server.dependencies import get_access_token
 
 from maverick_mcp.api.middleware.mcp_logging import get_tool_logger
 from maverick_mcp.core.technical_analysis import (
@@ -124,19 +123,6 @@ async def _execute_technical_analysis_with_logging(
     tool_logger, ticker: str, days: int
 ) -> dict[str, Any]:
     """Execute technical analysis with comprehensive step-by-step logging."""
-
-    # Step 1: Check authentication (optional)
-    tool_logger.step("auth_check", "Checking authentication context")
-    has_premium = False
-    try:
-        access_token = get_access_token()
-        if access_token and "premium:access" in access_token.scopes:
-            has_premium = True
-            logger.info(
-                f"Premium user accessing technical analysis: {access_token.client_id}"
-            )
-    except Exception:
-        logger.debug("Unauthenticated user accessing technical analysis")
 
     # Step 2: Fetch stock data
     tool_logger.step("data_fetch", f"Fetching {days} days of data for {ticker}")
@@ -273,7 +259,6 @@ async def _execute_technical_analysis_with_logging(
             "analysis_metadata": {
                 "data_points": len(df),
                 "period_days": days,
-                "has_premium": has_premium,
                 "timestamp": datetime.now(UTC).isoformat(),
             },
             "status": "completed",

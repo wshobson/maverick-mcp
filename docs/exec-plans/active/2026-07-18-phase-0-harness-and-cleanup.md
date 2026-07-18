@@ -240,7 +240,7 @@ and the mock config plumbs a JWT secret. Remove all of it.
 - Produces: a codebase where `grep -rn get_access_token maverick_mcp/`
   returns nothing, which the security doc in Task 7 asserts.
 
-- [ ] **Step 1: Remove the premium gate from technical.py**
+- [x] **Step 1: Remove the premium gate from technical.py**
 
 Delete line 19 (`from fastmcp.server.dependencies import get_access_token`).
 Replace the block below (lines 192 to 212) with nothing.
@@ -272,7 +272,7 @@ Replace the block below (lines 192 to 212) with nothing.
 Then run `grep -n has_premium maverick_mcp/api/routers/technical.py` and
 delete any remaining line that reads or reports `has_premium`.
 
-- [ ] **Step 2: Remove the auth step from technical_enhanced.py**
+- [x] **Step 2: Remove the auth step from technical_enhanced.py**
 
 Delete line 18 (the `get_access_token` import). Delete the auth-check block:
 
@@ -296,7 +296,7 @@ Delete the `"has_premium": has_premium,` line from `analysis_metadata`
 `grep -n has_premium maverick_mcp/api/routers/technical_enhanced.py` and
 delete any remaining reference.
 
-- [ ] **Step 3: Remove the JWT plumbing from the mocks**
+- [x] **Step 3: Remove the JWT plumbing from the mocks**
 
 In `maverick_mcp/providers/mocks/mock_config.py`, delete the
 `"JWT_SECRET_KEY": "test-secret-key",` default (line 37) and the
@@ -313,7 +313,7 @@ If an interface in `maverick_mcp/providers/interfaces/` declares
 Leave `is_auth_enabled` and `AUTH_ENABLED` alone. They are part of a wider
 interface and are tracked in the tech-debt tracker instead.
 
-- [ ] **Step 4: Verify nothing remains and the suite passes**
+- [x] **Step 4: Verify nothing remains and the suite passes**
 
 Run: `grep -rn "get_access_token\|JWT_SECRET_KEY\|has_premium" --include="*.py" maverick_mcp/`
 Expected: no output.
@@ -322,7 +322,7 @@ Run: `make test`
 Expected: pass. If a test asserted on `has_premium` or the JWT mock, delete
 that assertion or test, because it tested removed behavior.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
