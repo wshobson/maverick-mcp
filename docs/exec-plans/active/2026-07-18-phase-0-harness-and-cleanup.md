@@ -413,7 +413,7 @@ git commit -m "test: collect maverick_mcp/tests in the default suite with quaran
 **Files:**
 - Modify: `README.md:5,10`
 
-- [ ] **Step 1: Update the badge and the intro sentence**
+- [x] **Step 1: Update the badge and the intro sentence**
 
 Line 5, change the badge from `FastMCP-2.0` to `FastMCP-3`:
 
@@ -424,7 +424,7 @@ Line 5, change the badge from `FastMCP-2.0` to `FastMCP-3`:
 Line 10, change `personal-use FastMCP 2.0 server` to `personal-use FastMCP
 server`. The rest of the README is repositioned at cutover, not now.
 
-- [ ] **Step 2: Verify and commit**
+- [x] **Step 2: Verify and commit**
 
 Run: `make docs-check`
 Expected: pass.
