@@ -23,6 +23,7 @@
 Record outcomes here as tasks complete.
 
 - 2026-07-18 Task 1: PyPI returned 200, "maverick-mcp" is taken (registered by an unrelated project). Fallback candidates: `maverick-mcp-server`, `maverickmcp`. Stopping for a maintainer decision before the packaging phase.
+- 2026-07-18 Maintainer decision (Seth): the PyPI package name is `maverick-mcp-server`. The packaging phase uses this name. Script entry point naming is settled there.
 
 ---
 

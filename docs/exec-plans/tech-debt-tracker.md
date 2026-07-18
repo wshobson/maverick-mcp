@@ -14,3 +14,6 @@ One line per item. Remove the line in the same change that removes the debt.
 | Default pytest filter deselects 664 tests; review the marker policy | `pyproject.toml` | cutover |
 | MCP Apps chart rendering | new server | deferred |
 | Tasks extension for long-running backtests | new server | deferred |
+| `test_in_memory_server.py` hangs reading the `health://` resource via the in-memory client; quarantined `integration`, no root cause yet | `maverick_mcp/tests/` | cutover |
+| `test_models_functional.py` fixture bypasses lazy schema creation and fails on a fresh CI database; needs a fixture rewrite; quarantined `integration` | `maverick_mcp/tests/` | cutover |
+| `test_mcp_tool_fixes.py` is a vacuous duplicate of `test_mcp_tool_fixes_pytest.py`; deletion candidate | `maverick_mcp/tests/` | cutover |
