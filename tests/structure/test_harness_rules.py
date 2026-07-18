@@ -47,9 +47,7 @@ def test_env_access_only_in_config_or_platform():
 
 def test_module_names_are_snake_case():
     bad = [
-        str(p)
-        for p in _py_files()
-        if not re.fullmatch(r"[a-z_][a-z0-9_]*\.py", p.name)
+        str(p) for p in _py_files() if not re.fullmatch(r"[a-z_][a-z0-9_]*\.py", p.name)
     ]
     assert not bad, (
         f"Module names must be lowercase snake_case: {bad}. Rename the file."
