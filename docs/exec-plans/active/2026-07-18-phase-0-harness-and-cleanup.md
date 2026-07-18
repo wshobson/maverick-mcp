@@ -598,7 +598,7 @@ git commit -m "docs: scaffold the knowledge-base tree (phase 0 harness)"
 **Files:**
 - Modify: `AGENTS.md`
 
-- [ ] **Step 1: Add a modernization section and the new-code rule**
+- [x] **Step 1: Add a modernization section and the new-code rule**
 
 After the `## Project Overview` section, insert:
 
@@ -624,7 +624,7 @@ In the `## Project Structure` list, add one line at the top:
 - `maverick/`: the v1.0 package (in migration; see Modernization In Progress).
 ```
 
-- [ ] **Step 2: Verify and commit**
+- [x] **Step 2: Verify and commit**
 
 Run: `make docs-check`
 Expected: pass.

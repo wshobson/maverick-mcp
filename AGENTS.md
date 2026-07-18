@@ -10,8 +10,23 @@ journaling, watchlists, and risk dashboards.
 This project is for educational and informational use only. It is not financial
 advice, tax advice, or a trading system.
 
+## Modernization In Progress
+
+A v1.0 rebuild is underway. Read
+`docs/design-docs/2026-07-18-mcp-modernization.md` before structural work.
+
+- `maverick/` is the new package. Code lands there through the exec plans in
+  `docs/exec-plans/active/`, and import contracts and structural tests
+  enforce its layering. Run `uv run lint-imports` and `make test` before
+  committing.
+- `maverick_mcp/` is the legacy package. It still serves users. Fix bugs
+  there, but do not add features or new modules.
+- `docs/exec-plans/tech-debt-tracker.md` lists known debt. Add a line when
+  you find debt; remove the line when you remove the debt.
+
 ## Project Structure
 
+- `maverick/`: the v1.0 package (in migration; see Modernization In Progress).
 - `maverick_mcp/api/`: FastMCP server entrypoints and routers.
 - `maverick_mcp/services/`: service-layer domains for signals, screening,
   journal, watchlist, and risk.
