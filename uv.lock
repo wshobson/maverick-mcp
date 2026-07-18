@@ -2046,7 +2046,7 @@ requires-dist = [
     { name = "openai", specifier = ">=2.38.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pandas-datareader", specifier = ">=0.10.0" },
-    { name = "pandas-market-calendars", specifier = ">=5.3.2" },
+    { name = "pandas-market-calendars", specifier = ">=5.4.0" },
     { name = "pandas-ta", specifier = ">=0.4.71b0" },
     { name = "plotly", specifier = ">=6.7.0" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
@@ -2502,15 +2502,15 @@ wheels = [
 
 [[package]]
 name = "pandas-market-calendars"
-version = "5.3.2"
+version = "5.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exchange-calendars" },
     { name = "pandas" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ac/f5/bfac92571b427ca521ce2a136396ba8462ad07e22b37a0976fe273dec8e1/pandas_market_calendars-5.3.2.tar.gz", hash = "sha256:6a77fa6f8e90a79908d96ca0e6c66841b12371080233390afc3d96e346ae2414", size = 169525, upload-time = "2026-04-05T02:19:24.23Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/4c/98067cb91b37a137389f978f52410975915268d394c09cf941c490565297/pandas_market_calendars-5.4.0.tar.gz", hash = "sha256:b02f3a0e9bcb4b9e82a5060bf260ef0060ccd398f989b5e6f8208f4352967806", size = 175213, upload-time = "2026-05-27T02:42:05.249Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/8b/8b9628d02db7df3e1f1e507ca131e6665a0fde07537b9a93b64e9cef544f/pandas_market_calendars-5.3.2-py3-none-any.whl", hash = "sha256:ca84094f68eccf4864ba5ea0254134cb0352b36c1861dd1d6cf7bf17952971b1", size = 130987, upload-time = "2026-04-05T02:19:22.895Z" },
+    { url = "https://files.pythonhosted.org/packages/c0/d3/59b999f7f6a1d173572d3e8f8b07ded7e256c691d02b3b5cacb26479895a/pandas_market_calendars-5.4.0-py3-none-any.whl", hash = "sha256:bb2b93b28d496cab173b41c7d120fd5cd9d506b31f3bb0ad3d1d9f2b60d9d9e3", size = 134904, upload-time = "2026-05-27T02:42:06.35Z" },
 ]
 
 [[package]]

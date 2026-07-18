@@ -64,7 +64,7 @@ dependencies = [
     # Trading
     "fredapi>=0.5.2",
     "pandas-datareader>=0.10.0",
-    "pandas-market-calendars>=5.3.2",
+    "pandas-market-calendars>=5.4.0",
     "tiingo>=0.16.1",
     # Visualization (essential only)
     "matplotlib>=3.10.9",
