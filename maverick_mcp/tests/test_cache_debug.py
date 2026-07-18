@@ -6,7 +6,11 @@ Debug test for stock data caching issues.
 import logging
 from datetime import datetime, timedelta
 
+import pytest
+
 from maverick_mcp.providers.stock_data import StockDataProvider
+
+pytestmark = pytest.mark.external  # hits live yfinance network, no mocking
 
 # Set up detailed logging for debugging
 logging.basicConfig(

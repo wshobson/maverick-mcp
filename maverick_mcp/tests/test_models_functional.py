@@ -25,6 +25,12 @@ from maverick_mcp.data.models import (
     get_latest_maverick_screening,
 )
 
+# requires a pre-populated live DB: the read_only_engine fixture opens its own
+# SQLAlchemy engine and bypasses maverick_mcp.data.models' lazy schema
+# creation, so it errors with "no such table" against CI's fresh in-memory
+# sqlite (confirmed: 15 failed under CI=true MAVERICK_TEST_ENV=true).
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(scope="session")
 def read_only_engine():

@@ -5,7 +5,11 @@ Test market calendar integration with stock data caching.
 
 import logging
 
+import pytest
+
 from maverick_mcp.providers.stock_data import StockDataProvider
+
+pytestmark = pytest.mark.external  # hits live yfinance network, no mocking
 
 # Set up logging
 logging.basicConfig(

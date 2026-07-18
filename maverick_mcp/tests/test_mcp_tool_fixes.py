@@ -50,9 +50,18 @@ This test should be run after any changes to ensure the MCP tool fixes remain in
 import asyncio
 import os
 
+import pytest
+
 from maverick_mcp.api.routers.data import get_stock_info
 from maverick_mcp.api.routers.portfolio import risk_adjusted_analysis
 from maverick_mcp.validation.data import GetStockInfoRequest
+
+# Legacy validation script, also directly collectible by pytest under its
+# test_* function names. Hits live network/LLM calls with no assert
+# statements (failures are caught and turned into a bool return, which
+# pytest ignores), so it always "passes" vacuously. Superseded by the
+# properly asserted, properly marked test_mcp_tool_fixes_pytest.py.
+pytestmark = pytest.mark.integration
 
 
 def test_portfolio_risk_analysis():

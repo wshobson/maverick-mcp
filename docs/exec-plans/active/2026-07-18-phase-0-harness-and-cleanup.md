@@ -345,13 +345,13 @@ timeout.
 **Interfaces:**
 - Produces: a single collected test tree that CI runs, which Task 12 relies on.
 
-- [ ] **Step 1: Collect without running**
+- [x] **Step 1: Collect without running**
 
 Run: `uv run pytest maverick_mcp/tests --collect-only -q | tail -3`
 Expected: about 171 tests collected, zero collection errors. Fix any
 collection error first, because it would break `make test` for everyone.
 
-- [ ] **Step 2: Run each file with a timeout and record the outcome**
+- [x] **Step 2: Run each file with a timeout and record the outcome**
 
 ```bash
 for f in maverick_mcp/tests/test_*.py; do
@@ -363,7 +363,7 @@ done
 Record per file: pass, fail, or hang (timeout). The `pytest-timeout` plugin
 is already a dev dependency because `--timeout` is used in CI.
 
-- [ ] **Step 3: Quarantine the files that hang or fail**
+- [x] **Step 3: Quarantine the files that hang or fail**
 
 For each hanging or externally dependent file, add a module-level marker under
 the imports so the default filter excludes it:
@@ -379,7 +379,7 @@ test if the fix is obvious in under ten minutes. Otherwise mark the file
 `integration` and add one line describing it to
 `docs/exec-plans/tech-debt-tracker.md`.
 
-- [ ] **Step 4: Add the tree to testpaths**
+- [x] **Step 4: Add the tree to testpaths**
 
 In `pyproject.toml`, change:
 
@@ -393,13 +393,13 @@ to:
 testpaths = ["tests", "maverick_mcp/tests"]
 ```
 
-- [ ] **Step 5: Verify the default suite passes and does not hang**
+- [x] **Step 5: Verify the default suite passes and does not hang**
 
 Run: `timeout 900 uv run pytest -q 2>&1 | tail -3`
 Expected: completes well under the timeout, all collected tests pass, and the
 collected count is higher than before this task.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
