@@ -105,10 +105,9 @@ import argparse
 import json
 import logging
 import sys
-import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import Any, Protocol, cast
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -117,6 +116,12 @@ from starlette.middleware import Middleware
 from starlette.routing import BaseRoute, Route
 
 load_dotenv()
+
+# FastMCP SSE compatibility patch (mcp-remote trailing-slash redirect workaround)
+#
+# IMPORTANT: This must be applied only when running SSE transport, otherwise it
+# creates import-time global side effects (and slows tests).
+from fastmcp.server import http as fastmcp_http
 
 from maverick_mcp.api.middleware.rate_limiting_enhanced import (
     EnhancedRateLimitMiddleware,
@@ -141,16 +146,6 @@ from maverick_mcp.utils.structured_logger import (
     setup_backtesting_logging,
 )
 from maverick_mcp.utils.tracing import initialize_tracing
-
-# Connection manager temporarily disabled for compatibility
-if TYPE_CHECKING:  # pragma: no cover - import used for static typing only
-    from maverick_mcp.infrastructure.connection_manager import MCPConnectionManager
-
-# FastMCP SSE compatibility patch (mcp-remote trailing-slash redirect workaround)
-#
-# IMPORTANT: This must be applied only when running SSE transport, otherwise it
-# creates import-time global side effects (and slows tests).
-from fastmcp.server import http as fastmcp_http
 
 
 def apply_sse_trailing_slash_patch() -> None:
@@ -274,7 +269,7 @@ _fastmcp_instance = FastMCP(
 mcp = cast(FastMCPProtocol, _fastmcp_instance)
 
 # Initialize connection manager for stability
-connection_manager: "MCPConnectionManager | None" = None
+connection_manager = None
 
 # TEMPORARILY DISABLED: MCP logging middleware - was breaking SSE transport
 # TODO: Fix middleware to work properly with SSE transport
@@ -341,7 +336,6 @@ logger.info("Initializing enhanced connection management system...")
 # Import connection manager and SSE optimizer
 # Connection management imports disabled for compatibility
 # from maverick_mcp.infrastructure.connection_manager import initialize_connection_management
-# from maverick_mcp.infrastructure.sse_optimizer import apply_sse_optimizations
 
 # Register all tools from routers directly for basic functionality
 register_all_router_tools(_fastmcp_instance)
@@ -1610,71 +1604,6 @@ if __name__ == "__main__":
             logger.error(f"Failed to wire domain services: {e}")
 
     asyncio.run(init_systems())
-
-    # Initialize connection management and transport optimizations
-    async def init_connection_management():
-        global connection_manager
-
-        # Initialize connection manager (removed for linting)
-        logger.info("Enhanced connection management system initialized")
-
-        # Apply SSE transport optimizations (removed for linting)
-        logger.info("SSE transport optimizations applied")
-
-        # Add connection event handlers for monitoring
-        @mcp.event("connection_opened")
-        async def on_connection_open(session_id: str | None = None) -> str:
-            """Handle new MCP connection with enhanced stability."""
-            if connection_manager is None:
-                fallback_session_id = session_id or str(uuid.uuid4())
-                logger.info(
-                    "MCP connection opened without manager: %s", fallback_session_id[:8]
-                )
-                return fallback_session_id
-
-            try:
-                actual_session_id = await connection_manager.handle_new_connection(
-                    session_id
-                )
-                logger.info(f"MCP connection opened: {actual_session_id[:8]}")
-                return actual_session_id
-            except Exception as e:
-                logger.error(f"Failed to handle connection open: {e}")
-                raise
-
-        @mcp.event("connection_closed")
-        async def on_connection_close(session_id: str) -> None:
-            """Handle MCP connection close with cleanup."""
-            if connection_manager is None:
-                logger.info(
-                    "MCP connection close received without manager: %s", session_id[:8]
-                )
-                return
-
-            try:
-                await connection_manager.handle_connection_close(session_id)
-                logger.info(f"MCP connection closed: {session_id[:8]}")
-            except Exception as e:
-                logger.error(f"Failed to handle connection close: {e}")
-
-        @mcp.event("message_received")
-        async def on_message_received(session_id: str, message: dict[str, Any]) -> None:
-            """Update session activity on message received."""
-            if connection_manager is None:
-                logger.debug(
-                    "Skipping session activity update; connection manager disabled."
-                )
-                return
-
-            try:
-                await connection_manager.update_session_activity(session_id)
-            except Exception as e:
-                logger.error(f"Failed to update session activity: {e}")
-
-        logger.info("Connection event handlers registered")
-
-    # Connection management disabled for compatibility
-    # asyncio.run(init_connection_management())
 
     logger.info(f"Starting {settings.app_name} simple stock analysis server")
 

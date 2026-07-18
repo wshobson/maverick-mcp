@@ -9,7 +9,6 @@ from .mock_cache import MockCacheManager
 from .mock_config import MockConfigurationProvider
 from .mock_macro_data import MockMacroDataProvider
 from .mock_market_data import MockMarketDataProvider
-from .mock_persistence import MockDataPersistence
 from .mock_stock_data import MockStockDataFetcher, MockStockScreener
 
 __all__ = [
@@ -18,6 +17,5 @@ __all__ = [
     "MockStockScreener",
     "MockMarketDataProvider",
     "MockMacroDataProvider",
-    "MockDataPersistence",
     "MockConfigurationProvider",
 ]

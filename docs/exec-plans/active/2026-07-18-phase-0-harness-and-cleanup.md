@@ -92,7 +92,7 @@ passes.
 - Produces: a tree where every module is reachable, which Task 10's import
   contracts and later ports rely on.
 
-- [ ] **Step 1: Confirm each module is unreferenced**
+- [x] **Step 1: Confirm each module is unreferenced**
 
 Run this loop. It prints any live import of a module about to be deleted.
 
@@ -113,7 +113,7 @@ deleted themselves. `server.py` has a commented-out `sse_optimizer` import and
 a `TYPE_CHECKING` reference to `infrastructure.connection_manager`. Remove
 those two references in Step 2.
 
-- [ ] **Step 2: Remove the two dangling references in server.py**
+- [x] **Step 2: Remove the two dangling references in server.py**
 
 In `maverick_mcp/api/server.py`, delete the `TYPE_CHECKING` import of
 `MCPConnectionManager` (around line 146), the commented-out
@@ -122,7 +122,7 @@ In `maverick_mcp/api/server.py`, delete the `TYPE_CHECKING` import of
 commented-out call to it. Also delete `maverick_mcp/application/screening/`
 re-exports of `dtos` if `application/screening/__init__.py` has any.
 
-- [ ] **Step 3: Delete the files**
+- [x] **Step 3: Delete the files**
 
 ```bash
 git rm maverick_mcp/backtesting/ab_testing.py \
@@ -150,7 +150,7 @@ git rm maverick_mcp/backtesting/ab_testing.py \
   maverick_mcp/utils/logging_init.py
 ```
 
-- [ ] **Step 4: Verify the suite and lints still pass**
+- [x] **Step 4: Verify the suite and lints still pass**
 
 Run: `make test`
 Expected: about 900 passed, 4 skipped, 664 deselected. Zero errors.
@@ -159,7 +159,7 @@ Run: `make lint`
 Expected: pass. If ruff reports unused imports created by the deletions,
 remove those import lines and rerun.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
