@@ -774,7 +774,7 @@ git commit -m "build: enforce import contracts between maverick and maverick_mcp
 - Consumes: the `maverick/` package from Task 9.
 - Produces: structural rules every later port must satisfy.
 
-- [ ] **Step 1: Write the structural tests**
+- [x] **Step 1: Write the structural tests**
 
 Create `tests/structure/test_harness_rules.py`:
 
@@ -837,19 +837,19 @@ def test_module_names_are_snake_case():
     )
 ```
 
-- [ ] **Step 2: Run and verify the rules pass on the empty package**
+- [x] **Step 2: Run and verify the rules pass on the empty package**
 
 Run: `uv run pytest tests/structure/ -q`
 Expected: all pass.
 
-- [ ] **Step 3: Prove each rule can fail**
+- [x] **Step 3: Prove each rule can fail**
 
 Create `maverick/BadName.py` with `import os\nX = os.getenv("HOME")` and 501
 blank lines. Run `uv run pytest tests/structure/ -q` and expect all three
 tests to fail with their remediation messages. Delete `maverick/BadName.py`
 and rerun. Expected: all pass.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/structure/test_harness_rules.py
