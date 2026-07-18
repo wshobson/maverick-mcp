@@ -451,7 +451,7 @@ git commit -m "docs: fix stale FastMCP 2.0 claims in README"
 **Interfaces:**
 - Produces: the docs tree that `AGENTS.md` (Task 8) points into.
 
-- [ ] **Step 1: Create the tech-debt tracker**
+- [x] **Step 1: Create the tech-debt tracker**
 
 Create `docs/exec-plans/tech-debt-tracker.md`:
 
@@ -474,7 +474,7 @@ One line per item. Remove the line in the same change that removes the debt.
 | Tasks extension for long-running backtests | new server | deferred |
 ```
 
-- [ ] **Step 2: Create the product-specs index and generated README**
+- [x] **Step 2: Create the product-specs index and generated README**
 
 `docs/product-specs/index.md`:
 
@@ -494,7 +494,7 @@ Files in this directory are produced by scripts, not written by hand. Do not
 edit them directly. The tool catalog generator lands with the new server.
 ```
 
-- [ ] **Step 3: Create the quality score**
+- [x] **Step 3: Create the quality score**
 
 Create `docs/QUALITY_SCORE.md` with the audit-derived grades:
 
@@ -517,7 +517,7 @@ that changes the code, and note why.
 | `maverick/` (new) | A | Empty and enforced. Keep it that way as code arrives. |
 ```
 
-- [ ] **Step 4: Create the reliability doc**
+- [x] **Step 4: Create the reliability doc**
 
 Create `docs/RELIABILITY.md`:
 
@@ -541,7 +541,7 @@ Current state and known gaps. Update when behavior changes.
   SSE is not carried into the new server.
 ```
 
-- [ ] **Step 5: Create the security doc**
+- [x] **Step 5: Create the security doc**
 
 Create `docs/SECURITY.md`:
 
@@ -563,7 +563,7 @@ root `SECURITY.md`.
   the provider itself, not just the code. See PR #209 for the precedent.
 ```
 
-- [ ] **Step 6: Catalog everything**
+- [x] **Step 6: Catalog everything**
 
 Add rows to the Current table in `docs/CATALOG.md`:
 
@@ -581,7 +581,7 @@ Add rows to the Current table in `docs/CATALOG.md`:
 (The design-doc row already exists; keep it and add the rest.) Add matching
 lines to `docs/INDEX.md` under a new `## Modernization` section.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run: `make docs-check`
 Expected: pass, with a higher tracked-file count.

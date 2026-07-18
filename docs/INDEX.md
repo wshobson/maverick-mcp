@@ -15,10 +15,6 @@ use this index as the map to deeper, versioned sources of truth.
 
 ## Current Product And Technical Docs
 
-- `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
-  design and migration plan.
-- `exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
-  execution plan.
 - `api/backtesting.md` - Backtesting MCP tools and examples.
 - `features/portfolio.md` - Portfolio persistence, cost basis, P&L, and
   position-aware analysis behavior.
@@ -28,6 +24,20 @@ use this index as the map to deeper, versioned sources of truth.
   seeding.
 - `runbooks/self-contained-setup.md` - full local setup with market data.
 - `runbooks/tiingo-loader.md` - Tiingo data-loader setup and usage.
+
+## Modernization
+
+- `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
+  design and migration plan.
+- `exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
+  execution plan.
+- `exec-plans/tech-debt-tracker.md` - known debt, one line each.
+- `product-specs/index.md` - product spec index, empty until the tool surface
+  is curated.
+- `generated/README.md` - marker for script-generated docs.
+- `QUALITY_SCORE.md` - per-area quality grades.
+- `RELIABILITY.md` - reliability state and gaps.
+- `SECURITY.md` - engineering security posture.
 
 ## Testing Docs
 
