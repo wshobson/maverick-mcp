@@ -646,7 +646,7 @@ git commit -m "docs: point AGENTS.md at the modernization structure"
 **Interfaces:**
 - Produces: importable `maverick` package with `maverick.__version__`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `tests/structure/__init__.py` (empty) and
 `tests/structure/test_package.py`:
@@ -661,12 +661,12 @@ def test_version_is_importable():
     assert maverick.__version__ == "1.0.0.dev0"
 ```
 
-- [ ] **Step 2: Run it to make sure it fails**
+- [x] **Step 2: Run it to make sure it fails**
 
 Run: `uv run pytest tests/structure/test_package.py -q`
 Expected: FAIL with `ModuleNotFoundError: No module named 'maverick'`.
 
-- [ ] **Step 3: Create the package**
+- [x] **Step 3: Create the package**
 
 `maverick/__init__.py`:
 
@@ -683,12 +683,12 @@ __version__ = "1.0.0.dev0"
 
 Create `maverick/py.typed` as an empty file.
 
-- [ ] **Step 4: Run the test again**
+- [x] **Step 4: Run the test again**
 
 Run: `uv run pytest tests/structure/test_package.py -q`
 Expected: 1 passed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add maverick/ tests/structure/
