@@ -22,7 +22,7 @@
 
 Record outcomes here as tasks complete.
 
-- (pending) Task 1: PyPI name availability result.
+- 2026-07-18 Task 1: PyPI returned 200, "maverick-mcp" is taken (registered by an unrelated project). Fallback candidates: `maverick-mcp-server`, `maverickmcp`. Stopping for a maintainer decision before the packaging phase.
 
 ---
 
