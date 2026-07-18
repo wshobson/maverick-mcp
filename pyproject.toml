@@ -161,3 +161,23 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.13",
+]
+
+[tool.importlinter]
+root_packages = ["maverick", "maverick_mcp"]
+
+[[tool.importlinter.contracts]]
+name = "The new package never imports the legacy package"
+type = "forbidden"
+source_modules = ["maverick"]
+forbidden_modules = ["maverick_mcp"]
+
+[[tool.importlinter.contracts]]
+name = "The legacy package never imports the new package"
+type = "forbidden"
+source_modules = ["maverick_mcp"]
+forbidden_modules = ["maverick"]

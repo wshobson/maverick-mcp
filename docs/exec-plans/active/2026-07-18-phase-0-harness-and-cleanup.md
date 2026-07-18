@@ -707,13 +707,13 @@ git commit -m "feat: create empty maverick package for the v1.0 migration"
 **Interfaces:**
 - Produces: `uv run lint-imports` as a passing command, used by Task 12's CI.
 
-- [ ] **Step 1: Add the dev dependency**
+- [x] **Step 1: Add the dev dependency**
 
 Run: `uv add --dev import-linter`
 Expected: `import-linter` appears in `[dependency-groups]` or the dev extra,
 and `uv.lock` updates.
 
-- [ ] **Step 2: Add the contracts**
+- [x] **Step 2: Add the contracts**
 
 Append to `pyproject.toml`:
 
@@ -734,7 +734,7 @@ source_modules = ["maverick_mcp"]
 forbidden_modules = ["maverick"]
 ```
 
-- [ ] **Step 3: Verify the contracts pass, then prove they can fail**
+- [x] **Step 3: Verify the contracts pass, then prove they can fail**
 
 Run: `uv run lint-imports`
 Expected: `Contracts: 2 kept, 0 broken.`
@@ -745,7 +745,7 @@ Expected: FAIL reporting the forbidden import.
 Delete `maverick/_violation.py` and rerun.
 Expected: `Contracts: 2 kept, 0 broken.`
 
-- [ ] **Step 4: Wire it into make lint**
+- [x] **Step 4: Wire it into make lint**
 
 In the `Makefile`, find the `lint` target and add this line to its recipe:
 
@@ -756,7 +756,7 @@ In the `Makefile`, find the `lint` target and add this line to its recipe:
 Run: `make lint`
 Expected: ruff and lint-imports both pass.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add pyproject.toml uv.lock Makefile
