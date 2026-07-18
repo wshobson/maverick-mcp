@@ -39,7 +39,7 @@ dependencies = [
     "greenlet>=3.5.1",
     "redis>=7.4.0",
     "hiredis>=3.3.1",
-    "msgpack>=1.1.2",
+    "msgpack>=1.2.1",
     "certifi>=2026.5.20",
     # Financial data and analysis (core)
     "numpy>=2.2.6",
