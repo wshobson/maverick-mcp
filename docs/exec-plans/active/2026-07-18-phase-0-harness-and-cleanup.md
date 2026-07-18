@@ -185,7 +185,7 @@ The tests that exercise them test nothing that runs.
 - Produces: one data-access pattern in the legacy tree, so ports in later
   phases do not copy the abandoned one.
 
-- [ ] **Step 1: List the test files that import the zombie layer**
+- [x] **Step 1: List the test files that import the zombie layer**
 
 ```bash
 grep -rln --include="*.py" \
@@ -196,7 +196,7 @@ grep -rln --include="*.py" \
 Expected: a short list of test files. Review each match to confirm the import
 is for the zombie layer and not a coincidental name.
 
-- [ ] **Step 2: Delete the zombie modules and their tests**
+- [x] **Step 2: Delete the zombie modules and their tests**
 
 ```bash
 git rm maverick_mcp/application/queries/get_technical_analysis.py \
@@ -211,12 +211,12 @@ If `application/queries/__init__.py`, `application/dto/__init__.py`, or
 lines. If a package directory becomes empty except `__init__.py`, delete the
 directory too.
 
-- [ ] **Step 3: Verify**
+- [x] **Step 3: Verify**
 
 Run: `make test`
 Expected: pass, with a lower collected count because the deleted tests are gone.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add -A
