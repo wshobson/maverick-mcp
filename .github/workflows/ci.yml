@@ -30,6 +30,8 @@ jobs:
         run: uv run ruff check .
       - name: Ruff format check
         run: uv run ruff format --check .
+      - name: Import contracts
+        run: uv run lint-imports
 
   docs:
     name: Docs catalog
@@ -64,10 +66,10 @@ jobs:
       - name: ty check, full package (informational)
         continue-on-error: true
         run: uv run ty check maverick_mcp
-      # Strict-zone run over the v1 service-layer and domain packages.
-      # Now gated: any new diagnostic in this scope fails the job.
-      - name: ty check, strict zone (services/ + domain/)
-        run: uv run ty check maverick_mcp/services maverick_mcp/domain
+      # Strict-zone run over the v1 package, service-layer, and domain
+      # packages. Now gated: any new diagnostic in this scope fails the job.
+      - name: ty check, strict zone (maverick/ + services/ + domain/)
+        run: uv run ty check maverick maverick_mcp/services maverick_mcp/domain
 
   test-unit:
     name: Unit tests (pytest)

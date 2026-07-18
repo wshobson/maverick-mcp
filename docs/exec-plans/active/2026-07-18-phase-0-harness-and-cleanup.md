@@ -867,7 +867,7 @@ git commit -m "test: add structural rules for the maverick package"
 - Consumes: `uv run lint-imports` (Task 10), `tests/structure/` (Tasks 9, 11),
   the widened testpaths (Task 5).
 
-- [ ] **Step 1: Add lint-imports to the lint job**
+- [x] **Step 1: Add lint-imports to the lint job**
 
 In the `lint` job of `.github/workflows/ci.yml`, after the ruff steps, add:
 
@@ -876,7 +876,7 @@ In the `lint` job of `.github/workflows/ci.yml`, after the ruff steps, add:
         run: uv run lint-imports
 ```
 
-- [ ] **Step 2: Make type checking strict on the new package**
+- [x] **Step 2: Make type checking strict on the new package**
 
 In the `typecheck` job, the blocking step currently scopes strict checking to
 `maverick_mcp/services` and `maverick_mcp/domain`. Add `maverick` to that
@@ -889,7 +889,7 @@ command so the step reads, e.g.:
 
 Keep the informational full-package run as is.
 
-- [ ] **Step 3: Verify locally what CI will run**
+- [x] **Step 3: Verify locally what CI will run**
 
 ```bash
 uv run lint-imports
@@ -899,7 +899,7 @@ uv run pytest -q -m "not integration and not slow and not external" --timeout 60
 
 Expected: all pass.
 
-- [ ] **Step 4: Commit, push, and watch CI**
+- [x] **Step 4: Commit, push, and watch CI**
 
 ```bash
 git add .github/workflows/ci.yml
