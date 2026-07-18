@@ -17,6 +17,8 @@ use this index as the map to deeper, versioned sources of truth.
 
 - `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
   design and migration plan.
+- `exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
+  execution plan.
 - `api/backtesting.md` - Backtesting MCP tools and examples.
 - `features/portfolio.md` - Portfolio persistence, cost basis, P&L, and
   position-aware analysis behavior.

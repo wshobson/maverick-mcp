@@ -23,6 +23,7 @@ Status labels:
 | `CATALOG.md` | current | docs | Inventory and cleanup state. |
 | `ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
+| `exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
 | `api/backtesting.md` | current | engineering | Backtesting API reference. |
 | `features/portfolio.md` | current | product/engineering | Portfolio persistence and cost-basis behavior. |
 | `features/deep-research.md` | current | engineering | Research agent behavior and configuration. |
