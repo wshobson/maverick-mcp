@@ -449,7 +449,7 @@ git commit -m "feat(platform): add serialization cascade for cache payloads"
 - Consumes: `HttpSettings` from Task 1.
 - Produces: `CircuitBreaker` (states CLOSED/OPEN/HALF_OPEN; `async call(fn, *args, **kwargs)`; `.state`, `.reset()`); `CircuitOpenError(Exception)`; `get_breaker(name: str, settings: HttpSettings | None = None) -> CircuitBreaker` registry; `RateLimiter` (async token bucket, `async acquire()`); `request_with_retry(client, method, url, *, retries, backoff_base, retry_statuses={429,500,502,503,504}, **kwargs) -> httpx.Response`; `create_client(settings: HttpSettings | None = None, *, transport=None) -> httpx.AsyncClient`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/platform/test_http.py` (complete file):
 
@@ -551,16 +551,16 @@ async def test_rate_limiter_spaces_calls():
     assert elapsed >= 0.03
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/platform/test_http.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Behavior requirements: retry on the named statuses and on `httpx.TransportError`, with exponential backoff `backoff_base * 2**attempt` (asyncio.sleep); when retries are exhausted, return the last response (do not raise) but re-raise a transport error. The breaker counts consecutive failures, opens at the threshold, half-opens after the recovery window, closes on a half-open success, and reopens on a half-open failure. `CircuitOpenError` message names the breaker and seconds until half-open. The registry is process-global with a `reset_breakers()` helper for tests. `create_client` sets the timeout from settings and accepts a transport override for tests.
 
-- [ ] **Step 4: Run to verify pass, then commit**
+- [x] **Step 4: Run to verify pass, then commit**
 
 ```bash
 git add maverick/platform/http.py tests/platform/test_http.py docs/exec-plans/active/2026-07-18-phase-1-platform-seam.md
