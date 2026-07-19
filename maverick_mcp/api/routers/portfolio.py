@@ -502,7 +502,7 @@ def portfolio_correlation_analysis(
                     end_date.strftime("%Y-%m-%d"),
                 )
                 if not df.empty:
-                    price_data[ticker] = df["close"]
+                    price_data[ticker] = df["Close"]
                 else:
                     failed_tickers.append(ticker)
             except Exception as e:
