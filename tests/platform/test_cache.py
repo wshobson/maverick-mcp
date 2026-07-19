@@ -1,5 +1,7 @@
 """Tests for maverick.platform.cache."""
 
+import asyncio
+
 import pandas as pd
 
 from maverick.platform.cache import (
@@ -87,6 +89,25 @@ async def test_cache_facade_get_many_and_delete_pattern(tmp_path):
     removed = await cache.delete_pattern("q:*")
     assert removed == 2
     assert await cache.get("other") == 3
+
+
+async def test_cache_facade_backfill_uses_entry_ttl_not_default(tmp_path):
+    settings = _settings(tmp_path)
+    first = Cache(settings=settings)
+    await first.set("short", "value", ttl=1)
+    second = Cache(settings=settings)
+    assert await second.get("short") == "value"  # backfills memory
+    await asyncio.sleep(1.1)
+    assert await second.get("short") is None
+
+
+async def test_cache_facade_delete_pattern_counts_across_tiers(tmp_path):
+    settings = _settings(tmp_path, memory_max_items=1)
+    cache = Cache(settings=settings)
+    await cache.set("q:AAPL", 1, ttl=100)
+    await cache.set("q:MSFT", 2, ttl=100)  # evicts q:AAPL from memory
+    removed = await cache.delete_pattern("q:*")
+    assert removed == 2
 
 
 class FakeRedis:

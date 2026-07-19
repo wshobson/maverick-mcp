@@ -53,6 +53,10 @@ class MemoryTier:
         self._lock = asyncio.Lock()
 
     async def get(self, key: str) -> bytes | None:
+        entry = await self.get_with_expiry(key)
+        return entry[0] if entry is not None else None
+
+    async def get_with_expiry(self, key: str) -> tuple[bytes, float] | None:
         async with self._lock:
             entry = self._store.get(key)
             if entry is None:
@@ -61,9 +65,9 @@ class MemoryTier:
             if expiry < time.time():
                 del self._store[key]
                 return None
-            return payload
+            return payload, expiry
 
-    async def set(self, key: str, payload: bytes, ttl: int) -> None:
+    async def set(self, key: str, payload: bytes, ttl: float) -> None:
         async with self._lock:
             self._store[key] = (payload, time.time() + ttl)
             self._evict_locked()
@@ -145,20 +149,21 @@ class SqliteTier:
         finally:
             conn.close()
 
-    def _get_sync(self, key: str) -> bytes | None:
+    def _get_with_expiry_sync(self, key: str) -> tuple[bytes, float] | None:
         conn = self._connect()
         try:
             now = time.time()
             conn.execute("DELETE FROM cache WHERE expiry < ?", (now,))
             row = conn.execute(
-                "SELECT payload FROM cache WHERE key = ? AND expiry >= ?", (key, now)
+                "SELECT payload, expiry FROM cache WHERE key = ? AND expiry >= ?",
+                (key, now),
             ).fetchone()
             conn.commit()
-            return row[0] if row else None
+            return (row[0], row[1]) if row else None
         finally:
             conn.close()
 
-    def _set_sync(self, key: str, payload: bytes, ttl: int) -> None:
+    def _set_sync(self, key: str, payload: bytes, ttl: float) -> None:
         conn = self._connect()
         try:
             conn.execute(
@@ -211,10 +216,14 @@ class SqliteTier:
             conn.close()
 
     async def get(self, key: str) -> bytes | None:
-        await self._ensure_schema()
-        return await asyncio.to_thread(self._get_sync, key)
+        entry = await self.get_with_expiry(key)
+        return entry[0] if entry is not None else None
 
-    async def set(self, key: str, payload: bytes, ttl: int) -> None:
+    async def get_with_expiry(self, key: str) -> tuple[bytes, float] | None:
+        await self._ensure_schema()
+        return await asyncio.to_thread(self._get_with_expiry_sync, key)
+
+    async def set(self, key: str, payload: bytes, ttl: float) -> None:
         await self._ensure_schema()
         await asyncio.to_thread(self._set_sync, key, payload, ttl)
 
@@ -244,14 +253,29 @@ class RedisTier:
     since minimal fakes (as used in tests) don't implement SCAN.
     """
 
-    def __init__(self, client: Any) -> None:
+    def __init__(self, client: Any, default_ttl_seconds: float = 0) -> None:
         self.client = client
         self._keys: set[str] = set()
+        self._default_ttl_seconds = default_ttl_seconds
 
     async def get(self, key: str) -> bytes | None:
         return await self.client.get(key)
 
-    async def set(self, key: str, payload: bytes, ttl: int) -> None:
+    async def get_with_expiry(self, key: str) -> tuple[bytes, float] | None:
+        payload = await self.client.get(key)
+        if payload is None:
+            return None
+        remaining = self._default_ttl_seconds
+        ttl_method = getattr(self.client, "ttl", None)
+        if ttl_method is not None:
+            reported = await ttl_method(key)
+            if isinstance(reported, int | float) and reported > 0:
+                remaining = reported
+        # Minimal fakes (like the tests' FakeRedis) don't implement TTL, so
+        # `remaining` stays at the cache's global default TTL in that case.
+        return payload, time.time() + remaining
+
+    async def set(self, key: str, payload: bytes, ttl: float) -> None:
         await self.client.set(key, payload, ex=ttl)
         self._keys.add(key)
 
@@ -324,7 +348,9 @@ class Cache:
             client = _build_redis_client(redis_settings)
 
         if client is not None:
-            self.redis: RedisTier | None = RedisTier(client)
+            self.redis: RedisTier | None = RedisTier(
+                client, default_ttl_seconds=self.settings.ttl_seconds
+            )
             self.sqlite: SqliteTier | None = None
         else:
             self.redis = None
@@ -343,14 +369,24 @@ class Cache:
 
     async def get(self, key: str) -> Any:
         versioned = self._versioned(key)
-        for index, tier in enumerate(self._tiers):
-            payload = await tier.get(versioned)
-            if payload is not None:
-                if index > 0:
-                    await self.memory.set(
-                        versioned, payload, ttl=self.settings.ttl_seconds
-                    )
+        for tier in self._tiers:
+            if tier is self.memory:
+                payload = await tier.get(versioned)
+                if payload is None:
+                    continue
                 return deserialize(payload)
+
+            entry = await tier.get_with_expiry(versioned)
+            if entry is None:
+                continue
+            payload, expiry = entry
+            # Backfill memory with the entry's *remaining* lifetime, not the
+            # global default TTL, so a short-lived entry doesn't outlive its
+            # intended expiry just because it was served from a lower tier.
+            remaining = expiry - time.time()
+            if remaining > 0:
+                await self.memory.set(versioned, payload, ttl=remaining)
+            return deserialize(payload)
         return None
 
     async def set(self, key: str, value: Any, ttl: int | None = None) -> None:
@@ -386,12 +422,11 @@ class Cache:
 
     async def delete_pattern(self, pattern: str) -> int:
         versioned_pattern = self._versioned(pattern)
-        removed = 0
-        for index, tier in enumerate(self._tiers):
-            count = await tier.delete_pattern(versioned_pattern)
-            if index == 0:
-                removed = count
-        return removed
+        counts = [await tier.delete_pattern(versioned_pattern) for tier in self._tiers]
+        # Tiers can hold different subsets of matching keys (e.g. memory
+        # evicted one under pressure while SQLite still has it), so the max
+        # count approximates the number of distinct keys actually removed.
+        return max(counts)
 
     async def clear(self) -> None:
         for tier in self._tiers:
