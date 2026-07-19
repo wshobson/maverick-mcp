@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from maverick.platform.serde import deserialize, ensure_timezone_naive, serialize
 
@@ -60,3 +61,19 @@ def test_timezone_aware_index_normalized():
     assert naive.index.tz is None
     round_tripped = deserialize(serialize(df))
     assert round_tripped.index.tz is None
+
+
+def test_corrupted_zlib_payload_raises_value_error():
+    # Valid zlib header (CMF 0x78 with a checksum-valid FLG byte) followed
+    # by bytes that are neither real zlib, msgpack, nor JSON.
+    payload = bytes([0x78, 0x9C]) + b"not-real-zlib-body-\xff\x00garbage"
+    with pytest.raises(ValueError):
+        deserialize(payload)
+
+
+def test_dataframe_with_datetime_column_round_trips():
+    df = _ohlcv()
+    df["as_of"] = pd.date_range("2026-02-01", periods=5, freq="D")
+    result = deserialize(serialize(df))
+    assert list(result["as_of"]) == list(df["as_of"])
+    assert list(result["Open"]) == list(df["Open"])
