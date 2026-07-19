@@ -55,6 +55,7 @@ def _dataframe_to_msgpack_dict(df: pd.DataFrame) -> dict[str, Any]:
         "dtypes": {col: str(df[col].dtype) for col in columns},
         "index_type": "datetime" if is_datetime_index else "other",
         "index_name": df.index.name,
+        "index_dtype": str(df.index.dtype),
         "index_data": [str(idx) for idx in df.index],
     }
 
@@ -74,7 +75,14 @@ def _msgpack_dict_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
         if inferred_freq is not None:
             df.index.freq = inferred_freq
     else:
-        df.index = payload["index_data"]
+        index = pd.Index(payload["index_data"])
+        index_dtype = payload.get("index_dtype")
+        if index_dtype:
+            try:
+                index = index.astype(index_dtype)
+            except (ValueError, TypeError):
+                pass  # stored dtype no longer applies; keep the string index
+        df.index = index
     df.index.name = payload.get("index_name")
 
     return df

@@ -688,7 +688,7 @@ git commit -m "feat(platform): add database engine and session management"
 - Consumes: `CacheSettings`, `RedisSettings` (Task 1); `serialize`/`deserialize` (Task 3).
 - Produces: `generate_cache_key(base: str, **kwargs) -> str` (version prefix, sorted kwargs, SHA-256 fallback over 250 chars); `MemoryTier` (dual-limit eviction: max items and max bytes, oldest-expiry first); `SqliteTier` (key, payload blob, expiry; lazy table creation; prune on read); `RedisTier` (wraps an injected client object); `Cache` facade with async `get`, `set`, `delete`, `exists`, `get_many`, `set_many`, `delete_pattern`, `clear`. The facade reads through tiers in order and back-fills the memory tier on a lower-tier hit. Tier selection: memory always; Redis when `redis.enabled`; else SQLite when `cache.enabled`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/platform/test_cache.py` (complete file):
 
@@ -809,16 +809,16 @@ async def test_cache_facade_uses_injected_redis(tmp_path):
     assert cache.sqlite is None
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/platform/test_cache.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Behavior requirements: values pass through `serde.serialize`/`deserialize`, so DataFrames round-trip. `Cache.__init__(settings=None, redis_client=None)` builds the memory tier always, uses the injected or settings-built Redis client when enabled (injected client wins), else the SQLite tier when caching is enabled; `.sqlite` is None when Redis is active. Keys are versioned internally with the settings version prefix. `delete_pattern` supports glob-style `*` (fnmatch on the memory and SQLite tiers; Redis SCAN+DELETE when a real client offers `scan_iter`, plain iteration over the fake otherwise — implement via `getattr(client, "scan_iter", None)` feature detection). SQLite tier uses stdlib `sqlite3` in threads (`asyncio.to_thread`) with a `(key TEXT PRIMARY KEY, payload BLOB, expiry REAL)` table and pragma `journal_mode=WAL`. Keep the file under 500 lines; the serde split exists precisely so this fits.
 
-- [ ] **Step 4: Run to verify pass, then commit**
+- [x] **Step 4: Run to verify pass, then commit**
 
 ```bash
 git add maverick/platform/cache.py tests/platform/test_cache.py docs/exec-plans/active/2026-07-18-phase-1-platform-seam.md
