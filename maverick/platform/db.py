@@ -12,6 +12,7 @@ exception, and always close in a ``finally``.
 """
 
 import threading
+import weakref
 from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 
@@ -127,7 +128,9 @@ def create_async_engine_from_settings(settings: DatabaseSettings) -> AsyncEngine
 
 
 _schema_lock = threading.Lock()
-_schema_created: dict[Engine, bool] = {}
+# WeakKeyDictionary so memoization never keeps an otherwise-unreferenced
+# engine (and its pool/connections) alive.
+_schema_created: "weakref.WeakKeyDictionary[Engine, bool]" = weakref.WeakKeyDictionary()
 
 
 def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) -> bool:

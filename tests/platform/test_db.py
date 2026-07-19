@@ -1,10 +1,13 @@
 """Tests for maverick.platform.db."""
 
+import gc
+
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table, insert, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 
+from maverick.platform import db as db_module
 from maverick.platform.config import DatabaseSettings
 from maverick.platform.db import (
     create_async_engine_from_settings,
@@ -73,3 +76,27 @@ def test_session_scope_rolls_back_on_error(tmp_path):
 def test_async_engine_url_rewrite(tmp_path):
     engine = create_async_engine_from_settings(_settings(tmp_path))
     assert engine.url.drivername == "sqlite+aiosqlite"
+
+
+def test_ensure_schema_memoization_does_not_leak_engines(tmp_path):
+    """Regression test for the schema-memoization leak: `_schema_created`
+    must not hold a strong reference to engines, or every engine ever
+    passed to `ensure_schema` would live for the lifetime of the process.
+
+    Accesses `maverick.platform.db._schema_created` directly -- it's a
+    private, module-internal mapping -- to confirm it drops its entry once
+    nothing else references the engine.
+    """
+    # Earlier tests' engines may be reference cycles awaiting a GC pass
+    # rather than already-freed objects; collect first for a clean baseline.
+    gc.collect()
+
+    engine = create_engine_from_settings(_settings(tmp_path))
+    ensure_schema(engine, METADATA)
+    assert len(db_module._schema_created) == 1
+
+    engine.dispose()
+    del engine
+    gc.collect()
+
+    assert len(db_module._schema_created) == 0
