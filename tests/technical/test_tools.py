@@ -112,9 +112,7 @@ class StubService:
         slow_period: int | None = None,
         signal_period: int | None = None,
     ) -> MACDAnalysis:
-        self.macd_calls.append(
-            (ticker, days, fast_period, slow_period, signal_period)
-        )
+        self.macd_calls.append((ticker, days, fast_period, slow_period, signal_period))
         if self.raise_on_macd is not None:
             raise self.raise_on_macd
         return self.macd_result
