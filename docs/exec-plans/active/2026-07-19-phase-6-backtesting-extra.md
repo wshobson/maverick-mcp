@@ -23,6 +23,7 @@ Same gates as Phase 5: six-tree pytest (`tests/portfolio tests/screening tests/t
 - 2026-07-19: The five backtesting tables (`mcp_backtest_results`, `mcp_backtest_trades`, `mcp_optimization_results`, `mcp_walk_forward_tests`, `mcp_backtest_portfolios`) keep their names so existing databases carry over; their models move to `maverick/backtesting/store.py` on the `maverick.platform.db` seam.
 - 2026-07-19: CI's unit job adds `--extra backtesting` so both the legacy backtesting tests and the new tree keep running until cutover. The `requires-python <3.13` pin stays for now (ta-lib is still a core dep until legacy cutover); tracked as debt.
 - 2026-07-19: `docs/api/backtesting.md`'s "35+ Pre-built Strategies" claim is stale; the real surface is 13 rule-based templates + 10 ML strategy classes. Corrected when the doc is rewritten at close-out.
+- 2026-07-19 (Task 5 correction): The recon's "13 rule-based templates, 3 of them stubs delegating to ML classes" was wrong on both counts. Legacy `STRATEGY_TEMPLATES` has exactly 12 entries (verified by ast parse), and the `online_learning`/`regime_aware`/`ensemble` branches in `_generate_signals` carry real self-contained pandas/numpy logic, not ML delegation. The port carries all 12 with golden runs. Honest strategy count for docs: 12 templates + 8 ported ML strategy classes.
 
 ## Layer contract (Task 0 encodes)
 
