@@ -83,12 +83,8 @@ def test_compare_one_short_volume_series_skips_change_calc():
 
 
 async def test_fetch_frames_skips_ticker_whose_history_fetch_fails():
-    market_data = _StubMarketData(
-        frames={"AAPL": _frame(40)}, failing={"MSFT"}
-    )
+    market_data = _StubMarketData(frames={"AAPL": _frame(40)}, failing={"MSFT"})
 
-    result = await _fetch_frames(
-        market_data, ["AAPL", "MSFT"], days=30, pad_days=10
-    )
+    result = await _fetch_frames(market_data, ["AAPL", "MSFT"], days=30, pad_days=10)
 
     assert set(result.keys()) == {"AAPL"}
