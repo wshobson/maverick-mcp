@@ -1,0 +1,56 @@
+# Phase 5: Technical Domain Completion Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Complete `maverick/technical/` from a lone indicator module into a full domain: three new golden-tested indicators, pure analysis rubrics with the legacy signal-labeling behavior, a service on the market-data seam, and four canonical tools. No chart rendering.
+
+**Architecture:** Phase 5 of the modernization, following the established template. The 2026-07-19 technical recon is the map. `docs/features/` has no technical contract doc; the behavioral references are `tests/core/test_technical_analysis.py` (signal thresholds) and the recorded pandas-ta goldens (indicator math).
+
+**Tech Stack:** Python 3.12, pydantic, pandas/numpy, maverick.platform, maverick.market_data, pytest with TDD. pandas-ta only inside the fixture-recording script.
+
+## Global Constraints
+
+Same gates as Phase 4 (six-tree pytest incl. tests/technical, make lint, tracked-files ruff format --check, ty strict, docs-check where docs change). No new dependencies; no plotly/kaleido in `maverick/`. Files under 500 lines. Commit per task; stage explicitly. Plain prose.
+
+## Decision log
+
+- 2026-07-19: Three new indicators reach parity: bollinger (length 20, std 2.0), stochastic (14/3/3), adx (14). CCI and Williams %R were config-only dead entries and are not built.
+- 2026-07-19: No chart images. `visualization.py`, the kaleido flow, and the Claude-Desktop image workaround are not ported; `market_data_get_chart_links` is the chart affordance until MCP Apps. Pattern detection (naive double-top/flag heuristics, no reference tests) is not ported.
+- 2026-07-19: The enhanced router collapses. Its step-logging/timeout hardening is operational concern, not a second analysis pipeline; the new service applies one timeout/logging posture uniformly.
+- 2026-07-19: The `generate_outlook` trend bug is FIXED, not ported: legacy passed `str(int)` where `"uptrend"` was compared, so the trend branch never fired in production. The new outlook rubric takes the typed trend score directly. Deliberate behavior change, tested.
+- 2026-07-19: Config drift is fixed: the settings the analyses claim to honor are actually honored (periods and thresholds flow from `TechnicalSettings`, defaults equal to the legacy hardcoded literals so output is unchanged by default).
+- 2026-07-19: Support/resistance ports the legacy simple algorithm verbatim (30-bar min/max plus ±5%/±10% synthetic levels), documented as simple; real pivot detection is a future feature, not parity.
+- 2026-07-19: The dead DDD slice (`domain/services/technical_analysis_service.py`, `domain/value_objects/technical_indicators.py`, `domain/entities/stock_analysis.py`) deletes this phase with grep verification.
+
+## Layer contract (Task 0 encodes)
+
+```
+maverick.technical: tools -> service -> {indicators, analysis} -> config -> types
+Extend the platform/technical forbidden contracts as needed; technical may consume maverick.market_data at the service tier ONLY (adjust the technical-independence contract: it currently forbids technical -> market_data entirely; narrow it to forbid from indicators/analysis/config/types but allow service/tools, mirroring how screening consumes market_data).
+```
+
+---
+
+### Task 0: skeleton and contract rework
+Add docstring-only `types.py`, `config.py`, `analysis.py`, `service.py`, `tools.py` beside the existing `indicators.py`. Rework contracts: add the technical layers contract; REPLACE the blanket "technical never imports domains" forbidden contract with one forbidding only `maverick.technical.indicators | analysis | config | types` -> `maverick.market_data | maverick.screening | maverick.portfolio` (service/tools may import market_data); keep screening/portfolio forbidden for all technical modules. `tests/technical/test_layers.py` (the lint-imports subprocess pattern). Fail-then-pass proof. Commit `feat(technical): add domain skeleton and rework layer contracts`.
+
+### Task 1: new indicators with goldens
+Extend `scripts/record_indicator_fixtures.py` with `ta.bbands(length=20, std=2.0)`, `ta.stoch(k=14, d=3, smooth_k=3)`, `ta.adx(length=14)` (talib=False), re-record `tests/technical/fixtures/indicator_goldens.json` additively (existing entries must be byte-identical after re-record — verify with git diff; if the script's RNG path changed, STOP). Implement `bollinger(close, length=20, std=2.0) -> DataFrame(mid, upper, lower)`, `stochastic(high, low, close, k=14, d=3, smooth_k=3) -> DataFrame(k, d)`, `adx(high, low, close, length=14) -> Series` in `indicators.py` (pure pandas; Wilder where pandas-ta uses it). Golden tests at rtol=1e-9 + NaN-mask identity + edge tests, matching the existing suite's structure. Commit `feat(technical): add bollinger, stochastic, adx with goldens`.
+
+### Task 2: delete the dead DDD technical slice
+Grep-verify then delete `maverick_mcp/domain/services/technical_analysis_service.py`, `maverick_mcp/domain/value_objects/technical_indicators.py`, `maverick_mcp/domain/entities/stock_analysis.py`, plus `tests/domain/test_technical_analysis_service.py` and orphaned `__init__` re-exports (keep other members). STOP on any unanticipated live importer. Suite before/after counts. Commit `refactor: delete dead DDD technical slice (zero live callers)`.
+
+### Task 3: types
+Pydantic models: `RSIAnalysis(current: float | None, period: int, signal: str, description: str)`; `MACDAnalysis(macd, signal_line, histogram: float | None, indicator_signal: str, crossover: str, description: str)`; `StochasticAnalysis(k, d: float | None, signal: str, crossover: str, description: str)`; `BollingerAnalysis(upper, middle, lower, current_price: float | None, position: str, volatility: str, description: str)`; `VolumeAnalysis(current: float | None, average: float | None, ratio: float | None, description: str, signal: str)`; `TrendAnalysis(score: int, direction: str, adx: float | None)`; `LevelsResult(support: list[float], resistance: list[float])`; `FullTechnicalAnalysis(ticker, current_price, trend: TrendAnalysis, outlook: str, rsi, macd, stochastic, bollinger, volume, levels, analysis_metadata: dict)`. TDD round-trips. Commit `feat(technical): add payload types`.
+
+### Task 4: config
+`TechnicalSettings`: periods (rsi 14, ema 21, sma_short 50, sma_long 200, macd 12/26/9, bollinger 20 + std 2.0, stoch 14/3/3, atr 14, adx 14), thresholds (rsi overbought 70 / oversold 30 [env TA_RSI_OVERBOUGHT / TA_RSI_OVERSOLD], stoch 80/20, adx_trend 25, volume high 1.5 / low 0.7), sr_lookback 30, default_days 365 (TA_DEFAULT_DAYS). Singleton/reset, platform helpers, TDD mirroring prior config suites (defaults asserting every value; overrides for the three env-backed). Commit `feat(technical): add domain settings`.
+
+### Task 5: analysis rubrics
+`analysis.py`: pure functions `(df or Series inputs, settings) -> typed results` porting the legacy labeling logic exactly (thresholds from settings): `analyze_rsi`, `analyze_macd` (crossover needs >= 2 rows), `analyze_stochastic`, `analyze_bollinger` (5-bar squeeze/expansion), `analyze_volume` (10-bar average ratio), `analyze_trend` (the 0-7 score: close>sma50, close>ema21, ema21>sma50, sma50>sma200, rsi>50, macd>0, adx>adx_trend; direction label from score), `support_resistance` (legacy simple algorithm), `generate_outlook(trend: TrendAnalysis, rsi, macd, stoch) -> str` with the FIXED trend contribution (score >= 5 counts bullish, <= 2 counts bearish; document the mapping) and the legacy strongly/moderately/neutral bands. Indicators come from `indicators.py`. TDD from the behavioral reference suite: port the threshold/crossover/labeling cases from `tests/core/test_technical_analysis.py` (adapted to typed outputs, exact labels asserted), plus a regression test proving the outlook trend branch now fires (a df engineered to trend score 7 must produce a bullish-leaning outlook even with neutral RSI/MACD/stoch). Commit `feat(technical): add analysis rubrics with fixed outlook trend handling`.
+
+### Task 6: service and tools
+`service.py`: `TechnicalService(market_data: MarketDataService, settings=None)` — `get_rsi/get_macd/get_bollinger/get_stochastic/get_trend/get_support_resistance/get_volume/get_full_analysis(ticker, days=None, **period overrides)`, each fetching history via `market_data.get_price_history` (calendar-padded window for the 200-bar warmup), computing via indicators+analysis, returning typed results; per-call asyncio timeout from a settings field (`analysis_timeout_seconds: float = 25.0` — add to config in this task with a test); insufficient history -> clear error. `tools.py`: configure/register with FOUR canonical tools — `technical_get_rsi_analysis(ticker, period=None, days=None)`, `technical_get_macd_analysis(ticker, fast_period=None, slow_period=None, signal_period=None, days=None)`, `technical_get_support_resistance(ticker, days=None)`, `technical_get_full_technical_analysis(ticker, days=None)` — all readOnlyHint True, error-payload semantics, unconfigured path tested, in-memory Client round-trip, annotation assertions. Stub market-data service tests (deterministic frames; short-history error; timeout behavior via an injected slow stub). Two commits allowed.
+
+### Task 7: close-out
+Exports (`__all__`: the 8 indicators, analysis functions, TechnicalService, types, settings accessor, configure/register) + smoke; QUALITY_SCORE update (`maverick/technical/` row: full domain now, keep A with new why); tech-debt rows: "legacy core/technical_analysis.py + technical routers + visualization.py + stock_helpers chain retire at cutover", "unwired validation models in maverick_mcp/validation/technical.py die with the legacy routers", "dead registry.get_tool('get_technical_indicators') references in legacy agents (falls back to mock tools) — dies at cutover or research port"; decision-log addenda for deviations; full verification; move plan to completed/ with CATALOG/INDEX updates; commit `docs: complete phase 5 (technical domain)`; push; foreground CI watch.
