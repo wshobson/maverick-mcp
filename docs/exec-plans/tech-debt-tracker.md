@@ -37,3 +37,6 @@ One line per item. Remove the line in the same change that removes the debt.
 | screening change-history (legacy pipeline) not ported; revisit if wanted | new server | deferred |
 | legacy mcp_maverick_* tables, scripts/run_stock_screening.py, and the screening_pipeline tools retire at cutover; scr_results is the successor | legacy tree | cutover |
 | run_screen executes rubrics on the event loop; wrap in to_thread if universe_max grows | `maverick/screening/service.py` | deferred |
+| legacy mcp_portfolios/mcp_portfolio_positions retire at cutover; optional one-shot migration script decision at cutover | legacy tree | cutover |
+| risk_dashboard must consume PortfolioService reads when ported | `maverick_mcp/api/routers/risk_dashboard.py` | cutover |
+| `PortfolioSettings.price_lookback_days` unused (get_portfolio uses quotes, not history); remove or wire at server assembly | `maverick/portfolio/config.py` | cutover |

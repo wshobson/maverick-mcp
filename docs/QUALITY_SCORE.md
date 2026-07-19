@@ -17,3 +17,4 @@ that changes the code, and note why.
 | `maverick/market_data/` | A | First domain through the seam. Layer contracts enforced, 130+ tests, injectable fetchers. |
 | `maverick/technical/` | A | Pure-Python indicators, golden-tested against pandas-ta at rtol=1e-9. |
 | `maverick/screening/` | A | Query and compute domain; rubric scores are exact-tested; fresh installs can self-populate. |
+| `maverick/portfolio/` | A | Decimal ledger ported from the tested domain layer; analyses on the seam; FK policy platform-owned. |

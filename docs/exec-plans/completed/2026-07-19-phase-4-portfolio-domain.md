@@ -23,6 +23,8 @@
 - 2026-07-19: `get_user_portfolio_summary` (a static capability descriptor misnamed as portfolio) and `tools/portfolio_manager.py` (dead float-math duplicate) are not ported; the latter is deleted this phase.
 - 2026-07-19: risk_dashboard and watchlist stay out of this domain. risk_dashboard's direct table queries are a tracked cutover bridge item: it must consume `PortfolioService` reads when it ports.
 - 2026-07-19: Analysis outputs (correlation, comparison, risk sizing) are advisory floats, as in legacy; stored ledger values remain Decimal.
+- 2026-07-19: analysis.py added as its own layer between service and data/ledger when service exceeded the size cap; contract extended additively.
+- 2026-07-19: naive purchase dates normalize to UTC at the service boundary, matching the persistence convention.
 
 ## Layer contract (Task 1 encodes)
 

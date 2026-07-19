@@ -162,6 +162,9 @@ async def test_add_position_second_lot_with_naive_date_against_stored_aware_date
     )
 
     assert position.shares == Decimal("20")
+    # The earliest (normalized-to-UTC) purchase_date must win: the first
+    # lot's "2026-01-01" predates the second lot's "2026-01-05".
+    assert position.purchase_date == "2026-01-01T00:00:00+00:00"
 
 
 async def test_add_position_rejects_invalid_ticker(tmp_path):
