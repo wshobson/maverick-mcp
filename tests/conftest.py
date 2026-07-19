@@ -87,7 +87,6 @@ def pytest_collection_modifyitems(
         if filename in {
             "test_backtest_persistence.py",
             "test_integration_simple.py",
-            "test_langgraph_workflow.py",
             "test_ml_strategies.py",
             "test_parallel_research_orchestrator.py",
             "test_parallel_research_performance.py",
