@@ -41,7 +41,7 @@
 **Interfaces:**
 - Produces: `PlatformSettings` with `.database`, `.redis`, `.cache`, `.http`, `.telemetry` sub-models; `get_platform_settings()` cached accessor; `reset_platform_settings()` for tests. Later tasks call `get_platform_settings()` and never `os.getenv`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/platform/test_config.py` with these tests (complete file):
 
@@ -144,12 +144,12 @@ def test_singleton_and_reset(monkeypatch):
     assert get_platform_settings() is not a
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/platform/test_config.py -q`
 Expected: FAIL with `ModuleNotFoundError: No module named 'maverick.platform'`.
 
-- [ ] **Step 3: Implement `maverick/platform/config.py`**
+- [x] **Step 3: Implement `maverick/platform/config.py`**
 
 Implement to make the tests pass. Required shape (signatures binding, bodies yours):
 
@@ -207,12 +207,12 @@ def reset_platform_settings() -> None: ...             # clears the cache (tests
 
 Every field reads its env var in a `default_factory` via `_clean_env`, so `PlatformSettings()` reflects the environment at construction time.
 
-- [ ] **Step 4: Run to verify pass**
+- [x] **Step 4: Run to verify pass**
 
 Run: `uv run pytest tests/platform/test_config.py -q`
 Expected: all pass. Then `uv run pytest tests/structure/ -q` (env-access rule allows config.py) and `make lint`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add maverick/platform/ tests/platform/ docs/exec-plans/active/2026-07-18-phase-1-platform-seam.md
