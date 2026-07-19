@@ -25,7 +25,6 @@ with (
     import maverick_mcp.providers.stock_data  # noqa: F401
     import maverick_mcp.providers.market_data  # noqa: F401
     import maverick_mcp.providers.macro_data  # noqa: F401
-    import maverick_mcp.tools.portfolio_manager  # noqa: F401
     import maverick_mcp.core.technical_analysis  # noqa: F401
     import maverick_mcp.core.visualization  # noqa: F401
     import maverick_mcp.backtesting.visualization  # noqa: F401
