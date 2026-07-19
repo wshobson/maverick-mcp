@@ -1992,13 +1992,11 @@ dependencies = [
     { name = "matplotlib" },
     { name = "mcp" },
     { name = "msgpack" },
-    { name = "numba" },
     { name = "numpy" },
     { name = "openai" },
     { name = "pandas" },
     { name = "pandas-datareader" },
     { name = "pandas-market-calendars" },
-    { name = "pandas-ta" },
     { name = "plotly" },
     { name = "prometheus-client" },
     { name = "psutil" },
@@ -2007,8 +2005,6 @@ dependencies = [
     { name = "python-multipart" },
     { name = "pytz" },
     { name = "redis" },
-    { name = "scikit-learn" },
-    { name = "scipy" },
     { name = "seaborn" },
     { name = "sentry-sdk", extra = ["fastapi"] },
     { name = "sqlalchemy" },
@@ -2016,11 +2012,17 @@ dependencies = [
     { name = "tiingo" },
     { name = "tiktoken" },
     { name = "uvicorn" },
-    { name = "vectorbt" },
     { name = "yfinance" },
 ]
 
 [package.optional-dependencies]
+backtesting = [
+    { name = "numba" },
+    { name = "pandas-ta" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "vectorbt" },
+]
 dev = [
     { name = "aiosqlite" },
     { name = "asyncpg" },
@@ -2086,13 +2088,13 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.10.9" },
     { name = "mcp", specifier = ">=1.28.1" },
     { name = "msgpack", specifier = ">=1.2.1" },
-    { name = "numba", specifier = ">=0.61.2" },
+    { name = "numba", marker = "extra == 'backtesting'", specifier = ">=0.61.2" },
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "openai", specifier = ">=2.38.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pandas-datareader", specifier = ">=0.10.0" },
     { name = "pandas-market-calendars", specifier = ">=5.4.0" },
-    { name = "pandas-ta", specifier = ">=0.4.71b0" },
+    { name = "pandas-ta", marker = "extra == 'backtesting'", specifier = ">=0.4.71b0" },
     { name = "plotly", specifier = ">=6.7.0" },
     { name = "prometheus-client", specifier = ">=0.25.0" },
     { name = "psutil", specifier = ">=7.2.2" },
@@ -2109,8 +2111,8 @@ requires-dist = [
     { name = "redis", specifier = ">=7.4.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.14" },
     { name = "safety", marker = "extra == 'dev'", specifier = ">=3.7.0" },
-    { name = "scikit-learn", specifier = ">=1.9.0" },
-    { name = "scipy", specifier = ">=1.17.1" },
+    { name = "scikit-learn", marker = "extra == 'backtesting'", specifier = ">=1.9.0" },
+    { name = "scipy", marker = "extra == 'backtesting'", specifier = ">=1.17.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "sentry-sdk", extras = ["fastapi"], specifier = ">=2.60.0" },
     { name = "sqlalchemy", specifier = ">=2.0.50" },
@@ -2123,11 +2125,11 @@ requires-dist = [
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.33.0.20260518" },
     { name = "uvicorn", specifier = ">=0.48.0" },
     { name = "vcrpy", marker = "extra == 'dev'", specifier = ">=8.2.1" },
-    { name = "vectorbt", specifier = ">=1.0.0" },
+    { name = "vectorbt", marker = "extra == 'backtesting'", specifier = ">=1.0.0" },
     { name = "watchdog", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "yfinance", specifier = ">=1.4.0" },
 ]
-provides-extras = ["dev", "vectors"]
+provides-extras = ["dev", "vectors", "backtesting"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "import-linter", specifier = ">=2.13" }]

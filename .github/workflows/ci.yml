@@ -59,7 +59,11 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Sync dependencies
-        run: uv sync --extra dev --frozen
+        # `--extra backtesting` pulls in vectorbt/numba/scikit-learn/scipy/
+        # pandas-ta: maverick_mcp/services/signals/{regime,conditions}.py
+        # import pandas_ta at module scope, and that module sits inside the
+        # strict zone below, so ty needs it resolvable to type-check cleanly.
+        run: uv sync --extra dev --extra backtesting --frozen
       # Baseline run over the full package: do not block PRs while
       # the LangChain/LangGraph integration surface still emits the
       # bulk of diagnostics (~790 today).
@@ -89,8 +93,12 @@ jobs:
         # `--extra dev` pulls in pytest, testcontainers, etc. Required
         # because tests/conftest.py imports `testcontainers.postgres`
         # at collection time even though those fixtures are not used
-        # by the unit-only marker selection below.
-        run: uv sync --extra dev --frozen
+        # by the unit-only marker selection below. `--extra backtesting`
+        # pulls in vectorbt/numba/scikit-learn/scipy/pandas-ta, now moved
+        # out of the core dependency set: both the legacy
+        # `maverick_mcp/backtesting/**` tests and the new `tests/backtesting`
+        # tree import them at collection time.
+        run: uv sync --extra dev --extra backtesting --frozen
       - name: Run unit tests
         run: |
           uv run pytest \

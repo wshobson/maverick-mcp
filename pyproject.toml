@@ -46,13 +46,7 @@ dependencies = [
     "pandas>=2.3.3",
     "yfinance>=1.4.0",
     "finvizfinance>=1.3.0",
-    "pandas-ta>=0.4.71b0",
     "ta-lib>=0.6.8",
-    # Backtesting
-    "vectorbt>=1.0.0",
-    "numba>=0.61.2",
-    "scikit-learn>=1.9.0",
-    "scipy>=1.17.1",
     "pytz>=2026.2",
     # Security (basic cryptography for data security)
     "cryptography>=48.0.1",
@@ -96,6 +90,13 @@ dev = [
 ]
 vectors = [
     "chromadb>=1.5.9",
+]
+backtesting = [
+    "vectorbt>=1.0.0",
+    "numba>=0.61.2",
+    "scikit-learn>=1.9.0",
+    "scipy>=1.17.1",
+    "pandas-ta>=0.4.71b0",
 ]
 
 [build-system]
@@ -228,10 +229,21 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "Backtesting layers are forward-only"
+type = "layers"
+layers = [
+    "maverick.backtesting.tools",
+    "maverick.backtesting.service",
+    "maverick.backtesting.store | maverick.backtesting.engine | maverick.backtesting.optimization | maverick.backtesting.analysis | maverick.backtesting.strategies",
+    "maverick.backtesting.config",
+    "maverick.backtesting.types",
+]
+
+[[tool.importlinter.contracts]]
 name = "The platform never imports domains"
 type = "forbidden"
 source_modules = ["maverick.platform"]
-forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.technical", "maverick.portfolio"]
+forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.technical", "maverick.portfolio", "maverick.backtesting"]
 
 [[tool.importlinter.contracts]]
 name = "The technical indicator core never imports domains"
@@ -243,4 +255,16 @@ forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.por
 name = "Technical service and tools never import screening or portfolio"
 type = "forbidden"
 source_modules = ["maverick.technical.service", "maverick.technical.tools"]
+forbidden_modules = ["maverick.screening", "maverick.portfolio"]
+
+[[tool.importlinter.contracts]]
+name = "The backtesting core never imports domains"
+type = "forbidden"
+source_modules = ["maverick.backtesting.store", "maverick.backtesting.engine", "maverick.backtesting.optimization", "maverick.backtesting.analysis", "maverick.backtesting.strategies", "maverick.backtesting.config", "maverick.backtesting.types"]
+forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.portfolio"]
+
+[[tool.importlinter.contracts]]
+name = "Backtesting service and tools never import screening or portfolio"
+type = "forbidden"
+source_modules = ["maverick.backtesting.service", "maverick.backtesting.tools"]
 forbidden_modules = ["maverick.screening", "maverick.portfolio"]
