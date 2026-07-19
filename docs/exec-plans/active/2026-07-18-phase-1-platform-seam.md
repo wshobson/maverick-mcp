@@ -579,7 +579,7 @@ git commit -m "feat(platform): add http resilience (retry, breaker, rate limiter
 - Consumes: `DatabaseSettings` from Task 1.
 - Produces: `create_engine_from_settings(settings: DatabaseSettings) -> Engine`; `create_async_engine_from_settings(settings) -> AsyncEngine` (rewrites `sqlite://` to `sqlite+aiosqlite://`, `postgresql://` to `postgresql+asyncpg://`); `ensure_schema(engine, metadata, *, force=False) -> bool` (lazy, locked, idempotent); `session_scope(factory)` and `read_only_session_scope(factory)` sync context managers (commit on success, rollback on exception, always close); `async_session_scope(factory)` async variant.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/platform/test_db.py` (complete file):
 
@@ -660,16 +660,16 @@ def test_async_engine_url_rewrite(tmp_path):
     assert engine.url.drivername == "sqlite+aiosqlite"
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/platform/test_db.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Preserve legacy engine semantics: SQLite always gets NullPool and `check_same_thread=False`; Postgres with pooling gets QueuePool with the settings' size, overflow, timeout, recycle, and pre-ping, plus `connect_timeout` and `statement_timeout` connect args; `use_pooling=False` forces NullPool everywhere. `ensure_schema` inspects for missing tables, holds a module lock, memoizes per engine, and returns whether it created anything. Session scopes follow the legacy `session_management.py` semantics exactly (commit on success, rollback on exception, close in finally; the read-only variant never commits).
 
-- [ ] **Step 4: Run to verify pass, then commit**
+- [x] **Step 4: Run to verify pass, then commit**
 
 ```bash
 git add maverick/platform/db.py tests/platform/test_db.py docs/exec-plans/active/2026-07-18-phase-1-platform-seam.md
