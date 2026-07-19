@@ -71,9 +71,7 @@ def ohlcv_frame() -> pd.DataFrame:
         },
         index=dates,
     )
-    frame["high"] = np.maximum(
-        frame["high"], np.maximum(frame["open"], frame["close"])
-    )
+    frame["high"] = np.maximum(frame["high"], np.maximum(frame["open"], frame["close"]))
     frame["low"] = np.minimum(frame["low"], np.minimum(frame["open"], frame["close"]))
     return frame
 

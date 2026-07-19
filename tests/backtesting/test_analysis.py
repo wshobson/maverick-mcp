@@ -196,15 +196,9 @@ def test_monte_carlo_simulation_pins_percentile_bands(tiny_backtest_result):
     assert set(mc.return_percentiles) == {"p5", "p25", "p50", "p75", "p95"}
     assert mc.expected_return == pytest.approx(0.002154510716596274, rel=1e-6)
     assert mc.return_std == pytest.approx(0.06139191887645371, rel=1e-6)
-    assert mc.return_percentiles["p5"] == pytest.approx(
-        -0.08016953938269455, rel=1e-6
-    )
-    assert mc.return_percentiles["p50"] == pytest.approx(
-        0.00305566890836495, rel=1e-6
-    )
-    assert mc.return_percentiles["p95"] == pytest.approx(
-        0.09381099888124167, rel=1e-6
-    )
+    assert mc.return_percentiles["p5"] == pytest.approx(-0.08016953938269455, rel=1e-6)
+    assert mc.return_percentiles["p50"] == pytest.approx(0.00305566890836495, rel=1e-6)
+    assert mc.return_percentiles["p95"] == pytest.approx(0.09381099888124167, rel=1e-6)
     assert mc.drawdown_percentiles["p5"] == pytest.approx(
         -0.04092207792207757, rel=1e-6
     )
