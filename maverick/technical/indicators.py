@@ -165,33 +165,25 @@ def adx(
 
     Built from Wilder-smoothed +DM/-DM (``rma``, i.e.
     ``ewm(alpha=1/length, adjust=False)`` with no extra seeding -- the first
-    valid +DM/-DM row stands as its own initial value) divided by a
-    Wilder-smoothed average true range, then a Wilder-smoothed DX
+    valid +DM/-DM row stands as its own initial value) divided by this
+    module's own :func:`atr` (the same presma-seeded Wilder ATR every other
+    caller in this module gets), then a Wilder-smoothed DX
     (``100 * |+DM - -DM| / (+DM + -DM)``).
 
-    The ATR term here intentionally does NOT match this module's own
-    :func:`atr`: pandas-ta's ``adx()`` calls its internal ATR helper without
-    forwarding ``talib=False``, so when the compiled TA-Lib backend is
-    installed (as it is in this project's dev environment), that inner ATR
-    silently uses TA-Lib's classic Wilder seeding instead of pandas-ta's own
-    presma ATR. TA-Lib's convention needs one more bar of warmup: the first
-    ATR value sits at row ``length`` (not ``length - 1``) and is the mean of
-    the true-range values at rows ``1..length`` (row 0 has no prior close,
-    so it is excluded from both the seed and the NaN-warmup count). This is
-    the golden this function was recorded against -- see
-    ``scripts/record_indicator_fixtures.py``.
+    Reusing :func:`atr` here is deliberate for internal consistency (one ATR
+    formula in this module, not two), and it is also what the recorded
+    golden reflects: pandas-ta's own ``adx()`` has a forwarding bug where it
+    does not pass its own ``talib=False`` down to its internal ATR
+    sub-call, so ``scripts/record_indicator_fixtures.py`` scopes a
+    TA-Lib-disabling override around just that call to force pandas-ta's
+    pure-python presma ATR -- the same seeding :func:`atr` implements --
+    regardless of whether the compiled TA-Lib package happens to be
+    installed.
     """
     if len(close) < length + 1:
         return pd.Series(np.nan, index=close.index, dtype=float)
 
-    prev_close = close.shift(1)
-    true_range = pd.concat(
-        [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
-    ).max(axis=1)
-    seeded_tr = true_range.astype(float).copy()
-    seeded_tr.iloc[:length] = np.nan
-    seeded_tr.iloc[length] = true_range.iloc[1 : length + 1].mean()
-    atr_ = seeded_tr.ewm(alpha=1 / length, adjust=False).mean()
+    atr_ = atr(high, low, close, period=length)
 
     up_move = high - high.shift(1)
     down_move = low.shift(1) - low

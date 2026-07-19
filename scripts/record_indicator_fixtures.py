@@ -3,10 +3,27 @@
 This script is the ONLY place in the repository allowed to import
 ``pandas_ta``. It builds two deterministic OHLCV fixtures (a 300-row seeded
 random walk and a 60-row constant series), runs pandas-ta's reference
-indicators -- sma, ema, rsi, atr, macd, bbands, stoch, adx -- against them
-with the compiled TA-Lib backend disabled (``talib=False``), and writes the
-inputs plus the last 200 output values to
+indicators -- sma, ema, rsi, atr, macd, bbands, stoch, adx -- against them,
+and writes the inputs plus the last 200 output values to
 ``tests/technical/fixtures/indicator_goldens.json``.
+
+Every top-level indicator call below passes ``talib=False``, but that flag
+alone is not sufficient for every indicator: several of pandas-ta's
+composite indicators call an internal helper (a sub-``ma()``/ATR call)
+without forwarding their own ``talib=False`` argument down to it, so with
+the compiled TA-Lib package installed (it is, in this project's dev
+environment) that inner call silently uses TA-Lib instead of pandas-ta's
+own pure-python formula. ``adx()`` has exactly this bug in its internal ATR
+sub-call. Rather than disabling TA-Lib globally for the whole recording run
+-- which was tried and rejected, because pandas-ta's own ``stoch()`` has the
+*same* unforwarded-``talib`` bug in its internal smoothing sub-calls, so a
+global flip also perturbs ``stoch_14_3_3`` by ~1e-13 (still well inside the
+golden test's rtol=1e-9, but not byte-identical, and this fixture's
+byte-identical stability for already-recorded indicators is a hard
+requirement) -- the ``_pandas_ta_pure_only()`` context manager below scopes
+the override to exactly the ``adx()`` call, restoring pandas-ta's prior
+TA-Lib usage flag immediately after so every other recorded indicator's
+code path, and therefore its golden values, is completely unaffected.
 
 Run once to (re)generate the fixture:
 
@@ -20,12 +37,45 @@ module's docstrings). This script is never imported by package or test code.
 from __future__ import annotations
 
 import json
+import sys
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 import pandas as pd
 import pandas_ta as ta
+from pandas_ta.maps import Imports
+
+
+@contextmanager
+def _pandas_ta_pure_only():
+    """Temporarily force pandas-ta's internal TA-Lib usage flag off, then
+    restore whatever it was before.
+
+    Scoped narrowly (see module docstring) to indicator calls whose pure
+    formula depends on an internal sub-call that does not forward its own
+    ``talib=False`` -- currently just ``adx()``'s ATR helper. Asserts the
+    flag actually went to ``False`` so a future pandas-ta internals change
+    fails loudly here instead of silently recording a TA-Lib-tainted
+    golden.
+    """
+    original = Imports["talib"]
+    Imports["talib"] = False
+    if Imports["talib"]:
+        sys.exit(
+            "pandas_ta.maps.Imports['talib'] is still truthy after being "
+            "forced off -- pandas-ta's internal dispatch changed and can no "
+            "longer be disabled this way. Fix this script before trusting "
+            "any golden recorded inside _pandas_ta_pure_only() (e.g. "
+            "adx(), whose internal ATR sub-call does not forward "
+            "talib=False on its own)."
+        )
+    try:
+        yield
+    finally:
+        Imports["talib"] = original
+
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parent.parent
@@ -96,14 +146,13 @@ def _record_frame(frame: pd.DataFrame, tail: int) -> dict[str, Any]:
     )
     stoch_df = ta.stoch(high, low, close, k=14, d=3, smooth_k=3, talib=False)
     stoch_k, stoch_d = stoch_df.iloc[:, 0], stoch_df.iloc[:, 1]
-    # NOTE: pandas-ta's adx() does not forward talib=False to its internal
-    # ATR sub-call, so with the compiled TA-Lib backend installed (as it is
-    # here), the ADX warmup uses TA-Lib's classic Wilder ATR seeding (first
-    # value at row `length`, averaging TR[1:length+1]) rather than
-    # pandas-ta's own presma ATR (first value at row `length - 1`). See
-    # maverick/technical/indicators.py's adx() docstring for the matching
-    # pure-pandas derivation.
-    adx_df = ta.adx(high, low, close, length=14, talib=False)
+    # Scoped to just this call -- see _pandas_ta_pure_only()'s and this
+    # module's docstrings for why. With TA-Lib genuinely disabled here,
+    # adx()'s internal ATR sub-call uses pandas-ta's pure-python presma ATR
+    # (first value at row `length - 1`) -- the same seeding
+    # maverick.technical.indicators.atr() already implements.
+    with _pandas_ta_pure_only():
+        adx_df = ta.adx(high, low, close, length=14, talib=False)
     adx_14 = adx_df["ADX_14"]
 
     return {
