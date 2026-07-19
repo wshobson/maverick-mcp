@@ -24,6 +24,23 @@ def _clean_bool(name: str, default: bool) -> bool:
     return value.lower() in _TRUTHY
 
 
+def _env_str(name: str, default: str) -> str:
+    """Read a string env var, falling back to ``default`` when unset."""
+    return _clean_env(name) or default
+
+
+def _env_int(name: str, default: int) -> int:
+    """Read an int env var, falling back to ``default`` when unset."""
+    value = _clean_env(name)
+    return int(value) if value is not None else default
+
+
+def _env_float(name: str, default: float) -> float:
+    """Read a float env var, falling back to ``default`` when unset."""
+    value = _clean_env(name)
+    return float(value) if value is not None else default
+
+
 def _is_ci() -> bool:
     return _clean_bool("CI", False) or _clean_bool("GITHUB_ACTIONS", False)
 
@@ -57,64 +74,62 @@ def _resolve_redis_password() -> SecretStr | None:
 
 class DatabaseSettings(BaseModel):
     url: str = Field(default_factory=_resolve_database_url)
-    pool_size: int = Field(default_factory=lambda: int(_clean_env("DB_POOL_SIZE", "20")))
+    pool_size: int = Field(default_factory=lambda: _env_int("DB_POOL_SIZE", 20))
     pool_max_overflow: int = Field(default_factory=_resolve_pool_max_overflow)
-    pool_timeout: int = Field(
-        default_factory=lambda: int(_clean_env("DB_POOL_TIMEOUT", "30"))
-    )
-    pool_recycle: int = Field(
-        default_factory=lambda: int(_clean_env("DB_POOL_RECYCLE", "3600"))
-    )
+    pool_timeout: int = Field(default_factory=lambda: _env_int("DB_POOL_TIMEOUT", 30))
+    pool_recycle: int = Field(default_factory=lambda: _env_int("DB_POOL_RECYCLE", 3600))
     pool_pre_ping: bool = Field(
         default_factory=lambda: _clean_bool("DB_POOL_PRE_PING", True)
     )
-    use_pooling: bool = Field(default_factory=lambda: _clean_bool("DB_USE_POOLING", True))
+    use_pooling: bool = Field(
+        default_factory=lambda: _clean_bool("DB_USE_POOLING", True)
+    )
     echo: bool = Field(default_factory=lambda: _clean_bool("DB_ECHO", False))
     statement_timeout_ms: int = Field(
-        default_factory=lambda: int(_clean_env("DB_STATEMENT_TIMEOUT", "30000"))
+        default_factory=lambda: _env_int("DB_STATEMENT_TIMEOUT", 30000)
     )
 
 
 class RedisSettings(BaseModel):
     enabled: bool = Field(default_factory=lambda: _clean_env("REDIS_HOST") is not None)
-    host: str = Field(default_factory=lambda: _clean_env("REDIS_HOST", "localhost"))
-    port: int = Field(default_factory=lambda: int(_clean_env("REDIS_PORT", "6379")))
-    db: int = Field(default_factory=lambda: int(_clean_env("REDIS_DB", "0")))
+    host: str = Field(default_factory=lambda: _env_str("REDIS_HOST", "localhost"))
+    port: int = Field(default_factory=lambda: _env_int("REDIS_PORT", 6379))
+    db: int = Field(default_factory=lambda: _env_int("REDIS_DB", 0))
     username: str | None = Field(default_factory=lambda: _clean_env("REDIS_USERNAME"))
     password: SecretStr | None = Field(default_factory=_resolve_redis_password)
     ssl: bool = Field(default_factory=lambda: _clean_bool("REDIS_SSL", False))
     max_connections: int = Field(
-        default_factory=lambda: int(_clean_env("REDIS_MAX_CONNECTIONS", "50"))
+        default_factory=lambda: _env_int("REDIS_MAX_CONNECTIONS", 50)
     )
     socket_timeout: int = Field(
-        default_factory=lambda: int(_clean_env("REDIS_SOCKET_TIMEOUT", "5"))
+        default_factory=lambda: _env_int("REDIS_SOCKET_TIMEOUT", 5)
     )
     socket_connect_timeout: int = Field(
-        default_factory=lambda: int(_clean_env("REDIS_SOCKET_CONNECT_TIMEOUT", "5"))
+        default_factory=lambda: _env_int("REDIS_SOCKET_CONNECT_TIMEOUT", 5)
     )
 
 
 class CacheSettings(BaseModel):
     enabled: bool = Field(default_factory=lambda: _clean_bool("CACHE_ENABLED", True))
     ttl_seconds: int = Field(
-        default_factory=lambda: int(_clean_env("CACHE_TTL_SECONDS", "604800"))
+        default_factory=lambda: _env_int("CACHE_TTL_SECONDS", 604800)
     )
-    version: str = Field(default_factory=lambda: _clean_env("CACHE_VERSION", "v1"))
+    version: str = Field(default_factory=lambda: _env_str("CACHE_VERSION", "v1"))
     memory_max_items: int = 1000
     memory_max_bytes: int = 100 * 1024 * 1024
     sqlite_path: str = Field(
-        default_factory=lambda: _clean_env("CACHE_SQLITE_PATH", "maverick_cache.db")
+        default_factory=lambda: _env_str("CACHE_SQLITE_PATH", "maverick_cache.db")
     )
 
 
 class HttpSettings(BaseModel):
     timeout_seconds: float = Field(
-        default_factory=lambda: float(_clean_env("HTTP_TIMEOUT_SECONDS", "20.0"))
+        default_factory=lambda: _env_float("HTTP_TIMEOUT_SECONDS", 20.0)
     )
-    retries: int = Field(default_factory=lambda: int(_clean_env("HTTP_RETRIES", "3")))
+    retries: int = Field(default_factory=lambda: _env_int("HTTP_RETRIES", 3))
     backoff_base_seconds: float = 0.3
     rate_limit_per_second: float = Field(
-        default_factory=lambda: float(_clean_env("DATA_PROVIDER_RATE_LIMIT", "5.0"))
+        default_factory=lambda: _env_float("DATA_PROVIDER_RATE_LIMIT", 5.0)
     )
     breaker_failure_threshold: int = 5
     breaker_recovery_seconds: float = 60.0

@@ -69,11 +69,11 @@ def _msgpack_dict_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
         df[col] = df[col].astype(dtype)
 
     if payload.get("index_type") == "datetime":
-        df.index = pd.to_datetime(payload["index_data"])
-        df.index = normalize_timezone(df.index)
-        inferred_freq = pd.infer_freq(df.index)
+        dt_index = normalize_timezone(pd.to_datetime(payload["index_data"]))
+        inferred_freq = pd.infer_freq(dt_index)
         if inferred_freq is not None:
-            df.index.freq = inferred_freq
+            dt_index.freq = inferred_freq
+        df.index = dt_index
     else:
         index = pd.Index(payload["index_data"])
         index_dtype = payload.get("index_dtype")
@@ -119,11 +119,11 @@ def _json_envelope_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
             df[col] = df[col].astype(dtype)
 
     if payload.get("index_type") == "datetime":
-        df.index = pd.to_datetime(df.index)
-        df.index = normalize_timezone(df.index)
-        inferred_freq = pd.infer_freq(df.index)
+        dt_index = normalize_timezone(pd.to_datetime(df.index))
+        inferred_freq = pd.infer_freq(dt_index)
         if inferred_freq is not None:
-            df.index.freq = inferred_freq
+            dt_index.freq = inferred_freq
+        df.index = dt_index
     df.index.name = payload.get("index_name")
 
     return df
