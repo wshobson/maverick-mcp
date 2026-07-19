@@ -94,7 +94,7 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 - Modify: `pyproject.toml` (layers contract for screening mirroring market_data's, with `data | screens` as the sibling tier; extend the platform-independence contract's forbidden list with `maverick.screening` and `maverick.technical`)
 - Test: `tests/screening/__init__.py`, `tests/screening/test_layers.py` (same shutil/lint-imports pattern as market_data's)
 
-- [ ] Steps mirror Phase 2 Task 1 exactly: skeleton, contracts, verification test, prove-it-fails with a temporary reverse import, full gate, commit `feat(screening): add domain skeleton with enforced layer contracts`.
+- [x] Steps mirror Phase 2 Task 1 exactly: skeleton, contracts, verification test, prove-it-fails with a temporary reverse import, full gate, commit `feat(screening): add domain skeleton with enforced layer contracts`.
 
 ---
 
