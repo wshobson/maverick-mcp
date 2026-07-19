@@ -24,6 +24,7 @@ Status labels:
 | `ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
 | `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
+| `exec-plans/active/2026-07-18-phase-1-platform-seam.md` | current | engineering | Phase 1 execution plan (platform seam). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |

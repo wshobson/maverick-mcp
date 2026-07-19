@@ -31,6 +31,8 @@ use this index as the map to deeper, versioned sources of truth.
   design and migration plan.
 - `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
   execution plan.
+- `exec-plans/active/2026-07-18-phase-1-platform-seam.md` - Phase 1 execution
+  plan (platform seam).
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface
   is curated.
