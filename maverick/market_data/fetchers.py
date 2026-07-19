@@ -277,19 +277,24 @@ def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
     ]
 
 
-def _build_yfinance_tier(yf: YFinanceFetcher) -> MoverTierFn:
+def _build_yfinance_tier(download_fn: DownloadFn) -> MoverTierFn:
     """Bind the sync tier-3 callable `MoverFetcher` runs via `asyncio.to_thread`.
 
-    `yf.batch_history` is async, but `MoverFetcher`'s tier signature is sync
-    (it is scheduled onto a worker thread by `asyncio.to_thread`). Running a
-    fresh `asyncio.run` inside that worker thread is safe -- the thread has
-    no event loop of its own to conflict with.
+    Calls the raw sync `download_fn` binding directly -- no breaker, no
+    retry, no nested event loop -- because `MoverFetcher._from_batch_quote`
+    already schedules this closure onto a worker thread via `asyncio.
+    to_thread`. An earlier version routed through `YFinanceFetcher.
+    batch_history` (async) via a nested `asyncio.run(...)` inside that
+    worker thread; that could deadlock forever under contention, because
+    the shared process-global "yfinance" `CircuitBreaker`'s `asyncio.Lock`
+    binds to whichever event loop first hits its contended `acquire()`
+    path, and `Future.set_result` called across threads doesn't wake a
+    selector blocked on a *different* thread's loop. Calling `download_fn`
+    directly sidesteps the breaker (and its lock) entirely.
     """
 
     def _call(kind: str, limit: int) -> list[dict[str, Any]]:
-        frames = asyncio.run(
-            yf.batch_history(list(_YFINANCE_TIER_SYMBOLS), period="2d")
-        )
+        frames = download_fn(list(_YFINANCE_TIER_SYMBOLS), period="2d")
         rows: list[dict[str, Any]] = []
         for symbol, frame in frames.items():
             if frame is None or frame.empty or len(frame) < 2:
@@ -318,7 +323,9 @@ def _build_yfinance_tier(yf: YFinanceFetcher) -> MoverTierFn:
 
 
 def build_mover_fetcher(
-    settings: MarketDataSettings, yf: YFinanceFetcher
+    settings: MarketDataSettings,
+    yf: YFinanceFetcher,
+    download_fn: DownloadFn | None = None,
 ) -> MoverFetcher:
     """Production factory: wire the three-tier mover fallback chain.
 
@@ -326,7 +333,12 @@ def build_mover_fetcher(
     so its absence is visible at construction time, not just at call time.
     Tier 2 (finviz) is bound unconditionally but never imports
     `finvizfinance` until the tier actually runs. Tier 3 falls back to a
-    small liquid-stock `yf.batch_history` scan.
+    small liquid-stock scan using a raw sync download callable, called
+    directly (never through `yf.batch_history`'s async/breaker path -- see
+    `_build_yfinance_tier`). Defaults to reusing `yf`'s own resolved
+    `_download_fn` binding (the lazy real yfinance binding in production,
+    or whatever a test injected into `yf`); pass `download_fn` explicitly
+    to override it independently of `yf`.
     """
     api_key = settings.capital_companion_api_key
     external_client = (
@@ -337,6 +349,6 @@ def build_mover_fetcher(
     return MoverFetcher(
         external_client=external_client,
         finviz_fn=_finviz_tier,
-        batch_quote_fn=_build_yfinance_tier(yf),
+        batch_quote_fn=_build_yfinance_tier(download_fn or yf._download_fn),
         settings=settings,
     )

@@ -1,5 +1,6 @@
 """Tests for maverick.market_data.fetchers."""
 
+import asyncio
 import sys
 
 import httpx
@@ -11,11 +12,12 @@ from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.fetchers import (
     MoverFetcher,
     YFinanceFetcher,
+    _build_yfinance_tier,
     build_mover_fetcher,
     fetch_capital_companion,
 )
 from maverick.platform.config import HttpSettings
-from maverick.platform.http import CircuitOpenError
+from maverick.platform.http import CircuitOpenError, get_breaker, reset_breakers
 
 # ---------------------------------------------------------------------------
 # YFinanceFetcher
@@ -340,3 +342,110 @@ def test_build_mover_fetcher_never_imports_finvizfinance_at_construction():
     build_mover_fetcher(settings, YFinanceFetcher())
 
     assert "finvizfinance" not in sys.modules
+
+
+def test_yfinance_tier_calls_download_fn_directly_not_batch_history():
+    """Tier 3's closure calls the raw sync download_fn -- never `yf.batch_history`.
+
+    Regression coverage for the nested-event-loop deadlock: the old
+    implementation ran `asyncio.run(yf.batch_history(...))` inside this
+    closure. `batch_history` is monkeypatched to raise so any accidental
+    reintroduction of that call is caught immediately (not just via the
+    slower concurrency test below).
+    """
+    download_calls: list[tuple[tuple[str, ...], str]] = []
+
+    def fake_download(symbols, period="1d"):
+        download_calls.append((tuple(symbols), period))
+        return {}
+
+    async def _must_not_be_called(*args, **kwargs):
+        raise AssertionError("tier 3 must not call yf.batch_history")
+
+    yf = YFinanceFetcher(download_fn=fake_download)
+    yf.batch_history = _must_not_be_called  # type: ignore[method-assign]
+
+    tier3 = _build_yfinance_tier(yf._download_fn)
+    result = tier3("gainers", 5)
+
+    assert result == []
+    assert len(download_calls) == 1
+    assert download_calls[0][1] == "2d"
+
+
+def test_build_mover_fetcher_tier3_binds_yf_download_fn_by_default():
+    download_calls: list[str] = []
+
+    def fake_download(symbols, period="1d"):
+        download_calls.append(period)
+        return {}
+
+    yf = YFinanceFetcher(download_fn=fake_download)
+    settings = MarketDataSettings(capital_companion_api_key=None)
+    fetcher = build_mover_fetcher(settings, yf)
+
+    # Call tier 3's bound callable directly (not through the full tier
+    # chain, which would otherwise hit the real finviz tier first).
+    result = fetcher._batch_quote_fn("losers", 3)
+
+    assert result == []
+    assert download_calls == ["2d"]
+
+
+def test_build_mover_fetcher_tier3_explicit_download_fn_overrides_yf_binding():
+    yf_calls: list[str] = []
+
+    def yf_default_download(symbols, period="1d"):
+        yf_calls.append("yf")
+        return {}
+
+    override_calls: list[str] = []
+
+    def override_download(symbols, period="1d"):
+        override_calls.append("override")
+        return {}
+
+    yf = YFinanceFetcher(download_fn=yf_default_download)
+    settings = MarketDataSettings(capital_companion_api_key=None)
+    fetcher = build_mover_fetcher(settings, yf, download_fn=override_download)
+
+    fetcher._batch_quote_fn("gainers", 5)
+
+    assert override_calls == ["override"]
+    assert yf_calls == []
+
+
+async def test_yfinance_tier_completes_while_yfinance_breaker_lock_is_held():
+    """Regression test for the tier-3 nested-event-loop deadlock.
+
+    Before the fix, `_build_yfinance_tier`'s closure ran `asyncio.run(yf.
+    batch_history(...))` inside the worker thread `MoverFetcher.
+    _from_batch_quote` schedules it onto (via `asyncio.to_thread`). That
+    nested loop's attempt to acquire the shared "yfinance" breaker's
+    `asyncio.Lock` -- while this test's main loop already holds it --
+    would hang forever: an `asyncio.Lock`'s waiter `Future` binds to
+    whichever loop first hits its contended `acquire()` path, and a
+    `Future` resolved from a different thread's loop doesn't wake a
+    selector blocked in that other thread. Post-fix, tier 3 never touches
+    the breaker at all, so this completes immediately regardless of the
+    held lock.
+    """
+    breaker_name = "test-yfinance-breaker-tier3-deadlock"
+    reset_breakers()
+    breaker = get_breaker(breaker_name)
+    await breaker._lock.acquire()
+    try:
+
+        def fake_download(symbols, period="1d"):
+            return {}
+
+        yf = YFinanceFetcher(download_fn=fake_download, breaker_name=breaker_name)
+        tier3 = _build_yfinance_tier(yf._download_fn)
+
+        result = await asyncio.wait_for(
+            asyncio.to_thread(tier3, "most_active", 5), timeout=5.0
+        )
+
+        assert result == []
+    finally:
+        breaker._lock.release()

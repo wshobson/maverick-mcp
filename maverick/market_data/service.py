@@ -222,6 +222,13 @@ class MarketDataService:
             cached_dates = {ts.date() for ts in cached.index}
             missing = [day for day in trading_days if day not in cached_dates]
             if missing:
+                # Fetch the envelope of the missing dates (missing[0] ..
+                # missing[-1]), not each missing day individually. Any
+                # already-cached trading day inside that span gets
+                # re-fetched too -- a deliberate simplicity trade-off, kept
+                # safe because `write_price_bars` dedupes on existing
+                # dates, so re-fetching a cached interior day is wasted
+                # bandwidth, never a correctness or duplicate-row risk.
                 fetched = await self._yf.history(symbol, missing[0], missing[-1])
                 if not fetched.empty:
                     await asyncio.to_thread(self._write_bars, symbol, fetched)
@@ -248,6 +255,13 @@ class MarketDataService:
         return quote
 
     async def get_quotes(self, symbols: list[str]) -> dict[str, Quote]:
+        """Fetch quotes for multiple symbols concurrently, keyed by symbol.
+
+        Fails fast: `asyncio.gather` runs without `return_exceptions=True`,
+        so the first symbol to raise (e.g. an invalid ticker) propagates
+        immediately, cancelling the other in-flight lookups rather than
+        returning a partial dict.
+        """
         quotes = await asyncio.gather(*(self.get_quote(symbol) for symbol in symbols))
         return {quote.symbol: quote for quote in quotes}
 
