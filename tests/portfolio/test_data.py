@@ -36,7 +36,9 @@ from maverick.portfolio.types import PositionPayload
 
 @pytest.fixture
 def factory(tmp_path):
-    settings = DatabaseSettings(url=f"sqlite:///{tmp_path}/portfolio.db", use_pooling=True)
+    settings = DatabaseSettings(
+        url=f"sqlite:///{tmp_path}/portfolio.db", use_pooling=True
+    )
     engine = create_engine_from_settings(settings)
     ensure_schema(engine, METADATA)
     return sessionmaker(bind=engine)
@@ -123,7 +125,9 @@ def test_upsert_then_read_preserves_decimal_shares_exactly(factory):
         upsert_position(
             session,
             portfolio_id,
-            _position(shares=Decimal("10.12345678"), average_cost_basis=Decimal("105.0001")),
+            _position(
+                shares=Decimal("10.12345678"), average_cost_basis=Decimal("105.0001")
+            ),
         )
 
     with session_scope(factory) as session:
@@ -139,7 +143,9 @@ def test_upsert_then_read_preserves_decimal_shares_exactly(factory):
 def test_upsert_then_read_preserves_total_cost_exactly(factory):
     with session_scope(factory) as session:
         portfolio_id = get_or_create_portfolio(session, "default", "My Portfolio")
-        upsert_position(session, portfolio_id, _position(total_cost=Decimal("1062.7259")))
+        upsert_position(
+            session, portfolio_id, _position(total_cost=Decimal("1062.7259"))
+        )
 
     with session_scope(factory) as session:
         positions = read_positions(session, portfolio_id)
@@ -366,7 +372,9 @@ def test_deleting_portfolio_row_cascades_to_positions(factory):
         upsert_position(session, portfolio_id, _position(ticker="MSFT"))
 
     with session_scope(factory) as session:
-        session.execute(sa_delete(PF_PORTFOLIOS).where(PF_PORTFOLIOS.c.id == portfolio_id))
+        session.execute(
+            sa_delete(PF_PORTFOLIOS).where(PF_PORTFOLIOS.c.id == portfolio_id)
+        )
 
     with session_scope(factory) as session:
         remaining = session.execute(

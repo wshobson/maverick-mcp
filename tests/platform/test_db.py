@@ -3,7 +3,19 @@
 import gc
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, String, Table, insert, inspect, select
+import sqlalchemy
+from sqlalchemy import (
+    Column,
+    ForeignKey,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    insert,
+    inspect,
+    select,
+)
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 
@@ -23,6 +35,19 @@ ITEMS = Table(
     METADATA,
     Column("id", Integer, primary_key=True),
     Column("name", String(50)),
+)
+
+FK_METADATA = MetaData()
+FK_PARENTS = Table(
+    "fk_parents",
+    FK_METADATA,
+    Column("id", Integer, primary_key=True),
+)
+FK_CHILDREN = Table(
+    "fk_children",
+    FK_METADATA,
+    Column("id", Integer, primary_key=True),
+    Column("parent_id", Integer, ForeignKey("fk_parents.id")),
 )
 
 
@@ -121,3 +146,28 @@ def test_ensure_schema_memoization_does_not_leak_engines(tmp_path):
     gc.collect()
 
     assert len(db_module._schema_created) == 0
+
+
+def test_sqlite_engine_from_factory_enforces_foreign_keys(tmp_path):
+    """A `create_engine_from_settings`-built SQLite engine has FK enforcement
+    on: inserting a child row with a bogus `parent_id` must raise
+    `IntegrityError`, not silently succeed (SQLite's default)."""
+    engine = create_engine_from_settings(_settings(tmp_path))
+    ensure_schema(engine, FK_METADATA)
+    factory = sessionmaker(bind=engine)
+
+    with pytest.raises(IntegrityError):
+        with session_scope(factory) as session:
+            session.execute(insert(FK_CHILDREN).values(id=1, parent_id=999))
+
+
+def test_plain_sqlalchemy_engine_is_not_touched_by_the_fk_listener(tmp_path):
+    """Negative test: the FK-enforcement listener is registered per-engine on
+    engines this module builds, not at the `Engine` class level -- an engine
+    built directly via `sqlalchemy.create_engine`, bypassing our factory,
+    must NOT have FK enforcement turned on."""
+    plain_engine = sqlalchemy.create_engine(f"sqlite:///{tmp_path}/plain.db")
+    with plain_engine.connect() as conn:
+        pragma_value = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
+
+    assert pragma_value == 0

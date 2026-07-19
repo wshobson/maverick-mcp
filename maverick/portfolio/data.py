@@ -14,6 +14,11 @@ ledger computed. Two conventions worth calling out:
   normalize to UTC first and reads reattach UTC tzinfo. That preserves the
   exact instant (`==` on aware datetimes is offset-independent) but not the
   original UTC offset's string form.
+
+`pf_positions.portfolio_id`'s `ON DELETE CASCADE` relies on SQLite FK
+enforcement being turned on for the engine in use -- that's a platform-seam
+concern (`maverick.platform.db.create_engine_from_settings`), not this
+module's; see its docstring for the policy.
 """
 
 import uuid
@@ -25,7 +30,6 @@ from sqlalchemy import (
     Column,
     CursorResult,
     DateTime,
-    Engine,
     ForeignKey,
     MetaData,
     Numeric,
@@ -35,7 +39,6 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     delete,
-    event,
     insert,
     select,
     update,
@@ -77,21 +80,6 @@ PF_POSITIONS = Table(
         "portfolio_id", "ticker", name="pf_positions_portfolio_ticker_unique"
     ),
 )
-
-
-@event.listens_for(Engine, "connect")
-def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:  # noqa: ANN001
-    """Turn on FK enforcement for SQLite connections.
-
-    SQLite parses `ForeignKey(..., ondelete="CASCADE")` but ignores it
-    unless `PRAGMA foreign_keys=ON` is set per-connection -- it defaults to
-    off. Postgres and other backends enforce FKs natively and don't need
-    (or have) this pragma, so this only touches sqlite3 DBAPI connections.
-    """
-    if "sqlite3" in type(dbapi_connection).__module__:
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
 
 def _find_portfolio_id(session: Session, user_id: str, name: str) -> uuid.UUID | None:

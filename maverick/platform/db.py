@@ -9,6 +9,15 @@ boundaries used by the MCP server); Postgres gets a tuned QueuePool unless
 pooling is explicitly disabled; schema creation is lazy, locked, and
 memoized per engine; and session scopes commit on success, roll back on
 exception, and always close in a ``finally``.
+
+Policy: SQLite foreign-key enforcement is turned on for every engine this
+module creates (``PRAGMA foreign_keys=ON`` per connection -- SQLite parses
+``ForeignKey(..., ondelete=...)`` but ignores it by default). The listener
+is registered per-engine, scoped only to engines built by
+``create_engine_from_settings``/``create_async_engine_from_settings`` --
+never at the ``Engine`` class level -- so it has no effect on engines built
+elsewhere (e.g. the legacy ``maverick_mcp`` engines, whose FK write paths
+this policy has not audited).
 """
 
 import threading
@@ -16,7 +25,7 @@ import weakref
 from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
 
-from sqlalchemy import Engine, MetaData, create_engine, inspect
+from sqlalchemy import Engine, MetaData, create_engine, event, inspect
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session
@@ -45,6 +54,18 @@ def _async_url(url: str) -> str:
     return url
 
 
+def _enable_sqlite_foreign_keys(dbapi_connection, connection_record) -> None:  # noqa: ANN001
+    """``connect``-event handler: turn on FK enforcement for a SQLite connection.
+
+    Registered per-engine (via ``event.listen(engine, "connect", ...)``) on
+    engines this module builds, never at the ``Engine`` class level -- so it
+    never touches engines constructed outside this module.
+    """
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+
 def create_engine_from_settings(settings: DatabaseSettings) -> Engine:
     """Build a sync SQLAlchemy engine from platform database settings.
 
@@ -57,12 +78,14 @@ def create_engine_from_settings(settings: DatabaseSettings) -> Engine:
     url = settings.url
 
     if _is_sqlite(url):
-        return create_engine(
+        engine = create_engine(
             url,
             poolclass=NullPool,
             echo=settings.echo,
             connect_args={"check_same_thread": False},
         )
+        event.listen(engine, "connect", _enable_sqlite_foreign_keys)
+        return engine
 
     if not settings.use_pooling:
         return create_engine(url, poolclass=NullPool, echo=settings.echo)
@@ -97,12 +120,14 @@ def create_async_engine_from_settings(settings: DatabaseSettings) -> AsyncEngine
     async_url = _async_url(url)
 
     if _is_sqlite(url):
-        return create_async_engine(
+        engine = create_async_engine(
             async_url,
             poolclass=NullPool,
             echo=settings.echo,
             connect_args={"check_same_thread": False},
         )
+        event.listen(engine.sync_engine, "connect", _enable_sqlite_foreign_keys)
+        return engine
 
     if not settings.use_pooling:
         return create_async_engine(async_url, poolclass=NullPool, echo=settings.echo)
