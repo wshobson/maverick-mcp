@@ -10,6 +10,7 @@ the full ported-vs-dropped rationale).
 
 import uuid
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import desc, insert, select
@@ -171,7 +172,10 @@ def get_trades_for_backtest(
             backtest_id=row.backtest_id,
             trade_number=row.trade_number,
             entry_date=row.entry_date,
-            entry_price=read_decimal(row.entry_price),
+            # entry_price is `nullable=False`; read directly rather than via
+            # `read_decimal` so the type checker sees a plain `Decimal`, not
+            # `Decimal | None`.
+            entry_price=Decimal(str(row.entry_price)),
             exit_date=row.exit_date,
             exit_price=read_decimal(row.exit_price),
             position_size=read_decimal(row.position_size),
