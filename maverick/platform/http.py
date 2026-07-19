@@ -12,7 +12,7 @@ from typing import Any, TypeVar
 
 import httpx
 
-from maverick.platform.config import HttpSettings
+from maverick.platform.config import HttpSettings, get_platform_settings
 
 T = TypeVar("T")
 
@@ -124,6 +124,8 @@ class RateLimiter:
     """Async token-bucket rate limiter."""
 
     def __init__(self, rate_per_second: float, burst: float | None = None) -> None:
+        if rate_per_second <= 0:
+            raise ValueError("rate_per_second must be positive")
         self._rate = rate_per_second
         self._capacity = burst if burst is not None else rate_per_second
         self._tokens = self._capacity
@@ -192,3 +194,48 @@ def create_client(
     if settings is None:
         settings = HttpSettings()
     return httpx.AsyncClient(timeout=settings.timeout_seconds, transport=transport)
+
+
+_rate_limiters: dict[str, RateLimiter] = {}
+
+
+def _get_rate_limiter(name: str, settings: HttpSettings) -> RateLimiter:
+    """Return the process-global rate limiter for `name`, creating it on first use."""
+    if name not in _rate_limiters:
+        _rate_limiters[name] = RateLimiter(settings.rate_limit_per_second)
+    return _rate_limiters[name]
+
+
+async def request_resilient(
+    name: str,
+    client: httpx.AsyncClient,
+    method: str,
+    url: str,
+    *,
+    settings: HttpSettings | None = None,
+    **kwargs: Any,
+) -> httpx.Response:
+    """Rate-limited, circuit-broken, retrying request for a named dependency.
+
+    The composed default for outbound calls: resolves `settings` (the
+    parameter, or the process-wide platform HTTP settings), waits for the
+    shared per-`name` rate limiter, then runs `request_with_retry` through
+    the per-`name` circuit breaker so a persistently failing dependency
+    stops taking traffic (raising `CircuitOpenError`) instead of retrying
+    into it forever.
+    """
+    resolved_settings = settings or get_platform_settings().http
+    await _get_rate_limiter(name, resolved_settings).acquire()
+    breaker = get_breaker(name, resolved_settings)
+
+    async def _attempt() -> httpx.Response:
+        return await request_with_retry(
+            client,
+            method,
+            url,
+            retries=resolved_settings.retries,
+            backoff_base=resolved_settings.backoff_base_seconds,
+            **kwargs,
+        )
+
+    return await breaker.call(_attempt)

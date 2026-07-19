@@ -16,26 +16,33 @@ from typing import Any
 
 from maverick.platform.config import CacheSettings, RedisSettings, get_platform_settings
 from maverick.platform.serde import deserialize, serialize
+from maverick.platform.telemetry import get_logger
 
 _MAX_KEY_LENGTH = 250
 
+logger = get_logger("maverick.platform.cache")
+
 
 def generate_cache_key(base: str, **kwargs: Any) -> str:
-    """Build a deterministic, versioned cache key.
+    """Build a deterministic cache key: ``base`` plus sorted kwargs.
 
     Kwargs are sorted so argument order never affects the key. Keys longer
     than 250 characters collapse to a SHA-256 digest of the full key so
     storage backends with key-length limits stay safe.
+
+    This function does not version the key -- the ``Cache`` facade is the
+    single owner of versioning (``Cache._versioned``) and applies its
+    version prefix when a key is stored or looked up. Callers should not
+    prepend their own version prefix.
     """
-    version = get_platform_settings().cache.version
     if kwargs:
         suffix = ":".join(f"{k}={kwargs[k]}" for k in sorted(kwargs))
-        key = f"{version}:{base}:{suffix}"
+        key = f"{base}:{suffix}"
     else:
-        key = f"{version}:{base}"
+        key = base
     if len(key) > _MAX_KEY_LENGTH:
         digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
-        key = f"{version}:{base}:{digest}"
+        key = f"{base}:{digest}"
     return key
 
 
@@ -127,6 +134,7 @@ class SqliteTier:
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.path)
         conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
         return conn
 
     async def _ensure_schema(self) -> None:
@@ -367,16 +375,36 @@ class Cache:
     def _versioned(self, key: str) -> str:
         return f"{self.settings.version}:{key}"
 
+    async def _safe_tier_call(
+        self, tier: Any, method: str, *args: Any, **kwargs: Any
+    ) -> Any:
+        """Call a tier's method, degrading to ``None`` if the backend raises.
+
+        A cache must never fail the request it accelerates: a backend error
+        (e.g. ``sqlite3.OperationalError`` under contention) is logged and
+        treated as a miss/no-op for that tier instead of propagating.
+        """
+        try:
+            return await getattr(tier, method)(*args, **kwargs)
+        except Exception as exc:
+            logger.warning(
+                "cache tier %s.%s failed, treating as miss: %s",
+                type(tier).__name__,
+                method,
+                exc,
+            )
+            return None
+
     async def get(self, key: str) -> Any:
         versioned = self._versioned(key)
         for tier in self._tiers:
             if tier is self.memory:
-                payload = await tier.get(versioned)
+                payload = await self._safe_tier_call(tier, "get", versioned)
                 if payload is None:
                     continue
                 return deserialize(payload)
 
-            entry = await tier.get_with_expiry(versioned)
+            entry = await self._safe_tier_call(tier, "get_with_expiry", versioned)
             if entry is None:
                 continue
             payload, expiry = entry
@@ -385,7 +413,9 @@ class Cache:
             # intended expiry just because it was served from a lower tier.
             remaining = expiry - time.time()
             if remaining > 0:
-                await self.memory.set(versioned, payload, ttl=remaining)
+                await self._safe_tier_call(
+                    self.memory, "set", versioned, payload, ttl=remaining
+                )
             return deserialize(payload)
         return None
 
@@ -394,11 +424,16 @@ class Cache:
         payload = serialize(value)
         effective_ttl = self.settings.ttl_seconds if ttl is None else ttl
         for tier in self._tiers:
-            await tier.set(versioned, payload, ttl=effective_ttl)
+            await self._safe_tier_call(
+                tier, "set", versioned, payload, ttl=effective_ttl
+            )
 
     async def delete(self, key: str) -> bool:
         versioned = self._versioned(key)
-        results = [await tier.delete(versioned) for tier in self._tiers]
+        results = [
+            await self._safe_tier_call(tier, "delete", versioned)
+            for tier in self._tiers
+        ]
         return any(results)
 
     async def exists(self, key: str) -> bool:

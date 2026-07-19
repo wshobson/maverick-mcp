@@ -1,6 +1,7 @@
 """Tests for maverick.platform.cache."""
 
 import asyncio
+import sqlite3
 
 import pandas as pd
 
@@ -19,11 +20,11 @@ def _settings(tmp_path, **overrides) -> CacheSettings:
     return CacheSettings(**base)
 
 
-def test_cache_key_is_deterministic_and_versioned():
+def test_cache_key_is_deterministic():
     a = generate_cache_key("quotes", ticker="AAPL", days=30)
     b = generate_cache_key("quotes", days=30, ticker="AAPL")
     assert a == b
-    assert a.startswith("v1:quotes:")
+    assert a.startswith("quotes:")
 
 
 def test_cache_key_long_inputs_hashed():
@@ -133,3 +134,43 @@ async def test_cache_facade_uses_injected_redis(tmp_path):
     await cache.set("r", "value", ttl=100)
     assert await cache.get("r") == "value"
     assert cache.sqlite is None
+
+
+async def test_generate_cache_key_stored_via_cache_has_single_version_prefix(tmp_path):
+    # generate_cache_key no longer versions its own output -- Cache is the
+    # single owner of versioning. Confirm a key built by generate_cache_key
+    # round-trips through Cache and lands in storage with exactly one
+    # "v1:" prefix, not the "v1:v1:" double-prefix this regression guards.
+    settings = _settings(tmp_path)
+    cache = Cache(settings=settings)
+    key = generate_cache_key("quotes", ticker="AAPL", days=30)
+    assert not key.startswith("v1:")
+
+    await cache.set(key, {"a": 1}, ttl=100)
+    assert await cache.get(key) == {"a": 1}
+
+    stored_keys = list(cache.memory._store.keys())
+    assert stored_keys == [f"v1:{key}"]
+    assert stored_keys[0].count("v1:") == 1
+
+
+class RaisingTier:
+    """Fake tier whose reads/writes always raise, to test Cache's degrade-to-miss behavior."""
+
+    async def get(self, key):
+        raise sqlite3.OperationalError("database is locked")
+
+    async def get_with_expiry(self, key):
+        raise sqlite3.OperationalError("database is locked")
+
+    async def set(self, key, payload, ttl):
+        raise sqlite3.OperationalError("database is locked")
+
+    async def delete(self, key):
+        raise sqlite3.OperationalError("database is locked")
+
+
+async def test_cache_get_degrades_to_miss_when_tier_raises(tmp_path):
+    cache = Cache(settings=_settings(tmp_path))
+    cache._tiers = [RaisingTier()]
+    assert await cache.get("k") is None

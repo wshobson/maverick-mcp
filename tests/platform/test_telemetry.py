@@ -9,6 +9,7 @@ from maverick.platform.telemetry import (
     StructuredFormatter,
     get_logger,
     new_request_id,
+    reset_logging,
     set_request_id,
     setup_logging,
 )
@@ -48,6 +49,11 @@ def test_sensitive_fields_are_masked():
     assert record["password"] == "***"
 
 
+def test_sensitive_fields_are_masked_case_insensitively():
+    record = _capture_one("maverick.test", "auth", API_KEY="x")
+    assert record["API_KEY"] == "***"
+
+
 def test_request_id_included_when_set():
     rid = new_request_id()
     set_request_id(rid)
@@ -78,8 +84,21 @@ def test_exception_block():
 
 
 def test_setup_logging_defaults_to_stderr(capsys):
-    setup_logging(TelemetrySettings(log_level="INFO", json_logs=True))
-    get_logger("maverick.setup").info("to stderr")
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "to stderr" in captured.err
+    try:
+        setup_logging(TelemetrySettings(log_level="INFO", json_logs=True))
+        get_logger("maverick.setup").info("to stderr")
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "to stderr" in captured.err
+    finally:
+        reset_logging()
+
+
+def test_setup_logging_is_idempotent():
+    try:
+        setup_logging(TelemetrySettings(log_level="INFO", json_logs=True))
+        setup_logging(TelemetrySettings(log_level="INFO", json_logs=True))
+        logger = logging.getLogger("maverick")
+        assert len(logger.handlers) == 1
+    finally:
+        reset_logging()

@@ -12,6 +12,7 @@ from maverick.platform.http import (
     RateLimiter,
     create_client,
     get_breaker,
+    request_resilient,
     request_with_retry,
 )
 
@@ -128,3 +129,64 @@ async def test_rate_limiter_spaces_calls():
         await limiter.acquire()
     elapsed = loop.time() - start
     assert elapsed >= 0.03
+
+
+def test_rate_limiter_rejects_non_positive_rate():
+    with pytest.raises(ValueError):
+        RateLimiter(0)
+    with pytest.raises(ValueError):
+        RateLimiter(-1.0)
+
+
+async def test_request_resilient_succeeds_end_to_end():
+    calls = 0
+
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"ok": True})
+
+    client = create_client(_settings(), transport=httpx.MockTransport(handler))
+    response = await request_resilient(
+        "resilient-ok",
+        client,
+        "GET",
+        "https://api.example.com/x",
+        settings=_settings(),
+    )
+    assert response.status_code == 200
+    assert calls == 1
+
+
+async def test_request_resilient_opens_breaker_and_short_circuits_transport():
+    calls = 0
+
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        raise httpx.ConnectError("boom", request=request)
+
+    client = create_client(_settings(), transport=httpx.MockTransport(handler))
+    settings = _settings(retries=0, breaker_failure_threshold=2)
+
+    for _ in range(2):
+        with pytest.raises(httpx.ConnectError):
+            await request_resilient(
+                "resilient-fail",
+                client,
+                "GET",
+                "https://api.example.com/x",
+                settings=settings,
+            )
+    assert calls == 2
+
+    with pytest.raises(CircuitOpenError):
+        await request_resilient(
+            "resilient-fail",
+            client,
+            "GET",
+            "https://api.example.com/x",
+            settings=settings,
+        )
+    # Breaker short-circuited before reaching the transport.
+    assert calls == 2

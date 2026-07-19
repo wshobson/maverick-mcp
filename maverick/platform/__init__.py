@@ -10,15 +10,19 @@ from maverick.platform.cache import Cache, generate_cache_key
 from maverick.platform.config import PlatformSettings, get_platform_settings
 from maverick.platform.db import (
     async_session_scope,
+    create_async_engine_from_settings,
     create_engine_from_settings,
     ensure_schema,
+    read_only_session_scope,
     session_scope,
 )
 from maverick.platform.http import (
     CircuitBreaker,
+    CircuitOpenError,
     RateLimiter,
     create_client,
     get_breaker,
+    request_resilient,
     request_with_retry,
 )
 from maverick.platform.serde import deserialize, serialize
@@ -34,12 +38,16 @@ __all__ = [
     "Cache",
     "generate_cache_key",
     "CircuitBreaker",
+    "CircuitOpenError",
     "get_breaker",
     "RateLimiter",
     "request_with_retry",
+    "request_resilient",
     "create_client",
     "create_engine_from_settings",
+    "create_async_engine_from_settings",
     "ensure_schema",
     "session_scope",
+    "read_only_session_scope",
     "async_session_scope",
 ]

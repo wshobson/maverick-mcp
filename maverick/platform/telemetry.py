@@ -105,3 +105,15 @@ def setup_logging(
 def get_logger(name: str) -> logging.Logger:
     """Return a logger under the "maverick" hierarchy."""
     return logging.getLogger(name)
+
+
+def reset_logging() -> None:
+    """Remove the "maverick" logger's handlers and restore default propagation.
+
+    Mirrors the other reset helpers (`reset_platform_settings`,
+    `reset_breakers`); intended for test teardown after `setup_logging`.
+    """
+    logger = logging.getLogger("maverick")
+    for existing in list(logger.handlers):
+        logger.removeHandler(existing)
+    logger.propagate = True
