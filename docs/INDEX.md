@@ -37,6 +37,8 @@ use this index as the map to deeper, versioned sources of truth.
   execution plan (market data domain).
 - `exec-plans/completed/2026-07-19-phase-3-screening-domain.md` - Phase 3
   execution plan (screening domain and technical core).
+- `exec-plans/active/2026-07-19-phase-4-portfolio-domain.md` - Phase 4
+  execution plan (portfolio domain).
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface
   is curated.
