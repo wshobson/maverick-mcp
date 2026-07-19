@@ -33,3 +33,4 @@ One line per item. Remove the line in the same change that removes the debt.
 | Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |
 | Capital Companion tier uses `request_with_retry` without breaker and creates a client per call; align with `request_resilient` at server assembly | `maverick/market_data/fetchers.py` | cutover |
 | `get_quotes` is untested-in-production surface (no tool consumes it) | `maverick/market_data/service.py` | cutover |
+| `providers/optimized_stock_data.py` is a screening-provider duplicate kept alive only by the performance_* tool family; retires with it at cutover | `maverick_mcp/providers/` | cutover |

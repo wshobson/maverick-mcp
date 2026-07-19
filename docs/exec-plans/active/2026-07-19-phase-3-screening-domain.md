@@ -61,10 +61,10 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 - Delete: `maverick_mcp/application/screening/` (whole package; `application/` dir itself if empty after), `maverick_mcp/infrastructure/screening/`, `maverick_mcp/domain/screening/`, `maverick_mcp/providers/optimized_stock_data.py`, `maverick_mcp/providers/dependencies.py`, `maverick_mcp/providers/factories/provider_factory.py`, `maverick_mcp/providers/implementations/stock_data_adapter.py`, `maverick_mcp/providers/interfaces/stock_data.py`, `maverick_mcp/providers/mocks/mock_stock_data.py`
 - Delete: any test files whose ONLY subject is the deleted modules (grep-discovered)
 
-- [ ] **Step 1: Verify zero live callers** — for each module, grep `maverick_mcp/ tests/ scripts/` for imports, excluding self-references and the other deleted modules. Known allowed fallout: `tools/performance_monitoring.py` imports `OptimizedStockDataProvider` — inspect it; if that tool is itself registered nowhere live (check tool_registry and server.py), delete it too and note it; if it IS live, stop and report NEEDS_CONTEXT.
-- [ ] **Step 2: Delete, fix `__init__.py` re-exports the deletions orphan** (factories/implementations/interfaces/mocks packages keep their other members).
-- [ ] **Step 3: Full gate plus `make test`** — expect the suite to shrink only by deleted-module tests; everything else green.
-- [ ] **Step 4: Commit** `refactor: delete dead legacy screening slice (zero live callers)`.
+- [x] **Step 1: Verify zero live callers** — for each module, grep `maverick_mcp/ tests/ scripts/` for imports, excluding self-references and the other deleted modules. Known allowed fallout: `tools/performance_monitoring.py` imports `OptimizedStockDataProvider` — inspect it; if that tool is itself registered nowhere live (check tool_registry and server.py), delete it too and note it; if it IS live, stop and report NEEDS_CONTEXT. **Resolution:** `optimized_stock_data.py` IS live (backs the registered `performance_get_system_performance_health` MCP tool via `tools/performance_monitoring.py` -> `api/routers/performance.py` -> `register_performance_tools` -> `register_all_router_tools` -> `server.py`). Removed from the deletion list per controller decision; tracked in `docs/exec-plans/tech-debt-tracker.md` for cutover instead. The other 8 modules had zero live callers.
+- [x] **Step 2: Delete, fix `__init__.py` re-exports the deletions orphan** (factories/implementations/interfaces/mocks packages keep their other members).
+- [x] **Step 3: Full gate plus `make test`** — expect the suite to shrink only by deleted-module tests; everything else green.
+- [x] **Step 4: Commit** `refactor: delete dead legacy screening slice (zero live callers)`.
 
 ---
 
