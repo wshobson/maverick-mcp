@@ -20,3 +20,9 @@ One line per item. Remove the line in the same change that removes the debt.
 | `application/commands/` and `application/screening/` are unimported by production code | `maverick_mcp/application/` | cutover |
 | Two typecheckers disagree: CI gates on ty, make check runs pyright; retire one or document ty as the gate | `Makefile`, `.github/workflows/ci.yml` | maintainer decision |
 | `tests/utils/test_quick_cache.py::test_cache_speedup` is a wall-clock timing flake (asserts >100x speedup) | `tests/utils/` | cutover |
+| `config/database.py` and `config/database_self_contained.py` are dead pool config, not ported to `maverick/platform/db.py` | `maverick_mcp/config/` | cutover |
+| Root `logging_config.py` is dead | `maverick_mcp/logging_config.py` | cutover |
+| `utils/quick_cache.py` is unused | `maverick_mcp/utils/quick_cache.py` | cutover |
+| Five parallel logging systems collapse into `maverick/platform/telemetry.py` | legacy tree | cutover |
+| Three circuit-breaker implementations collapse into `maverick/platform/http.py` | legacy tree | cutover |
+| `next(get_db())` session leak | `maverick_mcp/api/server.py`, `maverick_mcp/api/routers/portfolio.py` | portfolio port |

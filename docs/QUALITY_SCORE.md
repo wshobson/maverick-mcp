@@ -13,4 +13,4 @@ that changes the code, and note why.
 | `api/routers/` | C- | Per-router FastMCP instances never mounted; hand re-registration. |
 | `agents/`, `workflows/` | C | Two parallel agent abstractions, heavy vendor surface. |
 | `application/`, `api/dependencies/` | removed | Zombie layer deleted in phase 0. |
-| `maverick/` (new) | A | Empty and enforced. Keep it that way as code arrives. |
+| `maverick/` (new) | A | Platform seam landed with full test coverage. Domains arrive next. |

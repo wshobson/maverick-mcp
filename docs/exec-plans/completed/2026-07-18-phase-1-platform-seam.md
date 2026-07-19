@@ -834,15 +834,15 @@ git commit -m "feat(platform): add tiered cache (memory, redis, sqlite)"
 - Modify: `docs/QUALITY_SCORE.md`, `docs/exec-plans/tech-debt-tracker.md`, `docs/CATALOG.md`
 - Move: this plan to `docs/exec-plans/completed/`
 
-- [ ] **Step 1: Export the public API**
+- [x] **Step 1: Export the public API**
 
 `maverick/platform/__init__.py` re-exports: `get_platform_settings`, `PlatformSettings`, `setup_logging`, `get_logger`, `serialize`, `deserialize`, `Cache`, `generate_cache_key`, `CircuitBreaker`, `get_breaker`, `RateLimiter`, `request_with_retry`, `create_client`, `create_engine_from_settings`, `ensure_schema`, `session_scope`, `async_session_scope`, with `__all__`.
 
-- [ ] **Step 2: Update the quality score and debt tracker**
+- [x] **Step 2: Update the quality score and debt tracker**
 
 In `docs/QUALITY_SCORE.md`, replace the `maverick/` row's Why with: "Platform seam landed with full test coverage. Domains arrive next." Add tech-debt rows (table format) for the legacy modules recon confirmed dead or duplicated, to delete at cutover: `config/database.py` and `config/database_self_contained.py` (dead pool config), root `logging_config.py` (dead), `utils/quick_cache.py` (unused), the five parallel logging systems (collapse point: platform telemetry), the three circuit-breaker implementations (collapse point: platform http), and the `next(get_db())` session leak in `api/server.py` and `api/routers/portfolio.py` (fix at portfolio port).
 
-- [ ] **Step 3: Full verification**
+- [x] **Step 3: Full verification**
 
 ```bash
 make lint && make test && make docs-check && uv run lint-imports
@@ -850,7 +850,7 @@ make lint && make test && make docs-check && uv run lint-imports
 
 Expected: all green; the suite gains the tests/platform tests.
 
-- [ ] **Step 4: Move the plan to completed, update CATALOG/INDEX paths, commit, push**
+- [x] **Step 4: Move the plan to completed, update CATALOG/INDEX paths, commit, push**
 
 ```bash
 git mv docs/exec-plans/active/2026-07-18-phase-1-platform-seam.md docs/exec-plans/completed/
