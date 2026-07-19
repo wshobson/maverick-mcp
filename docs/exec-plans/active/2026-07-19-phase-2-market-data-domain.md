@@ -265,9 +265,9 @@ def test_market_overview_composes():
 - Produces: seven async tool functions taking a `MarketDataService` via module-level `configure(service)` (the server assembly phase will swap this for proper wiring): `get_price_history(ticker, start_date: str | None = None, end_date: str | None = None) -> dict`, `get_price_history_batch(tickers: list[str], ...) -> dict`, `get_quote(ticker) -> dict`, `get_stock_fundamentals(ticker) -> dict`, `get_market_overview() -> dict`, `get_chart_links(ticker) -> dict`, `clear_market_cache(ticker: str | None = None) -> dict`; plus `register(mcp) -> None` that registers each with `mcp.tool(name=f"market_data_{fn.__name__}", annotations={"readOnlyHint": True})` (clear_market_cache gets `readOnlyHint: False, destructiveHint: False, idempotentHint: True`). Payloads are `model_dump()`ed types plus `status`/`record_count` metadata matching the recon's parity table; errors return `{"status": "error", "error": str(exc)}` rather than raising.
 - Consumes: Task 6's service, Task 2's types.
 
-- [ ] **Step 1: Write the failing tests** — with a stub service (dataclass of async fakes): each tool returns the documented shape; date strings parse (bad date -> error payload, not an exception); `register` attaches seven tools to a `fastmcp.FastMCP("test")` instance and an in-memory `fastmcp.Client` call of `market_data_get_quote` round-trips (this uses FastMCP's in-memory testing pattern; no network).
-- [ ] **Step 2: RED.** **Step 3: Implement.** **Step 4: GREEN + full gate.**
-- [ ] **Step 5: Commit** `feat(market-data): add MCP tool layer`.
+- [x] **Step 1: Write the failing tests** — with a stub service (dataclass of async fakes): each tool returns the documented shape; date strings parse (bad date -> error payload, not an exception); `register` attaches seven tools to a `fastmcp.FastMCP("test")` instance and an in-memory `fastmcp.Client` call of `market_data_get_quote` round-trips (this uses FastMCP's in-memory testing pattern; no network).
+- [x] **Step 2: RED.** **Step 3: Implement.** **Step 4: GREEN + full gate.**
+- [x] **Step 5: Commit** `feat(market-data): add MCP tool layer`.
 
 ---
 

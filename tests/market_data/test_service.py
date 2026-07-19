@@ -11,7 +11,7 @@ from maverick.market_data.data import METADATA, write_price_bars
 from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher
 from maverick.market_data.service import MarketDataService
 from maverick.market_data.types import IndexQuote
-from maverick.platform.cache import Cache
+from maverick.platform.cache import Cache, generate_cache_key
 from maverick.platform.config import CacheSettings, DatabaseSettings
 from maverick.platform.db import (
     create_engine_from_settings,
@@ -432,3 +432,58 @@ async def test_get_movers_unknown_kind_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError):
         await service.get_movers("bogus", 5)
+
+
+# ---------------------------------------------------------------------------
+# clear_cache
+# ---------------------------------------------------------------------------
+
+
+async def test_clear_cache_with_ticker_removes_only_that_symbols_quote(tmp_path):
+    engine = _engine(tmp_path)
+    cache = _cache(tmp_path)
+    info_by_symbol = {
+        "AAPL": {"currentPrice": 190.5, "previousClose": 188.0, "volume": 1_000},
+        "MSFT": {"currentPrice": 300.0, "previousClose": 295.0, "volume": 2_000},
+    }
+    service = MarketDataService(
+        engine,
+        cache,
+        YFinanceFetcher(info_fn=lambda symbol: info_by_symbol[symbol]),
+        MoverFetcher(),
+    )
+    await service.get_quote("AAPL")
+    await service.get_quote("MSFT")
+
+    cleared = await service.clear_cache("aapl")
+
+    assert cleared == 1
+    assert await cache.exists(generate_cache_key("md_quote", symbol="AAPL")) is False
+    assert await cache.exists(generate_cache_key("md_quote", symbol="MSFT")) is True
+
+
+async def test_clear_cache_without_ticker_removes_all_quotes_and_overview(tmp_path):
+    engine = _engine(tmp_path)
+    cache = _cache(tmp_path)
+    info_by_symbol = {
+        "AAPL": {"currentPrice": 190.5, "previousClose": 188.0, "volume": 1_000},
+        "MSFT": {"currentPrice": 300.0, "previousClose": 295.0, "volume": 2_000},
+    }
+    service = MarketDataService(
+        engine,
+        cache,
+        YFinanceFetcher(info_fn=lambda symbol: info_by_symbol[symbol]),
+        MoverFetcher(),
+    )
+    await service.get_quote("AAPL")
+    await service.get_quote("MSFT")
+    await cache.set(
+        generate_cache_key("md_market_overview"), {"fake": "overview"}, ttl=60
+    )
+
+    cleared = await service.clear_cache()
+
+    assert cleared == 3
+    assert await cache.exists(generate_cache_key("md_quote", symbol="AAPL")) is False
+    assert await cache.exists(generate_cache_key("md_quote", symbol="MSFT")) is False
+    assert await cache.exists(generate_cache_key("md_market_overview")) is False

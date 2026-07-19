@@ -340,3 +340,20 @@ class MarketDataService:
             cache_key, overview.model_dump(), ttl=self._settings.overview_ttl_seconds
         )
         return overview
+
+    # -- cache management -------------------------------------------------
+
+    async def clear_cache(self, symbol: str | None = None) -> int:
+        """Clear the quote cache for `symbol`, or every quote plus the market
+        overview cache when `symbol` is `None`. Returns the number of cache
+        entries removed."""
+        if symbol is not None:
+            pattern = generate_cache_key("md_quote", symbol=symbol.upper()) + "*"
+            return await self._cache.delete_pattern(pattern)
+
+        quote_pattern = generate_cache_key("md_quote", symbol="*")
+        quote_count = await self._cache.delete_pattern(quote_pattern)
+        overview_count = await self._cache.delete_pattern(
+            generate_cache_key("md_market_overview")
+        )
+        return quote_count + overview_count
