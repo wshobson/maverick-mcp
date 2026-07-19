@@ -244,14 +244,14 @@ def test_market_overview_composes():
   - All public methods are async (`asyncio.to_thread` for the sync DB/yf paths).
 - Consumes: everything from Tasks 2 to 5 plus `platform.cache.Cache`, `platform.db`.
 
-- [ ] **Step 1: Write the failing tests** — the behavioral core of the phase; make them concrete:
+- [x] **Step 1: Write the failing tests** — the behavioral core of the phase; make them concrete:
   - Trading-day cache: seed DB with Mon-Wed bars; request Mon-Fri where Thu/Fri are the missing days; fake calendar says Mon-Fri are trading days; assert `yf.history` was called with a span covering only Thu-Fri and the result has 5 rows. Second identical request: `yf.history` NOT called again (call counter).
   - Weekend skip: request a Sat-Sun-inclusive range fully covered by cached weekday bars; assert no fetch.
   - Quote caching: two `get_quote` calls, `yf.info` called once (Cache backed by tmp SQLite settings).
   - Overview VIX correctness: indices summary fake includes `^VIX` with price 32.0 and change -5%; assert `overview.volatility.vix == 32.0` and `fear_level == "high"` (this is the anti-regression test for the legacy bug).
   - Movers map to `Mover` models; unknown kind raises ValueError.
-- [ ] **Step 2: RED.** **Step 3: Implement** (keep under 500 lines; extract helpers into data.py if pressed). **Step 4: GREEN + full gate.**
-- [ ] **Step 5: Commit** `feat(market-data): add domain service with smart price caching`.
+- [x] **Step 2: RED.** **Step 3: Implement** (keep under 500 lines; extract helpers into data.py if pressed). **Step 4: GREEN + full gate.**
+- [x] **Step 5: Commit** `feat(market-data): add domain service with smart price caching`.
 
 ---
 

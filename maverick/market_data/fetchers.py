@@ -9,7 +9,7 @@ import pandas as pd
 
 from maverick.market_data.config import MarketDataSettings, get_market_data_settings
 from maverick.platform.config import HttpSettings
-from maverick.platform.http import get_breaker, request_with_retry
+from maverick.platform.http import create_client, get_breaker, request_with_retry
 
 _YFINANCE_RETRIES = 2
 _CAPITAL_COMPANION_RETRIES = 2
@@ -196,3 +196,147 @@ async def fetch_capital_companion(
     response.raise_for_status()
     data = response.json()
     return data if isinstance(data, list) else []
+
+
+# ---------------------------------------------------------------------------
+# Production MoverFetcher wiring
+# ---------------------------------------------------------------------------
+
+_CAPITAL_COMPANION_BASE_URL = "https://capitalcompanion.ai"
+_CAPITAL_COMPANION_ENDPOINTS = {
+    "gainers": "gainers",
+    "losers": "losers",
+    "most_active": "most-active",
+}
+
+_FINVIZ_FILTERS = {
+    "gainers": {"Change": "Up 5%", "Average Volume": "Over 1M", "Price": "Over $5"},
+    "losers": {"Change": "Down 5%", "Average Volume": "Over 1M", "Price": "Over $5"},
+    "most_active": {"Average Volume": "Over 20M", "Price": "Over $5"},
+}
+
+# Small, liquid last-resort universe for the yfinance tier -- yfinance has no
+# screener API, so this tier can only re-rank a fixed candidate list rather
+# than discover movers the way Capital Companion and finviz do.
+_YFINANCE_TIER_SYMBOLS = (
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "TSLA",
+    "META",
+    "NVDA",
+    "JPM",
+    "V",
+    "JNJ",
+    "UNH",
+    "PG",
+    "HD",
+    "MA",
+    "DIS",
+)
+
+
+def _build_capital_companion_tier(api_key: str) -> ExternalClientFn:
+    """Bind an async Capital Companion tier callable for the given API key."""
+
+    async def _call(kind: str, limit: int) -> list[dict[str, Any]]:
+        endpoint = _CAPITAL_COMPANION_ENDPOINTS.get(kind)
+        if endpoint is None:
+            return []
+        url = f"{_CAPITAL_COMPANION_BASE_URL}/{endpoint}"
+        async with create_client() as client:
+            return await fetch_capital_companion(client, url, api_key)
+
+    return _call
+
+
+def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
+    """Sync finviz screener tier. Imports `finvizfinance` lazily, on call."""
+    from finvizfinance.screener.overview import Overview
+
+    screener = Overview()
+    screener.set_filter(filters_dict=_FINVIZ_FILTERS.get(kind, {}))
+    df = screener.screener_view()
+    if df is None or df.empty:
+        return []
+
+    sort_column = "Volume" if kind == "most_active" else "Change"
+    if sort_column in df.columns:
+        df = df.sort_values(sort_column, ascending=(kind == "losers"))
+
+    return [
+        {
+            "symbol": row.get("Ticker"),
+            "price": row.get("Price"),
+            "change": row.get("Change"),
+            "change_percent": row.get("Change"),
+            "volume": row.get("Volume"),
+        }
+        for _, row in df.head(limit).iterrows()
+    ]
+
+
+def _build_yfinance_tier(yf: YFinanceFetcher) -> MoverTierFn:
+    """Bind the sync tier-3 callable `MoverFetcher` runs via `asyncio.to_thread`.
+
+    `yf.batch_history` is async, but `MoverFetcher`'s tier signature is sync
+    (it is scheduled onto a worker thread by `asyncio.to_thread`). Running a
+    fresh `asyncio.run` inside that worker thread is safe -- the thread has
+    no event loop of its own to conflict with.
+    """
+
+    def _call(kind: str, limit: int) -> list[dict[str, Any]]:
+        frames = asyncio.run(
+            yf.batch_history(list(_YFINANCE_TIER_SYMBOLS), period="2d")
+        )
+        rows: list[dict[str, Any]] = []
+        for symbol, frame in frames.items():
+            if frame is None or frame.empty or len(frame) < 2:
+                continue
+            prev_close = float(frame["Close"].iloc[0])
+            current = float(frame["Close"].iloc[-1])
+            change = current - prev_close
+            change_percent = (change / prev_close * 100) if prev_close else 0.0
+            rows.append(
+                {
+                    "symbol": symbol,
+                    "price": current,
+                    "change": change,
+                    "change_percent": change_percent,
+                    "volume": int(frame["Volume"].iloc[-1]),
+                }
+            )
+
+        if kind == "most_active":
+            rows.sort(key=lambda r: r["volume"], reverse=True)
+        else:
+            rows.sort(key=lambda r: r["change_percent"], reverse=(kind == "gainers"))
+        return rows[:limit]
+
+    return _call
+
+
+def build_mover_fetcher(
+    settings: MarketDataSettings, yf: YFinanceFetcher
+) -> MoverFetcher:
+    """Production factory: wire the three-tier mover fallback chain.
+
+    Tier 1 (Capital Companion) is bound only when an API key is configured,
+    so its absence is visible at construction time, not just at call time.
+    Tier 2 (finviz) is bound unconditionally but never imports
+    `finvizfinance` until the tier actually runs. Tier 3 falls back to a
+    small liquid-stock `yf.batch_history` scan.
+    """
+    api_key = settings.capital_companion_api_key
+    external_client = (
+        _build_capital_companion_tier(api_key.get_secret_value())
+        if api_key is not None
+        else None
+    )
+    return MoverFetcher(
+        external_client=external_client,
+        finviz_fn=_finviz_tier,
+        batch_quote_fn=_build_yfinance_tier(yf),
+        settings=settings,
+    )

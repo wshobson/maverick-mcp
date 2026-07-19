@@ -1,5 +1,7 @@
 """Tests for maverick.market_data.fetchers."""
 
+import sys
+
 import httpx
 import pandas as pd
 import pytest
@@ -9,6 +11,7 @@ from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.fetchers import (
     MoverFetcher,
     YFinanceFetcher,
+    build_mover_fetcher,
     fetch_capital_companion,
 )
 from maverick.platform.config import HttpSettings
@@ -305,3 +308,35 @@ async def test_fetch_capital_companion_non_list_json_returns_empty():
         )
 
     assert result == []
+
+
+# ---------------------------------------------------------------------------
+# build_mover_fetcher
+# ---------------------------------------------------------------------------
+
+
+def test_build_mover_fetcher_tier1_none_without_key():
+    settings = MarketDataSettings(capital_companion_api_key=None)
+    fetcher = build_mover_fetcher(settings, YFinanceFetcher())
+
+    assert isinstance(fetcher, MoverFetcher)
+    assert fetcher._external_client is None
+    assert fetcher._finviz_fn is not None
+    assert fetcher._batch_quote_fn is not None
+
+
+def test_build_mover_fetcher_tier1_set_with_key():
+    settings = MarketDataSettings(capital_companion_api_key=SecretStr("secret-key"))
+    fetcher = build_mover_fetcher(settings, YFinanceFetcher())
+
+    assert fetcher._external_client is not None
+
+
+def test_build_mover_fetcher_never_imports_finvizfinance_at_construction():
+    sys.modules.pop("finvizfinance", None)
+    sys.modules.pop("finvizfinance.screener.overview", None)
+
+    settings = MarketDataSettings(capital_companion_api_key=None)
+    build_mover_fetcher(settings, YFinanceFetcher())
+
+    assert "finvizfinance" not in sys.modules
