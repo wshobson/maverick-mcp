@@ -107,7 +107,7 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 - `AllScreeningResults(bullish: list[ScreeningResult], bearish: list[ScreeningResult], supply_demand: list[ScreeningResult], date_analyzed: str | None)`.
 - `ScreenRun(screen: str, symbols_screened: int, symbols_qualified: int, date_analyzed: str, duration_seconds: float)`.
 - `ScreeningCriteria(min_momentum_score: float | None = None, min_volume: int | None = None, max_price: float | None = None, min_combined_score: int | None = None)` (no sector — dropped per decision log).
-- [ ] TDD steps as in Phase 2: concrete tests (round-trip, composition), RED, implement, GREEN + gate, commit `feat(screening): add payload types`.
+- [x] TDD steps as in Phase 2: concrete tests (round-trip, composition), RED, implement, GREEN + gate, commit `feat(screening): add payload types`.
 
 ---
 
