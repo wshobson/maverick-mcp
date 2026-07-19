@@ -49,9 +49,9 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 **Interfaces:**
 - `Cache.__init__(settings: CacheSettings | None = None, redis_client=None, redis_settings: RedisSettings | None = None)` — `redis_settings` defaults to `get_platform_settings().redis` (current behavior preserved); an injected `RedisSettings(enabled=False, ...)` guarantees the SQLite tier regardless of the process environment.
 
-- [ ] **Step 1: Write the failing test** — with `REDIS_HOST` monkeypatched into the env (simulating a dev box's `.env`), `Cache(settings=..., redis_settings=RedisSettings(enabled=False))` must build the SQLite tier (`cache.sqlite is not None`, `cache.redis is None` or equivalent). Also: default behavior unchanged (no `redis_settings` -> reads platform settings).
-- [ ] **Step 2: RED.** **Step 3: Implement** (thread the parameter through tier selection; do not change tier logic). **Step 4: GREEN + full gate.** Remove the tracker row in the same commit.
-- [ ] **Step 5: Commit** `fix(platform): allow injecting redis settings into Cache`.
+- [x] **Step 1: Write the failing test** — with `REDIS_HOST` monkeypatched into the env (simulating a dev box's `.env`), `Cache(settings=..., redis_settings=RedisSettings(enabled=False))` must build the SQLite tier (`cache.sqlite is not None`, `cache.redis is None` or equivalent). Also: default behavior unchanged (no `redis_settings` -> reads platform settings).
+- [x] **Step 2: RED.** **Step 3: Implement** (thread the parameter through tier selection; do not change tier logic). **Step 4: GREEN + full gate.** Remove the tracker row in the same commit.
+- [x] **Step 5: Commit** `fix(platform): allow injecting redis settings into Cache`.
 
 ---
 

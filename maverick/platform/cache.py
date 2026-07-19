@@ -342,9 +342,10 @@ class Cache:
         self,
         settings: CacheSettings | None = None,
         redis_client: Any = None,
+        redis_settings: RedisSettings | None = None,
     ) -> None:
         self.settings = settings or get_platform_settings().cache
-        redis_settings = get_platform_settings().redis
+        redis_settings = redis_settings or get_platform_settings().redis
 
         self.memory = MemoryTier(
             max_items=self.settings.memory_max_items,

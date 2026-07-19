@@ -11,7 +11,11 @@ from maverick.platform.cache import (
     SqliteTier,
     generate_cache_key,
 )
-from maverick.platform.config import CacheSettings
+from maverick.platform.config import (
+    CacheSettings,
+    RedisSettings,
+    reset_platform_settings,
+)
 
 
 def _settings(tmp_path, **overrides) -> CacheSettings:
@@ -134,6 +138,32 @@ async def test_cache_facade_uses_injected_redis(tmp_path):
     await cache.set("r", "value", ttl=100)
     assert await cache.get("r") == "value"
     assert cache.sqlite is None
+
+
+async def test_cache_facade_injected_redis_settings_override_env(tmp_path, monkeypatch):
+    # A dev box's .env pointing at a local Redis (REDIS_HOST set) must not
+    # leak into a cache that's explicitly told Redis is disabled.
+    monkeypatch.setenv("REDIS_HOST", "localhost")
+    settings = _settings(tmp_path)
+    cache = Cache(settings=settings, redis_settings=RedisSettings(enabled=False))
+    assert cache.redis is None
+    assert cache.sqlite is not None
+
+
+async def test_cache_facade_default_redis_settings_reads_platform_settings(
+    tmp_path, monkeypatch
+):
+    # Default behavior (no redis_settings passed) is unchanged: falls back
+    # to the global platform settings, which read REDIS_HOST from the env.
+    monkeypatch.delenv("REDIS_HOST", raising=False)
+    reset_platform_settings()
+    try:
+        settings = _settings(tmp_path)
+        cache = Cache(settings=settings)
+        assert cache.redis is None
+        assert cache.sqlite is not None
+    finally:
+        reset_platform_settings()
 
 
 async def test_generate_cache_key_stored_via_cache_has_single_version_prefix(tmp_path):

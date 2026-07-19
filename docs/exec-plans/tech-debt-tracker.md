@@ -33,4 +33,3 @@ One line per item. Remove the line in the same change that removes the debt.
 | Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |
 | Capital Companion tier uses `request_with_retry` without breaker and creates a client per call; align with `request_resilient` at server assembly | `maverick/market_data/fetchers.py` | cutover |
 | `get_quotes` is untested-in-production surface (no tool consumes it) | `maverick/market_data/service.py` | cutover |
-| `Cache.__init__` always reads global RedisSettings; a local `.env` Redis makes injected-settings caches share real keys (test-isolation hazard); add a redis_settings param | `maverick/platform/cache.py` | phase 3 |
