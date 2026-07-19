@@ -28,6 +28,8 @@
 - 2026-07-19: The `momentum_score` rename is finished. No "formerly rs_rating" comments come forward.
 - 2026-07-19: Dead legacy screening code with zero live callers is deleted THIS phase (not at cutover): `application/screening/`, `infrastructure/screening/`, `domain/screening/`, `providers/optimized_stock_data.py`, `providers/dependencies.py`, `providers/factories/provider_factory.py`, `providers/implementations/stock_data_adapter.py`, `providers/interfaces/stock_data.py`, `providers/mocks/mock_stock_data.py`. Grep-verified before deletion; the domain rules worth keeping (score thresholds 50/40/70, limits max 100 / default 20) are carried into `ScreeningSettings`.
 - 2026-07-19: Platform cleanup: `Cache` gains an injectable `redis_settings` parameter, closing the tracked test-isolation debt row.
+- 2026-07-19: ensure_schema memoization was per-engine boolean; Task 9 fixed it to per-engine confirmed-table-name sets after screening's second metadata exposed the bug.
+- 2026-07-19: screening_run_screens always returns a results map keyed by screen, even for a single screen.
 
 ## Layer contracts (Task 3 and Task 5 encode these)
 
@@ -163,4 +165,4 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 
 **Files:** exports in `maverick/screening/__init__.py` and `maverick/technical/__init__.py`; `docs/QUALITY_SCORE.md`; `docs/exec-plans/tech-debt-tracker.md`; `docs/CATALOG.md`; `docs/INDEX.md`; move plan to completed/
 
-- [ ] Exports with `__all__` + smoke imports. QUALITY_SCORE rows for `maverick/technical/` and `maverick/screening/` (A grades with one-line whys); update the legacy `application/`/`domain` rows to note the screening slice deletion. Tech-debt updates: remove the Cache row (closed in Task 1); add "screening change-history (legacy pipeline) not ported; revisit if wanted"; add "legacy mcp_maverick_* tables and scripts/run_stock_screening.py retire at cutover; scr_results is the successor". Plan decision-log addendum if execution deviated. Full verification including `make test` and `make docs-check`; move plan; CATALOG/INDEX paths; commit `docs: complete phase 3 (screening domain)`; push; `gh run watch --exit-status` in the foreground.
+- [x] Exports with `__all__` + smoke imports. QUALITY_SCORE rows for `maverick/technical/` and `maverick/screening/` (A grades with one-line whys); update the legacy `application/`/`domain` rows to note the screening slice deletion. Tech-debt updates: remove the Cache row (closed in Task 1); add "screening change-history (legacy pipeline) not ported; revisit if wanted"; add "legacy mcp_maverick_* tables and scripts/run_stock_screening.py retire at cutover; scr_results is the successor". Plan decision-log addendum if execution deviated. Full verification including `make test` and `make docs-check`; move plan; CATALOG/INDEX paths; commit `docs: complete phase 3 (screening domain)`; push; `gh run watch --exit-status` in the foreground.

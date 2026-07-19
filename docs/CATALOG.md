@@ -26,7 +26,7 @@ Status labels:
 | `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
 | `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | current | engineering | Phase 1 execution plan (platform seam). |
 | `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` | current | engineering | Phase 2 execution plan (market data domain). |
-| `exec-plans/active/2026-07-19-phase-3-screening-domain.md` | current | engineering | Phase 3 execution plan (screening domain and technical core). |
+| `exec-plans/completed/2026-07-19-phase-3-screening-domain.md` | current | engineering | Phase 3 execution plan (screening domain and technical core). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |

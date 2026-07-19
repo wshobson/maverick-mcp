@@ -12,6 +12,8 @@ that changes the code, and note why.
 | `api/server.py` | D | God-module: transports, middleware, tools, lifecycle in one file. |
 | `api/routers/` | C- | Per-router FastMCP instances never mounted; hand re-registration. |
 | `agents/`, `workflows/` | C | Two parallel agent abstractions, heavy vendor surface. |
-| `application/`, `api/dependencies/` | removed | Zombie layer deleted in phase 0. |
+| `application/`, `api/dependencies/`, `domain/` | removed | Zombie layer deleted in phase 0; the legacy screening slice (`application/screening/`, `domain/screening/`, `infrastructure/screening/`) deleted in phase 3. |
 | `maverick/` (new) | A | Platform seam landed with full test coverage. Domains arrive next. |
 | `maverick/market_data/` | A | First domain through the seam. Layer contracts enforced, 130+ tests, injectable fetchers. |
+| `maverick/technical/` | A | Pure-Python indicators, golden-tested against pandas-ta at rtol=1e-9. |
+| `maverick/screening/` | A | Query and compute domain; rubric scores are exact-tested; fresh installs can self-populate. |

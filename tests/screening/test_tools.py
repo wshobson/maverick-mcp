@@ -10,7 +10,9 @@ from maverick.screening.config import ScreeningSettings
 from maverick.screening.types import ScreeningCriteria, ScreeningResult, ScreenRun
 
 
-def _result(symbol: str, screen: str = "bullish", combined_score: int = 90) -> ScreeningResult:
+def _result(
+    symbol: str, screen: str = "bullish", combined_score: int = 90
+) -> ScreeningResult:
     return ScreeningResult(
         symbol=symbol,
         screen=screen,  # type: ignore[arg-type]
