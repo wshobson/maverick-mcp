@@ -143,3 +143,47 @@ def test_get_or_create_stock_is_idempotent(factory):
         ).scalar_one()
 
     assert count == 1
+
+
+def test_get_or_create_stock_handles_concurrent_first_create_race(factory, monkeypatch):
+    """Simulate a concurrent first-create race: another session's insert for
+    the same symbol has already committed by the time this session's own
+    insert runs, so it hits the unique-constraint `IntegrityError`.
+
+    A real race can't be reproduced deterministically in a single-threaded
+    test, so the "another session already won" half is a genuine pre-insert
+    row, and the "this session's initial check missed it" half is simulated
+    by monkeypatching `_find_stock_id` to return `None` on its first call
+    only -- exercising the exact `IntegrityError` recovery path in
+    `get_or_create_stock` without needing real concurrency.
+    """
+    from maverick.market_data import data as data_module
+
+    with session_scope(factory) as session:
+        winner_id = get_or_create_stock(session, "RACE")
+
+    real_find_stock_id = data_module._find_stock_id
+    call_count = {"n": 0}
+
+    def fake_find_stock_id(session, symbol):
+        call_count["n"] += 1
+        if symbol == "RACE" and call_count["n"] == 1:
+            return None
+        return real_find_stock_id(session, symbol)
+
+    monkeypatch.setattr(data_module, "_find_stock_id", fake_find_stock_id)
+
+    with session_scope(factory) as session:
+        result_id = get_or_create_stock(session, "RACE")
+
+    assert result_id == winner_id
+    assert call_count["n"] >= 2
+
+    with session_scope(factory) as session:
+        count = session.execute(
+            select(func.count())
+            .select_from(MD_STOCKS)
+            .where(MD_STOCKS.c.symbol == "RACE")
+        ).scalar_one()
+
+    assert count == 1

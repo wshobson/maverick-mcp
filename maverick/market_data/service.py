@@ -168,6 +168,10 @@ class MarketDataService:
         self._session_factory = sessionmaker(bind=engine)
         ensure_schema(engine, METADATA)
 
+    @property
+    def settings(self) -> MarketDataSettings:
+        return self._settings
+
     # -- price history --------------------------------------------------
 
     def _trading_days(self, start: date, end: date) -> list[date]:
@@ -229,7 +233,13 @@ class MarketDataService:
                 # safe because `write_price_bars` dedupes on existing
                 # dates, so re-fetching a cached interior day is wasted
                 # bandwidth, never a correctness or duplicate-row risk.
-                fetched = await self._yf.history(symbol, missing[0], missing[-1])
+                # yfinance's `end` is exclusive, so the envelope's own last
+                # day would never come back without pushing `end` one day
+                # past it -- a window ending today re-fetches today's bar on
+                # every call until it settles after market close (inherent,
+                # acceptable).
+                fetch_end = missing[-1] + timedelta(days=1)
+                fetched = await self._yf.history(symbol, missing[0], fetch_end)
                 if not fetched.empty:
                     await asyncio.to_thread(self._write_bars, symbol, fetched)
                 cached = await asyncio.to_thread(

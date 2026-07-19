@@ -72,8 +72,11 @@ async def get_price_history_batch(
 
     A single bad ticker's failure is captured per-ticker in `results` rather
     than aborting the whole batch; a shared bad `start_date`/`end_date`
-    (parsed once up front) fails the whole call instead, since it can't be
-    attributed to any one ticker.
+    (parsed once up front), or a `tickers` list exceeding `settings.
+    history_batch_max`, fails the whole call instead, since neither can be
+    attributed to any one ticker. The happy path (including one with
+    per-ticker failures) always carries a top-level `"status": "success"` so
+    callers can branch on it uniformly before looking at `results`.
     """
     try:
         service = _require_service()
@@ -81,6 +84,16 @@ async def get_price_history_batch(
         end = _parse_date(end_date)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
+
+    max_tickers = service.settings.history_batch_max
+    if len(tickers) > max_tickers:
+        return {
+            "status": "error",
+            "error": (
+                f"Too many tickers: {len(tickers)} exceeds the batch limit "
+                f"of {max_tickers}"
+            ),
+        }
 
     results: dict[str, Any] = {}
     for ticker in tickers:
@@ -92,6 +105,7 @@ async def get_price_history_batch(
 
     success_count = sum(1 for r in results.values() if r["status"] == "success")
     return {
+        "status": "success",
         "results": results,
         "success_count": success_count,
         "error_count": len(results) - success_count,

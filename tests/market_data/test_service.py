@@ -87,10 +87,16 @@ async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
         write_price_bars(session, "AAPL", _bars([monday, tuesday, wednesday]))
 
     history_calls: list[tuple[str, date, date]] = []
+    available = _bars([thursday, friday], start_value=200.0)
 
     def fake_history(symbol, start, end, interval="1d"):
+        # Honor yfinance's contract: `end` is exclusive, so only bars with
+        # date >= start and date < end come back. This is what proves the
+        # fetch-window fix -- pre-fix (end == friday, not friday + 1 day)
+        # this would drop Friday and the test would fail with a 4-row frame.
         history_calls.append((symbol, start, end))
-        return _bars([thursday, friday], start_value=200.0)
+        mask = (available.index.date >= start) & (available.index.date < end)
+        return available.loc[mask]
 
     service = MarketDataService(
         engine,
@@ -106,7 +112,7 @@ async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
     assert len(history_calls) == 1
     _, called_start, called_end = history_calls[0]
     assert called_start == thursday
-    assert called_end == friday
+    assert called_end == friday + timedelta(days=1)
 
     # Second identical request is fully served from the DB: no new fetch.
     result_again = await service.get_price_history("AAPL", monday, friday)
@@ -157,10 +163,15 @@ async def test_price_history_respects_plain_callable_calendar(tmp_path):
         write_price_bars(session, "GOOG", _bars([monday, tuesday, wednesday]))
 
     history_calls: list[tuple[str, date, date]] = []
+    available = _bars([thursday, friday], start_value=300.0)
 
     def fake_history(symbol, start, end, interval="1d"):
+        # Honor yfinance's exclusive-`end` contract -- see the analogous
+        # comment in test_trading_day_cache_fetches_only_missing_span_
+        # then_serves_from_db above.
         history_calls.append((symbol, start, end))
-        return _bars([thursday, friday], start_value=300.0)
+        mask = (available.index.date >= start) & (available.index.date < end)
+        return available.loc[mask]
 
     def callable_calendar(start: date, end: date) -> list[date]:
         days = []
@@ -185,7 +196,7 @@ async def test_price_history_respects_plain_callable_calendar(tmp_path):
     assert len(history_calls) == 1
     _, called_start, called_end = history_calls[0]
     assert called_start == thursday
-    assert called_end == friday
+    assert called_end == friday + timedelta(days=1)
 
 
 # ---------------------------------------------------------------------------
@@ -378,11 +389,68 @@ async def test_market_overview_reads_vix_explicitly_and_reports_high_fear(tmp_pa
 
     service.get_indices_summary = fake_indices_summary
 
+    # See the comment in `test_get_market_overview_second_call_served_from_
+    # cache` below: `md_market_overview` has no per-test salt, so clear it
+    # first to avoid reading a stale entry left by another test when the
+    # cache is Redis-backed (process-wide, not `tmp_path`-scoped).
+    await service.clear_cache()
+
     overview = await service.get_market_overview()
 
     assert overview.volatility.vix == 32.0
     assert overview.volatility.vix_change_percent == -5.0
     assert overview.volatility.fear_level == "high"
+
+
+async def test_get_market_overview_second_call_served_from_cache(tmp_path):
+    """Mirrors `test_get_quote_caches_and_calls_yf_info_once`: a second call
+    within the TTL must not re-invoke any of the underlying fetchers."""
+    engine = _engine(tmp_path)
+    service = MarketDataService(
+        engine, _cache(tmp_path), YFinanceFetcher(), MoverFetcher()
+    )
+
+    call_counts = {"indices": 0, "sectors": 0, "movers": 0}
+
+    async def fake_indices_summary() -> dict[str, IndexQuote]:
+        call_counts["indices"] += 1
+        return {
+            "^VIX": IndexQuote(
+                name="VIX", symbol="^VIX", price=15.0, change=0.1, change_percent=0.5
+            )
+        }
+
+    async def fake_sector_performance() -> dict[str, float]:
+        call_counts["sectors"] += 1
+        return {"Technology": 1.0}
+
+    async def fake_movers(kind: str, limit: int) -> list:
+        call_counts["movers"] += 1
+        return []
+
+    service.get_indices_summary = fake_indices_summary
+    service.get_sector_performance = fake_sector_performance
+    service.get_movers = fake_movers
+
+    # `md_market_overview` is a single global cache key with no per-test
+    # salt: `Cache` resolves its backend from process-wide platform
+    # settings (real Redis when `REDIS_HOST` is configured, e.g. via a
+    # local `.env`), not from `tmp_path`, so a Redis-backed run is *not*
+    # isolated per test the way the SQLite tier is. Clear first so this
+    # test's "first call populates, second call is cached" assertion holds
+    # regardless of what an earlier test in this session already cached.
+    await service.clear_cache()
+
+    first = await service.get_market_overview()
+    calls_after_first_call = dict(call_counts)
+    assert calls_after_first_call["indices"] == 1
+    assert calls_after_first_call["sectors"] == 1
+    assert calls_after_first_call["movers"] == 2  # gainers + losers
+
+    second = await service.get_market_overview()
+
+    assert call_counts == calls_after_first_call
+    assert second.volatility.vix == first.volatility.vix
 
 
 # ---------------------------------------------------------------------------

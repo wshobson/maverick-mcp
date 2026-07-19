@@ -82,6 +82,11 @@ class YFinanceFetcher:
         self._breaker_name = breaker_name
         self._http_settings = http_settings
 
+    @property
+    def download_fn(self) -> DownloadFn:
+        """The resolved sync batch-download callable (real yfinance, or an injected fake)."""
+        return self._download_fn
+
     async def _call(self, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
         breaker = get_breaker(self._breaker_name, self._http_settings)
 
@@ -349,6 +354,6 @@ def build_mover_fetcher(
     return MoverFetcher(
         external_client=external_client,
         finviz_fn=_finviz_tier,
-        batch_quote_fn=_build_yfinance_tier(download_fn or yf._download_fn),
+        batch_quote_fn=_build_yfinance_tier(download_fn or yf.download_fn),
         settings=settings,
     )

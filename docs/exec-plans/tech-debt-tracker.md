@@ -31,3 +31,5 @@ One line per item. Remove the line in the same change that removes the debt.
 | Legacy duplicate tool names collapse at server assembly (e.g. `fetch_stock_data` vs `data_fetch_stock_data`) | `maverick_mcp/api/server.py`, `maverick_mcp/api/routers/tool_registry.py` | cutover |
 | `docs/testing/in-memory.md` shows `result.text` but fastmcp 3.3.1 returns `result.data` (doc drift) | `docs/testing/in-memory.md` | cutover |
 | Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |
+| Capital Companion tier uses `request_with_retry` without breaker and creates a client per call; align with `request_resilient` at server assembly | `maverick/market_data/fetchers.py` | cutover |
+| `get_quotes` is untested-in-production surface (no tool consumes it) | `maverick/market_data/service.py` | cutover |

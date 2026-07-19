@@ -18,6 +18,7 @@ from sqlalchemy import (
     insert,
     select,
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from maverick.market_data.types import PRICE_COLUMNS
@@ -69,15 +70,32 @@ def _find_stock_id(session: Session, symbol: str) -> int | None:
 
 
 def get_or_create_stock(session: Session, symbol: str) -> int:
-    """Return the ``md_stocks`` row id for ``symbol``, creating it if absent."""
+    """Return the ``md_stocks`` row id for ``symbol``, creating it if absent.
+
+    Guards against a concurrent first-create race: if another session's
+    insert for the same ``symbol`` commits between this session's check and
+    its own insert, the unique-constraint violation raises ``IntegrityError``
+    here. That's caught, the insert is rolled back to a savepoint taken just
+    before it (so the outer transaction stays usable), and the winner's row
+    is re-selected instead.
+    """
     stock_id = _find_stock_id(session, symbol)
     if stock_id is not None:
         return stock_id
 
-    session.execute(insert(MD_STOCKS).values(symbol=symbol))
-    session.flush()
+    try:
+        with session.begin_nested():
+            session.execute(insert(MD_STOCKS).values(symbol=symbol))
+            session.flush()
+    except IntegrityError:
+        stock_id = _find_stock_id(session, symbol)
+        if stock_id is None:
+            raise
+        return stock_id
+
     stock_id = _find_stock_id(session, symbol)
-    assert stock_id is not None
+    if stock_id is None:
+        raise RuntimeError(f"Failed to create or find stock row for symbol {symbol!r}")
     return stock_id
 
 

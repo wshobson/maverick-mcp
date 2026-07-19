@@ -8,6 +8,7 @@ import pytest
 from fastmcp import Client, FastMCP
 
 from maverick.market_data import tools
+from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.types import (
     CompanyInfo,
     Fundamentals,
@@ -98,6 +99,7 @@ class StubService:
     """Async fakes matching `MarketDataService`'s public surface."""
 
     def __init__(self) -> None:
+        self.settings = MarketDataSettings()
         self.price_history_calls: list[tuple[str, date | None, date | None]] = []
         self.quote_calls: list[str] = []
         self.fundamentals_calls: list[str] = []
@@ -227,6 +229,7 @@ async def test_get_price_history_service_exception_returns_error_payload(
 async def test_get_price_history_batch_returns_per_ticker_results(stub_service):
     result = await tools.get_price_history_batch(["AAPL", "MSFT"])
 
+    assert result["status"] == "success"
     assert result["tickers"] == ["AAPL", "MSFT"]
     assert result["success_count"] == 2
     assert result["error_count"] == 0
@@ -250,6 +253,7 @@ async def test_get_price_history_batch_partial_failure_does_not_abort_batch(
 
     result = await tools.get_price_history_batch(["AAPL", "BAD"])
 
+    assert result["status"] == "success"
     assert result["success_count"] == 1
     assert result["error_count"] == 1
     assert result["results"]["AAPL"]["status"] == "success"
@@ -264,6 +268,27 @@ async def test_get_price_history_batch_bad_date_returns_error_payload_not_raise(
     assert result["status"] == "error"
     assert "error" in result
     assert stub_service.price_history_calls == []
+
+
+async def test_get_price_history_batch_over_limit_returns_error_naming_limit(
+    stub_service,
+):
+    stub_service.settings = MarketDataSettings(history_batch_max=2)
+
+    result = await tools.get_price_history_batch(["AAPL", "MSFT", "GOOG"])
+
+    assert result["status"] == "error"
+    assert "2" in result["error"]
+    assert stub_service.price_history_calls == []
+
+
+async def test_get_price_history_batch_at_limit_succeeds(stub_service):
+    stub_service.settings = MarketDataSettings(history_batch_max=2)
+
+    result = await tools.get_price_history_batch(["AAPL", "MSFT"])
+
+    assert result["status"] == "success"
+    assert result["tickers"] == ["AAPL", "MSFT"]
 
 
 # ---------------------------------------------------------------------------
