@@ -35,6 +35,8 @@ use this index as the map to deeper, versioned sources of truth.
   execution plan (platform seam).
 - `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` - Phase 2
   execution plan (market data domain).
+- `exec-plans/active/2026-07-19-phase-3-screening-domain.md` - Phase 3
+  execution plan (screening domain and technical core).
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface
   is curated.
