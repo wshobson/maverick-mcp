@@ -296,10 +296,21 @@ class TestPositionValue:
         assert pnl_percent == Decimal("16.81")
 
     def test_zero_cost_is_safe_and_returns_zero_percent(self):
-        # PositionPayload has no field validators, so a directly constructed
-        # zero-total_cost payload is a valid input the ledger must not
-        # divide-by-zero on.
-        pos = _position(shares="10", average_cost_basis="0.00", total_cost="0.00")
+        # PositionPayload now enforces shares/average_cost_basis/total_cost
+        # > 0 via Field(gt=0) (Task 5's controller amendment), so a
+        # zero-total_cost payload can no longer arise through normal
+        # validated construction. model_construct bypasses that validation
+        # to prove position_value's divide-by-zero defense still holds at
+        # the ledger level regardless -- defense in depth, not a reachable
+        # state through add_shares or PositionPayload(...) directly.
+        pos = PositionPayload.model_construct(
+            ticker="AAPL",
+            shares=Decimal("10"),
+            average_cost_basis=Decimal("0.00"),
+            total_cost=Decimal("0.00"),
+            purchase_date="2026-01-01",
+            notes=None,
+        )
 
         value, pnl, pnl_percent = position_value(pos, Decimal("50.00"))
 

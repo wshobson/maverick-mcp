@@ -3,14 +3,14 @@
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PositionPayload(BaseModel):
     ticker: str
-    shares: Decimal
-    average_cost_basis: Decimal
-    total_cost: Decimal
+    shares: Decimal = Field(gt=0)
+    average_cost_basis: Decimal = Field(gt=0)
+    total_cost: Decimal = Field(gt=0)
     purchase_date: str
     notes: str | None = None
 

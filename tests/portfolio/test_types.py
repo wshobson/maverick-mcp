@@ -496,3 +496,31 @@ def test_position_payload_requires_ticker():
                 "notes": None,
             }
         )
+
+
+# -- Construction validation: ported from tests/domain/test_portfolio_entities.py
+# (TestPosition.test_position_rejects_{zero,negative}_shares,
+# test_position_rejects_zero_cost_basis, test_position_rejects_negative_total_cost).
+# The legacy dataclass raised ValueError with a specific message; PositionPayload's
+# Field(gt=0) constraints raise pydantic's ValidationError instead, so these assert
+# on the pydantic error rather than the legacy message text.
+
+
+def test_position_payload_rejects_zero_shares():
+    with pytest.raises(ValidationError):
+        _make_position(shares=Decimal("0"))
+
+
+def test_position_payload_rejects_negative_shares():
+    with pytest.raises(ValidationError):
+        _make_position(shares=Decimal("-10"))
+
+
+def test_position_payload_rejects_zero_cost_basis():
+    with pytest.raises(ValidationError):
+        _make_position(average_cost_basis=Decimal("0"))
+
+
+def test_position_payload_rejects_negative_total_cost():
+    with pytest.raises(ValidationError):
+        _make_position(total_cost=Decimal("-1500.00"))
