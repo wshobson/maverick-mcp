@@ -53,6 +53,7 @@ def test_defaults_are_zero_config():
     # other
     assert s.sr_lookback == 30
     assert s.default_days == 365
+    assert s.analysis_timeout_seconds == 25.0
 
 
 def test_env_overrides(monkeypatch):

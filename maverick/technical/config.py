@@ -40,6 +40,7 @@ class TechnicalSettings(BaseModel):
     # other
     sr_lookback: int = 30
     default_days: int = Field(default_factory=lambda: _env_int("TA_DEFAULT_DAYS", 365))
+    analysis_timeout_seconds: float = 25.0
 
 
 @lru_cache(maxsize=1)
