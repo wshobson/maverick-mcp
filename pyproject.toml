@@ -205,13 +205,24 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "Portfolio layers are forward-only"
+type = "layers"
+layers = [
+    "maverick.portfolio.tools",
+    "maverick.portfolio.service",
+    "maverick.portfolio.data | maverick.portfolio.ledger",
+    "maverick.portfolio.config",
+    "maverick.portfolio.types",
+]
+
+[[tool.importlinter.contracts]]
 name = "The platform never imports domains"
 type = "forbidden"
 source_modules = ["maverick.platform"]
-forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.technical"]
+forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.technical", "maverick.portfolio"]
 
 [[tool.importlinter.contracts]]
 name = "The technical indicator core never imports domains"
 type = "forbidden"
 source_modules = ["maverick.technical"]
-forbidden_modules = ["maverick.market_data", "maverick.screening"]
+forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.portfolio"]
