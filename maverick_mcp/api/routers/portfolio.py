@@ -551,11 +551,15 @@ def portfolio_correlation_analysis(
         high_correlation_pairs = []
         low_correlation_pairs = []
 
-        for i in range(len(tickers)):
-            for j in range(i + 1, len(tickers)):
+        # Iterate over the tickers that actually have data: a fetch failure leaves
+        # correlation_matrix smaller than the requested `tickers`, so indexing it by
+        # the original list would raise IndexError and mislabel pairs.
+        valid_tickers = list(correlation_matrix.columns)
+        for i in range(len(valid_tickers)):
+            for j in range(i + 1, len(valid_tickers)):
                 corr_val = correlation_matrix.iloc[i, j]
                 corr = float(corr_val.item() if hasattr(corr_val, "item") else corr_val)
-                pair = (tickers[i], tickers[j])
+                pair = (valid_tickers[i], valid_tickers[j])
 
                 if corr > 0.7:
                     high_correlation_pairs.append(
