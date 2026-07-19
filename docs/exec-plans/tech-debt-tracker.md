@@ -26,3 +26,8 @@ One line per item. Remove the line in the same change that removes the debt.
 | Five parallel logging systems collapse into `maverick/platform/telemetry.py` | legacy tree | cutover |
 | Three circuit-breaker implementations collapse into `maverick/platform/http.py` | legacy tree | cutover |
 | `next(get_db())` session leak | `maverick_mcp/api/server.py`, `maverick_mcp/api/routers/portfolio.py` | portfolio port |
+| Macro (FRED) port deferred; zero live consumers today | `maverick_mcp/providers/macro_data.py`, `maverick_mcp/providers/interfaces/macro_data.py` | macro port |
+| Legacy market-data deletion inventory for cutover: provider interfaces/factories/implementations/mocks for market, stock, and macro data; both `dependencies.py` modules; the duplicate `infrastructure/data_fetching` + `infrastructure/caching` + `domain/stock_analysis` stack; dead provider methods | `maverick_mcp/providers/`, `maverick_mcp/infrastructure/data_fetching/`, `maverick_mcp/infrastructure/caching/`, `maverick_mcp/domain/stock_analysis/`, `maverick_mcp/dependencies.py`, `maverick_mcp/providers/dependencies.py` | cutover |
+| Legacy duplicate tool names collapse at server assembly (e.g. `fetch_stock_data` vs `data_fetch_stock_data`) | `maverick_mcp/api/server.py`, `maverick_mcp/api/routers/tool_registry.py` | cutover |
+| `docs/testing/in-memory.md` shows `result.text` but fastmcp 3.3.1 returns `result.data` (doc drift) | `docs/testing/in-memory.md` | cutover |
+| Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |

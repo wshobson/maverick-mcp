@@ -27,6 +27,8 @@
 - 2026-07-19: Mover fallback chain preserved as optional-first: Capital Companion API when its key is set, then finviz, then a yfinance batch. Each tier is injectable and separately testable.
 - 2026-07-19: One canonical tool name per capability. The legacy duplicate registrations (`fetch_stock_data` vs `data_fetch_stock_data`) collapse at server assembly; `tools.py` defines the single names now.
 - 2026-07-19: yfinance cannot go through `platform.http` (it owns its own session), so the data layer wraps yfinance calls with `platform.http.get_breaker` + a thin retry, and callers inject fakes in tests.
+- 2026-07-19: Batch price-history payload flattens per-ticker shape (shared with single-ticker) instead of the legacy nested `data` key. Deliberate consistency choice.
+- 2026-07-19: build_mover_fetcher added in the Task 6 fix wave to close the production-wiring gap a review found.
 
 ## Layer contract (Task 1 encodes this)
 
@@ -278,7 +280,7 @@ def test_market_overview_composes():
 - Modify: `docs/QUALITY_SCORE.md` (market_data row), `docs/exec-plans/tech-debt-tracker.md`, `docs/CATALOG.md`, `docs/INDEX.md`
 - Move: this plan to `docs/exec-plans/completed/`
 
-- [ ] **Step 1: Exports** with `__all__`; smoke `uv run python -c "from maverick.market_data import MarketDataService, register; print('ok')"`.
-- [ ] **Step 2: Docs** — QUALITY_SCORE adds `maverick/market_data/` graded A with a one-line why; tech-debt rows: macro port deferred (no live consumers); legacy market-data deletion inventory for cutover (the hex layer trio of interfaces/factories/implementations plus mocks and both dependencies modules, the duplicate infrastructure/domain fetch stack, dead provider methods); "legacy duplicate tool names collapse at server assembly".
-- [ ] **Step 3: Full verification** — the complete gate from Global Constraints plus `make test` and `make docs-check`.
-- [ ] **Step 4: Move plan to completed/**, update CATALOG row and INDEX line, `make docs-check`, commit `docs: complete phase 2 (market data domain)`, push, `gh run watch --exit-status` in the foreground.
+- [x] **Step 1: Exports** with `__all__`; smoke `uv run python -c "from maverick.market_data import MarketDataService, register; print('ok')"`.
+- [x] **Step 2: Docs** — QUALITY_SCORE adds `maverick/market_data/` graded A with a one-line why; tech-debt rows: macro port deferred (no live consumers); legacy market-data deletion inventory for cutover (the hex layer trio of interfaces/factories/implementations plus mocks and both dependencies modules, the duplicate infrastructure/domain fetch stack, dead provider methods); "legacy duplicate tool names collapse at server assembly".
+- [x] **Step 3: Full verification** — the complete gate from Global Constraints plus `make test` and `make docs-check`.
+- [x] **Step 4: Move plan to completed/**, update CATALOG row and INDEX line, `make docs-check`, commit `docs: complete phase 2 (market data domain)`, push, `gh run watch --exit-status` in the foreground.

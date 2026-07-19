@@ -79,7 +79,10 @@ def _overview() -> MarketOverview:
     return MarketOverview(
         indices={
             "^GSPC": IndexQuote(
-                name="S&P 500", symbol="^GSPC", price=6100.0, change=5.0,
+                name="S&P 500",
+                symbol="^GSPC",
+                price=6100.0,
+                change=5.0,
                 change_percent=0.1,
             )
         },
@@ -140,6 +143,27 @@ def stub_service() -> Any:
     stub = StubService()
     tools.configure(stub)
     yield stub
+
+
+# ---------------------------------------------------------------------------
+# unconfigured service: _require_service() raises before any service call
+# ---------------------------------------------------------------------------
+
+
+async def test_unconfigured_service_returns_configure_error_payload(stub_service):
+    """Reset the module-level service the autouse fixture just configured.
+
+    The next test's autouse fixture reconfigures a fresh stub, so no
+    explicit restore is needed here.
+    """
+    tools.configure(None)  # type: ignore[arg-type]
+
+    result = await tools.get_quote("AAPL")
+
+    assert result == {
+        "status": "error",
+        "error": "market_data.tools: configure(service) was not called",
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -14,3 +14,4 @@ that changes the code, and note why.
 | `agents/`, `workflows/` | C | Two parallel agent abstractions, heavy vendor surface. |
 | `application/`, `api/dependencies/` | removed | Zombie layer deleted in phase 0. |
 | `maverick/` (new) | A | Platform seam landed with full test coverage. Domains arrive next. |
+| `maverick/market_data/` | A | First domain through the seam. Layer contracts enforced, 130+ tests, injectable fetchers. |
