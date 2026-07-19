@@ -118,7 +118,7 @@ git commit -m "feat(market-data): add domain skeleton with enforced layer contra
 **Interfaces:**
 - Produces (pydantic BaseModel unless noted): `Quote(symbol, price, change, change_percent, volume, timestamp)`; `Fundamentals(symbol, company: CompanyInfo, market_data: MarketNumbers, valuation: dict[str, float | None], financials: dict[str, float | None], trading: TradingStats)` with the nested models; `Mover(symbol, price, change, change_percent, volume)`; `IndexQuote(name, symbol, price, change, change_percent)`; `SectorPerformance = dict[str, float]` alias; `MarketOverview(indices: dict[str, IndexQuote], sectors: dict[str, float], top_gainers: list[Mover], top_losers: list[Mover], volatility: Volatility, last_updated: str)`; `Volatility(vix: float | None, vix_change_percent: float | None, fear_level: str)`; `fear_level_from_vix(vix: float | None) -> str` pure function (bands: None -> "unknown", < 20 "low", < 30 "elevated", >= 30 "high"); OHLCV column constant `PRICE_COLUMNS = ("Open", "High", "Low", "Close", "Volume")`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/market_data/test_types.py` (complete file):
 
@@ -175,10 +175,10 @@ def test_market_overview_composes():
     assert overview.volatility.fear_level == "low"
 ```
 
-- [ ] **Step 2: RED** — `uv run pytest tests/market_data/test_types.py -q` fails with ImportError.
-- [ ] **Step 3: Implement** the models per the Produces list. Frozen models are fine but not required; keep them plain.
-- [ ] **Step 4: GREEN + full gate.**
-- [ ] **Step 5: Commit** `feat(market-data): add payload types`.
+- [x] **Step 2: RED** — `uv run pytest tests/market_data/test_types.py -q` fails with ImportError.
+- [x] **Step 3: Implement** the models per the Produces list. Frozen models are fine but not required; keep them plain.
+- [x] **Step 4: GREEN + full gate.**
+- [x] **Step 5: Commit** `feat(market-data): add payload types`.
 
 ---
 
