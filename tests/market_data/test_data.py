@@ -12,6 +12,7 @@ from maverick.market_data.data import (
     METADATA,
     cached_date_range,
     get_or_create_stock,
+    list_symbols,
     read_price_range,
     write_price_bars,
 )
@@ -125,6 +126,24 @@ def test_cached_date_range_returns_min_max_and_none_when_empty(factory):
         result = cached_date_range(session, "TSLA")
 
     assert result == (dates[0].date(), dates[-1].date())
+
+
+def test_list_symbols_returns_registered_symbols_alphabetically(factory):
+    dates = pd.date_range("2026-01-05", periods=2, freq="B")
+    with session_scope(factory) as session:
+        write_price_bars(session, "MSFT", _bars(dates))
+        write_price_bars(session, "AAPL", _bars(dates))
+        write_price_bars(session, "GOOG", _bars(dates))
+
+    with session_scope(factory) as session:
+        symbols = list_symbols(session)
+
+    assert symbols == ["AAPL", "GOOG", "MSFT"]
+
+
+def test_list_symbols_returns_empty_list_when_no_stocks_registered(factory):
+    with session_scope(factory) as session:
+        assert list_symbols(session) == []
 
 
 def test_get_or_create_stock_is_idempotent(factory):

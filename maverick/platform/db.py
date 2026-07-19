@@ -129,26 +129,38 @@ def create_async_engine_from_settings(settings: DatabaseSettings) -> AsyncEngine
 
 _schema_lock = threading.Lock()
 # WeakKeyDictionary so memoization never keeps an otherwise-unreferenced
-# engine (and its pool/connections) alive.
-_schema_created: "weakref.WeakKeyDictionary[Engine, bool]" = weakref.WeakKeyDictionary()
+# engine (and its pool/connections) alive. Keyed by engine, valued by the
+# set of table names already confirmed present on it -- not a bare bool --
+# so that a second, different `MetaData` (e.g. another domain sharing the
+# same physical engine) still gets its own tables created instead of being
+# short-circuited by an earlier, unrelated metadata's success.
+_schema_created: "weakref.WeakKeyDictionary[Engine, set[str]]" = (
+    weakref.WeakKeyDictionary()
+)
 
 
 def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) -> bool:
     """Ensure ``metadata``'s tables exist on ``engine``, lazily and once.
 
-    Memoizes per engine so repeat calls after the first successful check are
-    a dict lookup, not a schema inspection. Pass ``force=True`` to bypass
-    the memoized fast path and re-run ``create_all`` unconditionally.
+    Memoizes per ``(engine, table name)`` so repeat calls for a metadata
+    whose tables are already known-present are a set-membership check, not a
+    schema inspection -- while a *different* metadata sharing the same
+    engine (multiple domains against one physical DB) still gets its own
+    tables created on its first call. Pass ``force=True`` to bypass the
+    memoized fast path and re-run ``create_all`` unconditionally.
 
     Returns:
         ``True`` if table creation was executed, ``False`` if the schema
         was already known to be present.
     """
-    if not force and _schema_created.get(engine):
+    defined_tables = set(metadata.tables.keys())
+    known_tables = _schema_created.get(engine, set())
+    if not force and defined_tables <= known_tables:
         return False
 
     with _schema_lock:
-        if not force and _schema_created.get(engine):
+        known_tables = _schema_created.get(engine, set())
+        if not force and defined_tables <= known_tables:
             return False
 
         try:
@@ -157,17 +169,14 @@ def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) ->
         except SQLAlchemyError:
             existing_tables = set()
 
-        defined_tables = set(metadata.tables.keys())
         missing_tables = defined_tables - existing_tables
 
         should_create = force or bool(missing_tables)
         if should_create:
             metadata.create_all(bind=engine)
-            _schema_created[engine] = True
-            return True
 
-        _schema_created[engine] = True
-        return False
+        _schema_created[engine] = known_tables | defined_tables
+        return should_create
 
 
 @contextmanager

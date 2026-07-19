@@ -99,6 +99,19 @@ def get_or_create_stock(session: Session, symbol: str) -> int:
     return stock_id
 
 
+def list_symbols(session: Session) -> list[str]:
+    """Return every symbol registered in ``md_stocks``, alphabetically.
+
+    The public entry point other domains (e.g. screening's default universe)
+    use to enumerate known symbols without reaching into ``MD_STOCKS`` directly.
+    """
+    return list(
+        session.execute(
+            select(MD_STOCKS.c.symbol).distinct().order_by(MD_STOCKS.c.symbol)
+        ).scalars()
+    )
+
+
 def read_price_range(
     session: Session, symbol: str, start: date, end: date
 ) -> pd.DataFrame:

@@ -3,7 +3,7 @@
 import gc
 
 import pytest
-from sqlalchemy import Column, Integer, MetaData, String, Table, insert, select
+from sqlalchemy import Column, Integer, MetaData, String, Table, insert, inspect, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool, QueuePool
 
@@ -49,6 +49,27 @@ def test_ensure_schema_is_lazy_and_idempotent(tmp_path):
     assert ensure_schema(engine, METADATA) is True
     assert ensure_schema(engine, METADATA) is False
     assert ensure_schema(engine, METADATA, force=True) is True
+
+
+def test_ensure_schema_creates_a_second_metadatas_tables_on_a_shared_engine(tmp_path):
+    """Regression test: two domains sharing one physical engine (e.g.
+    market_data and screening against the same DB file) must each get their
+    own tables created, even though an earlier `ensure_schema` call for a
+    *different* `MetaData` already ran on that same engine.
+
+    Before the per-table memoization fix, the plain per-engine boolean
+    short-circuited this second call and `other_items` was silently never
+    created.
+    """
+    other_metadata = MetaData()
+    Table("other_items", other_metadata, Column("id", Integer, primary_key=True))
+
+    engine = create_engine_from_settings(_settings(tmp_path))
+    assert ensure_schema(engine, METADATA) is True
+    assert ensure_schema(engine, other_metadata) is True
+
+    existing_tables = set(inspect(engine).get_table_names())
+    assert {"items", "other_items"} <= existing_tables
 
 
 def test_session_scope_commits_on_success(tmp_path):
