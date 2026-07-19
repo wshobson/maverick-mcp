@@ -207,9 +207,9 @@ def test_market_overview_composes():
 - Produces: SQLAlchemy metadata `METADATA`; tables `md_stocks` (id PK autoincrement, symbol TEXT unique indexed, company_name TEXT nullable) and `md_price_bars` (stock_id FK, date DATE, open/high/low/close NUMERIC(12,4), volume BIGINT, unique (stock_id, date)); functions `get_or_create_stock(session, symbol) -> int`, `read_price_range(session, symbol, start, end) -> pd.DataFrame` (columns Open/High/Low/Close/Volume, tz-naive DatetimeIndex named "Date", empty frame with those columns when no rows), `write_price_bars(session, symbol, df) -> int` (dedupes on existing dates, accepts yfinance-cased columns, returns newly inserted count), `cached_date_range(session, symbol) -> tuple[date, date] | None`.
 - Consumes: `maverick.platform.db` (`ensure_schema`, `session_scope`) in tests.
 
-- [ ] **Step 1: Write the failing tests** — concrete pytest against a tmp_path SQLite engine built with `create_engine_from_settings` + `ensure_schema(engine, METADATA)`: write 5 bars, read full range back (frame equality on values and index); write overlapping 3 bars (2 new), assert return == 2 and no duplicate rows; read partial range; empty read returns empty frame with the right columns; `cached_date_range` returns min/max, None when empty; `get_or_create_stock` is idempotent.
-- [ ] **Step 2: RED.** **Step 3: Implement.** **Step 4: GREEN + full gate.**
-- [ ] **Step 5: Commit** `feat(market-data): add price persistence layer`.
+- [x] **Step 1: Write the failing tests** — concrete pytest against a tmp_path SQLite engine built with `create_engine_from_settings` + `ensure_schema(engine, METADATA)`: write 5 bars, read full range back (frame equality on values and index); write overlapping 3 bars (2 new), assert return == 2 and no duplicate rows; read partial range; empty read returns empty frame with the right columns; `cached_date_range` returns min/max, None when empty; `get_or_create_stock` is idempotent.
+- [x] **Step 2: RED.** **Step 3: Implement.** **Step 4: GREEN + full gate.**
+- [x] **Step 5: Commit** `feat(market-data): add price persistence layer`.
 
 ---
 
