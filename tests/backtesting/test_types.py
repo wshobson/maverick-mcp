@@ -159,7 +159,10 @@ def _make_backtest_result(**overrides) -> BacktestResult:
         "parameters": {"fast_period": 10, "slow_period": 20},
         "metrics": _make_metrics(),
         "trades": [_make_trade()],
-        "equity_curve": {"1704412800000000000": 10000.0, "1704499200000000000": 10100.0},
+        "equity_curve": {
+            "1704412800000000000": 10000.0,
+            "1704499200000000000": 10100.0,
+        },
         "drawdown_series": {"1704412800000000000": 0.0, "1704499200000000000": -0.01},
         "start_date": "2023-01-01",
         "end_date": "2024-01-01",
@@ -345,10 +348,22 @@ def test_monte_carlo_result_round_trips_through_model_dump():
         num_simulations=1000,
         expected_return=0.15,
         return_std=0.08,
-        return_percentiles={"p5": -0.05, "p25": 0.08, "p50": 0.14, "p75": 0.22, "p95": 0.35},
+        return_percentiles={
+            "p5": -0.05,
+            "p25": 0.08,
+            "p50": 0.14,
+            "p75": 0.22,
+            "p95": 0.35,
+        },
         expected_drawdown=-0.12,
         drawdown_std=0.05,
-        drawdown_percentiles={"p5": -0.25, "p25": -0.16, "p50": -0.11, "p75": -0.07, "p95": -0.02},
+        drawdown_percentiles={
+            "p5": -0.25,
+            "p25": -0.16,
+            "p50": -0.11,
+            "p75": -0.07,
+            "p95": -0.02,
+        },
         probability_profit=0.82,
         var_95=-0.05,
         summary="Monte Carlo simulation shows 15.0% expected return",
@@ -476,7 +491,11 @@ def test_ml_training_result_round_trips_through_model_dump():
         data_points=500,
         target_periods=5,
         return_threshold=0.02,
-        model_parameters={"n_estimators": 100, "max_depth": None, "min_samples_split": 2},
+        model_parameters={
+            "n_estimators": 100,
+            "max_depth": None,
+            "min_samples_split": 2,
+        },
         training_metrics={"train_accuracy": 0.61, "n_samples": 500, "n_features": 12},
     )
     data = result.model_dump()
@@ -485,7 +504,9 @@ def test_ml_training_result_round_trips_through_model_dump():
 
 
 def test_market_regime_analysis_round_trips_with_int_keyed_dicts():
-    entry = RegimeHistoryEntry(date="2024-01-05", regime=2, probabilities=[0.1, 0.2, 0.7])
+    entry = RegimeHistoryEntry(
+        date="2024-01-05", regime=2, probabilities=[0.1, 0.2, 0.7]
+    )
     result = MarketRegimeAnalysis(
         symbol="AAPL",
         analysis_period="2023-01-01 to 2024-01-01",
