@@ -30,7 +30,6 @@ def test_defaults_are_zero_config():
     assert s.correlation_min_rows == 30
     assert s.compare_default_days == 90
     assert s.risk_account_size == 100000
-    assert s.price_lookback_days == 7
     assert s.history_pad_calendar_days == 400
     assert s.max_shares == 10**9
     assert s.max_price == 10**6

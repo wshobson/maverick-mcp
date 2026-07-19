@@ -39,4 +39,4 @@ One line per item. Remove the line in the same change that removes the debt.
 | run_screen executes rubrics on the event loop; wrap in to_thread if universe_max grows | `maverick/screening/service.py` | deferred |
 | legacy mcp_portfolios/mcp_portfolio_positions retire at cutover; optional one-shot migration script decision at cutover | legacy tree | cutover |
 | risk_dashboard must consume PortfolioService reads when ported | `maverick_mcp/api/routers/risk_dashboard.py` | cutover |
-| `PortfolioSettings.price_lookback_days` unused (get_portfolio uses quotes, not history); remove or wire at server assembly | `maverick/portfolio/config.py` | cutover |
+| `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |

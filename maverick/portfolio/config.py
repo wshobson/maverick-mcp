@@ -22,7 +22,6 @@ class PortfolioSettings(BaseModel):
     risk_account_size: int = Field(
         default_factory=lambda: _env_int("PF_RISK_ACCOUNT_SIZE", 100000)
     )
-    price_lookback_days: int = 7
     history_pad_calendar_days: int = 400
     max_shares: int = 10**9
     max_price: int = 10**6
