@@ -335,6 +335,44 @@ def test_read_by_criteria_only_considers_bullish_screen(factory):
     assert matched == []
 
 
+def test_read_by_criteria_only_considers_latest_date(factory):
+    # Older snapshot's row would ALSO satisfy every criterion below -- if
+    # read_by_criteria scanned every bullish date instead of scoping to the
+    # latest one, OLD_MATCH would leak into the result alongside NEW_MATCH.
+    older_rows = [
+        _result(
+            "OLD_MATCH",
+            combined_score=90,
+            momentum_score=80.0,
+            close=100.0,
+            indicators={"volume": 2_000_000.0},
+        )
+    ]
+    newer_rows = [
+        _result(
+            "NEW_MATCH",
+            combined_score=90,
+            momentum_score=80.0,
+            close=100.0,
+            indicators={"volume": 2_000_000.0},
+        )
+    ]
+    with session_scope(factory) as session:
+        replace_screen_snapshot(session, "bullish", "2026-07-17", older_rows)
+        replace_screen_snapshot(session, "bullish", "2026-07-19", newer_rows)
+
+    criteria = ScreeningCriteria(
+        min_momentum_score=50.0,
+        min_volume=1_000_000,
+        max_price=200.0,
+        min_combined_score=50,
+    )
+    with session_scope(factory) as session:
+        matched = read_by_criteria(session, criteria, limit=10)
+
+    assert [r.symbol for r in matched] == ["NEW_MATCH"]
+
+
 # --- JSON / round-trip fidelity --------------------------------------------
 
 
