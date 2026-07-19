@@ -352,7 +352,7 @@ git commit -m "feat(platform): add structured logging telemetry module"
 **Interfaces:**
 - Produces: `serialize(value) -> bytes`; `deserialize(payload: bytes)`; `ensure_timezone_naive(df: pd.DataFrame) -> pd.DataFrame`. Round-trip fidelity for DataFrames (index, columns, dtypes), dicts of DataFrames, and JSON-safe structures including datetime, date, pd.Timestamp, pd.Series, and set.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/platform/test_serde.py` (complete file):
 
@@ -421,16 +421,16 @@ def test_timezone_aware_index_normalized():
     assert round_tripped.index.tz is None
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/platform/test_serde.py -q`
 Expected: FAIL with `ModuleNotFoundError`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Preserve the legacy cascade semantics: DataFrames and dicts of DataFrames become msgpack+zlib with index, column, and dtype round-tripping and timezone normalization to naive; other msgpack-safe values use plain msgpack; everything else falls back to JSON with a default handler for datetime, date, Timestamp, Series, and set. `deserialize` sniffs the zlib magic bytes first, then tries msgpack, then JSON. Tag payloads internally so DataFrame payloads are distinguishable from plain msgpack (the legacy sniffing approach is acceptable; an explicit one-byte prefix is cleaner and also acceptable).
 
-- [ ] **Step 4: Run to verify pass, then commit**
+- [x] **Step 4: Run to verify pass, then commit**
 
 ```bash
 git add maverick/platform/serde.py tests/platform/test_serde.py docs/exec-plans/active/2026-07-18-phase-1-platform-seam.md
