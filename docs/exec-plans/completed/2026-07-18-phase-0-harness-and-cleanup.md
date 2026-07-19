@@ -919,7 +919,7 @@ Expected: the run completes green.
   to `docs/exec-plans/completed/`
 - Modify: `docs/CATALOG.md` (update the plan's path)
 
-- [ ] **Step 1: Full verification**
+- [x] **Step 1: Full verification**
 
 ```bash
 make check
@@ -929,7 +929,7 @@ make docs-check
 
 Expected: all pass.
 
-- [ ] **Step 2: Move the plan to completed and update the catalog**
+- [x] **Step 2: Move the plan to completed and update the catalog**
 
 ```bash
 git mv docs/exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md \
@@ -939,7 +939,7 @@ git mv docs/exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md \
 Update the plan's row in `docs/CATALOG.md` to the new path. Run
 `make docs-check` and expect pass.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add -A

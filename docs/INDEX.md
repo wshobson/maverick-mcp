@@ -29,7 +29,7 @@ use this index as the map to deeper, versioned sources of truth.
 
 - `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
   design and migration plan.
-- `exec-plans/active/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
+- `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
   execution plan.
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface
