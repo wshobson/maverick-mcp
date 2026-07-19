@@ -142,7 +142,7 @@ test-strategies:
 lint:
 	@echo "Running linter..."
 	@uv run --extra dev ruff check .
-	uv run lint-imports
+	@uv run lint-imports
 
 format:
 	@echo "Formatting code..."

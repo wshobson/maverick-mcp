@@ -268,9 +268,6 @@ _fastmcp_instance = FastMCP(
 )
 mcp = cast(FastMCPProtocol, _fastmcp_instance)
 
-# Initialize connection manager for stability
-connection_manager = None
-
 # TEMPORARILY DISABLED: MCP logging middleware - was breaking SSE transport
 # TODO: Fix middleware to work properly with SSE transport
 # logger.info("Adding comprehensive MCP logging middleware...")
@@ -332,10 +329,6 @@ logger.info("Monitoring and observability systems initialized")
 # ENHANCED CONNECTION MANAGEMENT: Register tools through connection manager
 # This ensures tools persist through connection cycles and prevents disappearing tools
 logger.info("Initializing enhanced connection management system...")
-
-# Import connection manager and SSE optimizer
-# Connection management imports disabled for compatibility
-# from maverick_mcp.infrastructure.connection_manager import initialize_connection_management
 
 # Register all tools from routers directly for basic functionality
 register_all_router_tools(_fastmcp_instance)
@@ -958,56 +951,6 @@ async def get_economic_calendar(days_ahead: int = 7) -> dict[str, Any]:
     except Exception as e:
         logger.error(f"Error getting economic calendar: {str(e)}")
         return {"error": str(e), "status": "error"}
-
-
-@mcp.tool()
-async def get_mcp_connection_status() -> dict[str, Any]:
-    """
-    Get current MCP connection status for debugging connection stability issues.
-
-    Returns detailed information about active connections, tool registration status,
-    and connection health metrics to help diagnose disappearing tools.
-    """
-    try:
-        global connection_manager
-        if connection_manager is None:
-            return {
-                "error": "Connection manager not initialized",
-                "status": "error",
-                "server_mode": "simple_stock_analysis",
-                "timestamp": datetime.now(UTC).isoformat(),
-            }
-
-        # Get connection status from manager
-        status = connection_manager.get_connection_status()
-
-        # Add additional debugging info
-        status.update(
-            {
-                "server_mode": "simple_stock_analysis",
-                "mcp_server_name": settings.app_name,
-                "transport_modes": ["stdio", "sse", "streamable-http"],
-                "debugging_info": {
-                    "tools_should_be_visible": status["tools_registered"],
-                    "recommended_action": (
-                        "Tools are registered and should be visible"
-                        if status["tools_registered"]
-                        else "Tools not registered - check connection manager"
-                    ),
-                },
-                "timestamp": datetime.now(UTC).isoformat(),
-            }
-        )
-
-        return status
-
-    except Exception as e:
-        logger.error(f"Error getting connection status: {str(e)}")
-        return {
-            "error": str(e),
-            "status": "error",
-            "timestamp": datetime.now(UTC).isoformat(),
-        }
 
 
 # ============================================================================
@@ -1654,18 +1597,6 @@ if __name__ == "__main__":
                 logger.error(f"Error stopping health monitoring: {e}")
 
         shutdown_handler.register_cleanup(cleanup_health_monitoring)
-
-        # Register connection manager cleanup
-        async def cleanup_connection_manager():
-            """Cleanup connection manager during shutdown."""
-            try:
-                if connection_manager:
-                    await connection_manager.shutdown()
-                    logger.info("Connection manager shutdown complete")
-            except Exception as e:
-                logger.error(f"Error shutting down connection manager: {e}")
-
-        shutdown_handler.register_cleanup(cleanup_connection_manager)
 
         # Register cache cleanup
         def close_cache():

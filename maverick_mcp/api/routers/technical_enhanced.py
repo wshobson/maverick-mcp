@@ -124,7 +124,7 @@ async def _execute_technical_analysis_with_logging(
 ) -> dict[str, Any]:
     """Execute technical analysis with comprehensive step-by-step logging."""
 
-    # Step 2: Fetch stock data
+    # Step 1: Fetch stock data
     tool_logger.step("data_fetch", f"Fetching {days} days of data for {ticker}")
     try:
         df = await asyncio.wait_for(
@@ -143,7 +143,7 @@ async def _execute_technical_analysis_with_logging(
     except Exception as e:
         raise TechnicalAnalysisError(f"Failed to fetch data for {ticker}: {str(e)}")
 
-    # Step 3: Calculate basic indicators (parallel execution)
+    # Step 2: Calculate basic indicators (parallel execution)
     tool_logger.step("basic_indicators", "Calculating RSI, MACD, Stochastic")
     try:
         # Run basic indicators in parallel with timeouts
@@ -166,7 +166,7 @@ async def _execute_technical_analysis_with_logging(
     except Exception as e:
         raise TechnicalAnalysisError(f"Basic indicator calculation failed: {str(e)}")
 
-    # Step 4: Calculate advanced indicators
+    # Step 3: Calculate advanced indicators
     tool_logger.step(
         "advanced_indicators", "Calculating Bollinger Bands, Volume analysis"
     )
@@ -188,7 +188,7 @@ async def _execute_technical_analysis_with_logging(
     except Exception as e:
         raise TechnicalAnalysisError(f"Advanced indicator calculation failed: {str(e)}")
 
-    # Step 5: Pattern recognition and levels
+    # Step 4: Pattern recognition and levels
     tool_logger.step(
         "pattern_analysis", "Identifying patterns and support/resistance levels"
     )
@@ -213,7 +213,7 @@ async def _execute_technical_analysis_with_logging(
     except Exception as e:
         raise TechnicalAnalysisError(f"Pattern analysis failed: {str(e)}")
 
-    # Step 6: Generate outlook
+    # Step 5: Generate outlook
     tool_logger.step("outlook_generation", "Generating market outlook")
     try:
         outlook = await asyncio.wait_for(
@@ -234,7 +234,7 @@ async def _execute_technical_analysis_with_logging(
     except Exception as e:
         raise TechnicalAnalysisError(f"Outlook generation failed: {str(e)}")
 
-    # Step 7: Compile final results
+    # Step 6: Compile final results
     tool_logger.step("result_compilation", "Compiling final analysis results")
     try:
         current_price = float(df["close"].iloc[-1])
