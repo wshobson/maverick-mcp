@@ -206,12 +206,18 @@ async def test_run_all_screens_persists_exact_rows_and_counts(tmp_path):
         # All 4 universe symbols are attempted per screen, including "ERR"
         # (its failed fetch is counted here, not silently dropped).
         assert run.symbols_screened == 4
+        assert run.symbols_failed == 1
         assert run.date_analyzed == date.today().isoformat()
         assert run.duration_seconds >= 0.0
 
     assert runs["bullish"].symbols_qualified == 1
     assert runs["bearish"].symbols_qualified == 1
     assert runs["supply_demand"].symbols_qualified == 1
+
+    # Fetch-once/score-thrice: each universe symbol's history is fetched
+    # exactly once for the whole sweep, not once per screen (3x).
+    assert len(market_data.calls) == len(_UNIVERSE)
+    assert {call[0] for call in market_data.calls} == set(_UNIVERSE)
 
     bullish_rows = await service.get_bullish()
     assert [r.symbol for r in bullish_rows] == ["BULL"]
@@ -235,6 +241,7 @@ async def test_run_screen_single_screen_only_touches_that_screen(tmp_path):
     assert run.screen == "bullish"
     assert run.symbols_screened == 4
     assert run.symbols_qualified == 1
+    assert run.symbols_failed == 1
 
     # bearish and supply_demand were never run: their tables stay empty.
     assert await service.get_bearish() == []
@@ -270,6 +277,7 @@ async def test_universe_is_capped_at_settings_universe_max(tmp_path):
     run = await service.run_screen("bullish")
 
     assert run.symbols_screened == 2
+    assert run.symbols_failed == 0
     # Only the first two universe entries ("BULL", "BEAR") were fetched.
     assert {call[0] for call in market_data.calls} == {"BULL", "BEAR"}
 
@@ -282,7 +290,60 @@ async def test_fetch_failure_is_skipped_and_logged_not_fatal(tmp_path, caplog):
 
     assert run.symbols_screened == 4
     assert run.symbols_qualified == 1
+    assert run.symbols_failed == 1
     assert any("ERR" in record.message for record in caplog.records)
+
+
+async def test_zero_successful_fetches_preserves_prior_snapshot(tmp_path, caplog):
+    """When every fetch in a sweep fails, `replace_screen_snapshot` must be
+    skipped entirely, not called with an empty row list.
+
+    Skipping matters specifically when a good snapshot is already persisted
+    for *today's* date: `replace_screen_snapshot` deletes-then-inserts by
+    exact `screen`/`date_analyzed` match, so calling it unconditionally with
+    zero qualifying rows would delete today's good rows and insert nothing,
+    wiping the snapshot. Seeding a good snapshot for today and then running
+    a fully-failing compute reproduces that wipe unless the gate holds.
+    """
+    engine = _engine(tmp_path)
+    ensure_schema(engine, METADATA)
+    good_rows = [
+        ScreeningResult(
+            symbol="BULL",
+            screen="bullish",
+            date_analyzed=date.today().isoformat(),
+            close=150.0,
+            combined_score=120,
+            momentum_score=None,
+            indicators={"close": 150.0},
+            flags={"close_above_sma50": True},
+            reason="seeded good snapshot",
+        )
+    ]
+    with session_scope(sessionmaker(bind=engine)) as session:
+        replace_screen_snapshot(session, "bullish", date.today().isoformat(), good_rows)
+
+    always_failing_market_data = StubMarketData(frames={}, errors=set(_UNIVERSE))
+    service = ScreeningService(
+        engine,
+        always_failing_market_data,
+        universe_fn=lambda: list(_UNIVERSE),
+    )
+
+    with caplog.at_level("WARNING"):
+        run = await service.run_screen("bullish")
+
+    assert run.symbols_screened == len(_UNIVERSE)
+    assert run.symbols_failed == len(_UNIVERSE)
+    assert run.symbols_qualified == 0
+    assert any(
+        "bullish" in record.message and "skipping" in record.message
+        for record in caplog.records
+    )
+
+    rows = await service.get_bullish()
+    assert [r.symbol for r in rows] == ["BULL"]
+    assert rows[0].combined_score == 120
 
 
 # ---------------------------------------------------------------------------

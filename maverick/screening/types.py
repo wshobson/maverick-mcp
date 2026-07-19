@@ -30,6 +30,7 @@ class ScreenRun(BaseModel):
     screen: ScreenName
     symbols_screened: int
     symbols_qualified: int
+    symbols_failed: int
     date_analyzed: str
     duration_seconds: float
 

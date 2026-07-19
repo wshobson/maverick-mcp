@@ -26,11 +26,14 @@ def _result(
     )
 
 
-def _run(screen: str, screened: int = 4, qualified: int = 1) -> ScreenRun:
+def _run(
+    screen: str, screened: int = 4, qualified: int = 1, failed: int = 0
+) -> ScreenRun:
     return ScreenRun(
         screen=screen,  # type: ignore[arg-type]
         symbols_screened=screened,
         symbols_qualified=qualified,
+        symbols_failed=failed,
         date_analyzed="2026-07-19",
         duration_seconds=0.42,
     )

@@ -98,6 +98,12 @@ def replace_screen_snapshot(
     ``rows`` are inserted fresh. Calling this twice with the same
     screen/date/rows is idempotent -- the stored row count never grows.
     Returns the number of rows inserted.
+
+    The persisted ``date_analyzed`` is always the *run* date (when the
+    screen was computed), not each row's own ``date_analyzed`` field (the
+    last bar date from the price history, which can lag on a stale or
+    partial fetch); the persisted, per-snapshot value is what callers get
+    back on read, regardless of what any individual row carried in.
     """
     target_date = _to_date(date_analyzed)
     session.execute(

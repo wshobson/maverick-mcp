@@ -67,6 +67,7 @@ def test_screen_run_roundtrips_through_model_dump():
         screen="bullish",
         symbols_screened=500,
         symbols_qualified=12,
+        symbols_failed=3,
         date_analyzed="2026-07-19",
         duration_seconds=3.42,
     )
@@ -80,6 +81,7 @@ def test_screen_run_rejects_unknown_screen_name():
             screen="not_a_real_screen",  # ty: ignore[invalid-argument-type]
             symbols_screened=500,
             symbols_qualified=12,
+            symbols_failed=3,
             date_analyzed="2026-07-19",
             duration_seconds=3.42,
         )
