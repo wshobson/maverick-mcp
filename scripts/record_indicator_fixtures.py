@@ -3,8 +3,9 @@
 This script is the ONLY place in the repository allowed to import
 ``pandas_ta``. It builds two deterministic OHLCV fixtures (a 300-row seeded
 random walk and a 60-row constant series), runs pandas-ta's reference
-indicators against them with the compiled TA-Lib backend disabled
-(``talib=False``), and writes the inputs plus the last 200 output values to
+indicators -- sma, ema, rsi, atr, macd, bbands, stoch, adx -- against them
+with the compiled TA-Lib backend disabled (``talib=False``), and writes the
+inputs plus the last 200 output values to
 ``tests/technical/fixtures/indicator_goldens.json``.
 
 Run once to (re)generate the fixture:
@@ -87,6 +88,23 @@ def _record_frame(frame: pd.DataFrame, tail: int) -> dict[str, Any]:
         macd_df.iloc[:, 1],
         macd_df.iloc[:, 2],
     )
+    bbands_df = ta.bbands(close, length=20, std=2.0, talib=False)
+    bb_lower, bb_mid, bb_upper = (
+        bbands_df.iloc[:, 0],
+        bbands_df.iloc[:, 1],
+        bbands_df.iloc[:, 2],
+    )
+    stoch_df = ta.stoch(high, low, close, k=14, d=3, smooth_k=3, talib=False)
+    stoch_k, stoch_d = stoch_df.iloc[:, 0], stoch_df.iloc[:, 1]
+    # NOTE: pandas-ta's adx() does not forward talib=False to its internal
+    # ATR sub-call, so with the compiled TA-Lib backend installed (as it is
+    # here), the ADX warmup uses TA-Lib's classic Wilder ATR seeding (first
+    # value at row `length`, averaging TR[1:length+1]) rather than
+    # pandas-ta's own presma ATR (first value at row `length - 1`). See
+    # maverick/technical/indicators.py's adx() docstring for the matching
+    # pure-pandas derivation.
+    adx_df = ta.adx(high, low, close, length=14, talib=False)
+    adx_14 = adx_df["ADX_14"]
 
     return {
         "input": {
@@ -108,6 +126,16 @@ def _record_frame(frame: pd.DataFrame, tail: int) -> dict[str, Any]:
                 "signal": _series_to_json(signal_line.tail(tail)),
                 "histogram": _series_to_json(histogram.tail(tail)),
             },
+            "bbands_20_2.0": {
+                "mid": _series_to_json(bb_mid.tail(tail)),
+                "upper": _series_to_json(bb_upper.tail(tail)),
+                "lower": _series_to_json(bb_lower.tail(tail)),
+            },
+            "stoch_14_3_3": {
+                "k": _series_to_json(stoch_k.tail(tail)),
+                "d": _series_to_json(stoch_d.tail(tail)),
+            },
+            "adx_14": _series_to_json(adx_14.tail(tail)),
         },
     }
 

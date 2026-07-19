@@ -108,3 +108,99 @@ def atr(
     seeded.iloc[: period - 1] = np.nan
     seeded.iloc[period - 1] = true_range.iloc[:period].mean()
     return seeded.ewm(alpha=1 / period, adjust=False).mean()
+
+
+def bollinger(close: pd.Series, length: int = 20, std: float = 2.0) -> pd.DataFrame:
+    """Bollinger bands: an SMA midline plus/minus a rolling standard
+    deviation multiple.
+
+    Returns a DataFrame with columns ``mid`` (the ``length``-period SMA),
+    ``upper`` (``mid + std * rolling_std``), and ``lower``
+    (``mid - std * rolling_std``). The rolling standard deviation uses
+    ``ddof=1`` (pandas' default, sample stdev) -- this matches pandas-ta's
+    ``bbands()`` default, which only switches to ``ddof=0`` when explicitly
+    requested.
+    """
+    mid = close.rolling(window=length, min_periods=length).mean()
+    rolling_std = close.rolling(window=length, min_periods=length).std(ddof=1)
+    upper = mid + std * rolling_std
+    lower = mid - std * rolling_std
+    return pd.DataFrame({"mid": mid, "upper": upper, "lower": lower})
+
+
+def stochastic(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    k: int = 14,
+    d: int = 3,
+    smooth_k: int = 3,
+) -> pd.DataFrame:
+    """Stochastic oscillator: %K (the close's position within the
+    ``k``-period high/low range, smoothed by ``smooth_k``) and %D (a
+    ``d``-period SMA of %K).
+
+    Returns a DataFrame with columns ``k`` and ``d``. Matches pandas-ta's
+    ``stoch()``: if the ``k``-period high/low range is ever exactly zero
+    anywhere in the series, a machine-epsilon offset is added to the whole
+    range series (not just the zero entries) before dividing, mirroring
+    pandas-ta's ``non_zero_range`` helper.
+    """
+    lowest_low = low.rolling(window=k, min_periods=k).min()
+    highest_high = high.rolling(window=k, min_periods=k).max()
+    price_range = highest_high - lowest_low
+    if (price_range == 0).any():
+        price_range = price_range + np.finfo(float).eps
+    raw_k = 100 * (close - lowest_low) / price_range
+    k_line = raw_k.rolling(window=smooth_k, min_periods=smooth_k).mean()
+    d_line = k_line.rolling(window=d, min_periods=d).mean()
+    return pd.DataFrame({"k": k_line, "d": d_line})
+
+
+def adx(
+    high: pd.Series, low: pd.Series, close: pd.Series, length: int = 14
+) -> pd.Series:
+    """Average directional index: the Wilder-smoothed strength of the
+    dominant directional movement.
+
+    Built from Wilder-smoothed +DM/-DM (``rma``, i.e.
+    ``ewm(alpha=1/length, adjust=False)`` with no extra seeding -- the first
+    valid +DM/-DM row stands as its own initial value) divided by a
+    Wilder-smoothed average true range, then a Wilder-smoothed DX
+    (``100 * |+DM - -DM| / (+DM + -DM)``).
+
+    The ATR term here intentionally does NOT match this module's own
+    :func:`atr`: pandas-ta's ``adx()`` calls its internal ATR helper without
+    forwarding ``talib=False``, so when the compiled TA-Lib backend is
+    installed (as it is in this project's dev environment), that inner ATR
+    silently uses TA-Lib's classic Wilder seeding instead of pandas-ta's own
+    presma ATR. TA-Lib's convention needs one more bar of warmup: the first
+    ATR value sits at row ``length`` (not ``length - 1``) and is the mean of
+    the true-range values at rows ``1..length`` (row 0 has no prior close,
+    so it is excluded from both the seed and the NaN-warmup count). This is
+    the golden this function was recorded against -- see
+    ``scripts/record_indicator_fixtures.py``.
+    """
+    if len(close) < length + 1:
+        return pd.Series(np.nan, index=close.index, dtype=float)
+
+    prev_close = close.shift(1)
+    true_range = pd.concat(
+        [high - low, (high - prev_close).abs(), (low - prev_close).abs()], axis=1
+    ).max(axis=1)
+    seeded_tr = true_range.astype(float).copy()
+    seeded_tr.iloc[:length] = np.nan
+    seeded_tr.iloc[length] = true_range.iloc[1 : length + 1].mean()
+    atr_ = seeded_tr.ewm(alpha=1 / length, adjust=False).mean()
+
+    up_move = high - high.shift(1)
+    down_move = low.shift(1) - low
+    plus_dm = ((up_move > down_move) & (up_move > 0)) * up_move
+    minus_dm = ((down_move > up_move) & (down_move > 0)) * down_move
+
+    scalar = 100.0
+    k = scalar / atr_
+    plus_di = k * plus_dm.ewm(alpha=1 / length, adjust=False).mean()
+    minus_di = k * minus_dm.ewm(alpha=1 / length, adjust=False).mean()
+    dx = scalar * (plus_di - minus_di).abs() / (plus_di + minus_di)
+    return dx.ewm(alpha=1 / length, adjust=False).mean()

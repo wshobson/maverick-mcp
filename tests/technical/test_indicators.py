@@ -15,7 +15,16 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from maverick.technical.indicators import atr, ema, macd, rsi, sma
+from maverick.technical.indicators import (
+    adx,
+    atr,
+    bollinger,
+    ema,
+    macd,
+    rsi,
+    sma,
+    stochastic,
+)
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "indicator_goldens.json"
 GOLDENS = json.loads(FIXTURE_PATH.read_text())
@@ -95,6 +104,51 @@ def test_macd_columns():
     assert list(result.columns) == ["macd", "signal", "histogram"]
 
 
+@pytest.mark.parametrize("frame_name", ["random_walk", "constant"])
+def test_bollinger_matches_golden(frame_name):
+    frame = _frame(frame_name)
+    golden = GOLDENS[frame_name]
+    result = bollinger(frame["close"], length=20, std=2.0)
+    expected = golden["expected"]["bbands_20_2.0"]
+    tail = golden["tail"]
+    _assert_matches_golden(result["mid"], expected["mid"], tail)
+    _assert_matches_golden(result["upper"], expected["upper"], tail)
+    _assert_matches_golden(result["lower"], expected["lower"], tail)
+
+
+def test_bollinger_columns():
+    frame = _frame("random_walk")
+    result = bollinger(frame["close"])
+    assert list(result.columns) == ["mid", "upper", "lower"]
+
+
+@pytest.mark.parametrize("frame_name", ["random_walk", "constant"])
+def test_stochastic_matches_golden(frame_name):
+    frame = _frame(frame_name)
+    golden = GOLDENS[frame_name]
+    result = stochastic(
+        frame["high"], frame["low"], frame["close"], k=14, d=3, smooth_k=3
+    )
+    expected = golden["expected"]["stoch_14_3_3"]
+    tail = golden["tail"]
+    _assert_matches_golden(result["k"], expected["k"], tail)
+    _assert_matches_golden(result["d"], expected["d"], tail)
+
+
+def test_stochastic_columns():
+    frame = _frame("random_walk")
+    result = stochastic(frame["high"], frame["low"], frame["close"])
+    assert list(result.columns) == ["k", "d"]
+
+
+@pytest.mark.parametrize("frame_name", ["random_walk", "constant"])
+def test_adx_matches_golden(frame_name):
+    frame = _frame(frame_name)
+    golden = GOLDENS[frame_name]
+    result = adx(frame["high"], frame["low"], frame["close"], length=14)
+    _assert_matches_golden(result, golden["expected"]["adx_14"], golden["tail"])
+
+
 # --- edge cases -------------------------------------------------------------
 
 
@@ -151,4 +205,76 @@ def test_rsi_defined_for_constant_series():
 def test_rsi_constant_series_has_no_infinite_values():
     close = pd.Series([50.0] * 30)
     result = rsi(close, period=14)
+    assert not np.isinf(result.to_numpy(dtype=float)).any()
+
+
+def test_bollinger_period_longer_than_series_is_all_nan():
+    close = pd.Series(np.arange(10, dtype=float))
+    result = bollinger(close, length=20)
+    assert result["mid"].isna().all()
+    assert result["upper"].isna().all()
+    assert result["lower"].isna().all()
+    assert len(result) == len(close)
+
+
+def test_bollinger_constant_series_has_zero_width():
+    """A flat close series has zero rolling std; the mid/upper/lower bands
+    collapse to the same constant value once the window is full."""
+    close = pd.Series([100.0] * 30)
+    result = bollinger(close, length=20, std=2.0)
+    valid = result.iloc[19:]
+    assert (valid["mid"] == 100.0).all()
+    assert (valid["upper"] == 100.0).all()
+    assert (valid["lower"] == 100.0).all()
+
+
+def test_stochastic_period_longer_than_series_is_all_nan():
+    close = pd.Series(np.arange(10, dtype=float))
+    high = close + 1
+    low = close - 1
+    result = stochastic(high, low, close, k=14, d=3, smooth_k=3)
+    assert result["k"].isna().all()
+    assert result["d"].isna().all()
+    assert len(result) == len(close)
+
+
+def test_stochastic_zero_range_series_is_defined_not_infinite():
+    """A fully flat high == low == close series drives the k-period range
+    to zero; pandas-ta guards this with a machine-epsilon offset rather
+    than dividing by zero, so %K/%D settle on 0.0 instead of NaN/inf."""
+    n = 30
+    close = pd.Series([100.0] * n)
+    high = pd.Series([100.0] * n)
+    low = pd.Series([100.0] * n)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = stochastic(high, low, close, k=14, d=3, smooth_k=3)
+    valid = result.iloc[19:]
+    assert not valid.isna().any().any()
+    assert (valid["k"] == 0.0).all()
+    assert (valid["d"] == 0.0).all()
+    assert not np.isinf(result.to_numpy(dtype=float)[19:]).any()
+
+
+def test_adx_period_longer_than_series_is_all_nan():
+    close = pd.Series(np.arange(10, dtype=float))
+    high = close + 1
+    low = close - 1
+    result = adx(high, low, close, length=14)
+    assert result.isna().all()
+    assert len(result) == len(close)
+
+
+def test_adx_constant_series_is_defined_not_infinite():
+    """A flat OHLC series has zero directional movement forever, so +DM and
+    -DM are both zero and DX is a 0/0 NaN throughout -- ADX must resolve to
+    NaN rather than raising or warning on the division."""
+    n = 30
+    close = pd.Series([100.0] * n)
+    high = pd.Series([101.0] * n)
+    low = pd.Series([99.0] * n)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = adx(high, low, close, length=14)
+    assert result.isna().all()
     assert not np.isinf(result.to_numpy(dtype=float)).any()
