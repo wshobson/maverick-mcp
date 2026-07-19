@@ -17,7 +17,7 @@ One line per item. Remove the line in the same change that removes the debt.
 | `test_in_memory_server.py` hangs reading the `health://` resource via the in-memory client; quarantined `integration`, no root cause yet | `maverick_mcp/tests/` | cutover |
 | `test_models_functional.py` fixture bypasses lazy schema creation and fails on a fresh CI database; needs a fixture rewrite; quarantined `integration` | `maverick_mcp/tests/` | cutover |
 | `test_mcp_tool_fixes.py` is a vacuous duplicate of `test_mcp_tool_fixes_pytest.py`; deletion candidate | `maverick_mcp/tests/` | cutover |
-| `application/commands/` and `application/screening/` are unimported by production code | `maverick_mcp/application/` | cutover |
+| `application/commands/` is unimported by production code | `maverick_mcp/application/` | cutover |
 | Two typecheckers disagree: CI gates on ty, make check runs pyright; retire one or document ty as the gate | `Makefile`, `.github/workflows/ci.yml` | maintainer decision |
 | `tests/utils/test_quick_cache.py::test_cache_speedup` is a wall-clock timing flake (asserts >100x speedup) | `tests/utils/` | cutover |
 | `config/database.py` and `config/database_self_contained.py` are dead pool config, not ported to `maverick/platform/db.py` | `maverick_mcp/config/` | cutover |
