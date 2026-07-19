@@ -48,11 +48,11 @@ tools.py -> service.py -> {data.py, fetchers.py} -> config.py -> types.py
 **Interfaces:**
 - Produces: the enforced skeleton every later task fills in.
 
-- [ ] **Step 1: Create the package skeleton**
+- [x] **Step 1: Create the package skeleton**
 
 Each module gets only a one-line docstring stating its layer role (e.g. `"""Market data payload types. Bottom layer: imports nothing from this domain."""`). `__init__.py` is empty for now.
 
-- [ ] **Step 2: Add the import-linter contracts**
+- [x] **Step 2: Add the import-linter contracts**
 
 Append to `[tool.importlinter]`'s contracts in `pyproject.toml`:
 
@@ -75,7 +75,7 @@ source_modules = ["maverick.platform"]
 forbidden_modules = ["maverick.market_data"]
 ```
 
-- [ ] **Step 3: Write the contract-verification test**
+- [x] **Step 3: Write the contract-verification test**
 
 `tests/market_data/test_layers.py`:
 
@@ -96,11 +96,11 @@ def test_import_contracts_pass():
     assert "0 broken" in result.stdout
 ```
 
-- [ ] **Step 4: Verify pass, then prove the layers contract can fail**
+- [x] **Step 4: Verify pass, then prove the layers contract can fail**
 
 Run `uv run lint-imports` (expect: 4 kept, 0 broken). Temporarily add `import maverick.market_data.service  # noqa` to `types.py`, run `uv run lint-imports`, expect FAIL naming the layers contract. Revert. Rerun (4 kept).
 
-- [ ] **Step 5: Full gate, commit**
+- [x] **Step 5: Full gate, commit**
 
 ```bash
 git add maverick/market_data/ tests/market_data/ pyproject.toml docs/exec-plans/active/2026-07-19-phase-2-market-data-domain.md

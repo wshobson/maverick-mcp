@@ -181,3 +181,20 @@ name = "The legacy package never imports the new package"
 type = "forbidden"
 source_modules = ["maverick_mcp"]
 forbidden_modules = ["maverick"]
+
+[[tool.importlinter.contracts]]
+name = "Market data layers are forward-only"
+type = "layers"
+layers = [
+    "maverick.market_data.tools",
+    "maverick.market_data.service",
+    "maverick.market_data.data | maverick.market_data.fetchers",
+    "maverick.market_data.config",
+    "maverick.market_data.types",
+]
+
+[[tool.importlinter.contracts]]
+name = "The platform never imports domains"
+type = "forbidden"
+source_modules = ["maverick.platform"]
+forbidden_modules = ["maverick.market_data"]
