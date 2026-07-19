@@ -116,7 +116,7 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 **Files:** `maverick/screening/config.py`; `tests/screening/test_config.py`
 
 **Interfaces:** `ScreeningSettings` with env-backed fields defaulting to the legacy literals (env names in parens): `bullish_min_score: int = 50` (SCR_BULLISH_MIN_SCORE), `bear_min_score: int = 40` (SCR_BEAR_MIN_SCORE), `min_history_days: int = 200` (SCR_MIN_HISTORY_DAYS), `volume_surge_multiplier: float = 1.5`, `volume_decline_multiplier: float = 1.2`, `atr_contraction_multiplier: float = 0.8`, `rsi_overbought: float = 80.0`, `rsi_oversold: float = 30.0`, `default_limit: int = 20`, `max_limit: int = 100`, `universe_max: int = 200` (SCR_UNIVERSE_MAX; cap on symbols per run); plus `get_screening_settings()` / `reset_screening_settings()` using the platform helpers.
-- [ ] TDD steps mirroring market_data's config task (defaults, env overrides, singleton/reset). Commit `feat(screening): add domain settings`.
+- [x] TDD steps mirroring market_data's config task (defaults, env overrides, singleton/reset). Commit `feat(screening): add domain settings`.
 
 ---
 
