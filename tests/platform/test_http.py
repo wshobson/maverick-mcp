@@ -79,6 +79,41 @@ async def test_breaker_opens_after_threshold_and_recovers():
     assert breaker.state == "closed"
 
 
+async def test_half_open_admits_single_probe():
+    breaker = CircuitBreaker("svc", _settings(breaker_failure_threshold=1))
+
+    async def failing():
+        raise RuntimeError("down")
+
+    with pytest.raises(RuntimeError):
+        await breaker.call(failing)
+    assert breaker.state == "open"
+
+    await asyncio.sleep(0.06)
+
+    calls = 0
+
+    async def slow_probe():
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.05)
+        return "up"
+
+    results = await asyncio.gather(
+        *(breaker.call(slow_probe) for _ in range(5)), return_exceptions=True
+    )
+
+    successes = [r for r in results if r == "up"]
+    open_errors = [r for r in results if isinstance(r, CircuitOpenError)]
+    assert calls == 1
+    assert len(successes) == 1
+    assert len(open_errors) == 4
+    assert breaker.state == "closed"
+
+    assert await breaker.call(slow_probe) == "up"
+    assert breaker.state == "closed"
+
+
 def test_breaker_registry_returns_same_instance():
     a = get_breaker("tiingo", _settings())
     assert get_breaker("tiingo") is a

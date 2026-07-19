@@ -34,9 +34,13 @@ class CircuitBreaker:
     """Per-service circuit breaker: CLOSED -> OPEN -> HALF_OPEN -> CLOSED.
 
     Counts consecutive failures. Opens once the failure threshold is
-    reached. After the recovery window elapses, the next call is let
-    through in the HALF_OPEN state: success closes the breaker, failure
-    reopens it.
+    reached. After the recovery window elapses, a single call is let
+    through as a probe in the HALF_OPEN state: success closes the
+    breaker, failure reopens it with a fresh recovery window. An
+    `asyncio.Lock` guards state/counter transitions so that only the
+    task that performs the open->half_open transition becomes the
+    probe; every other concurrently-waiting caller fails fast with
+    `CircuitOpenError` instead of queueing behind the probe.
     """
 
     def __init__(self, name: str, settings: HttpSettings) -> None:
@@ -45,6 +49,7 @@ class CircuitBreaker:
         self._state = "closed"
         self._failure_count = 0
         self._opened_at: float | None = None
+        self._lock = asyncio.Lock()
 
     @property
     def state(self) -> str:
@@ -66,27 +71,37 @@ class CircuitBreaker:
     async def call(
         self, fn: Callable[..., Awaitable[T]], *args: Any, **kwargs: Any
     ) -> T:
-        if self._state == "open":
-            if self._seconds_until_half_open() > 0:
+        is_probe = False
+        async with self._lock:
+            if self._state == "open":
+                if self._seconds_until_half_open() > 0:
+                    raise CircuitOpenError(self.name, self._seconds_until_half_open())
+                # Recovery window elapsed: this task becomes the sole probe.
+                self._state = "half_open"
+                is_probe = True
+            elif self._state == "half_open":
+                # A probe is already in flight; fail fast rather than
+                # queueing behind its outcome.
                 raise CircuitOpenError(self.name, self._seconds_until_half_open())
-            self._state = "half_open"
 
         try:
             result = await fn(*args, **kwargs)
         except Exception:
-            if self._state == "half_open":
-                self._state = "open"
-                self._opened_at = time.monotonic()
-            else:
-                self._failure_count += 1
-                if self._failure_count >= self._settings.breaker_failure_threshold:
+            async with self._lock:
+                if is_probe:
                     self._state = "open"
                     self._opened_at = time.monotonic()
+                else:
+                    self._failure_count += 1
+                    if self._failure_count >= self._settings.breaker_failure_threshold:
+                        self._state = "open"
+                        self._opened_at = time.monotonic()
             raise
         else:
-            self._failure_count = 0
-            self._state = "closed"
-            self._opened_at = None
+            async with self._lock:
+                self._failure_count = 0
+                self._state = "closed"
+                self._opened_at = None
             return result
 
 
