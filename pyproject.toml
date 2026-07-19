@@ -217,6 +217,17 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
+name = "Technical layers are forward-only"
+type = "layers"
+layers = [
+    "maverick.technical.tools",
+    "maverick.technical.service",
+    "maverick.technical.indicators | maverick.technical.analysis",
+    "maverick.technical.config",
+    "maverick.technical.types",
+]
+
+[[tool.importlinter.contracts]]
 name = "The platform never imports domains"
 type = "forbidden"
 source_modules = ["maverick.platform"]
@@ -225,5 +236,11 @@ forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.tec
 [[tool.importlinter.contracts]]
 name = "The technical indicator core never imports domains"
 type = "forbidden"
-source_modules = ["maverick.technical"]
+source_modules = ["maverick.technical.indicators", "maverick.technical.analysis", "maverick.technical.config", "maverick.technical.types"]
 forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.portfolio"]
+
+[[tool.importlinter.contracts]]
+name = "Technical service and tools never import screening or portfolio"
+type = "forbidden"
+source_modules = ["maverick.technical.service", "maverick.technical.tools"]
+forbidden_modules = ["maverick.screening", "maverick.portfolio"]
