@@ -40,3 +40,6 @@ One line per item. Remove the line in the same change that removes the debt.
 | legacy mcp_portfolios/mcp_portfolio_positions retire at cutover; optional one-shot migration script decision at cutover | legacy tree | cutover |
 | risk_dashboard must consume PortfolioService reads when ported | `maverick_mcp/api/routers/risk_dashboard.py` | cutover |
 | `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |
+| legacy core/technical_analysis.py + technical routers + visualization.py + stock_helpers chain retire at cutover | `maverick_mcp/core/technical_analysis.py`, `maverick_mcp/api/routers/technical.py`, `maverick_mcp/api/routers/technical_enhanced.py`, `maverick_mcp/core/visualization.py`, `maverick_mcp/utils/stock_helpers.py` | cutover |
+| unwired validation models in maverick_mcp/validation/technical.py die with the legacy routers | `maverick_mcp/validation/technical.py` | cutover |
+| dead registry.get_tool('get_technical_indicators') references in legacy agents (falls back to mock tools) | `maverick_mcp/agents/technical_analysis.py`, `maverick_mcp/agents/market_analysis.py` | cutover or research port |

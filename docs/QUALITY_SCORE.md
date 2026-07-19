@@ -15,6 +15,6 @@ that changes the code, and note why.
 | `application/`, `api/dependencies/`, `domain/` | removed | Zombie layer deleted in phase 0; the legacy screening slice (`application/screening/`, `domain/screening/`, `infrastructure/screening/`) deleted in phase 3. |
 | `maverick/` (new) | A | Platform seam landed with full test coverage. Domains arrive next. |
 | `maverick/market_data/` | A | First domain through the seam. Layer contracts enforced, 130+ tests, injectable fetchers. |
-| `maverick/technical/` | A | Pure-Python indicators, golden-tested against pandas-ta at rtol=1e-9. |
+| `maverick/technical/` | A | Full domain: 8 golden-tested indicators, pure analysis rubrics with the legacy outlook bug fixed, a timeout-guarded service, and 4 canonical tools. |
 | `maverick/screening/` | A | Query and compute domain; rubric scores are exact-tested; fresh installs can self-populate. |
 | `maverick/portfolio/` | A | Decimal ledger ported from the tested domain layer; analyses on the seam; FK policy platform-owned. |
