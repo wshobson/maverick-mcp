@@ -198,3 +198,9 @@ name = "The platform never imports domains"
 type = "forbidden"
 source_modules = ["maverick.platform"]
 forbidden_modules = ["maverick.market_data"]
+
+[[tool.importlinter.contracts]]
+name = "The technical indicator core never imports domains"
+type = "forbidden"
+source_modules = ["maverick.technical"]
+forbidden_modules = ["maverick.market_data"]

@@ -79,11 +79,11 @@ cross-domain: screening service/data/screens MAY import maverick.technical and m
 **Interfaces:**
 - Pure functions on `pd.Series`/`pd.DataFrame`: `sma(close, period) -> pd.Series`; `ema(close, period) -> pd.Series` (pandas ewm, adjust=False); `rsi(close, period=14) -> pd.Series` (Wilder smoothing); `macd(close, fast=12, slow=26, signal=9) -> pd.DataFrame` (columns macd, signal, histogram); `atr(high, low, close, period=14) -> pd.Series` (Wilder). All tz-naive in, NaN-headed warmup out (matching pandas-ta's shape).
 
-- [ ] **Step 1: Record the goldens** — write and run `scripts/record_indicator_fixtures.py`: builds one deterministic OHLCV frame (seeded numpy RNG, 300 rows) plus one real-shaped frame (a hardcoded 60-row constant list in the script), runs pandas-ta's `sma/ema/rsi/macd/atr`, and writes inputs and expected outputs (last 200 values each, NaNs as nulls) to `tests/technical/fixtures/indicator_goldens.json`. Commit the fixture; the script stays for regeneration but is never imported.
-- [ ] **Step 2: Write the failing tests** — `test_indicators.py` loads the goldens and asserts each pure function matches the recorded pandas-ta output with `rtol=1e-9` (allclose over the non-NaN region, and NaN positions identical). Plus edge tests: period longer than series -> all-NaN; constant series -> RSI converges to a defined value without division errors.
-- [ ] **Step 3: RED.** **Step 4: Implement** the five functions in pure pandas/numpy. Wilder smoothing for rsi/atr must match pandas-ta's implementation (ewm with alpha=1/period, adjust=False) — the goldens are the arbiter.
-- [ ] **Step 5: GREEN + contract + full gate.** `uv run lint-imports` gains the technical-independence contract.
-- [ ] **Step 6: Commit** `feat(technical): add pure-python indicator core with pandas-ta goldens`.
+- [x] **Step 1: Record the goldens** — write and run `scripts/record_indicator_fixtures.py`: builds one deterministic OHLCV frame (seeded numpy RNG, 300 rows) plus one real-shaped frame (a hardcoded 60-row constant list in the script), runs pandas-ta's `sma/ema/rsi/macd/atr`, and writes inputs and expected outputs (last 200 values each, NaNs as nulls) to `tests/technical/fixtures/indicator_goldens.json`. Commit the fixture; the script stays for regeneration but is never imported.
+- [x] **Step 2: Write the failing tests** — `test_indicators.py` loads the goldens and asserts each pure function matches the recorded pandas-ta output with `rtol=1e-9` (allclose over the non-NaN region, and NaN positions identical). Plus edge tests: period longer than series -> all-NaN; constant series -> RSI converges to a defined value without division errors.
+- [x] **Step 3: RED.** **Step 4: Implement** the five functions in pure pandas/numpy. Wilder smoothing for rsi/atr must match pandas-ta's implementation (ewm with alpha=1/period, adjust=False) — the goldens are the arbiter.
+- [x] **Step 5: GREEN + contract + full gate.** `uv run lint-imports` gains the technical-independence contract.
+- [x] **Step 6: Commit** `feat(technical): add pure-python indicator core with pandas-ta goldens`.
 
 ---
 
