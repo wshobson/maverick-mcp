@@ -210,6 +210,7 @@ type = "layers"
 layers = [
     "maverick.portfolio.tools",
     "maverick.portfolio.service",
+    "maverick.portfolio.analysis",
     "maverick.portfolio.data | maverick.portfolio.ledger",
     "maverick.portfolio.config",
     "maverick.portfolio.types",

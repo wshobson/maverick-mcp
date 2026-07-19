@@ -51,6 +51,8 @@ class ComparisonResult(BaseModel):
     comparison: dict[str, dict[str, Any]]
     best_performer: str
     strongest_trend: str
+    period_days: int
+    as_of: str
     portfolio_context: dict[str, Any] | None = None
 
 
@@ -62,14 +64,22 @@ class CorrelationResult(BaseModel):
     hedges: list[dict[str, Any]]
     average_correlation: float
     diversification_score: float
+    recommendation: str
+    period_days: int
+    data_points: int
+    portfolio_context: dict[str, Any] | None = None
 
 
 class RiskAnalysis(BaseModel):
     """Advisory-float risk-sizing payload for a single ticker."""
 
     ticker: str
+    current_price: float
+    atr: float
+    risk_level: float
     position_sizing: dict[str, Any]
     stop_loss: dict[str, Any]
     entry_strategy: dict[str, Any]
     targets: dict[str, Any]
+    analysis: dict[str, Any] | None = None
     existing_position: dict[str, Any] | None = None

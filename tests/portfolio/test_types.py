@@ -365,11 +365,15 @@ def test_comparison_result_holds_per_ticker_metrics_and_rankings():
         },
         best_performer="AAPL",
         strongest_trend="AAPL",
+        period_days=90,
+        as_of="2026-07-19T00:00:00+00:00",
         portfolio_context=None,
     )
     assert result.comparison["AAPL"]["current_price"] == 175.50
     assert result.best_performer == "AAPL"
     assert result.strongest_trend == "AAPL"
+    assert result.period_days == 90
+    assert result.as_of == "2026-07-19T00:00:00+00:00"
     assert result.portfolio_context is None
 
 
@@ -378,6 +382,8 @@ def test_comparison_result_optional_portfolio_context():
         comparison={},
         best_performer="AAPL",
         strongest_trend="AAPL",
+        period_days=90,
+        as_of="2026-07-19T00:00:00+00:00",
         portfolio_context={"using_portfolio": True, "portfolio_name": "My Portfolio"},
     )
     assert result.portfolio_context == {
@@ -391,6 +397,8 @@ def test_comparison_result_round_trips_through_model_dump():
         comparison={"AAPL": {"current_price": 175.50}},
         best_performer="AAPL",
         strongest_trend="AAPL",
+        period_days=90,
+        as_of="2026-07-19T00:00:00+00:00",
         portfolio_context=None,
     )
     data = result.model_dump()
@@ -412,12 +420,37 @@ def test_correlation_result_holds_matrix_and_pairs():
         hedges=[],
         average_correlation=0.82,
         diversification_score=18.0,
+        recommendation="Consider adding uncorrelated assets",
+        period_days=252,
+        data_points=200,
     )
     assert result.matrix["AAPL"]["MSFT"] == 0.82
     assert result.high_correlation_pairs[0]["correlation"] == 0.82
     assert result.hedges == []
     assert result.average_correlation == 0.82
     assert result.diversification_score == 18.0
+    assert result.recommendation == "Consider adding uncorrelated assets"
+    assert result.period_days == 252
+    assert result.data_points == 200
+    assert result.portfolio_context is None
+
+
+def test_correlation_result_optional_portfolio_context():
+    result = CorrelationResult(
+        matrix={"AAPL": {"AAPL": 1.0}},
+        high_correlation_pairs=[],
+        hedges=[],
+        average_correlation=0.1,
+        diversification_score=90.0,
+        recommendation="Well diversified",
+        period_days=252,
+        data_points=200,
+        portfolio_context={"using_portfolio": True, "portfolio_name": "My Portfolio"},
+    )
+    assert result.portfolio_context == {
+        "using_portfolio": True,
+        "portfolio_name": "My Portfolio",
+    }
 
 
 def test_correlation_result_round_trips_through_model_dump():
@@ -427,6 +460,9 @@ def test_correlation_result_round_trips_through_model_dump():
         hedges=[{"pair": ("AAPL", "TLT"), "correlation": -0.4}],
         average_correlation=-0.4,
         diversification_score=70.0,
+        recommendation="Well diversified",
+        period_days=252,
+        data_points=200,
     )
     data = result.model_dump()
     assert CorrelationResult.model_validate(data) == result
@@ -438,6 +474,9 @@ def test_correlation_result_round_trips_through_model_dump():
 def test_risk_analysis_holds_sizing_stop_entry_targets():
     result = RiskAnalysis(
         ticker="AAPL",
+        current_price=175.50,
+        atr=3.25,
+        risk_level=50.0,
         position_sizing={"suggested_position_size": 500.0, "max_shares": 2},
         stop_loss={"stop_loss": 170.0, "stop_loss_percent": 3.1},
         entry_strategy={"immediate_entry": 175.50, "scale_in_levels": [175.50, 172.0]},
@@ -445,16 +484,39 @@ def test_risk_analysis_holds_sizing_stop_entry_targets():
         existing_position=None,
     )
     assert result.ticker == "AAPL"
+    assert result.current_price == 175.50
+    assert result.atr == 3.25
+    assert result.risk_level == 50.0
     assert result.position_sizing["max_shares"] == 2
     assert result.stop_loss["stop_loss"] == 170.0
     assert result.entry_strategy["immediate_entry"] == 175.50
     assert result.targets["risk_reward_ratio"] == 3.0
+    assert result.analysis is None
     assert result.existing_position is None
+
+
+def test_risk_analysis_optional_analysis_block():
+    result = RiskAnalysis(
+        ticker="AAPL",
+        current_price=175.50,
+        atr=3.25,
+        risk_level=50.0,
+        position_sizing={},
+        stop_loss={},
+        entry_strategy={},
+        targets={},
+        analysis={"confidence_score": 35.0, "strategy_type": "moderate"},
+        existing_position=None,
+    )
+    assert result.analysis == {"confidence_score": 35.0, "strategy_type": "moderate"}
 
 
 def test_risk_analysis_optional_existing_position_block():
     result = RiskAnalysis(
         ticker="AAPL",
+        current_price=175.50,
+        atr=3.25,
+        risk_level=50.0,
         position_sizing={},
         stop_loss={},
         entry_strategy={},
@@ -472,10 +534,14 @@ def test_risk_analysis_optional_existing_position_block():
 def test_risk_analysis_round_trips_through_model_dump():
     result = RiskAnalysis(
         ticker="AAPL",
+        current_price=175.50,
+        atr=3.25,
+        risk_level=50.0,
         position_sizing={"suggested_position_size": 500.0},
         stop_loss={"stop_loss": 170.0},
         entry_strategy={"immediate_entry": 175.50},
         targets={"price_target": 190.0},
+        analysis={"confidence_score": 35.0},
         existing_position=None,
     )
     data = result.model_dump()
