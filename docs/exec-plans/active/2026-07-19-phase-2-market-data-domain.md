@@ -191,9 +191,9 @@ def test_market_overview_composes():
 **Interfaces:**
 - Produces: `MarketDataSettings(BaseModel)` with fields `capital_companion_api_key: SecretStr | None` (env CAPITAL_COMPANION_API_KEY), `quote_ttl_seconds: int = 60` (env MD_QUOTE_TTL_SECONDS), `overview_ttl_seconds: int = 300` (env MD_OVERVIEW_TTL_SECONDS), `mover_limit_default: int = 10`, `history_batch_max: int = 50`, `indices: dict[str, str]` defaulting to the six legacy symbols (`^GSPC` "S&P 500", `^DJI` "Dow Jones", `^IXIC` "NASDAQ", `^RUT` "Russell 2000", `^VIX` "VIX", `^TNX` "10Y Treasury"), `sector_etfs: dict[str, str]` defaulting to the eleven legacy sector ETF mappings (XLK Technology, XLF Financials, XLV Health Care, XLE Energy, XLY Consumer Discretionary, XLP Consumer Staples, XLI Industrials, XLB Materials, XLRE Real Estate, XLU Utilities, XLC Communication Services); `get_market_data_settings()` cached accessor + `reset_market_data_settings()`. Env reading follows the platform `_clean_env` idiom (import the helpers from `maverick.platform.config` rather than reimplementing; that import is layer-legal because platform is below every domain).
 
-- [ ] **Step 1: Write the failing tests** — mirror the platform config test style: defaults are zero-config (no key -> None, ttls 60/300, six indices, eleven sectors), env overrides work (`MD_QUOTE_TTL_SECONDS=5` -> 5), secret is masked in repr, singleton + reset behave. Write them concretely with monkeypatch delenv/setenv and a `reset` autouse fixture, as in `tests/platform/test_config.py`.
-- [ ] **Step 2: RED.** **Step 3: Implement.** **Step 4: GREEN + full gate.**
-- [ ] **Step 5: Commit** `feat(market-data): add domain settings`.
+- [x] **Step 1: Write the failing tests** — mirror the platform config test style: defaults are zero-config (no key -> None, ttls 60/300, six indices, eleven sectors), env overrides work (`MD_QUOTE_TTL_SECONDS=5` -> 5), secret is masked in repr, singleton + reset behave. Write them concretely with monkeypatch delenv/setenv and a `reset` autouse fixture, as in `tests/platform/test_config.py`.
+- [x] **Step 2: RED.** **Step 3: Implement.** **Step 4: GREEN + full gate.**
+- [x] **Step 5: Commit** `feat(market-data): add domain settings`.
 
 ---
 
