@@ -231,7 +231,7 @@ git commit -m "feat(platform): add config module with env-derived settings"
 - Consumes: `TelemetrySettings` from Task 1.
 - Produces: `setup_logging(settings: TelemetrySettings | None = None, *, stream=None) -> None`; `get_logger(name: str) -> logging.Logger`; `request_id_var: ContextVar[str | None]`; `set_request_id(value: str | None) -> None`; `new_request_id() -> str`; `StructuredFormatter(logging.Formatter)`; `MASKED_FIELDS: frozenset[str]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/platform/test_telemetry.py` (complete file):
 
@@ -323,16 +323,16 @@ def test_setup_logging_defaults_to_stderr(capsys):
     assert "to stderr" in captured.err
 ```
 
-- [ ] **Step 2: Run to verify failure**
+- [x] **Step 2: Run to verify failure**
 
 Run: `uv run pytest tests/platform/test_telemetry.py -q`
 Expected: FAIL with `ModuleNotFoundError` (no `maverick.platform.telemetry`).
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Behavior requirements beyond the tests: the JSON record carries timestamp (UTC ISO), level, logger, message, module, function, line, request_id when set, all extras, and an `{"type", "message", "traceback"}` exception block. Masking applies to any extra whose key (case-insensitive) is in `MASKED_FIELDS` = at least {"password", "api_key", "apikey", "token", "secret", "authorization"}. `setup_logging` configures the root "maverick" logger with a single handler; default stream is stderr so the stdio MCP transport's stdout is never polluted. Calling it twice must not duplicate handlers.
 
-- [ ] **Step 4: Run to verify pass, then commit**
+- [x] **Step 4: Run to verify pass, then commit**
 
 Run: `uv run pytest tests/platform/ -q` then `make lint`.
 
