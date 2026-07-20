@@ -40,13 +40,35 @@ Numeric/enum defaults gain `RESEARCH_*` env overrides here as a modernization
 convenience (matching the other domains' `config.py` conventions); the
 legacy code itself has no environment variables for them beyond
 `EXA_API_KEY`.
+
+Task 4 (`maverick/research/providers/`) adds three fields carried over from
+`maverick_mcp/config/settings.py`'s `PerformanceSettings` (read there via
+`SEARCH_*` env vars, `settings.performance.search_*`), which is out of this
+package's import reach:
+
+- `search_circuit_breaker_failure_threshold` (default 8) and
+  `search_circuit_breaker_recovery_seconds` (default 30.0): the
+  "more tolerant" search-specific breaker knobs (`settings.py:765-782`),
+  consumed by `ExaSearchProvider._search_with_strategy`'s
+  `circuit_manager.get_or_create("exa_search", failure_threshold=..., recovery_timeout=...)`
+  call (`maverick_mcp/agents/research/providers/exa.py:110-122`). The
+  provider layer maps them onto `maverick.platform.http.get_breaker`'s
+  `HttpSettings.breaker_failure_threshold`/`breaker_recovery_seconds`
+  instead of porting a parallel circuit-breaker implementation -- see that
+  module's docstring for the full comparison. `_seconds` (float) rather
+  than legacy's `_timeout` (int) matches `HttpSettings.breaker_recovery_seconds`'s
+  type.
+- `search_timeout_failure_threshold` (default 12): the consecutive-timeout
+  count after which `WebSearchProvider._record_failure` (`.../base.py:57-84`)
+  marks a provider unhealthy -- distinct from the breaker fields above; this
+  gates the provider's own `is_healthy()` flag, not `get_breaker`.
 """
 
 from functools import lru_cache
 
 from pydantic import BaseModel, Field, SecretStr
 
-from maverick.platform.config import _clean_env, _env_int, _env_str
+from maverick.platform.config import _clean_env, _env_float, _env_int, _env_str
 from maverick.research.types import ResearchDepth
 
 _DEPTH_TIMEOUT_SECONDS: dict[ResearchDepth, float] = {
@@ -89,6 +111,23 @@ class ResearchSettings(BaseModel):
     sentiment_research_max_sources: int = 8
     sentiment_default_timeframe: str = Field(
         default_factory=lambda: _env_str("RESEARCH_SENTIMENT_DEFAULT_TIMEFRAME", "1w")
+    )
+
+    # Search-provider resilience knobs (Task 4) -- see module docstring.
+    search_circuit_breaker_failure_threshold: int = Field(
+        default_factory=lambda: _env_int(
+            "RESEARCH_SEARCH_CIRCUIT_BREAKER_FAILURE_THRESHOLD", 8
+        )
+    )
+    search_circuit_breaker_recovery_seconds: float = Field(
+        default_factory=lambda: _env_float(
+            "RESEARCH_SEARCH_CIRCUIT_BREAKER_RECOVERY_SECONDS", 30.0
+        )
+    )
+    search_timeout_failure_threshold: int = Field(
+        default_factory=lambda: _env_int(
+            "RESEARCH_SEARCH_TIMEOUT_FAILURE_THRESHOLD", 12
+        )
     )
 
 
