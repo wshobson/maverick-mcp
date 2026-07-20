@@ -25,6 +25,13 @@ from maverick.platform.http import (
     request_resilient,
     request_with_retry,
 )
+from maverick.platform.llm import (
+    LLMProvider,
+    LLMSettings,
+    get_llm,
+    get_llm_settings,
+    reset_llm_settings,
+)
 from maverick.platform.serde import deserialize, serialize
 from maverick.platform.telemetry import get_logger, setup_logging
 
@@ -50,4 +57,9 @@ __all__ = [
     "session_scope",
     "read_only_session_scope",
     "async_session_scope",
+    "LLMProvider",
+    "LLMSettings",
+    "get_llm",
+    "get_llm_settings",
+    "reset_llm_settings",
 ]
