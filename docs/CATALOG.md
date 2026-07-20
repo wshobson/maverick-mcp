@@ -46,6 +46,7 @@ Status labels:
 | `runbooks/database-setup.md` | current | operations | Database setup and schema creation (no migrations). |
 | `runbooks/self-contained-setup.md` | current | operations | Full local setup. |
 | `runbooks/migrating-to-v1.md` | current | operations | Config/database migration guide from pre-v1.0 installs. |
+| `runbooks/releasing.md` | current | operations | Owner-run publish sequence: PyPI, official MCP Registry, GHCR, third-party registries, `.mcpb` release asset. |
 | `testing/README.md` | current | engineering | Canonical test commands and marker policy. |
 | `testing/in-memory.md` | current | engineering | FastMCP in-memory test patterns. |
 | `testing/integration.md` | current | engineering | Integration test guidance. |

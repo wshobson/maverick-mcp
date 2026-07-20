@@ -24,6 +24,8 @@ use this index as the map to deeper, versioned sources of truth.
 - `runbooks/self-contained-setup.md` - full local setup with market data.
 - `runbooks/migrating-to-v1.md` - config/database migration from pre-v1.0
   installs.
+- `runbooks/releasing.md` - the full publish sequence (PyPI, official MCP
+  Registry, GHCR, third-party registries, `.mcpb` release asset); owner-run.
 
 ## Modernization
 

@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.wshobson/maverick-mcp -->
+
 # MaverickMCP - Personal Stock Analysis MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

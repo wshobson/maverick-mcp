@@ -11,6 +11,7 @@
   "packages": [
     {
       "registry_type": "pypi",
+      "registry_base_url": "https://pypi.org",
       "identifier": "maverick-mcp-server",
       "version": "1.0.0",
       "runtime_hint": "uvx",
@@ -77,12 +78,10 @@
   ],
   "remotes": [
     {
+      "type": "streamable-http",
+      "url": "http://localhost:8003/mcp/",
       "name": "streamable-http",
       "description": "Streamable HTTP transport for remote access via mcp-remote bridge",
-      "transport": {
-        "type": "streamable-http",
-        "url": "http://localhost:8003/mcp/"
-      },
       "setup_instructions": [
         "Clone repository: git clone https://github.com/wshobson/maverick-mcp.git",
         "Install dependencies: uv sync (or pip install -e .)",
