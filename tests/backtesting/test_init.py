@@ -123,7 +123,12 @@ def test_import_pure_analysis_functions_from_package():
         monte_carlo_simulation,
     )
 
-    for fn in (analyze, compare_strategies, generate_param_grid, monte_carlo_simulation):
+    for fn in (
+        analyze,
+        compare_strategies,
+        generate_param_grid,
+        monte_carlo_simulation,
+    ):
         assert callable(fn)
 
 

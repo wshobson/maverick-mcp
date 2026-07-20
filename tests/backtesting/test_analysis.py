@@ -32,6 +32,15 @@ from maverick.backtesting.types import (
     StrategyComparisonResult,
 )
 
+# `tiny_backtest_result` below is the first fixture in the alphabetically-first
+# backtesting test module to call the real `engine.run_backtest`, so on a cold
+# CI runner (no warm numba on-disk JIT cache) it eats the one-time cost of
+# numba compiling vectorbt's portfolio/indicator kernels from scratch --
+# observed at just over CI's default 60s `--timeout`. Every later call in the
+# same process reuses the compiled functions and is fast (single-digit
+# seconds), so only this module needs the wider budget.
+pytestmark = pytest.mark.timeout(300)
+
 
 def _metrics(**overrides) -> BacktestMetrics:
     fields = {
