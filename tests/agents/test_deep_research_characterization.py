@@ -38,7 +38,6 @@ def test_provider_symbols_available_at_new_path() -> None:
 
     expected = {
         "ExaSearchProvider",
-        "TavilySearchProvider",
         "WebSearchProvider",
         "_search_provider_cache",
         "get_cached_search_provider",

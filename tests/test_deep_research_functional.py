@@ -4,7 +4,7 @@ Comprehensive functional tests for DeepResearchAgent.
 This test suite focuses on testing the actual research functionality including:
 
 ## Web Search Integration Tests (TestWebSearchIntegration):
-- Exa and Tavily search provider query formatting and result processing
+- Exa search provider query formatting and result processing
 - Provider fallback behavior when APIs fail
 - Search result deduplication from multiple providers
 - Social media filtering and content processing
@@ -47,14 +47,14 @@ This test suite focuses on testing the actual research functionality including:
 
 ## Key Features Tested:
 - **Realistic Mock Data**: Uses comprehensive financial article samples
-- **Provider Integration**: Tests both Exa and Tavily search providers
+- **Provider Integration**: Tests the Exa search provider
 - **LangGraph Workflows**: Tests complete research state machine
 - **Persona Adaptation**: Validates different investor behavior patterns
 - **Error Resilience**: Ensures system continues operating with degraded capabilities
 - **Research Logic**: Tests actual synthesis and analysis rather than just API calls
 
 All tests use realistic mock data and test the research logic rather than just API connectivity.
-26 test cases cover the complete research pipeline from initial search to final recommendations.
+25 test cases cover the complete research pipeline from initial search to final recommendations.
 """
 
 import json
@@ -68,7 +68,6 @@ from maverick_mcp.agents.deep_research import (
     ContentAnalyzer,
     DeepResearchAgent,
     ExaSearchProvider,
-    TavilySearchProvider,
 )
 from maverick_mcp.exceptions import WebSearchError
 
@@ -194,25 +193,21 @@ def comprehensive_search_results():
 @pytest.fixture
 def mock_research_agent(mock_llm):
     """Create a DeepResearchAgent with mocked dependencies."""
-    with (
-        patch("maverick_mcp.agents.deep_research.ExaSearchProvider") as mock_exa,
-        patch("maverick_mcp.agents.deep_research.TavilySearchProvider") as mock_tavily,
-    ):
-        # Mock search providers
+    with patch("maverick_mcp.agents.deep_research.ExaSearchProvider") as mock_exa:
+        # Mock search providers (a second generic provider exercises
+        # multi-provider fallback/dedup behavior below)
         mock_exa_instance = Mock()
-        mock_tavily_instance = Mock()
+        mock_second_provider_instance = Mock()
         mock_exa.return_value = mock_exa_instance
-        mock_tavily.return_value = mock_tavily_instance
 
         agent = DeepResearchAgent(
             llm=mock_llm,
             persona="moderate",
             exa_api_key="mock-key",
-            tavily_api_key="mock-key",
         )
 
         # Add mock providers to the agent for testing
-        agent.search_providers = [mock_exa_instance, mock_tavily_instance]
+        agent.search_providers = [mock_exa_instance, mock_second_provider_instance]
 
         return agent
 
@@ -274,58 +269,6 @@ class TestWebSearchIntegration:
                 assert results[0]["url"] == "https://example.com/test"
                 assert results[0]["provider"] == "exa"
                 assert results[0]["score"] == 0.9
-
-    @pytest.mark.asyncio
-    async def test_tavily_search_result_processing(self):
-        """Test Tavily search result processing and filtering."""
-        with patch("maverick_mcp.agents.deep_research.circuit_manager") as mock_circuit:
-            mock_circuit.get_or_create = AsyncMock()
-            mock_circuit_instance = AsyncMock()
-            mock_circuit.get_or_create.return_value = mock_circuit_instance
-
-            mock_tavily_response = {
-                "results": [
-                    {
-                        "url": "https://news.example.com/tech-news",
-                        "title": "Tech News Article",
-                        "content": "Content about technology trends",
-                        "raw_content": "Extended raw content with more details",
-                        "published_date": "2024-01-25",
-                        "score": 0.85,
-                    },
-                    {
-                        "url": "https://facebook.com/social-post",  # Should be filtered out
-                        "title": "Social Media Post",
-                        "content": "Social media content",
-                        "score": 0.7,
-                    },
-                ]
-            }
-
-            with patch("tavily.TavilyClient") as mock_tavily_client:
-                mock_client_instance = Mock()
-                mock_client_instance.search.return_value = mock_tavily_response
-                mock_tavily_client.return_value = mock_client_instance
-
-                provider = TavilySearchProvider("test-api-key")
-                mock_circuit_instance.call.return_value = [
-                    {
-                        "url": "https://news.example.com/tech-news",
-                        "title": "Tech News Article",
-                        "content": "Content about technology trends",
-                        "raw_content": "Extended raw content with more details",
-                        "published_date": "2024-01-25",
-                        "score": 0.85,
-                        "provider": "tavily",
-                    }
-                ]
-
-                results = await provider.search("tech trends analysis")
-
-                # Verify results are properly processed and social media filtered
-                assert len(results) == 1
-                assert results[0]["provider"] == "tavily"
-                assert "facebook.com" not in results[0]["url"]
 
     @pytest.mark.asyncio
     async def test_search_provider_fallback_behavior(self, mock_research_agent):

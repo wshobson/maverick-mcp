@@ -11,7 +11,6 @@ import logging
 from maverick_mcp.agents.deep_research import DeepResearchAgent
 from maverick_mcp.agents.market_analysis import MarketAnalysisAgent
 from maverick_mcp.agents.supervisor import SupervisorAgent
-from maverick_mcp.agents.technical_analysis import TechnicalAnalysisAgent
 from maverick_mcp.providers.llm_factory import get_llm
 
 # Set up logging
@@ -139,7 +138,6 @@ async def example_supervisor_integration():
 
     # Create specialized agents
     market_agent = MarketAnalysisAgent(llm=llm, persona="moderate")
-    technical_agent = TechnicalAnalysisAgent(llm=llm, persona="moderate")
     research_agent = DeepResearchAgent(llm=llm, persona="moderate")
 
     # Create supervisor with all agents
@@ -147,7 +145,6 @@ async def example_supervisor_integration():
         llm=llm,
         agents={
             "market": market_agent,
-            "technical": technical_agent,
             "research": research_agent,  # Key integration point
         },
         persona="moderate",

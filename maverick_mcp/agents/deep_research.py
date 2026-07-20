@@ -30,7 +30,6 @@ from maverick_mcp.agents.base import PersonaAwareAgent
 # unused-import linters don't strip them.
 from maverick_mcp.agents.research.providers import (  # noqa: F401
     ExaSearchProvider,
-    TavilySearchProvider,
     WebSearchProvider,
     _search_provider_cache,
     get_cached_search_provider,
@@ -3022,7 +3021,6 @@ __all__ = [
     "PERSONA_RESEARCH_FOCUS",
     "RESEARCH_DEPTH_LEVELS",
     "SentimentResearchAgent",
-    "TavilySearchProvider",
     "TechnicalResearchAgent",
     "WebSearchProvider",
     "_search_provider_cache",

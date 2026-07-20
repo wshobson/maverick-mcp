@@ -56,7 +56,6 @@ def get_or_create_agent(agent_type: str, persona: str = "moderate") -> Any:
             # Create mock agents for supervisor
             agents = {
                 "market": get_or_create_agent("market", persona),
-                "technical": None,  # Would be actual technical agent in full implementation
             }
             _agent_cache[cache_key] = SupervisorAgent(
                 llm=llm, agents=agents, persona=persona, ttl_hours=1

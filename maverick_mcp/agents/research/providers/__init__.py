@@ -14,7 +14,6 @@ from typing import Any
 
 from maverick_mcp.agents.research.providers.base import WebSearchProvider
 from maverick_mcp.agents.research.providers.exa import ExaSearchProvider
-from maverick_mcp.agents.research.providers.tavily import TavilySearchProvider
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +47,6 @@ async def get_cached_search_provider(exa_api_key: str | None = None) -> Any | No
 
 __all__ = [
     "ExaSearchProvider",
-    "TavilySearchProvider",
     "WebSearchProvider",
     "_search_provider_cache",
     "get_cached_search_provider",

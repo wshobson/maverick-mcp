@@ -19,7 +19,6 @@ def check_dependencies() -> dict[str, Any]:
         ("langgraph", "LangGraph"),
         ("fastmcp", "FastMCP"),
         ("exa_py", "Exa AI search (optional)"),
-        ("tavily", "Tavily search (optional)"),
     ]
 
     for module, description in deps_to_check:
@@ -35,7 +34,7 @@ def check_dependencies() -> dict[str, Any]:
                 "description": description,
                 "error": str(e),
             }
-            if module not in ["exa_py", "tavily"]:  # Optional dependencies
+            if module not in ["exa_py"]:  # Optional dependencies
                 results["missing"].append(module)
                 results["status"] = "error"
 
@@ -56,7 +55,6 @@ def check_environment_variables() -> dict[str, Any]:
         ("OPENAI_API_KEY", "OpenAI LLM provider", False),
         ("ANTHROPIC_API_KEY", "Anthropic LLM provider", False),
         ("EXA_API_KEY", "Exa search provider", False),
-        ("TAVILY_API_KEY", "Tavily search provider", False),
         ("FRED_API_KEY", "Economic data provider", False),
     ]
 
