@@ -9,8 +9,6 @@ One line per item. Remove the line in the same change that removes the debt.
 | Wheel build uses `include = ["*.py"]` instead of explicit packages | `pyproject.toml` | packaging |
 | `server.json` declares only remote transports and no package installs | repo root | distribution |
 | Dockerfile is single-stage and ships build toolchain in the final image | `Dockerfile` | distribution |
-| Two agent abstractions exist (`agents/` and `workflows/agents/`) | legacy tree | research port |
-| Five LLM and search vendors are reachable from research paths | `providers/llm_factory.py` | research port |
 | Default pytest filter deselects 664 tests; review the marker policy | `pyproject.toml` | cutover |
 | MCP Apps chart rendering | new server | deferred |
 | Tasks extension for long-running backtests | new server | deferred |
@@ -42,8 +40,11 @@ One line per item. Remove the line in the same change that removes the debt.
 | `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |
 | legacy core/technical_analysis.py + technical routers + visualization.py + stock_helpers chain retire at cutover | `maverick_mcp/core/technical_analysis.py`, `maverick_mcp/api/routers/technical.py`, `maverick_mcp/api/routers/technical_enhanced.py`, `maverick_mcp/core/visualization.py`, `maverick_mcp/utils/stock_helpers.py` | cutover |
 | unwired validation models in maverick_mcp/validation/technical.py die with the legacy routers | `maverick_mcp/validation/technical.py` | cutover |
-| dead registry.get_tool('get_technical_indicators') references in legacy agents (falls back to mock tools) | `maverick_mcp/agents/technical_analysis.py`, `maverick_mcp/agents/market_analysis.py` | cutover or research port |
+| dead registry.get_tool('get_technical_indicators') reference in legacy agent (falls back to mock tools) | `maverick_mcp/agents/market_analysis.py` | cutover |
 | legacy maverick_mcp/backtesting + router + visualization retire at cutover | `maverick_mcp/backtesting/`, `maverick_mcp/api/routers/backtesting.py`, `maverick_mcp/core/visualization.py` | cutover (Phase 8) |
 | requires-python <3.13 pin blocked by core ta-lib until cutover | `pyproject.toml` | cutover |
 | matplotlib/seaborn removal blocked by legacy visualization until cutover | `pyproject.toml` | cutover |
 | service_ml.py, ensemble.py, online_learning.py, and feature_engineering.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py`, `maverick/backtesting/strategies/ml/online_learning.py`, `maverick/backtesting/strategies/ml/feature_engineering.py` | deferred |
+| legacy maverick_mcp/agents + research/agents routers + llm_factory + openrouter_provider + memory/ retire at cutover | `maverick_mcp/agents/`, `maverick_mcp/api/routers/agents.py`, `maverick_mcp/api/routers/research.py`, `maverick_mcp/providers/llm_factory.py`, `maverick_mcp/providers/openrouter_provider.py`, `maverick_mcp/memory/` | cutover (Phase 8) |
+| langgraph-checkpoint-sqlite in core only for legacy checkpointer -- dies at cutover | `pyproject.toml`, `maverick_mcp/memory/checkpointer.py` | cutover (Phase 8) |
+| exa search_and_contents() deprecated upstream -- migrate to search() post-cutover | `maverick/research/providers/exa.py` | deferred |

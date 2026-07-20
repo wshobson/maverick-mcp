@@ -1,7 +1,8 @@
 # Backtesting API Documentation
 
 This is the canonical backtesting documentation for `maverick.backtesting`,
-the phase 6 domain port. It describes the 11 `backtesting_*` MCP tools
+the phase 6 domain port (with `backtesting_parse_strategy` added in phase 7
+on the new BYOK LLM seam). It describes the 12 `backtesting_*` MCP tools
 registered from `maverick/backtesting/tools.py` and `tools_ml.py`.
 
 ## Overview
@@ -35,16 +36,12 @@ install with the extra absent, the server still boots cleanly and registers
 
 ### Not in this surface
 
-- **`parse_strategy`** (natural-language strategy parsing) does not exist in
-  this port. The legacy tool was hardwired to `langchain_anthropic`; LLM
-  configuration is Phase 7's BYOK scope, and `parse_strategy` may return
-  there on the unified LLM seam.
 - **Chart generation** (`generate_backtest_charts`,
   `generate_optimization_charts`) does not exist in this port, consistent
   with the rest of the modernized server's no-chart-images decision.
-- **Persistence.** None of the 11 tools write to a database. A review of
+- **Persistence.** None of the 12 tools write to a database. A review of
   every legacy call site found zero calls into the old
-  `BacktestPersistenceManager`, so this port carries no store -- all 11
+  `BacktestPersistenceManager`, so this port carries no store -- all 12
   tools are `readOnlyHint=True`. The five `mcp_backtest_*` table
   definitions remain in git history for future reintroduction if a real
   consumer emerges.
@@ -56,7 +53,7 @@ install with the extra absent, the server still boots cleanly and registers
 ## Installation
 
 The core install has no backtesting tools. Install the extra to enable all
-11:
+12:
 
 ```bash
 uv sync --extra backtesting
@@ -382,6 +379,50 @@ parameters.
   "status": "success"
 }
 ```
+
+### backtesting_parse_strategy
+
+Parse a natural-language strategy description into a strategy type and
+parameters. Unlike the other 11 tools, it needs no `BacktestingService` or
+`vectorbt` at all (`strategies/parser.py`'s `StrategyParser` is pure Python
+plus, optionally, the BYOK `platform.llm` seam) -- it registers only under
+the same `[backtesting]`-extra guard as the rest of the domain for one
+consistent registration surface, not because it needs vectorbt.
+
+**Tool name**: `backtesting_parse_strategy` (readOnlyHint: true)
+
+**Parameters**:
+- `description` (str, required): natural-language strategy description,
+  e.g. `"Buy when the 10-day SMA crosses above the 20-day SMA"`
+
+**Behavior**: tries the configured BYOK LLM first
+(`maverick.platform.llm.get_llm()`); degrades to zero-dependency
+keyword/regex matching against `STRATEGY_TEMPLATES`
+(`StrategyParser.parse_simple`) whenever no LLM is configured, its provider
+package isn't installed, or the model's response isn't valid JSON -- this
+degrade path is not a regression, it is the only path the live legacy tool
+ever actually exercised (`parse_with_llm`'s `llm` argument was never wired
+to any configuration in the legacy call graph).
+
+**Returns**: unlike the other 11 tools, success responses use a `"success"`
+boolean rather than `"status": "success"` (only the exception path returns
+`"status": "error"`):
+```json
+{
+  "success": true,
+  "strategy": {
+    "strategy_type": "sma_cross",
+    "parameters": {"fast_period": 10, "slow_period": 20}
+  },
+  "method": "llm",
+  "message": "Successfully parsed as sma_cross strategy"
+}
+```
+
+`"method"` is `"llm"` for a successful model-backed parse or
+`"simple_degraded"` whenever it fell back to keyword parsing. `"success"`
+is `false` (with the same shape) when the parsed configuration doesn't
+validate against the matched template's required parameters.
 
 ## Available Strategies
 
