@@ -14,9 +14,15 @@ from maverick.portfolio.types import (
     PortfolioMetrics,
     PortfolioSnapshot,
     PositionPayload,
+    PositionRiskCheck,
+    PositionRiskImpact,
     PositionWithPrice,
+    RegimeAdjustedSizing,
     RemoveResult,
+    RiskAlert,
+    RiskAlertsResult,
     RiskAnalysis,
+    RiskDashboard,
 )
 
 
@@ -95,6 +101,74 @@ def _risk_result() -> RiskAnalysis:
     )
 
 
+def _risk_dashboard() -> RiskDashboard:
+    return RiskDashboard(
+        total_value=2500.0,
+        sector_concentration={"Unknown": 1.0},
+        max_sector_pct=1.0,
+        portfolio_var_95=49.35,
+        portfolio_var_99=69.78,
+        total_pnl=500.0,
+        position_count=1,
+    )
+
+
+def _empty_risk_dashboard() -> RiskDashboard:
+    return RiskDashboard(
+        total_value=0.0,
+        sector_concentration={},
+        max_sector_pct=0.0,
+        portfolio_var_95=0.0,
+        portfolio_var_99=0.0,
+        total_pnl=0.0,
+        position_count=0,
+    )
+
+
+def _position_risk_check() -> PositionRiskCheck:
+    return PositionRiskCheck(
+        current=_risk_dashboard(),
+        projected=_risk_dashboard(),
+        new_position=PositionRiskImpact(
+            ticker="MSFT",
+            shares=10,
+            price=200.0,
+            position_value=2000.0,
+            pct_of_projected_portfolio=0.5,
+        ),
+    )
+
+
+def _regime_adjusted_sizing() -> RegimeAdjustedSizing:
+    return RegimeAdjustedSizing(
+        shares=400,
+        position_value=20000.0,
+        risk_amount=2000.0,
+        regime_multiplier=1.0,
+        adjusted_risk_pct=2.0,
+        regime="bull",
+    )
+
+
+def _risk_alerts_result() -> RiskAlertsResult:
+    return RiskAlertsResult(
+        alert_count=1,
+        alerts=[
+            RiskAlert(
+                alert_type="drawdown",
+                severity="warning",
+                message="Portfolio is down 20.0% from cost basis (threshold: 10%)",
+                details={"loss_pct": 0.2, "total_cost": 1000.0},
+            )
+        ],
+        position_count=1,
+    )
+
+
+def _empty_risk_alerts_result() -> RiskAlertsResult:
+    return RiskAlertsResult(alert_count=0, alerts=[], position_count=0)
+
+
 class StubService:
     """Async fakes matching `PortfolioService`'s public surface."""
 
@@ -107,6 +181,10 @@ class StubService:
         self.risk_calls: list[tuple] = []
         self.compare_calls: list[tuple] = []
         self.correlation_calls: list[tuple] = []
+        self.risk_dashboard_calls: list[tuple] = []
+        self.check_position_risk_calls: list[tuple] = []
+        self.regime_adjusted_sizing_calls: list[tuple] = []
+        self.risk_alerts_calls: list[tuple] = []
 
         self.add_result = _position_payload()
         self.get_portfolio_result = _snapshot()
@@ -117,6 +195,10 @@ class StubService:
         self.risk_result = _risk_result()
         self.compare_result = _comparison_result()
         self.correlation_result = _correlation_result()
+        self.risk_dashboard_result = _risk_dashboard()
+        self.check_position_risk_result = _position_risk_check()
+        self.regime_adjusted_sizing_result = _regime_adjusted_sizing()
+        self.risk_alerts_result = _risk_alerts_result()
 
         self.raise_on_add: Exception | None = None
         self.raise_on_get_portfolio: Exception | None = None
@@ -125,6 +207,10 @@ class StubService:
         self.raise_on_risk: Exception | None = None
         self.raise_on_compare: Exception | None = None
         self.raise_on_correlation: Exception | None = None
+        self.raise_on_risk_dashboard: Exception | None = None
+        self.raise_on_check_position_risk: Exception | None = None
+        self.raise_on_regime_adjusted_sizing: Exception | None = None
+        self.raise_on_risk_alerts: Exception | None = None
 
     async def add_position(
         self, user_id, portfolio_name, ticker, shares, price, purchase_date, notes
@@ -179,6 +265,38 @@ class StubService:
         if self.raise_on_correlation is not None:
             raise self.raise_on_correlation
         return self.correlation_result
+
+    async def get_risk_dashboard(self, user_id, portfolio_name) -> RiskDashboard:
+        self.risk_dashboard_calls.append((user_id, portfolio_name))
+        if self.raise_on_risk_dashboard is not None:
+            raise self.raise_on_risk_dashboard
+        return self.risk_dashboard_result
+
+    async def check_position_risk(
+        self, user_id, portfolio_name, ticker, shares, entry_price
+    ) -> PositionRiskCheck:
+        self.check_position_risk_calls.append(
+            (user_id, portfolio_name, ticker, shares, entry_price)
+        )
+        if self.raise_on_check_position_risk is not None:
+            raise self.raise_on_check_position_risk
+        return self.check_position_risk_result
+
+    async def get_regime_adjusted_sizing(
+        self, account_size, entry_price, stop_loss, risk_pct
+    ) -> RegimeAdjustedSizing:
+        self.regime_adjusted_sizing_calls.append(
+            (account_size, entry_price, stop_loss, risk_pct)
+        )
+        if self.raise_on_regime_adjusted_sizing is not None:
+            raise self.raise_on_regime_adjusted_sizing
+        return self.regime_adjusted_sizing_result
+
+    async def get_risk_alerts(self, user_id, portfolio_name) -> RiskAlertsResult:
+        self.risk_alerts_calls.append((user_id, portfolio_name))
+        if self.raise_on_risk_alerts is not None:
+            raise self.raise_on_risk_alerts
+        return self.risk_alerts_result
 
 
 @pytest.fixture
@@ -395,7 +513,147 @@ async def test_correlation_analysis_service_exception_returns_error_payload(
 
 
 # ---------------------------------------------------------------------------
-# register: seven tools + resource, honest annotations
+# portfolio_get_risk_dashboard
+# ---------------------------------------------------------------------------
+
+
+async def test_get_risk_dashboard_returns_model_dump_plus_status(stub_service):
+    result = await tools.portfolio_get_risk_dashboard(portfolio_name="Trading")
+
+    assert result["status"] == "success"
+    assert result["total_value"] == 2500.0
+    assert result["portfolio_name"] == "Trading"
+    assert stub_service.risk_dashboard_calls == [("default", "Trading")]
+
+
+async def test_get_risk_dashboard_empty_positions_returns_empty_status(stub_service):
+    stub_service.risk_dashboard_result = _empty_risk_dashboard()
+
+    result = await tools.portfolio_get_risk_dashboard(portfolio_name="Empty")
+
+    assert result == {
+        "status": "empty",
+        "message": "No positions found in portfolio 'Empty'",
+        "portfolio_name": "Empty",
+    }
+
+
+async def test_get_risk_dashboard_service_exception_returns_error_payload(
+    stub_service,
+):
+    stub_service.raise_on_risk_dashboard = ValueError("boom")
+
+    result = await tools.portfolio_get_risk_dashboard()
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_check_position_risk
+# ---------------------------------------------------------------------------
+
+
+async def test_check_position_risk_returns_model_dump_plus_status(stub_service):
+    result = await tools.portfolio_check_position_risk(
+        ticker="msft", shares=10, entry_price=200.0
+    )
+
+    assert result["status"] == "success"
+    assert result["new_position"]["ticker"] == "MSFT"
+    assert result["portfolio_name"] == "My Portfolio"
+    assert stub_service.check_position_risk_calls == [
+        ("default", "My Portfolio", "msft", 10, 200.0)
+    ]
+
+
+async def test_check_position_risk_service_exception_returns_error_payload(
+    stub_service,
+):
+    stub_service.raise_on_check_position_risk = ValueError("Invalid ticker")
+
+    result = await tools.portfolio_check_position_risk(
+        ticker="TOOLONG", shares=1, entry_price=1.0
+    )
+
+    assert result == {"status": "error", "error": "Invalid ticker"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_get_regime_adjusted_sizing
+# ---------------------------------------------------------------------------
+
+
+async def test_get_regime_adjusted_sizing_returns_model_dump_plus_status(
+    stub_service,
+):
+    result = await tools.portfolio_get_regime_adjusted_sizing(
+        account_size=100000, entry_price=50, stop_loss=45, risk_pct=2.0
+    )
+
+    assert result["status"] == "success"
+    assert result["shares"] == 400
+    assert result["regime"] == "bull"
+    assert stub_service.regime_adjusted_sizing_calls == [(100000, 50, 45, 2.0)]
+
+
+async def test_get_regime_adjusted_sizing_defaults_risk_pct_to_two(stub_service):
+    await tools.portfolio_get_regime_adjusted_sizing(
+        account_size=100000, entry_price=50, stop_loss=45
+    )
+
+    assert stub_service.regime_adjusted_sizing_calls == [(100000, 50, 45, 2.0)]
+
+
+async def test_get_regime_adjusted_sizing_service_exception_returns_error_payload(
+    stub_service,
+):
+    stub_service.raise_on_regime_adjusted_sizing = RuntimeError("boom")
+
+    result = await tools.portfolio_get_regime_adjusted_sizing(
+        account_size=100000, entry_price=50, stop_loss=45
+    )
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_get_risk_alerts
+# ---------------------------------------------------------------------------
+
+
+async def test_get_risk_alerts_returns_alerts_plus_status(stub_service):
+    result = await tools.portfolio_get_risk_alerts(portfolio_name="Trading")
+
+    assert result["status"] == "success"
+    assert result["portfolio_name"] == "Trading"
+    assert result["alert_count"] == 1
+    assert result["alerts"][0]["alert_type"] == "drawdown"
+    assert stub_service.risk_alerts_calls == [("default", "Trading")]
+
+
+async def test_get_risk_alerts_empty_positions_returns_empty_status(stub_service):
+    stub_service.risk_alerts_result = _empty_risk_alerts_result()
+
+    result = await tools.portfolio_get_risk_alerts(portfolio_name="Empty")
+
+    assert result == {
+        "status": "empty",
+        "message": "No positions found in portfolio 'Empty'",
+        "portfolio_name": "Empty",
+        "alerts": [],
+    }
+
+
+async def test_get_risk_alerts_service_exception_returns_error_payload(stub_service):
+    stub_service.raise_on_risk_alerts = ValueError("boom")
+
+    result = await tools.portfolio_get_risk_alerts()
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# register: eleven tools + resource, honest annotations
 # ---------------------------------------------------------------------------
 
 
@@ -407,6 +665,10 @@ _EXPECTED_TOOL_NAMES = {
     "portfolio_risk_adjusted_analysis",
     "portfolio_compare_tickers",
     "portfolio_correlation_analysis",
+    "portfolio_get_risk_dashboard",
+    "portfolio_check_position_risk",
+    "portfolio_get_regime_adjusted_sizing",
+    "portfolio_get_risk_alerts",
 }
 
 _READ_ONLY_NAMES = {
@@ -414,10 +676,14 @@ _READ_ONLY_NAMES = {
     "portfolio_risk_adjusted_analysis",
     "portfolio_compare_tickers",
     "portfolio_correlation_analysis",
+    "portfolio_get_risk_dashboard",
+    "portfolio_check_position_risk",
+    "portfolio_get_regime_adjusted_sizing",
+    "portfolio_get_risk_alerts",
 }
 
 
-async def test_register_attaches_seven_tools(stub_service):
+async def test_register_attaches_eleven_tools(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
 
@@ -491,6 +757,18 @@ async def test_register_in_memory_client_round_trips_get_my_portfolio(stub_servi
     assert result.data["status"] == "success"
     assert result.data["positions"][0]["ticker"] == "AAPL"
     assert stub_service.get_portfolio_calls == [("default", "My Portfolio")]
+
+
+async def test_register_in_memory_client_round_trips_get_risk_dashboard(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool("portfolio_get_risk_dashboard", {})
+
+    assert result.data["status"] == "success"
+    assert result.data["total_value"] == 2500.0
+    assert stub_service.risk_dashboard_calls == [("default", "My Portfolio")]
 
 
 async def test_register_in_memory_client_reads_my_holdings_resource(stub_service):

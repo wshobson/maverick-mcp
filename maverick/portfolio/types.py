@@ -83,3 +83,80 @@ class RiskAnalysis(BaseModel):
     targets: dict[str, Any]
     analysis: dict[str, Any] | None = None
     existing_position: dict[str, Any] | None = None
+
+
+class PositionExposure(BaseModel):
+    """A position's risk-computation inputs: `risk.py`'s pure functions take
+    lists of these, never `PositionPayload`/ledger types directly. `sector`
+    defaults to "Unknown" because positions do not carry sector data (Phase
+    4 decision), matching the legacy risk-dashboard router's hardcoded
+    placeholder."""
+
+    symbol: str
+    shares: float
+    cost_basis: float
+    current_price: float
+    sector: str = "Unknown"
+
+
+class RiskDashboard(BaseModel):
+    """Advisory-float portfolio risk snapshot: total value, sector
+    concentration, parametric VaR (95/99), and total unrealized P&L."""
+
+    total_value: float
+    sector_concentration: dict[str, float]
+    max_sector_pct: float
+    portfolio_var_95: float
+    portfolio_var_99: float
+    total_pnl: float
+    position_count: int
+
+
+class PositionRiskImpact(BaseModel):
+    """The prospective position's own contribution to the projected dashboard."""
+
+    ticker: str
+    shares: float
+    price: float
+    position_value: float
+    pct_of_projected_portfolio: float
+
+
+class PositionRiskCheck(BaseModel):
+    """Pre-trade risk check: current vs. projected dashboard after merging
+    in a prospective new (or added-to) position."""
+
+    current: RiskDashboard
+    projected: RiskDashboard
+    new_position: PositionRiskImpact
+
+
+class RegimeAdjustedSizing(BaseModel):
+    """Position size scaled by the detected market regime's risk multiplier."""
+
+    shares: int
+    position_value: float
+    risk_amount: float
+    regime_multiplier: float
+    adjusted_risk_pct: float
+    regime: str
+
+
+class RiskAlert(BaseModel):
+    """A single risk-threshold breach (concentration/sizing/drawdown), not persisted."""
+
+    alert_type: str
+    severity: str
+    message: str
+    details: dict[str, Any]
+
+
+class RiskAlertsResult(BaseModel):
+    """Service-tier carrier for the alerts tool. `position_count` is not part
+    of the legacy tool's JSON payload -- it lets the tool distinguish "no
+    positions" (legacy's `status: empty` branch) from "positions present,
+    zero alerts" without a second portfolio read."""
+
+    alert_count: int
+    alerts: list[RiskAlert]
+    position_count: int

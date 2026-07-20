@@ -186,6 +186,97 @@ async def portfolio_correlation_analysis(
         return {"status": "error", "error": str(exc)}
 
 
+async def portfolio_get_risk_dashboard(
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
+    """Full risk dashboard for `portfolio_name`: total value, sector
+    concentration, parametric VaR (95/99), and total unrealized P&L."""
+    try:
+        service = _require_service()
+        result = await service.get_risk_dashboard(user_id, portfolio_name)
+        if result.position_count == 0:
+            return {
+                "status": "empty",
+                "message": f"No positions found in portfolio '{portfolio_name}'",
+                "portfolio_name": portfolio_name,
+            }
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        payload["portfolio_name"] = portfolio_name
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def portfolio_check_position_risk(
+    ticker: str,
+    shares: float,
+    entry_price: float,
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
+    """Pre-trade risk check: current vs. projected portfolio risk if
+    `shares` of `ticker` were added at `entry_price`."""
+    try:
+        service = _require_service()
+        result = await service.check_position_risk(
+            user_id, portfolio_name, ticker, shares, entry_price
+        )
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        payload["portfolio_name"] = portfolio_name
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def portfolio_get_regime_adjusted_sizing(
+    account_size: float,
+    entry_price: float,
+    stop_loss: float,
+    risk_pct: float = 2.0,
+) -> dict[str, Any]:
+    """Position size scaled by the current SPY-detected market regime
+    (bull = full risk, choppy/transitional = 75%, bear = 50%)."""
+    try:
+        service = _require_service()
+        result = await service.get_regime_adjusted_sizing(
+            account_size, entry_price, stop_loss, risk_pct
+        )
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def portfolio_get_risk_alerts(
+    user_id: str = "default",
+    portfolio_name: str = "My Portfolio",
+) -> dict[str, Any]:
+    """Current risk alerts for `portfolio_name`: sector concentration,
+    oversized positions, and portfolio drawdown threshold breaches."""
+    try:
+        service = _require_service()
+        result = await service.get_risk_alerts(user_id, portfolio_name)
+        if result.position_count == 0:
+            return {
+                "status": "empty",
+                "message": f"No positions found in portfolio '{portfolio_name}'",
+                "portfolio_name": portfolio_name,
+                "alerts": [],
+            }
+        return {
+            "status": "success",
+            "portfolio_name": portfolio_name,
+            "alert_count": result.alert_count,
+            "alerts": [alert.model_dump(mode="json") for alert in result.alerts],
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 async def _my_holdings_resource() -> str:
     """`portfolio://my-holdings`: the default portfolio's live-priced
     snapshot, for AI context rather than direct user invocation."""
@@ -216,11 +307,15 @@ _READ_ONLY_TOOLS = (
     portfolio_risk_adjusted_analysis,
     portfolio_compare_tickers,
     portfolio_correlation_analysis,
+    portfolio_get_risk_dashboard,
+    portfolio_check_position_risk,
+    portfolio_get_regime_adjusted_sizing,
+    portfolio_get_risk_alerts,
 )
 
 
 def register(mcp: FastMCP) -> None:
-    """Register all seven portfolio tools plus the `portfolio://my-holdings`
+    """Register all eleven portfolio tools plus the `portfolio://my-holdings`
     resource on `mcp`, with honest annotations."""
     for fn in _READ_ONLY_TOOLS:
         mcp.tool(name=fn.__name__, annotations=_READ_ONLY_ANNOTATIONS)(fn)

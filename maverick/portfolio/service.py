@@ -9,6 +9,15 @@ work to `analysis.py`; this module's job for those three is portfolio
 auto-fill (reading holdings when the caller omits explicit tickers) and,
 for risk analysis, the existing-position P&L block computed via the
 ledger's Decimal `position_value` (converted to float only in the payload).
+
+The risk-dashboard methods (`get_risk_dashboard`, `check_position_risk`,
+`get_regime_adjusted_sizing`, `get_risk_alerts`) follow the same shape but
+delegate the risk-specific glue to `service_risk.py` -- a same-layer
+sibling split out to keep this file under the package's line cap. This
+module still owns its own position reads and `MarketDataService` quote
+fetches; `service_risk.py` converts those into `PositionExposure`s and
+calls `risk.py`'s pure functions, plus owns the SPY-history fetch for
+regime detection.
 """
 
 import asyncio
@@ -21,7 +30,7 @@ from sqlalchemy.orm import sessionmaker
 from maverick.market_data.service import MarketDataService
 from maverick.platform.db import ensure_schema, read_only_session_scope, session_scope
 from maverick.platform.telemetry import get_logger
-from maverick.portfolio import analysis
+from maverick.portfolio import analysis, service_risk
 from maverick.portfolio.config import PortfolioSettings, get_portfolio_settings
 from maverick.portfolio.data import (
     METADATA,
@@ -39,9 +48,13 @@ from maverick.portfolio.types import (
     PortfolioMetrics,
     PortfolioSnapshot,
     PositionPayload,
+    PositionRiskCheck,
     PositionWithPrice,
+    RegimeAdjustedSizing,
     RemoveResult,
+    RiskAlertsResult,
     RiskAnalysis,
+    RiskDashboard,
 )
 
 logger = get_logger(__name__)
@@ -409,3 +422,54 @@ class PortfolioService:
         if existing_position is not None:
             result = result.model_copy(update={"existing_position": existing_position})
         return result
+
+    # -- risk dashboard: this service does its own reads, service_risk.py
+    # -- (a same-layer sibling split out for file size) does the rest -----
+
+    async def get_risk_dashboard(
+        self, user_id: str, portfolio_name: str
+    ) -> RiskDashboard:
+        await self._ensure_schema()
+        positions = await self._read_positions(user_id, portfolio_name)
+        prices = await self._fetch_quote_prices([p.ticker for p in positions])
+        return service_risk.get_risk_dashboard(positions, prices, self._settings)
+
+    async def check_position_risk(
+        self,
+        user_id: str,
+        portfolio_name: str,
+        ticker: str,
+        shares: float,
+        entry_price: float,
+    ) -> PositionRiskCheck:
+        await self._ensure_schema()
+        normalized_ticker = self._normalize_ticker(ticker)
+        positions = await self._read_positions(user_id, portfolio_name)
+        prices = await self._fetch_quote_prices([p.ticker for p in positions])
+        return service_risk.check_position_risk(
+            positions, prices, normalized_ticker, shares, entry_price, self._settings
+        )
+
+    async def get_regime_adjusted_sizing(
+        self,
+        account_size: float,
+        entry_price: float,
+        stop_loss: float,
+        risk_pct: float = 2.0,
+    ) -> RegimeAdjustedSizing:
+        return await service_risk.get_regime_adjusted_sizing(
+            self._market_data,
+            self._settings,
+            account_size,
+            entry_price,
+            stop_loss,
+            risk_pct,
+        )
+
+    async def get_risk_alerts(
+        self, user_id: str, portfolio_name: str
+    ) -> RiskAlertsResult:
+        await self._ensure_schema()
+        positions = await self._read_positions(user_id, portfolio_name)
+        prices = await self._fetch_quote_prices([p.ticker for p in positions])
+        return service_risk.get_risk_alerts(positions, prices, self._settings)

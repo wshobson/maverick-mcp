@@ -10,10 +10,17 @@ from maverick.portfolio.types import (
     CorrelationResult,
     PortfolioMetrics,
     PortfolioSnapshot,
+    PositionExposure,
     PositionPayload,
+    PositionRiskCheck,
+    PositionRiskImpact,
     PositionWithPrice,
+    RegimeAdjustedSizing,
     RemoveResult,
+    RiskAlert,
+    RiskAlertsResult,
     RiskAnalysis,
+    RiskDashboard,
 )
 
 
@@ -549,6 +556,87 @@ def test_risk_analysis_round_trips_through_model_dump():
 
 
 # -- Validation: required fields ------------------------------------------
+
+
+# -- PositionExposure ------------------------------------------------------
+
+
+def test_position_exposure_defaults_sector_to_unknown():
+    exposure = PositionExposure(
+        symbol="AAPL", shares=10.0, cost_basis=100.0, current_price=150.0
+    )
+    assert exposure.sector == "Unknown"
+
+
+# -- RiskDashboard / PositionRiskCheck / RegimeAdjustedSizing / alerts ------
+
+
+def _risk_dashboard() -> RiskDashboard:
+    return RiskDashboard(
+        total_value=1500.0,
+        sector_concentration={"Tech": 1.0},
+        max_sector_pct=1.0,
+        portfolio_var_95=49.35,
+        portfolio_var_99=69.78,
+        total_pnl=500.0,
+        position_count=1,
+    )
+
+
+def test_risk_dashboard_round_trips_through_model_dump():
+    dashboard = _risk_dashboard()
+    data = dashboard.model_dump()
+    assert RiskDashboard.model_validate(data) == dashboard
+
+
+def test_position_risk_check_composes_current_and_projected_dashboards():
+    check = PositionRiskCheck(
+        current=_risk_dashboard(),
+        projected=_risk_dashboard(),
+        new_position=PositionRiskImpact(
+            ticker="MSFT",
+            shares=10,
+            price=200.0,
+            position_value=2000.0,
+            pct_of_projected_portfolio=0.5,
+        ),
+    )
+    assert check.current.total_value == 1500.0
+    assert check.new_position.ticker == "MSFT"
+    data = check.model_dump()
+    assert PositionRiskCheck.model_validate(data) == check
+
+
+def test_regime_adjusted_sizing_round_trips_through_model_dump():
+    sizing = RegimeAdjustedSizing(
+        shares=400,
+        position_value=20000.0,
+        risk_amount=2000.0,
+        regime_multiplier=1.0,
+        adjusted_risk_pct=2.0,
+        regime="bull",
+    )
+    data = sizing.model_dump()
+    assert RegimeAdjustedSizing.model_validate(data) == sizing
+
+
+def test_risk_alerts_result_holds_alert_list_and_position_count():
+    result = RiskAlertsResult(
+        alert_count=1,
+        alerts=[
+            RiskAlert(
+                alert_type="drawdown",
+                severity="warning",
+                message="Portfolio is down 20.0% from cost basis",
+                details={"loss_pct": 0.2},
+            )
+        ],
+        position_count=1,
+    )
+    assert result.alert_count == 1
+    assert result.alerts[0].alert_type == "drawdown"
+    data = result.model_dump()
+    assert RiskAlertsResult.model_validate(data) == result
 
 
 def test_position_payload_requires_ticker():

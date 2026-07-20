@@ -616,3 +616,139 @@ async def test_risk_adjusted_analysis_rejects_invalid_ticker(tmp_path):
         await service.risk_adjusted_analysis(
             "default", "My Portfolio", "TOOLONGTICKER", 50.0
         )
+
+
+# ---------------------------------------------------------------------------
+# risk dashboard: get_risk_dashboard / check_position_risk /
+# get_regime_adjusted_sizing / get_risk_alerts
+# ---------------------------------------------------------------------------
+
+
+def _spy_frame(n: int = 60, start: float = 100.0) -> pd.DataFrame:
+    """A mild uptrend SPY series -- long enough (>= 51 rows) for the regime
+    detector's trend factor to engage."""
+    return _ohlcv_frame([start + i * 0.5 for i in range(n)])
+
+
+async def test_get_risk_dashboard_seeded_positions_via_service_reads(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 150.0, "MSFT": 100.0})
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100"), "2026-01-01"
+    )
+    await service.add_position(
+        "default", "My Portfolio", "MSFT", Decimal("10"), Decimal("100"), "2026-01-01"
+    )
+
+    result = await service.get_risk_dashboard("default", "My Portfolio")
+
+    # value = 10*150 + 10*100 = 2500; sector "Unknown" 100% concentrated.
+    assert result.total_value == 2500.0
+    assert result.sector_concentration == {"Unknown": 1.0}
+    assert result.position_count == 2
+    assert set(market_data.quote_calls) == {"AAPL", "MSFT"}
+
+
+async def test_get_risk_dashboard_empty_portfolio_returns_zero_dashboard(tmp_path):
+    service = _service(tmp_path)
+
+    result = await service.get_risk_dashboard("default", "My Portfolio")
+
+    assert result.total_value == 0.0
+    assert result.position_count == 0
+
+
+async def test_get_risk_dashboard_failed_quote_falls_back_to_cost_basis(tmp_path):
+    market_data = StubMarketData(quotes={}, quote_errors={"AAPL"})
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100"), "2026-01-01"
+    )
+
+    result = await service.get_risk_dashboard("default", "My Portfolio")
+
+    # Unlike get_portfolio (None on failure), risk exposures fall back to
+    # cost basis -- value = 10 * 100 = 1000, zero P&L.
+    assert result.total_value == 1000.0
+    assert result.total_pnl == 0.0
+
+
+async def test_check_position_risk_projects_against_seeded_holdings(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 150.0})
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100"), "2026-01-01"
+    )
+
+    result = await service.check_position_risk(
+        "default", "My Portfolio", "msft", 10, 200.0
+    )
+
+    assert result.current.total_value == 1500.0
+    assert result.projected.total_value == 1500.0 + 2000.0
+    assert result.new_position.ticker == "MSFT"
+
+
+async def test_check_position_risk_rejects_invalid_ticker(tmp_path):
+    service = _service(tmp_path)
+
+    with pytest.raises(ValueError, match="Invalid ticker"):
+        await service.check_position_risk(
+            "default", "My Portfolio", "TOOLONGTICKER", 1, 100.0
+        )
+
+
+async def test_get_regime_adjusted_sizing_detects_regime_from_spy_history(tmp_path):
+    market_data = StubMarketData(frames={"SPY": _spy_frame()})
+    service = _service(tmp_path, market_data=market_data)
+
+    result = await service.get_regime_adjusted_sizing(100000, 50, 45, 2.0)
+
+    assert result.regime in {"bull", "choppy", "transitional", "bear"}
+    assert market_data.history_calls[0][0] == "SPY"
+    assert market_data.history_calls[0][1] is not None  # start date always set
+
+
+async def test_get_regime_adjusted_sizing_falls_back_to_default_regime_on_fetch_failure(
+    tmp_path,
+):
+    market_data = StubMarketData(history_errors={"SPY"})
+    service = _service(tmp_path, market_data=market_data)
+
+    result = await service.get_regime_adjusted_sizing(100000, 50, 45, 2.0)
+
+    assert result.regime == service.settings.risk_regime_default_fallback
+    assert result.regime_multiplier == 1.0  # bull multiplier
+
+
+async def test_get_regime_adjusted_sizing_falls_back_when_spy_history_empty(tmp_path):
+    market_data = StubMarketData(frames={"SPY": pd.DataFrame()})
+    service = _service(tmp_path, market_data=market_data)
+
+    result = await service.get_regime_adjusted_sizing(100000, 50, 45, 2.0)
+
+    assert result.regime == service.settings.risk_regime_default_fallback
+
+
+async def test_get_risk_alerts_reports_position_count_and_alerts(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 80.0})
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100"), "2026-01-01"
+    )
+
+    result = await service.get_risk_alerts("default", "My Portfolio")
+
+    assert result.position_count == 1
+    assert result.alert_count == len(result.alerts)
+    assert any(a.alert_type == "drawdown" for a in result.alerts)
+
+
+async def test_get_risk_alerts_empty_portfolio_reports_zero_position_count(tmp_path):
+    service = _service(tmp_path)
+
+    result = await service.get_risk_alerts("default", "My Portfolio")
+
+    assert result.position_count == 0
+    assert result.alert_count == 0
+    assert result.alerts == []
