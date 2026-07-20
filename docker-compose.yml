@@ -7,12 +7,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/maverick_mcp
       - REDIS_HOST=redis
-      # Required API Keys
-      - TIINGO_API_KEY=${TIINGO_API_KEY}
       # Optional API Keys for Enhanced Features
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - EXA_API_KEY=${EXA_API_KEY:-}
-      - FRED_API_KEY=${FRED_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       # Server Configuration
@@ -27,8 +23,7 @@ services:
       retries: 3
       start_period: 45s
     volumes:
-      - ./maverick_mcp:/app/maverick_mcp
-      - ./alembic:/app/alembic
+      - ./maverick:/app/maverick
       - ./.env:/app/.env
     stop_grace_period: 30s
     depends_on:

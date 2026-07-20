@@ -4,34 +4,25 @@
 
 services:
   backend:
-    # Development mode with hot reload
-    command: python -m maverick_mcp.api.server --transport sse --host 0.0.0.0 --port 8003 --reload
+    # Development mode
+    command: python -m maverick.server --transport http --host 0.0.0.0 --port 8003
     environment:
       # Override for development
       - ENVIRONMENT=development
       - LOG_LEVEL=debug
       - API_DEBUG=true
-      
+
       # Add any additional API keys you want to test
-      # - OPENROUTER_API_KEY=your_key_here
       # - EXA_API_KEY=your_key_here
-      
+
       # Performance tuning
       - CACHE_ENABLED=true
       - CACHE_TTL_SECONDS=3600
-      
-      # Research agent configuration
-      - RESEARCH_TIMEOUT_SECONDS=120
-      - PARALLEL_AGENTS_MAX=6
-      - CONFIDENCE_THRESHOLD=0.85
-    
+
     # Mount additional volumes for development
     volumes:
       - ./tests:/app/tests
-      - ./scripts:/app/scripts
-      - ./examples:/app/examples
-      - ./tools:/app/tools
-      
+
     # Enable stdin and tty for interactive debugging
     stdin_open: true
     tty: true

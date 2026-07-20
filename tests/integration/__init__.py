@@ -1,1 +1,0 @@
-# Integration tests module marker

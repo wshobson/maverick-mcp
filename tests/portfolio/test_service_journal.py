@@ -425,7 +425,7 @@ async def test_journal_operations_carry_over_against_a_preexisting_legacy_databa
 ):
     """The real carry-over scenario named in `journal.py`'s module
     docstring: a pre-existing database already has `journal_entries`/
-    `strategy_performance` created by the legacy
+    `strategy_performance` created by the now-deleted legacy
     `maverick_mcp.services.journal.models` declarative models
     (`JournalEntry` -> `TimestampMixin` -> NOT NULL `created_at`/
     `updated_at`; `StrategyPerformance` -> no timestamp columns at all).
@@ -433,13 +433,60 @@ async def test_journal_operations_carry_over_against_a_preexisting_legacy_databa
     tables already present and never re-creates them -- it has to write
     into the legacy shape as-is. Exercises add/close/list/review/
     get_strategy_performance/compare_strategies end to end against that
-    exact shape."""
-    from maverick_mcp.database.base import Base
-    from maverick_mcp.services.journal.models import JournalEntry, StrategyPerformance
+    exact shape. The legacy package is gone, so the shape is reconstructed
+    inline here (plain `Table` objects, not ORM classes) rather than
+    imported."""
+    from sqlalchemy import (
+        JSON,
+        Column,
+        DateTime,
+        Float,
+        Integer,
+        MetaData,
+        String,
+        Table,
+        Text,
+    )
+
+    legacy_metadata = MetaData()
+    journal_entries_table = Table(
+        "journal_entries",
+        legacy_metadata,
+        Column("id", Integer, primary_key=True, autoincrement=True),
+        Column("symbol", String(20), nullable=False, index=True),
+        Column("side", String(10), nullable=False),
+        Column("entry_price", Float, nullable=False),
+        Column("exit_price", Float, nullable=True),
+        Column("shares", Float, nullable=False),
+        Column("entry_date", DateTime(timezone=True), nullable=False),
+        Column("exit_date", DateTime(timezone=True), nullable=True),
+        Column("rationale", Text, nullable=True),
+        Column("tags", JSON, nullable=True),
+        Column("pnl", Float, nullable=True),
+        Column("r_multiple", Float, nullable=True),
+        Column("notes", Text, nullable=True),
+        Column("status", String(10), nullable=False),
+        Column("created_at", DateTime(timezone=True), nullable=False),
+        Column("updated_at", DateTime(timezone=True), nullable=False),
+    )
+    strategy_performance_table = Table(
+        "strategy_performance",
+        legacy_metadata,
+        Column("id", Integer, primary_key=True, autoincrement=True),
+        Column("strategy_tag", String(100), nullable=False, index=True, unique=True),
+        Column("period", String(20), nullable=False),
+        Column("win_count", Integer, nullable=False),
+        Column("loss_count", Integer, nullable=False),
+        Column("total_pnl", Float, nullable=False),
+        Column("avg_win", Float, nullable=False),
+        Column("avg_loss", Float, nullable=False),
+        Column("expectancy", Float, nullable=False),
+        Column("profit_factor", Float, nullable=False),
+    )
 
     engine = _engine(tmp_path)
-    Base.metadata.create_all(
-        engine, tables=[JournalEntry.__table__, StrategyPerformance.__table__]
+    legacy_metadata.create_all(
+        engine, tables=[journal_entries_table, strategy_performance_table]
     )
 
     service = JournalService(engine)

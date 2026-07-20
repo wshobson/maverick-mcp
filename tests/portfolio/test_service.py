@@ -889,20 +889,49 @@ async def test_watchlist_operations_carry_over_against_a_preexisting_legacy_data
 ):
     """The real carry-over scenario named in `watchlist.py`'s module
     docstring: a pre-existing database already has `watchlists`/
-    `watchlist_items` created by the legacy `maverick_mcp.services.
-    watchlist.models` declarative models (`TimestampMixin` -> NOT NULL
-    `created_at`/`updated_at`, Python-side defaults only, no
+    `watchlist_items` created by the now-deleted legacy `maverick_mcp.
+    services.watchlist.models` declarative models (`TimestampMixin` -> NOT
+    NULL `created_at`/`updated_at`, Python-side defaults only, no
     `server_default`). `ensure_schema`'s checkfirst behavior means the new
     stack sees the tables already present and never re-creates them -- it
     has to write into the legacy shape as-is. Exercises
-    create/add/remove/brief end to end against that exact shape."""
-    from maverick_mcp.database.base import Base
-    from maverick_mcp.services.watchlist.models import Watchlist, WatchlistItem
+    create/add/remove/brief end to end against that exact shape. The legacy
+    package is gone, so the shape is reconstructed inline here (plain
+    `Table` objects, not ORM classes) rather than imported."""
+    from sqlalchemy import (
+        Column,
+        DateTime,
+        Integer,
+        MetaData,
+        String,
+        Table,
+        Text,
+    )
+
+    legacy_metadata = MetaData()
+    watchlists_table = Table(
+        "watchlists",
+        legacy_metadata,
+        Column("id", Integer, primary_key=True, autoincrement=True),
+        Column("name", String(255), unique=True, nullable=False),
+        Column("description", Text, nullable=True),
+        Column("created_at", DateTime(timezone=True), nullable=False),
+        Column("updated_at", DateTime(timezone=True), nullable=False),
+    )
+    watchlist_items_table = Table(
+        "watchlist_items",
+        legacy_metadata,
+        Column("id", Integer, primary_key=True, autoincrement=True),
+        Column("watchlist_id", Integer, nullable=False, index=True),
+        Column("symbol", String(10), nullable=False, index=True),
+        Column("added_at", DateTime(timezone=True), nullable=False),
+        Column("notes", Text, nullable=True),
+        Column("created_at", DateTime(timezone=True), nullable=False),
+        Column("updated_at", DateTime(timezone=True), nullable=False),
+    )
 
     engine = _engine(tmp_path)
-    Base.metadata.create_all(
-        engine, tables=[Watchlist.__table__, WatchlistItem.__table__]
-    )
+    legacy_metadata.create_all(engine, tables=[watchlists_table, watchlist_items_table])
 
     market_data = StubMarketData(quotes={"AAPL": 175.50})
     service = PortfolioService(engine, market_data)

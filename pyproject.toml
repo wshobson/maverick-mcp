@@ -3,29 +3,20 @@ name = "maverick_mcp"
 version = "0.1.0"
 description = "Personal-use MCP server for Claude Desktop providing professional-grade stock analysis and technical indicators"
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12"
 dependencies = [
     # Core MCP and server dependencies
     "fastmcp>=3.3.1",
     "mcp>=1.28.1",
-    "fastapi>=0.136.3",
     "uvicorn>=0.48.0",
-    "gunicorn>=26.0.0",
     "python-multipart>=0.0.31",
     "aiofiles>=25.1.0",
-    "apscheduler>=3.11.2,<4.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.2.2",
-    # LangGraph checkpointing: guarded, lazy-imported fallback in the legacy
-    # maverick_mcp.memory.checkpointer (try/except ImportError), still a
-    # live import path for the legacy agents until Phase 7 cutover -- stays
-    # in core rather than the [research] extra or deleted outright.
-    "langgraph-checkpoint-sqlite>=3.1.0",
     "anthropic>=0.104.1",
     "openai>=2.38.0",
     # Database and caching
     "sqlalchemy>=2.0.50",
-    "alembic>=1.18.4",
     "psycopg2-binary>=2.9.12",
     "aiosqlite>=0.22.1",
     "asyncpg>=0.31.0",
@@ -39,25 +30,12 @@ dependencies = [
     "pandas>=2.3.3",
     "yfinance>=1.4.0",
     "finvizfinance>=1.3.0",
-    "ta-lib>=0.6.8",
     "pytz>=2026.2",
     # Security (basic cryptography for data security)
     "cryptography>=48.0.1",
     # System monitoring (basic)
     "psutil>=7.2.2",
-    "sentry-sdk[fastapi]>=2.60.0",
-    # Prometheus metrics
-    "prometheus-client>=0.25.0",
-    # Trading
-    "fredapi>=0.5.2",
-    "pandas-datareader>=0.10.0",
     "pandas-market-calendars>=5.4.0",
-    "tiingo>=0.16.1",
-    # Visualization (essential only)
-    "matplotlib>=3.10.9",
-    "plotly>=6.7.0",
-    "seaborn>=0.13.2",
-    "kaleido>=1.3.0", # Required for Plotly image export
 ]
 
 [project.optional-dependencies]
@@ -109,7 +87,7 @@ include = ["*.py"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["tests", "maverick_mcp/tests"]
+testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -170,19 +148,7 @@ dev = [
 ]
 
 [tool.importlinter]
-root_packages = ["maverick", "maverick_mcp"]
-
-[[tool.importlinter.contracts]]
-name = "The new package never imports the legacy package"
-type = "forbidden"
-source_modules = ["maverick"]
-forbidden_modules = ["maverick_mcp"]
-
-[[tool.importlinter.contracts]]
-name = "The legacy package never imports the new package"
-type = "forbidden"
-source_modules = ["maverick_mcp"]
-forbidden_modules = ["maverick"]
+root_packages = ["maverick"]
 
 [[tool.importlinter.contracts]]
 name = "Market data layers are forward-only"

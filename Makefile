@@ -1,17 +1,14 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-sse dev-http dev-stdio stop test test-all test-watch test-specific test-parallel test-cov test-speed test-speed-quick test-speed-emergency test-speed-comparison test-strategies lint format typecheck docs-check clean tail-log backend check migrate setup redis-start redis-stop experiment experiment-once benchmark-parallel benchmark-speed docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
 	@echo "Maverick-MCP Development Commands:"
 	@echo ""
 	@echo "  make dev          - Start development environment (Streamable-HTTP transport, default)"
-	@echo "  make dev-http     - Start the legacy server (Streamable-HTTP transport)"
-	@echo "  make dev-sse      - Start with SSE transport (debug/inspector use)"
 	@echo "  make dev-stdio    - Start with STDIO transport (recommended for Claude Desktop)"
-	@echo "  make backend      - Start backend MCP server (dev mode)"
 	@echo "  make stop         - Stop all services"
 	@echo ""
 	@echo "  make test         - Run unit tests (fast)"
@@ -20,12 +17,6 @@ help:
 	@echo "  make test-specific TEST=name - Run specific test"
 	@echo "  make test-parallel - Run tests in parallel"
 	@echo "  make test-cov     - Run tests with coverage report"
-	@echo "  make test-fixes   - Validate MCP tool fixes are working"
-	@echo "  make test-speed   - Run speed optimization validation tests"
-	@echo "  make test-speed-quick - Quick speed validation for CI"
-	@echo "  make test-speed-emergency - Emergency mode speed tests"
-	@echo "  make test-speed-comparison - Before/after performance comparison"
-	@echo "  make test-strategies - Validate ALL backtesting strategies"
 	@echo ""
 	@echo "  make lint         - Run code quality checks"
 	@echo "  make format       - Auto-format code"
@@ -35,11 +26,6 @@ help:
 	@echo ""
 	@echo "  make tail-log     - Follow backend logs"
 	@echo ""
-	@echo "  make experiment   - Watch and auto-run .py files"
-	@echo "  make benchmark-parallel - Test parallel screening"
-	@echo "  make benchmark-speed - Run comprehensive speed benchmark"
-	@echo "  make migrate      - Run database migrations"
-	@echo "  make setup        - Initial project setup"
 	@echo "  make clean        - Clean up generated files"
 	@echo ""
 	@echo "  make docker-up    - Start with Docker"
@@ -51,25 +37,13 @@ dev:
 	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
 	@uv run python -m maverick.server --transport http
 
-dev-http:
-	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
-	@./scripts/dev.sh
-
-dev-sse:
-	@echo "Starting Maverick-MCP development environment (SSE transport)..."
-	@MAVERICK_TRANSPORT=sse ./scripts/dev.sh
-
 dev-stdio:
 	@echo "Starting Maverick-MCP development environment (STDIO transport)..."
 	@uv run python -m maverick.server --transport stdio
 
-backend:
-	@echo "Starting backend in development mode..."
-	@./scripts/start-backend.sh --dev
-
 stop:
 	@echo "Stopping all services..."
-	@pkill -f "maverick_mcp.api.server" || true
+	@pkill -f "maverick.server" || true
 	@echo "All services stopped."
 
 # Testing commands
@@ -107,36 +81,7 @@ test-parallel:
 
 test-cov:
 	@echo "Running tests with coverage..."
-	@uv run pytest --cov=maverick_mcp --cov-report=html --cov-report=term
-
-test-fixes:
-	@echo "Running MCP tool fixes validation..."
-	@uv run python maverick_mcp/tests/test_mcp_tool_fixes.py
-
-test-fixes-verbose:
-	@echo "Running MCP tool fixes validation (verbose)..."
-	@uv run python -u maverick_mcp/tests/test_mcp_tool_fixes.py
-
-# Speed optimization testing commands
-test-speed:
-	@echo "Running speed optimization validation tests..."
-	@uv run pytest -v tests/test_speed_optimization_validation.py
-
-test-speed-quick:
-	@echo "Running quick speed validation for CI..."
-	@uv run python scripts/speed_benchmark.py --mode quick
-
-test-speed-emergency:
-	@echo "Running emergency mode speed tests..."
-	@uv run python scripts/speed_benchmark.py --mode emergency
-
-test-speed-comparison:
-	@echo "Running before/after performance comparison..."
-	@uv run python scripts/speed_benchmark.py --mode comparison
-
-test-strategies:
-	@echo "Validating ALL backtesting strategies with real market data..."
-	@uv run python scripts/test_all_strategies.py
+	@uv run pytest --cov=maverick --cov-report=html --cov-report=term
 
 # Code quality commands
 lint:
@@ -164,18 +109,6 @@ check: lint typecheck
 tail-log:
 	@echo "Following backend logs (Ctrl+C to stop)..."
 	@tail -f backend.log
-
-experiment:
-	@echo "Starting experiment harness..."
-	@python tools/experiment.py
-
-experiment-once:
-	@echo "Running experiments once..."
-	@python tools/experiment.py --once
-
-migrate:
-	@echo "Running database migrations..."
-	@./scripts/run-migrations.sh upgrade
 
 setup:
 	@echo "Setting up Maverick-MCP..."
@@ -215,22 +148,10 @@ redis-stop:
 
 # Quick shortcuts
 d: dev
-dh: dev-http
 ds: dev-stdio
-b: backend
 t: test
 l: lint
 c: check
-
-# Performance testing
-benchmark-parallel:
-	@echo "Benchmarking parallel screening performance..."
-	@python -c "from tools.quick_test import test_parallel_screening; import asyncio; asyncio.run(test_parallel_screening())"
-
-benchmark-speed:
-	@echo "Running comprehensive speed benchmark..."
-	@uv run python scripts/speed_benchmark.py --mode full
-
 
 # Docker commands
 docker-up:

@@ -38,9 +38,8 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen
 
 # Copy application code
-COPY maverick_mcp ./maverick_mcp
-COPY alembic ./alembic
-COPY alembic.ini setup.py ./
+COPY maverick ./maverick
+COPY setup.py ./
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
@@ -61,4 +60,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 # Start MCP server
-CMD ["uv", "run", "python", "-m", "maverick_mcp.api.server", "--transport", "sse", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "python", "-m", "maverick.server", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]

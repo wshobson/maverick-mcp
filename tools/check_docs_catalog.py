@@ -26,9 +26,7 @@ ROOT_DOCS = {
     "CODE_OF_CONDUCT.md",
 }
 
-NON_DOC_TEXT = {
-    "scripts/requirements_tiingo.txt",
-}
+NON_DOC_TEXT: set[str] = set()
 
 CONCISE_LIMITS = {
     "AGENTS.md": 220,
