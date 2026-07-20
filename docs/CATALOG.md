@@ -29,7 +29,7 @@ Status labels:
 | `exec-plans/completed/2026-07-19-phase-3-screening-domain.md` | current | engineering | Phase 3 execution plan (screening domain and technical core). |
 | `exec-plans/completed/2026-07-19-phase-4-portfolio-domain.md` | current | engineering | Phase 4 execution plan (portfolio domain). |
 | `exec-plans/completed/2026-07-19-phase-5-technical-domain.md` | current | engineering | Phase 5 execution plan (technical domain completion). |
-| `exec-plans/active/2026-07-19-phase-6-backtesting-extra.md` | current | engineering | Phase 6 execution plan (backtesting extra). |
+| `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` | current | engineering | Phase 6 execution plan (backtesting extra). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |

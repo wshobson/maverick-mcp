@@ -41,7 +41,7 @@ use this index as the map to deeper, versioned sources of truth.
   execution plan (portfolio domain).
 - `exec-plans/completed/2026-07-19-phase-5-technical-domain.md` - Phase 5
   execution plan (technical domain completion).
-- `exec-plans/active/2026-07-19-phase-6-backtesting-extra.md` - Phase 6
+- `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` - Phase 6
   execution plan (backtesting extra).
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface

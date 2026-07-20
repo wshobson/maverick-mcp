@@ -18,3 +18,4 @@ that changes the code, and note why.
 | `maverick/technical/` | A | Full domain: 8 golden-tested indicators, pure analysis rubrics with the legacy outlook bug fixed, a timeout-guarded service, and 4 canonical tools. |
 | `maverick/screening/` | A | Query and compute domain; rubric scores are exact-tested; fresh installs can self-populate. |
 | `maverick/portfolio/` | A | Decimal ledger ported from the tested domain layer; analyses on the seam; FK policy platform-owned. |
+| `maverick/backtesting/` | A | Full domain behind the optional `[backtesting]` extra: 11 read-only tools, 12 rule-based templates + 8 ML strategy classes with golden/seeded tests, guarded package exports (base install always importable, extra-only members lazy), zero tools registered when the extra is absent. Store removed (YAGNI, no persisting caller found). |

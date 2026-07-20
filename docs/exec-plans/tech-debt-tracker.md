@@ -43,3 +43,8 @@ One line per item. Remove the line in the same change that removes the debt.
 | legacy core/technical_analysis.py + technical routers + visualization.py + stock_helpers chain retire at cutover | `maverick_mcp/core/technical_analysis.py`, `maverick_mcp/api/routers/technical.py`, `maverick_mcp/api/routers/technical_enhanced.py`, `maverick_mcp/core/visualization.py`, `maverick_mcp/utils/stock_helpers.py` | cutover |
 | unwired validation models in maverick_mcp/validation/technical.py die with the legacy routers | `maverick_mcp/validation/technical.py` | cutover |
 | dead registry.get_tool('get_technical_indicators') references in legacy agents (falls back to mock tools) | `maverick_mcp/agents/technical_analysis.py`, `maverick_mcp/agents/market_analysis.py` | cutover or research port |
+| legacy maverick_mcp/backtesting + router + visualization retire at cutover | `maverick_mcp/backtesting/`, `maverick_mcp/api/routers/backtesting.py`, `maverick_mcp/core/visualization.py` | cutover (Phase 8) |
+| requires-python <3.13 pin blocked by core ta-lib until cutover | `pyproject.toml` | cutover |
+| matplotlib/seaborn removal blocked by legacy visualization until cutover | `pyproject.toml` | cutover |
+| parse_strategy returns in Phase 7 on the BYOK LLM seam | `maverick/backtesting/` | Phase 7 |
+| service_ml.py and ensemble.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py` | deferred |
