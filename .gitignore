@@ -75,3 +75,8 @@ Thumbs.db
 docker-compose.override.yml
 ta-lib/
 ta-lib-0.4.0-src.tar.gz
+
+# Local scratch / tool-owned dirs (never packaged)
+.claude/
+data/
+.superpowers/

@@ -89,6 +89,22 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["maverick"]
 
+[tool.hatch.build.targets.sdist]
+# Scope the sdist explicitly so a local `uv build` on a working tree that has
+# untracked scratch dirs (.claude/, data/, .superpowers/) never sweeps them —
+# and never ships local SQLite data or deleted-legacy copies to PyPI.
+include = [
+    "maverick",
+    "tests",
+    "docs",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+    ".env.example",
+    "Makefile",
+    "server.json",
+]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]

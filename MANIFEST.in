@@ -1,7 +1,0 @@
-include README.md
-include LICENSE
-include pyproject.toml
-include CLAUDE.md
-include .env.example
-recursive-include finmcp *.py
-recursive-include tests *.py

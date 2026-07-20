@@ -86,7 +86,11 @@ pip install uv
 
 ### Installation
 
-#### Option 1: Run without installing (uvx)
+> **Note:** v1.0.0 is not yet published to PyPI (registry rollout is in
+> progress). Until it is, use Option 3 (from source). Options 1 and 2 are the
+> intended usage once the package is published.
+
+#### Option 1: Run without installing (uvx, once published)
 
 ```bash
 # Runs the published maverick-mcp-server package via uvx, invoking its
@@ -94,7 +98,7 @@ pip install uv
 uvx --from maverick-mcp-server maverick-mcp --transport stdio
 ```
 
-#### Option 2: pip install
+#### Option 2: pip install (once published)
 
 ```bash
 pip install "maverick-mcp-server[backtesting,research]"
