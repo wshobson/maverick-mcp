@@ -5,11 +5,14 @@ Isolates each test from process-global state that persists across the
 `maverick.market_data.config` settings singleton, and (as of Task 3) the
 cached `maverick.research.config` settings singleton -- the research layer
 contract permits `maverick.research.service`/`maverick.research.tools` to
-import `maverick.market_data` (for company research price context, pending
-verification in Task 6 of the plan), whose settings are process-global, so
-its cache needs the same per-test reset already applied in
+import `maverick.market_data`, whose settings are process-global, so its
+cache needs the same per-test reset already applied in
 `tests/technical/conftest.py`, `tests/screening/conftest.py`,
-`tests/portfolio/conftest.py`, and `tests/backtesting/conftest.py`.
+`tests/portfolio/conftest.py`, and `tests/backtesting/conftest.py`. Task 6
+verified the permission goes unused (the legacy company-research path never
+fetched price context; see `service.py`'s module docstring): the reset stays
+anyway, since the contract still allows the import and costs nothing to keep
+resetting defensively.
 
 As of Task 5, also resets `maverick.platform.llm`'s cached `LLMSettings`
 singleton: `DeepResearchAgent.__init__` calls `get_llm()` when no `llm` is

@@ -275,7 +275,7 @@ name = "Research layers are forward-only"
 type = "layers"
 layers = [
     "maverick.research.tools",
-    "maverick.research.service",
+    "maverick.research.service : maverick.research.service_support",
     "maverick.research.agents | maverick.research.providers",
     "maverick.research.config",
     "maverick.research.types",
@@ -290,5 +290,5 @@ forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.por
 [[tool.importlinter.contracts]]
 name = "Research service and tools never import other domains"
 type = "forbidden"
-source_modules = ["maverick.research.service", "maverick.research.tools"]
+source_modules = ["maverick.research.service", "maverick.research.service_support", "maverick.research.tools"]
 forbidden_modules = ["maverick.screening", "maverick.portfolio", "maverick.technical", "maverick.backtesting"]
