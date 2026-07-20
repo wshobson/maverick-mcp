@@ -8,7 +8,7 @@ help:
 	@echo "Maverick-MCP Development Commands:"
 	@echo ""
 	@echo "  make dev          - Start development environment (Streamable-HTTP transport, default)"
-	@echo "  make dev-http     - Start with Streamable-HTTP transport (same as dev)"
+	@echo "  make dev-http     - Start the legacy server (Streamable-HTTP transport)"
 	@echo "  make dev-sse      - Start with SSE transport (debug/inspector use)"
 	@echo "  make dev-stdio    - Start with STDIO transport (recommended for Claude Desktop)"
 	@echo "  make backend      - Start backend MCP server (dev mode)"
@@ -49,7 +49,7 @@ help:
 # Development commands
 dev:
 	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
-	@./scripts/dev.sh
+	@uv run python -m maverick.server --transport http
 
 dev-http:
 	@echo "Starting Maverick-MCP development environment (Streamable-HTTP transport)..."
@@ -61,7 +61,7 @@ dev-sse:
 
 dev-stdio:
 	@echo "Starting Maverick-MCP development environment (STDIO transport)..."
-	@MAVERICK_TRANSPORT=stdio ./scripts/dev.sh
+	@uv run python -m maverick.server --transport stdio
 
 backend:
 	@echo "Starting backend in development mode..."

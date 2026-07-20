@@ -18,6 +18,7 @@ from maverick.research import research_extra_available
 from maverick.research import tools as research_tools
 from maverick.screening import tools as screening_tools
 from maverick.screening.service import ScreeningService
+from maverick.server import prompts
 from maverick.technical import tools as technical_tools
 from maverick.technical.service import TechnicalService
 
@@ -89,5 +90,7 @@ def build_server() -> FastMCP:
 
         research_tools.configure(ResearchService())
     research_tools.register(mcp)
+
+    prompts.register(mcp)
 
     return mcp

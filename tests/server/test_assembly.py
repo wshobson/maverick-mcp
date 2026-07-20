@@ -20,7 +20,7 @@ from maverick.backtesting import backtesting_extra_available
 from maverick.backtesting import tools as backtesting_tools
 from maverick.research import research_extra_available
 from maverick.research import tools as research_tools
-from maverick.server import assembly
+from maverick.server import assembly, prompts
 from maverick.server.assembly import build_server
 
 CORE_TOOL_NAMES = frozenset(
@@ -105,6 +105,12 @@ async def _tool_names(mcp) -> set[str]:
     return {tool.name for tool in tools}
 
 
+async def _prompt_names(mcp) -> set[str]:
+    async with Client(mcp) as client:
+        result = await client.list_prompts()
+    return {p.name for p in result}
+
+
 class TestCoreToolSurface:
     """The full core tool list registers by exact name, regardless of extras."""
 
@@ -137,13 +143,22 @@ class TestCoreToolSurface:
             expected |= RESEARCH_TOOL_NAMES
         assert names == expected
 
+    async def test_prompts_registered(self):
+        mcp = build_server()
+        names = await _prompt_names(mcp)
+        expected = {"analyze_stock", "review_portfolio"}
+        if backtesting_extra_available():
+            expected.add("run_backtest_workflow")
+        assert names == expected
+
 
 class TestZeroExtraDegradation:
-    """A base install (neither extra) boots with only the 37 core tools, and
-    never raises -- simulated by monkeypatching every copy of each domain's
-    own availability probe that assembly/tools call (assembly.py's own
-    imported name gates service construction; each `tools.py`'s private
-    alias gates `register()`)."""
+    """A base install (neither extra) boots with only the 37 core tools and
+    2 prompts, and never raises -- simulated by monkeypatching every copy of
+    each domain's own availability probe that assembly/tools/prompts call
+    (assembly.py's own imported name gates service construction; each
+    `tools.py`'s private alias gates `register()`; `prompts.py`'s private
+    alias gates the third prompt)."""
 
     @pytest.fixture(autouse=True)
     def _no_extras(self, monkeypatch):
@@ -153,6 +168,7 @@ class TestZeroExtraDegradation:
             backtesting_tools, "_backtesting_extra_available", lambda: False
         )
         monkeypatch.setattr(research_tools, "_research_extra_available", lambda: False)
+        monkeypatch.setattr(prompts, "_backtesting_extra_available", lambda: False)
 
     async def test_build_server_does_not_raise(self):
         build_server()
@@ -161,6 +177,11 @@ class TestZeroExtraDegradation:
         mcp = build_server()
         names = await _tool_names(mcp)
         assert names == CORE_TOOL_NAMES
+
+    async def test_only_two_prompts_registered(self):
+        mcp = build_server()
+        names = await _prompt_names(mcp)
+        assert names == {"analyze_stock", "review_portfolio"}
 
 
 class TestSmokeRoundTrip:
