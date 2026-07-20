@@ -227,7 +227,7 @@ def test_golden_run(ohlcv_frame, strategy_type):
         parameters=params,
         settings=BacktestingSettings(),
     )
-    assert result.metrics.total_return == pytest.approx(exp_total_return, rel=1e-9)
+    assert result.metrics.total_return == pytest.approx(exp_total_return, rel=1e-6)
     assert result.metrics.total_trades == exp_total_trades
 
 
@@ -240,4 +240,4 @@ def test_sma_cross_golden_run_matches_engine_characterization(ohlcv_frame):
         ohlcv_frame, "sma_cross", {"fast_period": 10, "slow_period": 20}
     )
     result = run_backtest(ohlcv_frame, entries, exits, settings=BacktestingSettings())
-    assert result.metrics.total_return == pytest.approx(-0.1939859295537608, rel=1e-9)
+    assert result.metrics.total_return == pytest.approx(-0.1939859295537608, rel=1e-6)

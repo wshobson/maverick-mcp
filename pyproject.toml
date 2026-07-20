@@ -232,8 +232,8 @@ layers = [
 name = "Backtesting layers are forward-only"
 type = "layers"
 layers = [
-    "maverick.backtesting.tools",
-    "maverick.backtesting.service",
+    "maverick.backtesting.tools : maverick.backtesting.tools_ml : maverick.backtesting.tools_support",
+    "maverick.backtesting.service : maverick.backtesting.service_ml : maverick.backtesting.service_support",
     "maverick.backtesting.engine | maverick.backtesting.optimization | maverick.backtesting.analysis | maverick.backtesting.strategies",
     "maverick.backtesting.config",
     "maverick.backtesting.types",
@@ -266,5 +266,5 @@ forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.por
 [[tool.importlinter.contracts]]
 name = "Backtesting service and tools never import screening or portfolio"
 type = "forbidden"
-source_modules = ["maverick.backtesting.service", "maverick.backtesting.tools"]
+source_modules = ["maverick.backtesting.service", "maverick.backtesting.service_ml", "maverick.backtesting.service_support", "maverick.backtesting.tools", "maverick.backtesting.tools_ml", "maverick.backtesting.tools_support"]
 forbidden_modules = ["maverick.screening", "maverick.portfolio"]

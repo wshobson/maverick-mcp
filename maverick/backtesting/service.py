@@ -1,4 +1,4 @@
-"""Backtesting business logic. Fourth layer: imports store, engine, optimization, analysis,
+"""Backtesting business logic. Fourth layer: imports engine, optimization, analysis,
 strategies, config, and types.
 
 `BacktestingService(market_data, settings=None)` backs all 11 `backtesting_*` MCP tools with

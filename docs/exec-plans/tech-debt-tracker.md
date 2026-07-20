@@ -47,4 +47,4 @@ One line per item. Remove the line in the same change that removes the debt.
 | requires-python <3.13 pin blocked by core ta-lib until cutover | `pyproject.toml` | cutover |
 | matplotlib/seaborn removal blocked by legacy visualization until cutover | `pyproject.toml` | cutover |
 | parse_strategy returns in Phase 7 on the BYOK LLM seam | `maverick/backtesting/` | Phase 7 |
-| service_ml.py and ensemble.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py` | deferred |
+| service_ml.py, ensemble.py, online_learning.py, and feature_engineering.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py`, `maverick/backtesting/strategies/ml/online_learning.py`, `maverick/backtesting/strategies/ml/feature_engineering.py` | deferred |
