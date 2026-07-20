@@ -26,6 +26,9 @@ class PortfolioSettings(BaseModel):
     max_shares: int = 10**9
     max_price: int = 10**6
 
+    # -- trade journal: ported from maverick_mcp.services.journal --
+    journal_list_default_limit: int = 50
+
     # -- risk dashboard: ported from maverick_mcp.services.risk.service.RiskService --
     risk_var_z_95: float = 1.645
     risk_var_z_99: float = 2.326

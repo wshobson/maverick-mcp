@@ -38,6 +38,8 @@ def test_defaults_are_zero_config():
     assert s.history_pad_calendar_days == 400
     assert s.max_shares == 10**9
     assert s.max_price == 10**6
+    # -- trade journal: legacy-literal default ------------------------------
+    assert s.journal_list_default_limit == 50
     # -- risk dashboard: legacy-literal defaults ---------------------------
     assert s.risk_var_z_95 == 1.645
     assert s.risk_var_z_99 == 2.326

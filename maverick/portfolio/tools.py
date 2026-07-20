@@ -6,7 +6,16 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from maverick.portfolio import tools_journal
 from maverick.portfolio.service import PortfolioService
+from maverick.portfolio.service_journal import JournalService
+from maverick.portfolio.tools_journal import (
+    portfolio_get_strategy_performance,
+    portfolio_journal_add_trade,
+    portfolio_journal_close_trade,
+    portfolio_journal_list_trades,
+    portfolio_journal_review,
+)
 
 _READ_ONLY_ANNOTATIONS = {"readOnlyHint": True}
 _ADD_ANNOTATIONS = {
@@ -36,8 +45,16 @@ _WATCHLIST_REMOVE_ANNOTATIONS = {
 _service: PortfolioService | None = None
 
 
-def configure(service: PortfolioService) -> None:
-    """Wire the module-level service instance every tool function calls through.
+def configure(
+    service: PortfolioService, journal_service: JournalService | None = None
+) -> None:
+    """Wire the module-level service instances every tool function calls
+    through. `journal_service` is forwarded to `tools_journal.configure`:
+    `JournalService` is a standalone domain service (see
+    `service_journal.py`'s module docstring for why it isn't composed
+    inside `PortfolioService`), so its tool functions live in, and are
+    configured by, that sibling module -- optional here so every
+    pre-existing `configure(service)` call site keeps working unchanged.
 
     The server assembly phase will replace this globals-based wiring with
     proper dependency injection; this module-level seam keeps the tool
@@ -45,6 +62,7 @@ def configure(service: PortfolioService) -> None:
     """
     global _service
     _service = service
+    tools_journal.configure(journal_service)
 
 
 def _require_service() -> PortfolioService:
@@ -375,11 +393,14 @@ _READ_ONLY_TOOLS = (
     portfolio_get_regime_adjusted_sizing,
     portfolio_get_risk_alerts,
     portfolio_watchlist_brief,
+    portfolio_journal_list_trades,
+    portfolio_journal_review,
+    portfolio_get_strategy_performance,
 )
 
 
 def register(mcp: FastMCP) -> None:
-    """Register all fifteen portfolio tools plus the `portfolio://my-holdings`
+    """Register all twenty portfolio tools plus the `portfolio://my-holdings`
     resource on `mcp`, with honest annotations."""
     for fn in _READ_ONLY_TOOLS:
         mcp.tool(name=fn.__name__, annotations=_READ_ONLY_ANNOTATIONS)(fn)
@@ -402,4 +423,10 @@ def register(mcp: FastMCP) -> None:
         name=portfolio_watchlist_remove.__name__,
         annotations=_WATCHLIST_REMOVE_ANNOTATIONS,
     )(portfolio_watchlist_remove)
+    mcp.tool(name=portfolio_journal_add_trade.__name__, annotations=_ADD_ANNOTATIONS)(
+        portfolio_journal_add_trade
+    )
+    mcp.tool(name=portfolio_journal_close_trade.__name__, annotations=_ADD_ANNOTATIONS)(
+        portfolio_journal_close_trade
+    )
     mcp.resource("portfolio://my-holdings")(_my_holdings_resource)

@@ -210,10 +210,10 @@ layers = [
 name = "Portfolio layers are forward-only"
 type = "layers"
 layers = [
-    "maverick.portfolio.tools",
-    "maverick.portfolio.service : maverick.portfolio.service_risk : maverick.portfolio.service_watchlist",
+    "maverick.portfolio.tools : maverick.portfolio.tools_journal",
+    "maverick.portfolio.service : maverick.portfolio.service_risk : maverick.portfolio.service_watchlist : maverick.portfolio.service_journal",
     "maverick.portfolio.analysis | maverick.portfolio.risk",
-    "maverick.portfolio.data | maverick.portfolio.ledger | maverick.portfolio.watchlist",
+    "maverick.portfolio.data | maverick.portfolio.ledger | maverick.portfolio.watchlist | maverick.portfolio.journal",
     "maverick.portfolio.config",
     "maverick.portfolio.types",
 ]

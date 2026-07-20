@@ -209,3 +209,51 @@ class WatchlistBrief(BaseModel):
     watchlist_id: int
     count: int
     items: list[WatchlistBriefItem]
+
+
+class JournalEntryPayload(BaseModel):
+    """A single trade record (`journal_entries` table). `entry_date`/
+    `exit_date` are ISO 8601 strings, not `datetime` -- same convention as
+    `PositionPayload.purchase_date`. `r_multiple` is always `None`: legacy
+    never computed it either (the column exists on the model but no legacy
+    code path ever sets it), so this port carries the dead field forward
+    rather than dropping it or inventing a computation."""
+
+    id: int
+    symbol: str
+    side: str
+    entry_price: float
+    exit_price: float | None = None
+    shares: float
+    entry_date: str
+    exit_date: str | None = None
+    rationale: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    pnl: float | None = None
+    r_multiple: float | None = None
+    notes: str | None = None
+    status: str
+
+
+class JournalTradeReview(JournalEntryPayload):
+    """`JournalEntryPayload` plus the side-aware `pnl_pct` computed only for
+    the review tool (legacy `journal_trade_review`)."""
+
+    pnl_pct: float | None = None
+
+
+class StrategyPerformancePayload(BaseModel):
+    """Aggregated performance for a strategy tag (`strategy_performance`
+    table), persisted and only recomputed when a tagged trade closes --
+    reading this before any trade with the tag has closed returns nothing
+    (the service layer reports `found: False`), matching legacy exactly."""
+
+    strategy_tag: str
+    period: str
+    win_count: int
+    loss_count: int
+    total_pnl: float
+    avg_win: float
+    avg_loss: float
+    expectancy: float
+    profit_factor: float

@@ -8,6 +8,8 @@ from pydantic import ValidationError
 from maverick.portfolio.types import (
     ComparisonResult,
     CorrelationResult,
+    JournalEntryPayload,
+    JournalTradeReview,
     PortfolioMetrics,
     PortfolioSnapshot,
     PositionExposure,
@@ -21,6 +23,7 @@ from maverick.portfolio.types import (
     RiskAlertsResult,
     RiskAnalysis,
     RiskDashboard,
+    StrategyPerformancePayload,
     WatchlistBrief,
     WatchlistBriefItem,
     WatchlistItemPayload,
@@ -733,3 +736,95 @@ def test_watchlist_brief_composes_items_and_count():
     assert brief.count == 1
     assert brief.items[0].symbol == "AAPL"
     assert brief.items[0].current_price == 175.50
+
+
+# -- Journal* payload types ---------------------------------------------
+
+
+def _journal_entry() -> JournalEntryPayload:
+    return JournalEntryPayload(
+        id=1,
+        symbol="AAPL",
+        side="long",
+        entry_price=150.0,
+        exit_price=None,
+        shares=10.0,
+        entry_date="2026-07-19T00:00:00+00:00",
+        exit_date=None,
+        rationale="Momentum breakout",
+        tags=["momentum"],
+        pnl=None,
+        r_multiple=None,
+        notes=None,
+        status="open",
+    )
+
+
+def test_journal_entry_payload_defaults_tags_to_empty_list():
+    entry = JournalEntryPayload(
+        id=1,
+        symbol="AAPL",
+        side="long",
+        entry_price=150.0,
+        shares=10.0,
+        entry_date="2026-07-19T00:00:00+00:00",
+        status="open",
+    )
+    assert entry.tags == []
+
+
+def test_journal_entry_payload_r_multiple_always_none_by_default():
+    """Documents the dead-field carry-over: legacy never computes
+    `r_multiple` either (see `types.py`'s docstring)."""
+    entry = _journal_entry()
+    assert entry.r_multiple is None
+
+
+def test_journal_entry_payload_round_trips_through_model_dump():
+    entry = _journal_entry()
+    data = entry.model_dump()
+    assert JournalEntryPayload.model_validate(data) == entry
+
+
+def test_journal_trade_review_extends_journal_entry_payload_with_pnl_pct():
+    review = JournalTradeReview(**_journal_entry().model_dump(), pnl_pct=20.0)
+    assert review.symbol == "AAPL"
+    assert review.pnl_pct == 20.0
+
+
+def test_journal_trade_review_pnl_pct_defaults_to_none():
+    review = JournalTradeReview(**_journal_entry().model_dump())
+    assert review.pnl_pct is None
+
+
+def test_strategy_performance_payload_round_trips_through_model_dump():
+    perf = StrategyPerformancePayload(
+        strategy_tag="momentum",
+        period="all_time",
+        win_count=2,
+        loss_count=1,
+        total_pnl=250.0,
+        avg_win=150.0,
+        avg_loss=50.0,
+        expectancy=83.33,
+        profit_factor=6.0,
+    )
+    data = perf.model_dump()
+    assert StrategyPerformancePayload.model_validate(data) == perf
+
+
+def test_strategy_performance_payload_allows_infinite_profit_factor():
+    """No losing trades yields `float("inf")` (see `service_journal.py`'s
+    `_recompute_strategy`, matching legacy exactly)."""
+    perf = StrategyPerformancePayload(
+        strategy_tag="solo",
+        period="all_time",
+        win_count=1,
+        loss_count=0,
+        total_pnl=10.0,
+        avg_win=10.0,
+        avg_loss=0.0,
+        expectancy=10.0,
+        profit_factor=float("inf"),
+    )
+    assert perf.profit_factor == float("inf")

@@ -11,6 +11,8 @@ from maverick.portfolio.config import PortfolioSettings
 from maverick.portfolio.types import (
     ComparisonResult,
     CorrelationResult,
+    JournalEntryPayload,
+    JournalTradeReview,
     PortfolioMetrics,
     PortfolioSnapshot,
     PositionPayload,
@@ -23,6 +25,7 @@ from maverick.portfolio.types import (
     RiskAlertsResult,
     RiskAnalysis,
     RiskDashboard,
+    StrategyPerformancePayload,
     WatchlistBrief,
     WatchlistBriefItem,
     WatchlistItemPayload,
@@ -207,6 +210,126 @@ def _watchlist_brief() -> WatchlistBrief:
     )
 
 
+def _journal_entry_payload(**overrides) -> JournalEntryPayload:
+    fields = {
+        "id": 1,
+        "symbol": "AAPL",
+        "side": "long",
+        "entry_price": 150.0,
+        "exit_price": None,
+        "shares": 10.0,
+        "entry_date": "2026-07-19T00:00:00+00:00",
+        "exit_date": None,
+        "rationale": "Momentum breakout",
+        "tags": ["momentum"],
+        "pnl": None,
+        "r_multiple": None,
+        "notes": None,
+        "status": "open",
+    }
+    fields.update(overrides)
+    return JournalEntryPayload(**fields)
+
+
+def _journal_trade_review(**overrides) -> JournalTradeReview:
+    fields = _journal_entry_payload().model_dump()
+    fields["pnl_pct"] = 20.0
+    fields.update(overrides)
+    return JournalTradeReview(**fields)
+
+
+def _strategy_performance_payload(**overrides) -> StrategyPerformancePayload:
+    fields = {
+        "strategy_tag": "momentum",
+        "period": "all_time",
+        "win_count": 2,
+        "loss_count": 1,
+        "total_pnl": 250.0,
+        "avg_win": 150.0,
+        "avg_loss": 50.0,
+        "expectancy": 83.33,
+        "profit_factor": 6.0,
+    }
+    fields.update(overrides)
+    return StrategyPerformancePayload(**fields)
+
+
+class StubJournalService:
+    """Async fakes matching `JournalService`'s public surface."""
+
+    def __init__(self) -> None:
+        self.add_trade_calls: list[tuple] = []
+        self.close_trade_calls: list[tuple] = []
+        self.list_trades_calls: list[tuple] = []
+        self.review_trade_calls: list[int] = []
+        self.get_strategy_performance_calls: list[str] = []
+        self.compare_strategies_calls = 0
+
+        self.add_trade_result = _journal_entry_payload()
+        self.close_trade_result = _journal_entry_payload(
+            status="closed", exit_price=180.0, pnl=300.0
+        )
+        self.list_trades_result = [_journal_entry_payload()]
+        self.review_trade_result: JournalTradeReview | None = _journal_trade_review()
+        self.get_strategy_performance_result: StrategyPerformancePayload | None = (
+            _strategy_performance_payload()
+        )
+        self.compare_strategies_result = [_strategy_performance_payload()]
+
+        self.raise_on_add_trade: Exception | None = None
+        self.raise_on_close_trade: Exception | None = None
+        self.raise_on_list_trades: Exception | None = None
+        self.raise_on_review_trade: Exception | None = None
+        self.raise_on_get_strategy_performance: Exception | None = None
+        self.raise_on_compare_strategies: Exception | None = None
+
+    async def add_trade(
+        self, symbol, side, entry_price, shares, rationale=None, tags=None, notes=None
+    ) -> JournalEntryPayload:
+        self.add_trade_calls.append(
+            (symbol, side, entry_price, shares, rationale, tags, notes)
+        )
+        if self.raise_on_add_trade is not None:
+            raise self.raise_on_add_trade
+        return self.add_trade_result
+
+    async def close_trade(
+        self, entry_id, exit_price, notes=None
+    ) -> JournalEntryPayload:
+        self.close_trade_calls.append((entry_id, exit_price, notes))
+        if self.raise_on_close_trade is not None:
+            raise self.raise_on_close_trade
+        return self.close_trade_result
+
+    async def list_trades(
+        self, symbol=None, status=None, strategy_tag=None, limit=50
+    ) -> list[JournalEntryPayload]:
+        self.list_trades_calls.append((symbol, status, strategy_tag, limit))
+        if self.raise_on_list_trades is not None:
+            raise self.raise_on_list_trades
+        return self.list_trades_result
+
+    async def review_trade(self, entry_id) -> JournalTradeReview | None:
+        self.review_trade_calls.append(entry_id)
+        if self.raise_on_review_trade is not None:
+            raise self.raise_on_review_trade
+        return self.review_trade_result
+
+    async def get_strategy_performance(
+        self, strategy_tag
+    ) -> StrategyPerformancePayload | None:
+        self.get_strategy_performance_calls.append(strategy_tag)
+        if self.raise_on_get_strategy_performance is not None:
+            raise self.raise_on_get_strategy_performance
+        return self.get_strategy_performance_result
+
+    async def compare_strategies(self) -> list[StrategyPerformancePayload]:
+        self.compare_strategies_calls += 1
+        if self.raise_on_compare_strategies is not None:
+            raise self.raise_on_compare_strategies
+        return self.compare_strategies_result
+
+
 class StubService:
     """Async fakes matching `PortfolioService`'s public surface."""
 
@@ -381,6 +504,13 @@ class StubService:
 def stub_service() -> Any:
     stub = StubService()
     tools.configure(stub)
+    yield stub
+
+
+@pytest.fixture
+def stub_journal_service(stub_service) -> Any:
+    stub = StubJournalService()
+    tools.configure(stub_service, stub)
     yield stub
 
 
@@ -844,7 +974,233 @@ async def test_watchlist_brief_service_exception_returns_error_payload(stub_serv
 
 
 # ---------------------------------------------------------------------------
-# register: fifteen tools + resource, honest annotations
+# unconfigured journal service
+# ---------------------------------------------------------------------------
+
+
+async def test_unconfigured_journal_service_returns_configure_error_payload(
+    stub_service,
+):
+    """`stub_service` configures the portfolio service but leaves the
+    journal service unset -- journal tools must fail honestly rather than
+    raising `AttributeError`/`TypeError` from a `None` service."""
+    result = await tools.portfolio_journal_list_trades()
+
+    assert result == {
+        "status": "error",
+        "error": (
+            "portfolio.tools: configure(service, journal_service) was not "
+            "called with a journal_service"
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
+# portfolio_journal_add_trade
+# ---------------------------------------------------------------------------
+
+
+async def test_journal_add_trade_str_mediated_decimal_ingress(stub_journal_service):
+    result = await tools.portfolio_journal_add_trade(
+        symbol="aapl",
+        side="long",
+        entry_price=150.25,
+        shares=10.5,
+        rationale="Momentum breakout",
+        tags=["momentum"],
+        notes="note",
+    )
+
+    assert result["status"] == "success"
+    assert result["symbol"] == "AAPL"
+    call = stub_journal_service.add_trade_calls[0]
+    assert call[0] == "aapl"
+    assert call[1] == "long"
+    assert call[2] == Decimal("150.25")
+    assert isinstance(call[2], Decimal)
+    assert call[3] == Decimal("10.5")
+    assert isinstance(call[3], Decimal)
+    assert call[4] == "Momentum breakout"
+    assert call[5] == ["momentum"]
+    assert call[6] == "note"
+
+
+async def test_journal_add_trade_service_exception_returns_error_payload(
+    stub_journal_service,
+):
+    stub_journal_service.raise_on_add_trade = ValueError("boom")
+
+    result = await tools.portfolio_journal_add_trade(
+        symbol="AAPL", side="long", entry_price=150.0, shares=10.0
+    )
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_journal_close_trade
+# ---------------------------------------------------------------------------
+
+
+async def test_journal_close_trade_str_mediated_decimal_ingress(stub_journal_service):
+    result = await tools.portfolio_journal_close_trade(
+        entry_id=1, exit_price=180.0, notes="closed on target"
+    )
+
+    assert result["status"] == "success"
+    assert result["status"] == "success"
+    assert result["pnl"] == 300.0
+    call = stub_journal_service.close_trade_calls[0]
+    assert call[0] == 1
+    assert call[1] == Decimal("180.0")
+    assert isinstance(call[1], Decimal)
+    assert call[2] == "closed on target"
+
+
+async def test_journal_close_trade_service_exception_returns_error_payload(
+    stub_journal_service,
+):
+    stub_journal_service.raise_on_close_trade = ValueError("already closed")
+
+    result = await tools.portfolio_journal_close_trade(entry_id=1, exit_price=180.0)
+
+    assert result == {"status": "error", "error": "already closed"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_journal_list_trades
+# ---------------------------------------------------------------------------
+
+
+async def test_journal_list_trades_returns_trades_plus_count(stub_journal_service):
+    result = await tools.portfolio_journal_list_trades(symbol="AAPL", status="open")
+
+    assert result["status"] == "success"
+    assert result["count"] == 1
+    assert result["trades"][0]["symbol"] == "AAPL"
+    assert stub_journal_service.list_trades_calls == [("AAPL", "open", None, 50)]
+
+
+async def test_journal_list_trades_service_exception_returns_error_payload(
+    stub_journal_service,
+):
+    stub_journal_service.raise_on_list_trades = ValueError("boom")
+
+    result = await tools.portfolio_journal_list_trades()
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_journal_review
+# ---------------------------------------------------------------------------
+
+
+async def test_journal_review_returns_model_dump_plus_status(stub_journal_service):
+    result = await tools.portfolio_journal_review(entry_id=1)
+
+    assert result["status"] == "success"
+    assert result["found"] is True
+    assert result["pnl_pct"] == 20.0
+    assert stub_journal_service.review_trade_calls == [1]
+
+
+async def test_journal_review_returns_found_false_for_unknown_id(stub_journal_service):
+    stub_journal_service.review_trade_result = None
+
+    result = await tools.portfolio_journal_review(entry_id=999)
+
+    assert result == {"status": "success", "found": False, "entry_id": 999}
+
+
+async def test_journal_review_service_exception_returns_error_payload(
+    stub_journal_service,
+):
+    stub_journal_service.raise_on_review_trade = ValueError("boom")
+
+    result = await tools.portfolio_journal_review(entry_id=1)
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_get_strategy_performance (single + comparison consolidation)
+# ---------------------------------------------------------------------------
+
+
+async def test_get_strategy_performance_single_mode_returns_model_dump(
+    stub_journal_service,
+):
+    result = await tools.portfolio_get_strategy_performance(strategy_tag="momentum")
+
+    assert result["status"] == "success"
+    assert result["mode"] == "single"
+    assert result["found"] is True
+    assert result["total_trades"] == 3
+    assert result["expectancy"] == 83.33
+    assert stub_journal_service.get_strategy_performance_calls == ["momentum"]
+    assert stub_journal_service.compare_strategies_calls == 0
+
+
+async def test_get_strategy_performance_single_mode_requires_strategy_tag(
+    stub_journal_service,
+):
+    result = await tools.portfolio_get_strategy_performance()
+
+    assert result == {
+        "status": "error",
+        "error": "strategy_tag is required when compare is False",
+    }
+
+
+async def test_get_strategy_performance_single_mode_not_found(stub_journal_service):
+    stub_journal_service.get_strategy_performance_result = None
+
+    result = await tools.portfolio_get_strategy_performance(strategy_tag="unknown")
+
+    assert result == {
+        "status": "success",
+        "mode": "single",
+        "found": False,
+        "strategy_tag": "unknown",
+        "message": "No performance data found. Close some trades with this tag first.",
+    }
+
+
+async def test_get_strategy_performance_comparison_mode_returns_ranked_list(
+    stub_journal_service,
+):
+    result = await tools.portfolio_get_strategy_performance(compare=True)
+
+    assert result["status"] == "success"
+    assert result["mode"] == "comparison"
+    assert result["count"] == 1
+    assert result["strategies"][0]["rank"] == 1
+    assert result["strategies"][0]["strategy_tag"] == "momentum"
+    assert stub_journal_service.compare_strategies_calls == 1
+    assert stub_journal_service.get_strategy_performance_calls == []
+
+
+async def test_get_strategy_performance_comparison_mode_ignores_strategy_tag(
+    stub_journal_service,
+):
+    await tools.portfolio_get_strategy_performance(strategy_tag="ignored", compare=True)
+
+    assert stub_journal_service.get_strategy_performance_calls == []
+
+
+async def test_get_strategy_performance_service_exception_returns_error_payload(
+    stub_journal_service,
+):
+    stub_journal_service.raise_on_get_strategy_performance = ValueError("boom")
+
+    result = await tools.portfolio_get_strategy_performance(strategy_tag="momentum")
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# register: twenty tools + resource, honest annotations
 # ---------------------------------------------------------------------------
 
 
@@ -864,6 +1220,11 @@ _EXPECTED_TOOL_NAMES = {
     "portfolio_watchlist_add",
     "portfolio_watchlist_remove",
     "portfolio_watchlist_brief",
+    "portfolio_journal_add_trade",
+    "portfolio_journal_close_trade",
+    "portfolio_journal_list_trades",
+    "portfolio_journal_review",
+    "portfolio_get_strategy_performance",
 }
 
 _READ_ONLY_NAMES = {
@@ -876,10 +1237,13 @@ _READ_ONLY_NAMES = {
     "portfolio_get_regime_adjusted_sizing",
     "portfolio_get_risk_alerts",
     "portfolio_watchlist_brief",
+    "portfolio_journal_list_trades",
+    "portfolio_journal_review",
+    "portfolio_get_strategy_performance",
 }
 
 
-async def test_register_attaches_fifteen_tools(stub_service):
+async def test_register_attaches_twenty_tools(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
 
@@ -970,6 +1334,30 @@ async def test_register_marks_watchlist_remove_honestly(stub_service):
     assert tool.annotations.idempotentHint is True
 
 
+async def test_register_marks_journal_add_trade_honestly(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    tool = await mcp.get_tool("portfolio_journal_add_trade")
+
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is False
+    assert tool.annotations.idempotentHint is False
+
+
+async def test_register_marks_journal_close_trade_honestly(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    tool = await mcp.get_tool("portfolio_journal_close_trade")
+
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is False
+    assert tool.annotations.idempotentHint is False
+
+
 async def test_register_attaches_my_holdings_resource(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
@@ -1015,6 +1403,20 @@ async def test_register_in_memory_client_round_trips_watchlist_brief(stub_servic
     assert result.data["status"] == "success"
     assert result.data["count"] == 1
     assert stub_service.watchlist_brief_calls == [1]
+
+
+async def test_register_in_memory_client_round_trips_journal_list_trades(
+    stub_journal_service,
+):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool("portfolio_journal_list_trades", {})
+
+    assert result.data["status"] == "success"
+    assert result.data["trades"][0]["symbol"] == "AAPL"
+    assert stub_journal_service.list_trades_calls == [(None, None, None, 50)]
 
 
 async def test_register_in_memory_client_reads_my_holdings_resource(stub_service):
