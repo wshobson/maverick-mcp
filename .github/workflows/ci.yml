@@ -63,12 +63,19 @@ jobs:
         # pandas-ta: maverick_mcp/services/signals/{regime,conditions}.py
         # import pandas_ta at module scope, and that module sits inside the
         # strict zone below, so ty needs it resolvable to type-check cleanly.
-        # `--extra research` is deliberately NOT added here: grepped the
-        # strict zone (maverick/, maverick_mcp/services/, maverick_mcp/
-        # domain/) for langchain/langchain-anthropic/langchain-community/
-        # langchain-openai/langgraph/exa-py imports at any scope and found
-        # zero hits, so ty resolves this zone cleanly without the extra.
-        run: uv sync --extra dev --extra backtesting --frozen
+        # `--extra research` is required for the same reason as of phase 7:
+        # `maverick/platform/llm.py` (lazy `langchain_anthropic`/
+        # `langchain_openai` imports inside `get_llm()`), `maverick/research/
+        # agents/graph.py` (`langgraph.graph`/`langgraph.types`), and
+        # `maverick/research/providers/exa.py` (lazy `exa_py`/`exa_py.api`)
+        # all sit inside the strict zone below; ty statically resolves
+        # imports on every code path regardless of the runtime lazy-import
+        # guard, so it needs these packages installed even though they never
+        # import eagerly at module load time on a base install. (Phase 7
+        # Task 0's original "zero hits, extra not needed" note was accurate
+        # only until Tasks 1/4/5 added these lazy imports; corrected here at
+        # Task 8 close-out.)
+        run: uv sync --extra dev --extra backtesting --extra research --frozen
       # Baseline run over the full package: do not block PRs while
       # the LangChain/LangGraph integration surface still emits the
       # bulk of diagnostics (~790 today).

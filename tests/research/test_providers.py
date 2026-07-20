@@ -71,9 +71,23 @@ class _Response:
 # ---------------------------------------------------------------------------
 
 
-def test_providers_package_imports_without_exa_py_loaded():
+def test_providers_package_imports_without_exa_py_loaded(
+    monkeypatch: pytest.MonkeyPatch,
+):
     """Importing the providers package/module tree must never load `exa_py`
-    -- the provider layer's top level stays importable on a base install."""
+    -- the provider layer's top level stays importable on a base install.
+
+    `monkeypatch.delitem` (not a bare `sys.modules.pop`) so this stays
+    order-independent: when this file runs standalone `exa_py` is never in
+    `sys.modules` to begin with, but in a full-suite run alongside e.g.
+    `tests/test_exa_research_integration.py` (`from exa_py import Exa` at
+    module scope) the real package may already be cached from an unrelated
+    module's collection -- `monkeypatch` restores whatever was there
+    (present or absent) at teardown either way, so this test's own
+    assertion isn't polluted by, and doesn't itself pollute, collection
+    order.
+    """
+    monkeypatch.delitem(sys.modules, "exa_py", raising=False)
     for name in (
         "maverick.research.providers",
         "maverick.research.providers.base",
