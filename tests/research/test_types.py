@@ -8,6 +8,8 @@ from maverick.research.types import (
     CompanyAnalysisMetadata,
     CompanyResearchResult,
     ComprehensiveResearchResult,
+    InvestmentImplications,
+    OverallSentiment,
     ParallelProcessingInfo,
     ResearchError,
     ResearchFindings,
@@ -75,16 +77,61 @@ def test_source_citation_requires_url():
         )
 
 
+def _make_overall_sentiment(**overrides) -> OverallSentiment:
+    fields = {
+        "direction": "bullish",
+        "confidence": 0.7,
+        "consensus": 0.6,
+        "source_count": 5,
+    }
+    fields.update(overrides)
+    return OverallSentiment(**fields)
+
+
+def test_overall_sentiment_round_trips_and_has_exact_fields():
+    sentiment = _make_overall_sentiment()
+    data = sentiment.model_dump()
+    assert set(data) == {"direction", "confidence", "consensus", "source_count"}
+    assert OverallSentiment(**data) == sentiment
+
+
+def test_overall_sentiment_source_count_optional_for_empty_sources_branch():
+    """`_calculate_overall_sentiment`'s empty-sources early return
+    (`agents/deep_research.py:1731`) omits `source_count`."""
+    sentiment = OverallSentiment(direction="neutral", confidence=0.5, consensus=0.5)
+    assert sentiment.source_count is None
+
+
+def _make_investment_implications(**overrides) -> InvestmentImplications:
+    fields = {
+        "opportunities": ["Market share gains"],
+        "threats": ["Input cost inflation"],
+        "recommended_action": "accumulate",
+        "time_horizon": "long_term",
+    }
+    fields.update(overrides)
+    return InvestmentImplications(**fields)
+
+
+def test_investment_implications_round_trips_and_has_exact_fields():
+    implications = _make_investment_implications()
+    data = implications.model_dump()
+    assert set(data) == {
+        "opportunities",
+        "threats",
+        "recommended_action",
+        "time_horizon",
+    }
+    assert InvestmentImplications(**data) == implications
+
+
 def _make_findings(**overrides) -> ResearchFindings:
     fields = {
         "synthesis": "Overall bullish outlook driven by margin expansion.",
         "key_insights": ["Margins expanding", "Guidance raised"],
-        "overall_sentiment": {"direction": "bullish", "confidence": 0.7},
+        "overall_sentiment": _make_overall_sentiment(),
         "risk_assessment": ["Regulatory scrutiny"],
-        "investment_implications": {
-            "opportunities": ["Market share gains"],
-            "threats": ["Input cost inflation"],
-        },
+        "investment_implications": _make_investment_implications(),
         "confidence_score": 0.75,
     }
     fields.update(overrides)
@@ -149,6 +196,21 @@ def test_research_report_findings_tolerates_vector_cache_hit_shape():
     the `ResearchFindings` shape (`agents/deep_research.py:1178-1210`)."""
     report = _make_report(findings={"cached_results": [{"content": "..."}]})
     assert report.findings == {"cached_results": [{"content": "..."}]}
+
+
+def test_research_report_citations_are_typed_source_citation_on_normal_path():
+    report = _make_report()
+    assert report.citations == [_make_citation()]
+
+
+def test_research_report_citations_tolerates_vector_cache_hit_shape():
+    """The cache-hit branch builds `{"url": ..., "date": ...}` citation
+    dicts instead of the `SourceCitation` shape
+    (`agents/deep_research.py:1200-1205`), which fail `SourceCitation`
+    validation (missing `id`/`title`/`credibility_score`/`relevance_score`)."""
+    cache_citations = [{"url": "https://example.com/cached", "date": "2026-06-01"}]
+    report = _make_report(citations=cache_citations)
+    assert report.citations == cache_citations
 
 
 def test_research_report_persona_and_topic_are_optional():

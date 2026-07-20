@@ -13,9 +13,15 @@ honor in `maverick_mcp/api/routers/research.py`:
 
 - `default_research_depth` ("standard"), `default_max_sources` (10),
   `default_timeframe` ("1m"): the `research_comprehensive_research` tool's
-  own parameter defaults (lines 956-959), matching both
-  `comprehensive_research()`'s defaults (lines 489-491) and
-  `ResearchRequest`'s (lines 45-54).
+  own parameter defaults (lines 956-959), matching `ResearchRequest`'s
+  (lines 45-54). `research_scope`/`timeframe` also match
+  `comprehensive_research()`'s own signature defaults (lines 489, 491), but
+  `max_sources` does not -- that function defaults to 15 (line 490). The
+  tool wrapper always passes an explicit value
+  (`max_sources=max_sources or 15`, line 1005); since the tool's own default
+  (10) is truthy, that expression evaluates to 10 whenever the caller omits
+  `max_sources`, so 15 is never actually exercised through the exposed tool
+  and 10 is the correct value to pin here.
 - `depth_timeout_seconds`: `_get_timeout_for_research_scope`'s
   `timeout_mapping` (lines 144-149), whose `240.0` fallback for an unknown
   scope (line 152) equals the "standard" entry, so no separate fallback

@@ -59,21 +59,42 @@ class SourceCitation(BaseModel):
     relevance_score: float
 
 
+class OverallSentiment(BaseModel):
+    """From `DeepResearchAgent._calculate_overall_sentiment`
+    (`maverick_mcp/agents/deep_research.py:1704-1755`).
+
+    Unlike `investment_implications` below, this is not a single fixed shape:
+    the empty-sources early return (line 1731) yields only `direction`,
+    `confidence`, and `consensus` -- `source_count` (line 1754) is present
+    only on the normal (non-empty) path -- so it is optional here.
+    """
+
+    direction: str
+    confidence: float
+    consensus: float
+    source_count: int | None = None
+
+
+class InvestmentImplications(BaseModel):
+    """From `DeepResearchAgent._derive_investment_implications`
+    (`maverick_mcp/agents/deep_research.py:1769-1791`) -- always the same
+    four keys, unlike `OverallSentiment`."""
+
+    opportunities: list[str]
+    threats: list[str]
+    recommended_action: str
+    time_horizon: str
+
+
 class ResearchFindings(BaseModel):
     """From `DeepResearchAgent._synthesize_findings`'s `research_findings`
-    dict (`maverick_mcp/agents/deep_research.py:1546-1555`).
-
-    `overall_sentiment` (built by `_calculate_overall_sentiment`) and
-    `investment_implications` (built by `_derive_investment_implications`)
-    are heuristic-shaped dicts with no fixed schema in the legacy code, so
-    they stay `dict[str, Any]` rather than being force-fit to a schema.
-    """
+    dict (`maverick_mcp/agents/deep_research.py:1546-1555`)."""
 
     synthesis: str
     key_insights: list[str]
-    overall_sentiment: dict[str, Any]
+    overall_sentiment: OverallSentiment
     risk_assessment: list[str]
-    investment_implications: dict[str, Any]
+    investment_implications: InvestmentImplications
     confidence_score: float
 
 
@@ -90,6 +111,15 @@ class ResearchReport(BaseModel):
     `{"cached_results": [...]}` instead -- a structurally different shape --
     so `findings` stays `dict[str, Any]` rather than being pinned to
     `ResearchFindings`.
+
+    `citations` has the same cache-hit divergence: the normal path
+    (`_generate_citations`) produces `SourceCitation`-shaped items, but the
+    same cache-hit branch (lines 1202-1205) builds `{"url": ..., "date":
+    ...}` dicts instead, which fail `SourceCitation` validation (missing
+    `id`/`title`/`credibility_score`/`relevance_score`). Each item is typed
+    `SourceCitation | dict[str, Any]` so both shapes validate; pydantic's
+    union resolution tries `SourceCitation` first and falls back to the raw
+    dict when it doesn't match.
     """
 
     status: str
@@ -100,7 +130,7 @@ class ResearchReport(BaseModel):
     findings: dict[str, Any]
     sources_analyzed: int
     confidence_score: float
-    citations: list[SourceCitation]
+    citations: list[SourceCitation | dict[str, Any]]
     execution_time_ms: float
     search_queries_used: list[str]
     source_diversity: float
