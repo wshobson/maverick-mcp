@@ -1,0 +1,70 @@
+# Phase 7: Research Extra Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Rebuild deep research as `maverick/research/` behind a `[research]` optional extra, on a new BYOK LLM seam (`maverick/platform/llm.py`) that collapses the five-vendor auto-detection surface into one explicit configuration, and bring `parse_strategy` back onto that seam.
+
+**Architecture:** Phase 7 of the modernization, following the domain template and the Phase 6 extras pattern (guarded registration, importorskip trees, CI extra). The 2026-07-19 research recon (`.superpowers/sdd/p7-recon-research.md`, gitignored scratch; facts restated here) is the map. Behavioral references: `maverick_mcp/agents/**`, `maverick_mcp/api/routers/{research,agents}.py`, `maverick_mcp/providers/llm_factory.py`. The BYOK settings core adopts the design from PR #132 by ne0ark (credit in module docstring and commit message).
+
+**Tech Stack:** Python 3.12, pydantic, maverick.platform; langchain/langchain-anthropic/langchain-openai/langgraph/exa-py only inside the extra.
+
+## Global Constraints
+
+Same gates as Phase 6: seven-tree pytest (`tests/portfolio tests/screening tests/technical tests/market_data tests/platform tests/structure tests/backtesting`) plus the new `tests/research` tree, `make lint`, tracked-files `ruff format --check`, `uv run ty check maverick maverick_mcp/services maverick_mcp/domain`, `make docs-check` where docs change. Files under 500 lines. Commit per task; stage explicitly. No `maverick_mcp` imports from `maverick/`. Base install must never raise at import time: extra-only packages import only in modules behind the availability guard; `tests/research` gates with `pytest.importorskip` on the narrowest needed package; ALL new tests are fully mocked (no network, no real API keys — the legacy research tests are already all-mocked, keep it that way).
+
+## Decision log
+
+- 2026-07-19: The tool surface collapses from 9 to 3 curated tools per the design doc's "smaller curated set" goal: `research_run_comprehensive` (from `research_comprehensive_research`, absorbing `agents_deep_research_financial`'s depth/focus parameters), `research_analyze_company` (from `research_company_comprehensive`), `research_analyze_sentiment` (from `research_analyze_market_sentiment`). The six `agents_*` orchestration tools (supervisor routing, streaming, multi-agent compare, persona compare, agent listing) do NOT port: they are multi-agent UX built on OpenRouter per-task model routing, which the one-explicit-configuration decision removes, and an MCP client (Claude) already provides the orchestration layer natively. `persona` survives as a plain parameter on the three tools.
+- 2026-07-19: `maverick/platform/llm.py` is the one cross-cutting addition (the design doc deferred it to this phase). BYOK, fail-fast, explicit: `LLM_PROVIDER` (enum: `openai`, `anthropic`, `openrouter`, `openai_compatible`), `LLM_API_KEY`, `LLM_BASE_URL` (for openrouter/openai_compatible), `LLM_MODEL`, `LLM_TEMPERATURE`. No silent priority auto-detection (the legacy `llm_factory.get_llm()` anti-pattern). Design credit: ne0ark, PR #132. langchain classes are imported lazily inside `get_llm()` so platform stays importable on a base install.
+- 2026-07-19: Four declared dependencies with zero import hits anywhere delete outright from `pyproject.toml`: `langgraph-checkpoint-sqlite`, `langgraph-supervisor`, `langchain-mcp-adapters`, `tiktoken`.
+- 2026-07-19: The `[research]` extra receives `langchain`, `langchain-anthropic`, `langchain-community`, `langchain-openai`, `langgraph`, `exa-py` (moved out of core; legacy imports tolerated because CI installs the extra until cutover, mirroring Phase 6).
+- 2026-07-19: Dead code deletes now, not at cutover: `TechnicalAnalysisAgent` (699 lines, hardcoded-None agent slot, zero instantiations), `TavilySearchProvider` (never instantiated; `tavily` was never even a declared dependency).
+- 2026-07-19: `SupervisorAgent`/`MarketAnalysisAgent` and `OpenRouterProvider`'s per-task model routing do not port (they exist to serve the dropped `agents_*` orchestration surface). The port centers on `DeepResearchAgent`'s StateGraph, `ContentAnalyzer`, the subagent specializations, and the Exa provider.
+- 2026-07-19: `parse_strategy` returns (Phase 6 debt): `StrategyParser` ports into `maverick/backtesting/` with `parse_with_llm` rewired onto `platform/llm.py` (replacing the hardcoded `ChatAnthropic`); the `backtesting_parse_strategy` tool registers only when the backtesting extra is present, and its LLM path degrades to the zero-dependency `parse_simple` when no LLM is configured (which is all the live tool exercised anyway).
+- 2026-07-19: Research memory/checkpointing (`maverick_mcp/memory/*`, conversation stores) does not port: session-scoped conversation memory belongs to the MCP client, and the checkpoint deps are among the zero-caller deletions.
+
+## Layer contract (Task 0 encodes)
+
+```
+maverick.research: tools -> service -> {agents, providers} -> config -> types
+```
+
+`providers` (Exa search + research circuit manager) and `agents` (graph, analyzer, subagents) are data-tier siblings; only `service`/`tools` may import `maverick.market_data` (for company research price context if the legacy path used it — verify; if unused, forbid it everywhere). All research modules must never import screening/portfolio/technical/backtesting. Platform stays domain-free (extend the platform contract's forbidden list with `maverick.research`). Use the `:` non-independent separator if sibling splits are needed (Phase 6 precedent).
+
+---
+
+### Task 0: skeleton, extra, dependency prune, contracts, CI
+
+Docstring-only `maverick/research/{types,config,service,tools}.py`, `providers/__init__.py`, `agents/__init__.py`. pyproject: add `[project.optional-dependencies] research = [langchain, langchain-anthropic, langchain-community, langchain-openai, langgraph, exa-py]` moving them out of core (exact pins preserved); DELETE `langgraph-checkpoint-sqlite`, `langgraph-supervisor`, `langchain-mcp-adapters`, `tiktoken` entirely (grep-verify zero imports first; STOP if any hit). `uv lock` + `uv sync --extra dev --extra backtesting --extra research`. CI: add `--extra research` to the jobs that need it (unit test job; typecheck only if the strict zone imports the moved packages — check and disclose). Import-linter: research layers contract + independence contracts per the plan text; platform forbidden list gains `maverick.research`. `tests/research/test_layers.py` (subprocess pattern) with fail-then-pass proof; `tests/research/conftest.py` with the settings-reset pattern. Full gate. Commit `feat(research): add domain skeleton, [research] extra, and layer contracts`.
+
+### Task 1: platform LLM seam
+
+`maverick/platform/llm.py`: `LLMSettings` (env-backed: `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`, `LLM_TEMPERATURE` default 0.0 — check PR #132's field set via `gh pr diff 132` and adopt its validated shape; fail-fast `ValueError` naming the missing variable when provider is set but incomplete; `provider=None` means "no LLM configured" and `get_llm()` raises a clear not-configured error). Singleton + reset accessor per platform config conventions. `get_llm() -> BaseChatModel` imports the langchain class for the configured provider LAZILY inside the function (platform must import clean on base install; `ty` must not require the packages — use deferred imports with narrow `# type: ignore` only if unavoidable and disclose). Module docstring credit: "BYOK settings design adapted from PR #132 by ne0ark." Tests fully mocked (monkeypatched env + stubbed langchain modules via sys.modules injection): defaults, fail-fast per provider, lazy-import behavior (importing llm.py with langchain absent from sys.modules works; get_llm raises cleanly when unconfigured). Extend the platform layers position naturally (llm.py is platform — domain-free). Full gate. Commit `feat(platform): add BYOK LLM seam (design credit: ne0ark, PR #132)`.
+
+### Task 2: delete dead research weight
+
+Grep-verify then delete: `maverick_mcp/agents/technical_analysis.py` (`TechnicalAnalysisAgent`) and its registration slot handling (surgical: `get_or_create_agent`'s `"technical"` branch resolves to None today — remove the dead branch and any orphaned imports/exports/tests), `TavilySearchProvider` (class + any config mentions; the search-provider factory only wires Exa). STOP on any unanticipated live importer. Suite before/after counts; legacy quick tree run. Full gate. Commit `refactor: delete dead research agents and providers (zero live callers)`.
+
+### Task 3: types and config
+
+`types.py`: port `DeepResearchState` (from `workflows/state.py` — surgical copy, the legacy class stays until cutover) and the research result/report models scattered through `agents/deep_research.py` and the routers' response envelopes (source citation model, finding model, research report, sentiment result, company research result — derive from the REAL legacy payload shapes; don't invent). `config.py`: `ResearchSettings` — `EXA_API_KEY` (the one search-provider key), research defaults the legacy honors (scope/depth enums, max_sources default 10, timeframe default, per-call timeout — confirm literals from the routers/agent code), env-backed via platform helpers, singleton/reset, conftest reset extension. Both import clean on base install. TDD mirroring prior domains. Full gate. Commit `feat(research): add payload types and settings`.
+
+### Task 4: providers
+
+`providers/`: port `WebSearchProvider` base + `ExaSearchProvider` + the research circuit manager (research-scoped, distinct from platform http breakers — evaluate whether `maverick.platform.http`'s CircuitBreaker can serve instead of porting a parallel implementation; prefer the platform seam if behaviorally adequate, disclose the call). exa-py imports live here (extra-gated module). Fully mocked tests: search result normalization, provider failure/circuit behavior, no network. `pytest.importorskip("exa_py")` where the real package types are needed. Full gate. Commit `feat(research): add search providers on the platform resilience seam`.
+
+### Task 5: research agent core
+
+`agents/`: port `DeepResearchAgent`'s LangGraph StateGraph workflow, `ContentAnalyzer`, and the subagent specializations from `maverick_mcp/agents/deep_research.py` (and its utils), rewritten to take the model from `platform.llm.get_llm()` (no direct ChatOpenAI/ChatAnthropic construction; no OpenRouter per-task routing — one model serves all steps). Persona handling survives as prompt conditioning. Respect the 500-line cap via sibling modules under `agents/` (`:`-joined in the contract if they import each other). Fully mocked tests using a fake chat model (langchain's FakeListChatModel or a local stub): graph reaches terminal state, analyzer scoring/dedup logic pinned on fixture content, subagent prompt assembly pinned, timeout/error propagation. `pytest.importorskip("langgraph")`. Full gate. Commit `feat(research): add deep research agent core on the BYOK seam`.
+
+### Task 6: service and tools
+
+`service.py`: `ResearchService(settings=None)` (plus market_data only if the legacy company path genuinely used it — verify and disclose) with three async methods backing the three tools, mirroring the legacy routers' orchestration/response envelopes (adapted to the typed models), `asyncio.wait_for` per call from settings, clear not-configured errors when LLM or EXA key is absent. `tools.py`: guarded `configure`/`register` (Phase 6 pattern: probe + zero-registration + one warning on base install, tested via monkeypatched probe without importorskip); three tools `research_run_comprehensive`, `research_analyze_company`, `research_analyze_sentiment` — readOnlyHint True (they call external APIs but persist nothing; set openWorldHint True — check what prior domains did and stay consistent), error payloads, unconfigured path, in-memory fastmcp Client round-trip for one tool with a fully stubbed service. Full gate. Two commits allowed: `feat(research): add domain service` / `feat(research): add MCP tool layer with extra-guarded registration`.
+
+### Task 7: parse_strategy on the seam
+
+Port `StrategyParser` from `maverick_mcp/backtesting/strategies/parser.py` into `maverick/backtesting/strategies/parser.py`: `parse_simple` verbatim (zero-dependency), `parse_with_llm` rewired onto `platform.llm.get_llm()` (lazy import; clean degrade to `parse_simple` when no LLM configured, matching what the live tool exercised). New tool `backtesting_parse_strategy` in the backtesting tools layer (registers with the other 11 under the existing backtesting guard; readOnlyHint True). Update the backtesting layers/independence contracts if parser's position needs it (it is part of the `strategies` sibling). Tests: parse_simple parity cases from legacy tests, parse_with_llm with a fake model, degrade path, tool round-trip. Remove the Phase 6 tech-debt row about parse_strategy. Full gate. Commit `feat(backtesting): restore parse_strategy on the BYOK LLM seam`.
+
+### Task 8: close-out
+
+Guarded `maverick/research/__init__.py` exports (PEP 562, both-path smoke tests per Phase 6); rewrite `docs/features/deep-research.md` against the new 3-tool surface, BYOK configuration (the five env vars + `EXA_API_KEY`), `[research]` extra install phrasing, dropped-surface note (agents_* tools retired; conversation memory belongs to the client); QUALITY_SCORE rows (`maverick/research/`, update `maverick/platform/` why for llm.py); tech-debt rows ("legacy maverick_mcp/agents + research/agents routers + llm_factory + openrouter_provider retire at cutover", "legacy memory/ dies at cutover"); decision-log addenda for deviations; move plan to `completed/` with INDEX/CATALOG updates; full verification incl. legacy quick tree; commit `docs: complete phase 7 (research extra)`; push; foreground CI watch until green.
