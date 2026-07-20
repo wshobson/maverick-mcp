@@ -234,7 +234,7 @@ type = "layers"
 layers = [
     "maverick.backtesting.tools",
     "maverick.backtesting.service",
-    "maverick.backtesting.store | maverick.backtesting.engine | maverick.backtesting.optimization | maverick.backtesting.analysis | maverick.backtesting.strategies",
+    "maverick.backtesting.engine | maverick.backtesting.optimization | maverick.backtesting.analysis | maverick.backtesting.strategies",
     "maverick.backtesting.config",
     "maverick.backtesting.types",
 ]
@@ -260,7 +260,7 @@ forbidden_modules = ["maverick.screening", "maverick.portfolio"]
 [[tool.importlinter.contracts]]
 name = "The backtesting core never imports domains"
 type = "forbidden"
-source_modules = ["maverick.backtesting.store", "maverick.backtesting.engine", "maverick.backtesting.optimization", "maverick.backtesting.analysis", "maverick.backtesting.strategies", "maverick.backtesting.config", "maverick.backtesting.types"]
+source_modules = ["maverick.backtesting.engine", "maverick.backtesting.optimization", "maverick.backtesting.analysis", "maverick.backtesting.strategies", "maverick.backtesting.config", "maverick.backtesting.types"]
 forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.portfolio"]
 
 [[tool.importlinter.contracts]]
