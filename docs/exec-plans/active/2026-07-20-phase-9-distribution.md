@@ -14,6 +14,8 @@ Prep tasks (files in the repo, no external side effects) run autonomously under 
 
 Same gates as Phase 8 for any code/config/docs change. No secret is ever written to a tracked file — tokens live in GitHub Actions secrets or the owner's shell only. Every registry submission uses the canonical server name `io.github.wshobson/maverick-mcp`. server.json validates against the published MCP registry schema.
 
+- 2026-07-20 (prep execution addenda): (1) Task 0's server.json was initially validated against its own stale 2025-07-09 schema; the registry's current schema is 2025-12-11 with a breaking snake_case→camelCase rename — caught in review, fixed, and validated against the live schema. (2) Task 3's drafts landed inside bundled commit 9de7df0 after a controller coordination slip (two writers on main); content verified intact. (3) The .mcpb bundle is deliberately THIN: it vendors no code and launches the PyPI package via uvx, so it depends on the PyPI publish and uv on the user's machine; validate with the official mcpb CLI before attaching. (4) publish.yml covers PyPI (trusted publishing), the MCP Registry (OIDC), and GHCR in one tag-triggered workflow; it is inert until the owner configures trusted publishing and pushes a new tag.
+
 ---
 
 ### Task 0 (prep): mcp-name provenance + server.json finalization
