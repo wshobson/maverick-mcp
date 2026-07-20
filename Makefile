@@ -165,3 +165,8 @@ docker-down:
 docker-logs:
 	@echo "Following Docker logs (Ctrl+C to stop)..."
 	@docker-compose logs -f
+
+# Build the Claude Desktop .mcpb bundle (see scripts/build_mcpb.py).
+# Validate before release-attach: npx @anthropic-ai/mcpb validate dist/manifest.json
+bundle:
+	uv run python scripts/build_mcpb.py

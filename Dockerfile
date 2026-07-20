@@ -3,6 +3,9 @@
 
 FROM python:3.12-slim
 
+# MCP registry identity label (Docker MCP Catalog / GHCR discovery)
+LABEL io.modelcontextprotocol.server.name="io.github.wshobson/maverick-mcp"
+
 WORKDIR /app
 
 # Install system dependencies (build tools + Postgres client headers for

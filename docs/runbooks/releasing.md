@@ -192,12 +192,18 @@ delisting on request but there is no self-service undo for most of these.
 **Reversible?** Yes -- release assets can be deleted and re-uploaded.
 
 ```bash
-make bundle   # builds the .mcpb (Phase 9, Task 2)
-gh release upload v1.0.0 dist/maverick-mcp-server-1.0.0.mcpb
+make bundle   # builds dist/maverick-mcp.mcpb (thin bundle: launches the
+              # PyPI package via uvx; requires uv + the PyPI publish first)
+npx @anthropic-ai/mcpb validate dist/manifest.json  # official validator
+gh release upload v1.0.0 dist/maverick-mcp.mcpb
 ```
 
-Verify the asset shows up on the release page and that Claude Desktop can
-install it as a one-click bundle.
+The bundle vendors no code -- its manifest launches
+`uvx --from maverick-mcp-server==<version> maverick-mcp --transport stdio`,
+so it only works after Step 1 (PyPI) and on machines with uv installed.
+Run the validator before uploading; the mcpb CLI is the authority on
+manifest correctness. Verify the asset shows up on the release page and
+that Claude Desktop can install it as a one-click bundle.
 
 ## Validating `server.json` after any edit
 
