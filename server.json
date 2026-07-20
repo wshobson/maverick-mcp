@@ -42,12 +42,6 @@
           "is_secret": true
         },
         {
-          "name": "TAVILY_API_KEY",
-          "description": "Optional API key for Tavily web search (research features). Get at https://tavily.com",
-          "is_required": false,
-          "is_secret": true
-        },
-        {
           "name": "FRED_API_KEY",
           "description": "Optional API key for Federal Reserve Economic Data (macroeconomic indicators). Get at https://fred.stlouisfed.org/docs/api/",
           "is_required": false,
@@ -103,12 +97,6 @@
         {
           "name": "EXA_API_KEY",
           "description": "Optional API key for Exa web search (advanced research features). Get at https://exa.ai",
-          "is_required": false,
-          "is_secret": true
-        },
-        {
-          "name": "TAVILY_API_KEY",
-          "description": "Optional API key for Tavily web search (research features). Get at https://tavily.com",
           "is_required": false,
           "is_secret": true
         },

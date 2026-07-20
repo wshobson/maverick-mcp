@@ -187,7 +187,6 @@ class TestOrchestrationSystemIntegration:
         # Check that research settings exist
         assert hasattr(settings, "research")
         assert hasattr(settings.research, "exa_api_key")
-        assert hasattr(settings.research, "tavily_api_key")
 
         # Check that data limits exist
         assert hasattr(settings, "data_limits")

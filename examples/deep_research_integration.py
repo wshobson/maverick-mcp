@@ -156,8 +156,8 @@ async def example_supervisor_integration():
     test_queries = [
         {
             "query": "Should I invest in MSFT? I want comprehensive analysis including recent news and competitive position",
-            "expected_routing": ["technical", "research"],
-            "description": "Investment decision requiring technical + research",
+            "expected_routing": ["research"],
+            "description": "Investment decision requiring deep research",
         },
         {
             "query": "What's the current market sentiment on renewable energy stocks?",
@@ -320,7 +320,7 @@ async def main():
 
         print("\n✅ All examples completed successfully!")
         print("\n📖 Next Steps:")
-        print("1. Set up EXA_API_KEY and TAVILY_API_KEY environment variables")
+        print("1. Set up the EXA_API_KEY environment variable")
         print("2. Configure Claude Desktop with the research MCP server")
         print("3. Test with real queries through Claude Desktop")
         print("4. Customize personas and research parameters as needed")

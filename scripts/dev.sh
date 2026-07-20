@@ -82,8 +82,8 @@ if [ -z "$TIINGO_API_KEY" ]; then
     echo -e "${RED}Warning: TIINGO_API_KEY not set - stock data tools may not work${NC}"
 fi
 
-if [ -z "$EXA_API_KEY" ] && [ -z "$TAVILY_API_KEY" ]; then
-    echo -e "${RED}Warning: Neither EXA_API_KEY nor TAVILY_API_KEY set - research tools may be limited${NC}"
+if [ -z "$EXA_API_KEY" ]; then
+    echo -e "${RED}Warning: EXA_API_KEY not set - research tools may be limited${NC}"
 fi
 
 echo -e "${YELLOW}Starting backend with: uv run python -m maverick_mcp.api.server --transport ${TRANSPORT} --host ${HOST} --port ${PORT}${NC}"

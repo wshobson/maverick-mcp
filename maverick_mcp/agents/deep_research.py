@@ -810,7 +810,7 @@ class DeepResearchAgent(PersonaAwareAgent):
             Args:
                 query: Search query for financial information
                 num_results: Number of results to return (default: 10)
-                provider: Search provider to use ('auto', 'exa', 'tavily')
+                provider: Search provider to use ('auto', 'exa')
                 strategy: Search strategy ('hybrid', 'authoritative', 'comprehensive', 'auto')
             """
             return await self._perform_financial_search(
