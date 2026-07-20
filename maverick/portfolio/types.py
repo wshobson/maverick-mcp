@@ -160,3 +160,52 @@ class RiskAlertsResult(BaseModel):
     alert_count: int
     alerts: list[RiskAlert]
     position_count: int
+
+
+class WatchlistPayload(BaseModel):
+    """A named watchlist row (`watchlists` table)."""
+
+    id: int
+    name: str
+    description: str | None = None
+
+
+class WatchlistItemPayload(BaseModel):
+    """A single ticker row on a watchlist (`watchlist_items` table).
+    `added_at` is an ISO 8601 string, not a `datetime` -- same convention as
+    `PositionPayload.purchase_date`."""
+
+    id: int
+    watchlist_id: int
+    symbol: str
+    added_at: str | None = None
+    notes: str | None = None
+
+
+class WatchlistRemoveResult(BaseModel):
+    """Whether a matching `(watchlist_id, symbol)` row was actually deleted
+    -- honest reporting, unlike the legacy tool which always reported
+    success regardless of whether a row existed."""
+
+    watchlist_id: int
+    symbol: str
+    removed: bool
+
+
+class WatchlistBriefItem(BaseModel):
+    """One symbol's entry in a watchlist intelligence brief. Legacy's
+    `signals_active`/`has_upcoming_catalyst` fields are dropped: both read
+    from subsystems retired in this same phase (the signal engine and
+    catalyst tracking); `current_price` (live, via market_data) replaces
+    them as the brief's added intelligence."""
+
+    symbol: str
+    days_on_watchlist: int | None
+    notes: str | None
+    current_price: float | None
+
+
+class WatchlistBrief(BaseModel):
+    watchlist_id: int
+    count: int
+    items: list[WatchlistBriefItem]

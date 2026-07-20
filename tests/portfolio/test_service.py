@@ -752,3 +752,133 @@ async def test_get_risk_alerts_empty_portfolio_reports_zero_position_count(tmp_p
     assert result.position_count == 0
     assert result.alert_count == 0
     assert result.alerts == []
+
+
+# ---------------------------------------------------------------------------
+# watchlists: create_watchlist / add_watchlist_item / remove_watchlist_item /
+# watchlist_brief -- orchestration delegated to service_watchlist.py
+# ---------------------------------------------------------------------------
+
+
+async def test_create_watchlist_round_trips_via_service(tmp_path):
+    service = _service(tmp_path)
+
+    result = await service.create_watchlist("Tech Movers", "High-beta names")
+
+    assert result.id is not None
+    assert result.name == "Tech Movers"
+    assert result.description == "High-beta names"
+
+
+async def test_create_watchlist_rejects_duplicate_name(tmp_path):
+    service = _service(tmp_path)
+    await service.create_watchlist("Dup", None)
+
+    with pytest.raises(ValueError, match="already exists"):
+        await service.create_watchlist("Dup", None)
+
+
+async def test_add_watchlist_item_normalizes_symbol_and_persists(tmp_path):
+    service = _service(tmp_path)
+    watchlist = await service.create_watchlist("My List", None)
+
+    item = await service.add_watchlist_item(watchlist.id, "aapl", "Watching")
+
+    assert item.symbol == "AAPL"
+    assert item.watchlist_id == watchlist.id
+    assert item.notes == "Watching"
+
+
+async def test_add_watchlist_item_accepts_punctuated_tickers(tmp_path):
+    """Watchlist symbols are only uppercased, not alnum-validated (unlike
+    `_normalize_ticker`) -- legacy accepted tickers like `BRK.B`."""
+    service = _service(tmp_path)
+    watchlist = await service.create_watchlist("My List", None)
+
+    item = await service.add_watchlist_item(watchlist.id, "brk.b", None)
+
+    assert item.symbol == "BRK.B"
+
+
+async def test_add_watchlist_item_duplicate_symbol_creates_two_entries(tmp_path):
+    service = _service(tmp_path)
+    watchlist = await service.create_watchlist("My List", None)
+
+    await service.add_watchlist_item(watchlist.id, "AAPL", "first")
+    await service.add_watchlist_item(watchlist.id, "AAPL", "second")
+
+    brief = await service.watchlist_brief(watchlist.id)
+    assert brief.count == 2
+
+
+async def test_remove_watchlist_item_returns_removed_true_when_present(tmp_path):
+    service = _service(tmp_path)
+    watchlist = await service.create_watchlist("My List", None)
+    await service.add_watchlist_item(watchlist.id, "AAPL", None)
+
+    result = await service.remove_watchlist_item(watchlist.id, "aapl")
+
+    assert result.removed is True
+    assert result.symbol == "AAPL"
+    assert result.watchlist_id == watchlist.id
+
+
+async def test_remove_watchlist_item_returns_removed_false_when_absent(tmp_path):
+    service = _service(tmp_path)
+    watchlist = await service.create_watchlist("My List", None)
+
+    result = await service.remove_watchlist_item(watchlist.id, "AAPL")
+
+    assert result.removed is False
+
+
+async def test_watchlist_brief_includes_latest_price_via_market_data(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 175.50, "MSFT": 410.0})
+    service = _service(tmp_path, market_data=market_data)
+    watchlist = await service.create_watchlist("My List", None)
+    await service.add_watchlist_item(watchlist.id, "AAPL", "note-a")
+    await service.add_watchlist_item(watchlist.id, "MSFT", "note-b")
+
+    brief = await service.watchlist_brief(watchlist.id)
+
+    assert brief.watchlist_id == watchlist.id
+    assert brief.count == 2
+    prices = {item.symbol: item.current_price for item in brief.items}
+    assert prices == {"AAPL": 175.50, "MSFT": 410.0}
+    notes = {item.symbol: item.notes for item in brief.items}
+    assert notes == {"AAPL": "note-a", "MSFT": "note-b"}
+    assert all(item.days_on_watchlist == 0 for item in brief.items)
+
+
+async def test_watchlist_brief_failed_quote_leaves_price_none_but_not_fatal(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 175.50}, quote_errors={"MSFT"})
+    service = _service(tmp_path, market_data=market_data)
+    watchlist = await service.create_watchlist("My List", None)
+    await service.add_watchlist_item(watchlist.id, "AAPL", None)
+    await service.add_watchlist_item(watchlist.id, "MSFT", None)
+
+    brief = await service.watchlist_brief(watchlist.id)
+
+    prices = {item.symbol: item.current_price for item in brief.items}
+    assert prices == {"AAPL": 175.50, "MSFT": None}
+
+
+async def test_watchlist_brief_empty_watchlist_returns_zero_count(tmp_path):
+    service = _service(tmp_path)
+    watchlist = await service.create_watchlist("My List", None)
+
+    brief = await service.watchlist_brief(watchlist.id)
+
+    assert brief.count == 0
+    assert brief.items == []
+
+
+async def test_watchlist_brief_unknown_watchlist_id_returns_zero_count(tmp_path):
+    """No existence check on `watchlist_id`, matching legacy: an unknown id
+    reads as an empty watchlist, not an error."""
+    service = _service(tmp_path)
+
+    brief = await service.watchlist_brief(999999)
+
+    assert brief.count == 0
+    assert brief.items == []

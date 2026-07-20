@@ -23,6 +23,11 @@ from maverick.portfolio.types import (
     RiskAlertsResult,
     RiskAnalysis,
     RiskDashboard,
+    WatchlistBrief,
+    WatchlistBriefItem,
+    WatchlistItemPayload,
+    WatchlistPayload,
+    WatchlistRemoveResult,
 )
 
 
@@ -169,6 +174,39 @@ def _empty_risk_alerts_result() -> RiskAlertsResult:
     return RiskAlertsResult(alert_count=0, alerts=[], position_count=0)
 
 
+def _watchlist_payload() -> WatchlistPayload:
+    return WatchlistPayload(id=1, name="Tech Movers", description="High-beta names")
+
+
+def _watchlist_item_payload() -> WatchlistItemPayload:
+    return WatchlistItemPayload(
+        id=1,
+        watchlist_id=1,
+        symbol="AAPL",
+        added_at="2026-07-19T00:00:00+00:00",
+        notes="Watching",
+    )
+
+
+def _watchlist_remove_result() -> WatchlistRemoveResult:
+    return WatchlistRemoveResult(watchlist_id=1, symbol="AAPL", removed=True)
+
+
+def _watchlist_brief() -> WatchlistBrief:
+    return WatchlistBrief(
+        watchlist_id=1,
+        count=1,
+        items=[
+            WatchlistBriefItem(
+                symbol="AAPL",
+                days_on_watchlist=5,
+                notes="Watching",
+                current_price=175.50,
+            )
+        ],
+    )
+
+
 class StubService:
     """Async fakes matching `PortfolioService`'s public surface."""
 
@@ -185,6 +223,10 @@ class StubService:
         self.check_position_risk_calls: list[tuple] = []
         self.regime_adjusted_sizing_calls: list[tuple] = []
         self.risk_alerts_calls: list[tuple] = []
+        self.create_watchlist_calls: list[tuple] = []
+        self.add_watchlist_item_calls: list[tuple] = []
+        self.remove_watchlist_item_calls: list[tuple] = []
+        self.watchlist_brief_calls: list[int] = []
 
         self.add_result = _position_payload()
         self.get_portfolio_result = _snapshot()
@@ -199,6 +241,10 @@ class StubService:
         self.check_position_risk_result = _position_risk_check()
         self.regime_adjusted_sizing_result = _regime_adjusted_sizing()
         self.risk_alerts_result = _risk_alerts_result()
+        self.create_watchlist_result = _watchlist_payload()
+        self.add_watchlist_item_result = _watchlist_item_payload()
+        self.remove_watchlist_item_result = _watchlist_remove_result()
+        self.watchlist_brief_result = _watchlist_brief()
 
         self.raise_on_add: Exception | None = None
         self.raise_on_get_portfolio: Exception | None = None
@@ -211,6 +257,10 @@ class StubService:
         self.raise_on_check_position_risk: Exception | None = None
         self.raise_on_regime_adjusted_sizing: Exception | None = None
         self.raise_on_risk_alerts: Exception | None = None
+        self.raise_on_create_watchlist: Exception | None = None
+        self.raise_on_add_watchlist_item: Exception | None = None
+        self.raise_on_remove_watchlist_item: Exception | None = None
+        self.raise_on_watchlist_brief: Exception | None = None
 
     async def add_position(
         self, user_id, portfolio_name, ticker, shares, price, purchase_date, notes
@@ -297,6 +347,34 @@ class StubService:
         if self.raise_on_risk_alerts is not None:
             raise self.raise_on_risk_alerts
         return self.risk_alerts_result
+
+    async def create_watchlist(self, name, description=None) -> WatchlistPayload:
+        self.create_watchlist_calls.append((name, description))
+        if self.raise_on_create_watchlist is not None:
+            raise self.raise_on_create_watchlist
+        return self.create_watchlist_result
+
+    async def add_watchlist_item(
+        self, watchlist_id, symbol, notes=None
+    ) -> WatchlistItemPayload:
+        self.add_watchlist_item_calls.append((watchlist_id, symbol, notes))
+        if self.raise_on_add_watchlist_item is not None:
+            raise self.raise_on_add_watchlist_item
+        return self.add_watchlist_item_result
+
+    async def remove_watchlist_item(
+        self, watchlist_id, symbol
+    ) -> WatchlistRemoveResult:
+        self.remove_watchlist_item_calls.append((watchlist_id, symbol))
+        if self.raise_on_remove_watchlist_item is not None:
+            raise self.raise_on_remove_watchlist_item
+        return self.remove_watchlist_item_result
+
+    async def watchlist_brief(self, watchlist_id) -> WatchlistBrief:
+        self.watchlist_brief_calls.append(watchlist_id)
+        if self.raise_on_watchlist_brief is not None:
+            raise self.raise_on_watchlist_brief
+        return self.watchlist_brief_result
 
 
 @pytest.fixture
@@ -653,7 +731,120 @@ async def test_get_risk_alerts_service_exception_returns_error_payload(stub_serv
 
 
 # ---------------------------------------------------------------------------
-# register: eleven tools + resource, honest annotations
+# portfolio_watchlist_create
+# ---------------------------------------------------------------------------
+
+
+async def test_watchlist_create_returns_model_dump_plus_status(stub_service):
+    result = await tools.portfolio_watchlist_create(
+        name="Tech Movers", description="High-beta names"
+    )
+
+    assert result["status"] == "success"
+    assert result["name"] == "Tech Movers"
+    assert stub_service.create_watchlist_calls == [("Tech Movers", "High-beta names")]
+
+
+async def test_watchlist_create_defaults_description_to_none(stub_service):
+    await tools.portfolio_watchlist_create(name="Tech Movers")
+
+    assert stub_service.create_watchlist_calls == [("Tech Movers", None)]
+
+
+async def test_watchlist_create_service_exception_returns_error_payload(stub_service):
+    stub_service.raise_on_create_watchlist = ValueError("Watchlist name already exists")
+
+    result = await tools.portfolio_watchlist_create(name="Dup")
+
+    assert result == {"status": "error", "error": "Watchlist name already exists"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_watchlist_add
+# ---------------------------------------------------------------------------
+
+
+async def test_watchlist_add_returns_model_dump_plus_status(stub_service):
+    result = await tools.portfolio_watchlist_add(
+        watchlist_id=1, symbol="aapl", notes="Watching"
+    )
+
+    assert result["status"] == "success"
+    assert result["symbol"] == "AAPL"
+    assert stub_service.add_watchlist_item_calls == [(1, "aapl", "Watching")]
+
+
+async def test_watchlist_add_defaults_notes_to_none(stub_service):
+    await tools.portfolio_watchlist_add(watchlist_id=1, symbol="AAPL")
+
+    assert stub_service.add_watchlist_item_calls == [(1, "AAPL", None)]
+
+
+async def test_watchlist_add_service_exception_returns_error_payload(stub_service):
+    stub_service.raise_on_add_watchlist_item = ValueError("boom")
+
+    result = await tools.portfolio_watchlist_add(watchlist_id=1, symbol="AAPL")
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_watchlist_remove
+# ---------------------------------------------------------------------------
+
+
+async def test_watchlist_remove_returns_model_dump_plus_status(stub_service):
+    result = await tools.portfolio_watchlist_remove(watchlist_id=1, symbol="aapl")
+
+    assert result["status"] == "success"
+    assert result["removed"] is True
+    assert stub_service.remove_watchlist_item_calls == [(1, "aapl")]
+
+
+async def test_watchlist_remove_reports_removed_false(stub_service):
+    stub_service.remove_watchlist_item_result = WatchlistRemoveResult(
+        watchlist_id=1, symbol="AAPL", removed=False
+    )
+
+    result = await tools.portfolio_watchlist_remove(watchlist_id=1, symbol="AAPL")
+
+    assert result["status"] == "success"
+    assert result["removed"] is False
+
+
+async def test_watchlist_remove_service_exception_returns_error_payload(stub_service):
+    stub_service.raise_on_remove_watchlist_item = ValueError("boom")
+
+    result = await tools.portfolio_watchlist_remove(watchlist_id=1, symbol="AAPL")
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# portfolio_watchlist_brief
+# ---------------------------------------------------------------------------
+
+
+async def test_watchlist_brief_returns_model_dump_plus_status(stub_service):
+    result = await tools.portfolio_watchlist_brief(watchlist_id=1)
+
+    assert result["status"] == "success"
+    assert result["count"] == 1
+    assert result["items"][0]["symbol"] == "AAPL"
+    assert result["items"][0]["current_price"] == 175.50
+    assert stub_service.watchlist_brief_calls == [1]
+
+
+async def test_watchlist_brief_service_exception_returns_error_payload(stub_service):
+    stub_service.raise_on_watchlist_brief = ValueError("boom")
+
+    result = await tools.portfolio_watchlist_brief(watchlist_id=1)
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# register: fifteen tools + resource, honest annotations
 # ---------------------------------------------------------------------------
 
 
@@ -669,6 +860,10 @@ _EXPECTED_TOOL_NAMES = {
     "portfolio_check_position_risk",
     "portfolio_get_regime_adjusted_sizing",
     "portfolio_get_risk_alerts",
+    "portfolio_watchlist_create",
+    "portfolio_watchlist_add",
+    "portfolio_watchlist_remove",
+    "portfolio_watchlist_brief",
 }
 
 _READ_ONLY_NAMES = {
@@ -680,10 +875,11 @@ _READ_ONLY_NAMES = {
     "portfolio_check_position_risk",
     "portfolio_get_regime_adjusted_sizing",
     "portfolio_get_risk_alerts",
+    "portfolio_watchlist_brief",
 }
 
 
-async def test_register_attaches_eleven_tools(stub_service):
+async def test_register_attaches_fifteen_tools(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
 
@@ -738,6 +934,42 @@ async def test_register_marks_clear_honestly(stub_service):
     assert tool.annotations.idempotentHint is True
 
 
+async def test_register_marks_watchlist_create_honestly(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    tool = await mcp.get_tool("portfolio_watchlist_create")
+
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is False
+    assert tool.annotations.idempotentHint is False
+
+
+async def test_register_marks_watchlist_add_honestly(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    tool = await mcp.get_tool("portfolio_watchlist_add")
+
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is False
+    assert tool.annotations.idempotentHint is False
+
+
+async def test_register_marks_watchlist_remove_honestly(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    tool = await mcp.get_tool("portfolio_watchlist_remove")
+
+    assert tool.annotations is not None
+    assert tool.annotations.readOnlyHint is False
+    assert tool.annotations.destructiveHint is True
+    assert tool.annotations.idempotentHint is True
+
+
 async def test_register_attaches_my_holdings_resource(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
@@ -769,6 +1001,20 @@ async def test_register_in_memory_client_round_trips_get_risk_dashboard(stub_ser
     assert result.data["status"] == "success"
     assert result.data["total_value"] == 2500.0
     assert stub_service.risk_dashboard_calls == [("default", "My Portfolio")]
+
+
+async def test_register_in_memory_client_round_trips_watchlist_brief(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "portfolio_watchlist_brief", {"watchlist_id": 1}
+        )
+
+    assert result.data["status"] == "success"
+    assert result.data["count"] == 1
+    assert stub_service.watchlist_brief_calls == [1]
 
 
 async def test_register_in_memory_client_reads_my_holdings_resource(stub_service):

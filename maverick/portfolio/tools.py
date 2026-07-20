@@ -24,6 +24,14 @@ _CLEAR_ANNOTATIONS = {
     "destructiveHint": True,
     "idempotentHint": True,
 }
+# A watchlist remove deletes every matching row in one call, so repeat calls
+# for the same (watchlist_id, symbol) are a no-op after the first --
+# idempotent, unlike partial-shares `portfolio_remove_position`.
+_WATCHLIST_REMOVE_ANNOTATIONS = {
+    "readOnlyHint": False,
+    "destructiveHint": True,
+    "idempotentHint": True,
+}
 
 _service: PortfolioService | None = None
 
@@ -277,6 +285,61 @@ async def portfolio_get_risk_alerts(
         return {"status": "error", "error": str(exc)}
 
 
+async def portfolio_watchlist_create(
+    name: str, description: str | None = None
+) -> dict[str, Any]:
+    """Create a new named watchlist for tracking ticker symbols. The name
+    must be unique."""
+    try:
+        service = _require_service()
+        result = await service.create_watchlist(name, description)
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def portfolio_watchlist_add(
+    watchlist_id: int, symbol: str, notes: str | None = None
+) -> dict[str, Any]:
+    """Add a ticker symbol to an existing watchlist. Repeat calls for the
+    same symbol add another entry rather than replacing it."""
+    try:
+        service = _require_service()
+        result = await service.add_watchlist_item(watchlist_id, symbol, notes)
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def portfolio_watchlist_remove(watchlist_id: int, symbol: str) -> dict[str, Any]:
+    """Remove a ticker symbol from a watchlist."""
+    try:
+        service = _require_service()
+        result = await service.remove_watchlist_item(watchlist_id, symbol)
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
+async def portfolio_watchlist_brief(watchlist_id: int) -> dict[str, Any]:
+    """Intelligence brief for every symbol on a watchlist: notes, days on
+    watchlist, and the current price via market_data."""
+    try:
+        service = _require_service()
+        result = await service.watchlist_brief(watchlist_id)
+        payload = result.model_dump(mode="json")
+        payload["status"] = "success"
+        return payload
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 async def _my_holdings_resource() -> str:
     """`portfolio://my-holdings`: the default portfolio's live-priced
     snapshot, for AI context rather than direct user invocation."""
@@ -311,11 +374,12 @@ _READ_ONLY_TOOLS = (
     portfolio_check_position_risk,
     portfolio_get_regime_adjusted_sizing,
     portfolio_get_risk_alerts,
+    portfolio_watchlist_brief,
 )
 
 
 def register(mcp: FastMCP) -> None:
-    """Register all eleven portfolio tools plus the `portfolio://my-holdings`
+    """Register all fifteen portfolio tools plus the `portfolio://my-holdings`
     resource on `mcp`, with honest annotations."""
     for fn in _READ_ONLY_TOOLS:
         mcp.tool(name=fn.__name__, annotations=_READ_ONLY_ANNOTATIONS)(fn)
@@ -328,4 +392,14 @@ def register(mcp: FastMCP) -> None:
     mcp.tool(name=portfolio_clear_portfolio.__name__, annotations=_CLEAR_ANNOTATIONS)(
         portfolio_clear_portfolio
     )
+    mcp.tool(name=portfolio_watchlist_create.__name__, annotations=_ADD_ANNOTATIONS)(
+        portfolio_watchlist_create
+    )
+    mcp.tool(name=portfolio_watchlist_add.__name__, annotations=_ADD_ANNOTATIONS)(
+        portfolio_watchlist_add
+    )
+    mcp.tool(
+        name=portfolio_watchlist_remove.__name__,
+        annotations=_WATCHLIST_REMOVE_ANNOTATIONS,
+    )(portfolio_watchlist_remove)
     mcp.resource("portfolio://my-holdings")(_my_holdings_resource)

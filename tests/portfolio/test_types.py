@@ -21,6 +21,11 @@ from maverick.portfolio.types import (
     RiskAlertsResult,
     RiskAnalysis,
     RiskDashboard,
+    WatchlistBrief,
+    WatchlistBriefItem,
+    WatchlistItemPayload,
+    WatchlistPayload,
+    WatchlistRemoveResult,
 )
 
 
@@ -678,3 +683,53 @@ def test_position_payload_rejects_zero_cost_basis():
 def test_position_payload_rejects_negative_total_cost():
     with pytest.raises(ValidationError):
         _make_position(total_cost=Decimal("-1500.00"))
+
+
+# -- Watchlist* payload types -----------------------------------------------
+
+
+def test_watchlist_payload_optional_description():
+    payload = WatchlistPayload(id=1, name="My List", description=None)
+    assert payload.description is None
+
+
+def test_watchlist_item_payload_round_trips_through_model_dump():
+    item = WatchlistItemPayload(
+        id=1,
+        watchlist_id=1,
+        symbol="AAPL",
+        added_at="2026-07-19T00:00:00+00:00",
+        notes="Watching",
+    )
+    data = item.model_dump()
+    assert WatchlistItemPayload.model_validate(data) == item
+
+
+def test_watchlist_remove_result_reports_removed_flag():
+    result = WatchlistRemoveResult(watchlist_id=1, symbol="AAPL", removed=False)
+    assert result.removed is False
+
+
+def test_watchlist_brief_item_allows_none_price_when_quote_failed():
+    item = WatchlistBriefItem(
+        symbol="AAPL", days_on_watchlist=5, notes=None, current_price=None
+    )
+    assert item.current_price is None
+
+
+def test_watchlist_brief_composes_items_and_count():
+    brief = WatchlistBrief(
+        watchlist_id=1,
+        count=1,
+        items=[
+            WatchlistBriefItem(
+                symbol="AAPL",
+                days_on_watchlist=5,
+                notes="Watching",
+                current_price=175.50,
+            )
+        ],
+    )
+    assert brief.count == 1
+    assert brief.items[0].symbol == "AAPL"
+    assert brief.items[0].current_price == 175.50

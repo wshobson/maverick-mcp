@@ -18,7 +18,8 @@ module still owns its own position reads and `MarketDataService` quote
 fetches; `service_risk.py` converts those into `PositionExposure`s and
 calls `risk.py`'s pure functions, plus owns the SPY-history fetch for
 regime detection.
-"""
+
+The four watchlist methods delegate entirely to `service_watchlist.py` (same-layer sibling)."""
 
 import asyncio
 from datetime import UTC, date, datetime
@@ -30,7 +31,7 @@ from sqlalchemy.orm import sessionmaker
 from maverick.market_data.service import MarketDataService
 from maverick.platform.db import ensure_schema, read_only_session_scope, session_scope
 from maverick.platform.telemetry import get_logger
-from maverick.portfolio import analysis, service_risk
+from maverick.portfolio import analysis, service_risk, service_watchlist
 from maverick.portfolio.config import PortfolioSettings, get_portfolio_settings
 from maverick.portfolio.data import (
     METADATA,
@@ -55,6 +56,10 @@ from maverick.portfolio.types import (
     RiskAlertsResult,
     RiskAnalysis,
     RiskDashboard,
+    WatchlistBrief,
+    WatchlistItemPayload,
+    WatchlistPayload,
+    WatchlistRemoveResult,
 )
 
 logger = get_logger(__name__)
@@ -64,7 +69,6 @@ _QUOTE_CONCURRENCY = 4
 
 class PortfolioService:
     """Domain service: position CRUD plus the three portfolio-aware analyses.
-
     Owns the `pf_portfolios`/`pf_positions` schema, created lazily on first
     async call (not in `__init__`), matching the screening domain's pattern.
     """
@@ -126,15 +130,10 @@ class PortfolioService:
 
     @staticmethod
     def _normalize_purchase_date(value: str) -> str:
-        """Parse `value` and reattach UTC tzinfo if it was naive.
-
-        `read_positions` always returns `purchase_date` as a UTC-aware
-        isoformat string (round-tripped through `data.py`'s `DateTime
-        (timezone=True)` column), so a fresh, possibly-naive caller-supplied
-        date must be normalized the same way before reaching
-        `ledger.add_shares`'s earliest-date-wins comparison -- otherwise
-        comparing a naive and an aware datetime raises `TypeError`.
-        """
+        """Reattach UTC tzinfo if `value` is naive, matching
+        `read_positions`'s always-aware isoformat strings -- otherwise
+        `ledger.add_shares`'s earliest-date-wins comparison raises
+        `TypeError` on a naive-vs-aware mismatch."""
         parsed = datetime.fromisoformat(value)
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=UTC)
@@ -236,8 +235,7 @@ class PortfolioService:
         return await asyncio.to_thread(_read)
 
     async def _fetch_quote_prices(self, tickers: list[str]) -> dict[str, Decimal]:
-        """Fetch quotes concurrently (Semaphore(4)); a failed quote is
-        logged and simply absent from the returned dict -- never fatal."""
+        """Fetch quotes concurrently; a failed quote is absent, never fatal."""
         semaphore = asyncio.Semaphore(_QUOTE_CONCURRENCY)
 
         async def _fetch(ticker: str) -> tuple[str, Decimal | None]:
@@ -354,9 +352,8 @@ class PortfolioService:
         purpose: str,
     ) -> tuple[list[str], dict[str, object] | None]:
         """Auto-fill from portfolio holdings when `tickers` is omitted/empty,
-        else normalize/validate the caller-supplied list. Returns
-        `(resolved_tickers, portfolio_context)`; `portfolio_context` is
-        `None` unless auto-fill was used."""
+        else normalize/validate the caller-supplied list. `portfolio_context`
+        is `None` unless auto-fill was used."""
         if not tickers:
             filled = await self._autofill_tickers(user_id, portfolio_name)
             return filled, {
@@ -375,8 +372,8 @@ class PortfolioService:
     async def _existing_position_block(
         self, user_id: str, portfolio_name: str, ticker: str, current_price: float
     ) -> dict[str, object] | None:
-        """Existing-position P&L, computed via the ledger's Decimal
-        `position_value` -- converted to float only in this returned payload."""
+        """Existing-position P&L via the ledger's Decimal `position_value`
+        -- converted to float only in this returned payload."""
         positions = await self._read_positions(user_id, portfolio_name)
         position = next((p for p in positions if p.ticker == ticker), None)
         if position is None:
@@ -423,8 +420,7 @@ class PortfolioService:
             result = result.model_copy(update={"existing_position": existing_position})
         return result
 
-    # -- risk dashboard: this service does its own reads, service_risk.py
-    # -- (a same-layer sibling split out for file size) does the rest -----
+    # -- risk dashboard: this service reads, service_risk.py does the rest --
 
     async def get_risk_dashboard(
         self, user_id: str, portfolio_name: str
@@ -473,3 +469,32 @@ class PortfolioService:
         positions = await self._read_positions(user_id, portfolio_name)
         prices = await self._fetch_quote_prices([p.ticker for p in positions])
         return service_risk.get_risk_alerts(positions, prices, self._settings)
+
+    # -- watchlists: delegates entirely to service_watchlist.py (owns its own
+    # -- schema readiness; symbols are uppercased there, not validated here).
+
+    async def create_watchlist(
+        self, name: str, description: str | None = None
+    ) -> WatchlistPayload:
+        return await service_watchlist.create_watchlist(
+            self._engine, self._session_factory, name, description
+        )
+
+    async def add_watchlist_item(
+        self, watchlist_id: int, symbol: str, notes: str | None = None
+    ) -> WatchlistItemPayload:
+        return await service_watchlist.add_item(
+            self._engine, self._session_factory, watchlist_id, symbol, notes
+        )
+
+    async def remove_watchlist_item(
+        self, watchlist_id: int, symbol: str
+    ) -> WatchlistRemoveResult:
+        return await service_watchlist.remove_item(
+            self._engine, self._session_factory, watchlist_id, symbol
+        )
+
+    async def watchlist_brief(self, watchlist_id: int) -> WatchlistBrief:
+        return await service_watchlist.brief(
+            self._engine, self._session_factory, self._market_data, watchlist_id
+        )
