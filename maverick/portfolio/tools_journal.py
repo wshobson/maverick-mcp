@@ -168,8 +168,7 @@ async def portfolio_get_strategy_performance(
                 "found": False,
                 "strategy_tag": strategy_tag,
                 "message": (
-                    "No performance data found. Close some trades with this "
-                    "tag first."
+                    "No performance data found. Close some trades with this tag first."
                 ),
             }
         payload = perf.model_dump(mode="json")

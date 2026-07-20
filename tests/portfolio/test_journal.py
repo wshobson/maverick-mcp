@@ -34,7 +34,9 @@ from maverick.portfolio.journal import (
 
 @pytest.fixture
 def factory(tmp_path):
-    settings = DatabaseSettings(url=f"sqlite:///{tmp_path}/journal.db", use_pooling=True)
+    settings = DatabaseSettings(
+        url=f"sqlite:///{tmp_path}/journal.db", use_pooling=True
+    )
     engine = create_engine_from_settings(settings)
     ensure_schema(engine, METADATA)
     return sessionmaker(bind=engine)
@@ -221,7 +223,11 @@ def test_read_trades_filters_by_status(factory):
             notes=None,
         ).id
         update_trade_close(
-            session, closed_id, exit_price=210.0, exit_date=_entry_date(), pnl=10.0,
+            session,
+            closed_id,
+            exit_price=210.0,
+            exit_date=_entry_date(),
+            pnl=10.0,
             notes=None,
         )
 
@@ -416,7 +422,11 @@ def test_read_closed_trades_excludes_open(factory):
             notes=None,
         ).id
         update_trade_close(
-            session, closed_id, exit_price=110.0, exit_date=_entry_date(), pnl=10.0,
+            session,
+            closed_id,
+            exit_price=110.0,
+            exit_date=_entry_date(),
+            pnl=10.0,
             notes=None,
         )
 

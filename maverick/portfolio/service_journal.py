@@ -185,7 +185,9 @@ class JournalService:
 
     # -- strategy-performance recompute --------------------------------
 
-    async def _recompute_strategy(self, strategy_tag: str) -> StrategyPerformancePayload:
+    async def _recompute_strategy(
+        self, strategy_tag: str
+    ) -> StrategyPerformancePayload:
         def _write() -> StrategyPerformancePayload:
             with session_scope(self._session_factory) as session:
                 closed = journal.read_closed_trades(session)
@@ -197,9 +199,7 @@ class JournalService:
                 loss_count = len(losses)
                 total_trades = win_count + loss_count
 
-                total_pnl_dec = sum(
-                    (_to_decimal(e.pnl) for e in tagged), Decimal("0")
-                )
+                total_pnl_dec = sum((_to_decimal(e.pnl) for e in tagged), Decimal("0"))
                 total_win_pnl_dec = sum(
                     (_to_decimal(e.pnl) for e in wins), Decimal("0")
                 )

@@ -17,7 +17,9 @@ from maverick.portfolio.types import JournalEntryPayload
 
 
 def _engine(tmp_path):
-    settings = DatabaseSettings(url=f"sqlite:///{tmp_path}/journal.db", use_pooling=True)
+    settings = DatabaseSettings(
+        url=f"sqlite:///{tmp_path}/journal.db", use_pooling=True
+    )
     return create_engine_from_settings(settings)
 
 
