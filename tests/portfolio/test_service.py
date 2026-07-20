@@ -882,3 +882,38 @@ async def test_watchlist_brief_unknown_watchlist_id_returns_zero_count(tmp_path)
 
     assert brief.count == 0
     assert brief.items == []
+
+
+async def test_watchlist_operations_carry_over_against_a_preexisting_legacy_database(
+    tmp_path,
+):
+    """The real carry-over scenario named in `watchlist.py`'s module
+    docstring: a pre-existing database already has `watchlists`/
+    `watchlist_items` created by the legacy `maverick_mcp.services.
+    watchlist.models` declarative models (`TimestampMixin` -> NOT NULL
+    `created_at`/`updated_at`, Python-side defaults only, no
+    `server_default`). `ensure_schema`'s checkfirst behavior means the new
+    stack sees the tables already present and never re-creates them -- it
+    has to write into the legacy shape as-is. Exercises
+    create/add/remove/brief end to end against that exact shape."""
+    from maverick_mcp.database.base import Base
+    from maverick_mcp.services.watchlist.models import Watchlist, WatchlistItem
+
+    engine = _engine(tmp_path)
+    Base.metadata.create_all(
+        engine, tables=[Watchlist.__table__, WatchlistItem.__table__]
+    )
+
+    market_data = StubMarketData(quotes={"AAPL": 175.50})
+    service = PortfolioService(engine, market_data)
+
+    watchlist = await service.create_watchlist("Legacy Carry-Over", None)
+    item = await service.add_watchlist_item(watchlist.id, "aapl", "note")
+    assert item.symbol == "AAPL"
+
+    brief = await service.watchlist_brief(watchlist.id)
+    assert brief.count == 1
+    assert brief.items[0].current_price == 175.50
+
+    result = await service.remove_watchlist_item(watchlist.id, "AAPL")
+    assert result.removed is True

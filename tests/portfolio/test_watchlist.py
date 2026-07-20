@@ -7,6 +7,7 @@ test, matching `tests/portfolio/test_data.py`'s pattern.
 
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from maverick.platform.config import DatabaseSettings
@@ -85,6 +86,61 @@ def test_create_watchlist_duplicate_name_leaves_session_usable(factory):
             select(func.count()).select_from(WATCHLISTS)
         ).scalar_one()
     assert count == 2
+
+
+def test_create_watchlist_not_null_violation_is_not_mislabeled_as_duplicate(factory):
+    """A NOT NULL violation (here: an explicitly `None` name, bypassing the
+    `str` type hint at runtime) must propagate as the original
+    `IntegrityError`, not be mislabeled as "already exists" by the
+    duplicate-name mapping. `_find_watchlist_id_by_name(session, None)`
+    generates `WHERE name IS NULL`, which correctly matches nothing (`name`
+    is NOT NULL), so the guard falls through and re-raises."""
+    with pytest.raises(IntegrityError):
+        with session_scope(factory) as session:
+            create_watchlist(session, None, "desc")  # type: ignore[arg-type]
+
+
+# -- created_at/updated_at: legacy TimestampMixin carry-over --------------
+
+
+def test_watchlist_columns_are_a_superset_of_legacy_timestamp_columns():
+    """`created_at`/`updated_at` must be present on both tables -- legacy's
+    `TimestampMixin` puts NOT NULL versions of both on every watchlist
+    table. Omitting them would break inserts against a pre-existing
+    legacy-shaped database (see the module docstring and
+    `test_watchlist_operations_carry_over_against_a_preexisting_legacy_database`
+    in `tests/portfolio/test_service.py`)."""
+    watchlists_columns = {c.name for c in WATCHLISTS.columns}
+    items_columns = {c.name for c in WATCHLIST_ITEMS.columns}
+    assert {"created_at", "updated_at"} <= watchlists_columns
+    assert {"created_at", "updated_at"} <= items_columns
+
+
+def test_create_watchlist_populates_created_at_and_updated_at(factory):
+    with session_scope(factory) as session:
+        watchlist_id = create_watchlist(session, "Timestamps", None).id
+
+    with session_scope(factory) as session:
+        row = session.execute(
+            select(WATCHLISTS.c.created_at, WATCHLISTS.c.updated_at).where(
+                WATCHLISTS.c.id == watchlist_id
+            )
+        ).one()
+    assert row.created_at is not None
+    assert row.updated_at is not None
+
+
+def test_add_item_populates_created_at_and_updated_at(factory):
+    with session_scope(factory) as session:
+        watchlist_id = create_watchlist(session, "Timestamps", None).id
+        add_item(session, watchlist_id, "AAPL", None)
+
+    with session_scope(factory) as session:
+        row = session.execute(
+            select(WATCHLIST_ITEMS.c.created_at, WATCHLIST_ITEMS.c.updated_at)
+        ).one()
+    assert row.created_at is not None
+    assert row.updated_at is not None
 
 
 # -- add_item: duplicate-add semantics matching legacy -------------------

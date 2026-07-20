@@ -11,8 +11,15 @@ database underneath old and new code. Reusing the legacy table/column names
 lets existing watchlist rows survive the cutover with no migration step.
 
 Column shapes mirror the legacy `Watchlist`/`WatchlistItem` models exactly,
-including two behaviors that read as bugs but are the real, shipped
-semantics this module ports faithfully:
+including `created_at`/`updated_at` from legacy's `TimestampMixin` (`DateTime
+(timezone=True) NOT NULL`, Python-side defaults only, no `server_default`)
+-- required, not cosmetic: against a pre-existing legacy-shaped database
+(the exact carry-over scenario this module exists for), `ensure_schema`
+sees the tables already present and skips DDL, so every INSERT here must
+already satisfy those NOT NULL columns or it fails outright.
+
+Two more behaviors read as bugs but are the real, shipped semantics this
+module ports faithfully:
 
 * `watchlist_items.watchlist_id` is a plain integer, not a foreign key --
   legacy never constrained it, so adding an item under a nonexistent
@@ -49,12 +56,30 @@ from maverick.portfolio.types import WatchlistItemPayload, WatchlistPayload
 
 METADATA = MetaData()
 
+
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
+# `created_at`/`updated_at` columns below mirror legacy's `TimestampMixin`
+# exactly: Python-side `default`/`onupdate` callables, no `server_default`.
+# SQLAlchemy Core applies these automatically on insert()/update() for any
+# column not given an explicit value -- no changes needed at the call sites.
+
 WATCHLISTS = Table(
     "watchlists",
     METADATA,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("name", String(255), unique=True, nullable=False),
     Column("description", Text, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False, default=_now),
+    Column(
+        "updated_at",
+        DateTime(timezone=True),
+        nullable=False,
+        default=_now,
+        onupdate=_now,
+    ),
 )
 
 WATCHLIST_ITEMS = Table(
@@ -65,6 +90,14 @@ WATCHLIST_ITEMS = Table(
     Column("symbol", String(10), nullable=False, index=True),
     Column("added_at", DateTime(timezone=True), nullable=False),
     Column("notes", Text, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False, default=_now),
+    Column(
+        "updated_at",
+        DateTime(timezone=True),
+        nullable=False,
+        default=_now,
+        onupdate=_now,
+    ),
 )
 
 
@@ -77,6 +110,12 @@ def _inserted_id(result: CursorResult) -> int:
     return primary_key[0]
 
 
+def _find_watchlist_id_by_name(session: Session, name: str) -> int | None:
+    return session.execute(
+        select(WATCHLISTS.c.id).where(WATCHLISTS.c.name == name)
+    ).scalar_one_or_none()
+
+
 def create_watchlist(
     session: Session, name: str, description: str | None
 ) -> WatchlistPayload:
@@ -84,7 +123,12 @@ def create_watchlist(
 
     Raises `ValueError` if `name` is already taken (`watchlists.name` is
     unique, matching legacy). Uses a savepoint so the IntegrityError only
-    rolls back this insert, leaving the caller's session usable.
+    rolls back this insert, leaving the caller's session usable. The
+    IntegrityError is narrowed the same way `data.py::get_or_create_stock`
+    does: only re-raised as the friendly `ValueError` if a row with `name`
+    now actually exists -- any other integrity failure (e.g. a NOT NULL
+    violation from an unexpected schema) propagates as-is instead of being
+    mislabeled as a duplicate name.
     """
     try:
         with session.begin_nested():
@@ -96,7 +140,9 @@ def create_watchlist(
             )
             session.flush()
     except IntegrityError as exc:
-        raise ValueError(f"Watchlist name {name!r} already exists") from exc
+        if _find_watchlist_id_by_name(session, name) is not None:
+            raise ValueError(f"Watchlist name {name!r} already exists") from exc
+        raise
 
     watchlist_id = _inserted_id(result)
     return WatchlistPayload(id=watchlist_id, name=name, description=description)
