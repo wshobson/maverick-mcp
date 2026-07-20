@@ -1,0 +1,1 @@
+"""Builds the FastMCP server: wires platform infrastructure and every domain's service and tools together. Second layer: imports every maverick.<domain> package, maverick.platform, and this package's prompts module."""
