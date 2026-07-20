@@ -46,6 +46,9 @@ def test_defaults_are_zero_config():
     assert s.sentiment_research_depth == "basic"
     assert s.sentiment_research_max_sources == 8
     assert s.sentiment_default_timeframe == "1w"
+    assert s.search_circuit_breaker_failure_threshold == 8
+    assert s.search_circuit_breaker_recovery_seconds == 30.0
+    assert s.search_timeout_failure_threshold == 12
 
 
 def test_exa_api_key_none_means_not_configured():
