@@ -1,71 +1,60 @@
 # Self-Contained Local Setup
 
 This runbook sets up MaverickMCP as a local personal-use financial analysis MCP
-server.
+server, from a source checkout, with every optional extra enabled.
 
 ## Prerequisites
 
-- Python 3.12
+- Python 3.12+
 - `uv`
-- TA-Lib system library
-- Tiingo API key for market data
 - Redis optional
-- PostgreSQL optional; SQLite works for development
+- PostgreSQL optional; SQLite works out of the box
+
+No market-data API key is required: core tools (quotes, price history,
+fundamentals, technical analysis, screening) run entirely on `yfinance`.
+TA-Lib is not required either -- the backtesting extra uses `pandas-ta`, a
+pure-Python dependency, so there is no system library to compile.
 
 ## Install
 
 ```bash
-uv sync --extra dev
+git clone https://github.com/wshobson/maverick-mcp.git
+cd maverick-mcp
+uv sync --extra dev --extra backtesting --extra research
 cp .env.example .env
 ```
 
-Add at least:
+Optional BYOK LLM keys for research and `backtesting_parse_strategy` (leave
+unset to run without them):
 
 ```bash
-TIINGO_API_KEY=your_tiingo_key
+LLM_PROVIDER=anthropic
+LLM_API_KEY=your_provider_key
+LLM_MODEL=claude-sonnet-4-5
 ```
 
-Optional research keys:
+Optional research search key:
 
 ```bash
 EXA_API_KEY=your_exa_key
-TAVILY_API_KEY=your_tavily_key
-OPENROUTER_API_KEY=your_openrouter_key
 ```
 
 ## Database
 
-SQLite:
+No setup script is needed; schema is created on first use. See
+[`database-setup.md`](database-setup.md) for detail.
+
+SQLite (default):
 
 ```bash
-export DATABASE_URL=sqlite:///maverick_mcp.db
-./scripts/setup_database.sh
+export DATABASE_URL=sqlite:///maverick.db
 ```
 
 PostgreSQL:
 
 ```bash
-createdb maverick_mcp
-export DATABASE_URL=postgresql://localhost/maverick_mcp
-./scripts/run-migrations.sh upgrade
-```
-
-## Load Market Data
-
-Quick sample:
-
-```bash
-python scripts/load_tiingo_data.py \
-  --symbols AAPL,MSFT,GOOGL,AMZN,NVDA \
-  --years 2 \
-  --calculate-indicators \
-  --run-screening
-```
-
-S&P 500 sample:
-
-```bash
-python scripts/load_tiingo_data.py --sp500 --years 2 --calculate-indicators --run-screening
+createdb maverick
+export DATABASE_URL=postgresql://localhost/maverick
 ```
 
 ## Start MCP Server
@@ -78,7 +67,19 @@ For HTTP bridge workflows:
 
 ```bash
 make dev
-curl http://localhost:8003/health
+```
+
+The server is now available at `http://localhost:8003/mcp/` (streamable
+HTTP) or over stdio, per `--transport`.
+
+## Bring In Market Data
+
+There is no bulk seed step. Call market-data tools for the tickers you care
+about (this also registers them for screening):
+
+```text
+"Get the price history for AAPL, MSFT, and NVDA"
+"Run the Maverick bullish screen"
 ```
 
 ## Validate

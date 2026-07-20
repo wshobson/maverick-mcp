@@ -5,6 +5,27 @@
 Use STDIO for Claude Desktop. It avoids an extra local bridge process and keeps
 the client/server relationship simple.
 
+Running the published package via `uvx` (no local checkout needed):
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "maverick-mcp-server",
+        "maverick-mcp",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
+```
+
+Running from a local source checkout:
+
 ```json
 {
   "mcpServers": {
@@ -14,7 +35,7 @@ the client/server relationship simple.
         "run",
         "python",
         "-m",
-        "maverick_mcp.api.server",
+        "maverick.server",
         "--transport",
         "stdio"
       ],
@@ -68,28 +89,16 @@ claude mcp add --transport http maverick-mcp http://localhost:8003/mcp/
 STDIO is also valid for local development:
 
 ```bash
-claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
+claude mcp add maverick-mcp uv run python -m maverick.server --transport stdio
 ```
-
-## Legacy SSE
-
-SSE remains available for legacy/debug clients:
-
-```bash
-make dev-sse
-```
-
-Endpoint:
-
-```text
-http://localhost:8003/sse/
-```
-
-Do not document SSE as the default Claude Desktop path.
 
 ## Windows `cwd` Workaround
 
-If Claude Desktop ignores `cwd`, wrap the command:
+Claude Desktop on Windows has a known bug where it ignores the `"cwd"`
+configuration parameter when running a local checkout via `uv`, which can
+crash the server with a `ModuleNotFoundError`. Prefer the `uvx` config above
+on Windows; if you need a local checkout, wrap the command in `cmd.exe` to
+force the directory change:
 
 ```json
 {
@@ -98,7 +107,7 @@ If Claude Desktop ignores `cwd`, wrap the command:
       "command": "cmd.exe",
       "args": [
         "/c",
-        "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick_mcp.api.server --transport stdio"
+        "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick.server --transport stdio"
       ]
     }
   }

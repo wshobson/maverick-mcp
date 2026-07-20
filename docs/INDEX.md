@@ -20,10 +20,10 @@ use this index as the map to deeper, versioned sources of truth.
   position-aware analysis behavior.
 - `features/deep-research.md` - Research agent capabilities, providers, and
   configuration.
-- `runbooks/database-setup.md` - SQLite/PostgreSQL setup, migrations, and
-  seeding.
+- `runbooks/database-setup.md` - SQLite/PostgreSQL setup and schema creation.
 - `runbooks/self-contained-setup.md` - full local setup with market data.
-- `runbooks/tiingo-loader.md` - Tiingo data-loader setup and usage.
+- `runbooks/migrating-to-v1.md` - config/database migration from pre-v1.0
+  installs.
 
 ## Modernization
 

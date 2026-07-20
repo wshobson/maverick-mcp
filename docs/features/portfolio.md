@@ -19,18 +19,24 @@ This is educational tooling only. It is not investment, tax, or trading advice.
 
 ## MCP Surfaces
 
-The router registers portfolio tools with names such as:
+`maverick/portfolio/tools.py` (positions/risk/watchlist) and
+`tools_journal.py` (trade journal) register 20 `portfolio_*` tools total,
+including:
 
 - `portfolio_add_position`
 - `portfolio_get_my_portfolio`
 - `portfolio_remove_position`
 - `portfolio_clear_portfolio`
 - `portfolio_compare_tickers`
-- `portfolio_portfolio_correlation_analysis`
+- `portfolio_correlation_analysis`
 - `portfolio_risk_adjusted_analysis`
 
-The direct server wrappers also expose equivalent unprefixed tool functions for
-the main server entrypoint.
+The risk dashboard (`portfolio_get_risk_dashboard`,
+`portfolio_check_position_risk`, `portfolio_get_regime_adjusted_sizing`,
+`portfolio_get_risk_alerts`), watchlist (`portfolio_watchlist_*`), and trade
+journal (`portfolio_journal_*`, `portfolio_get_strategy_performance`) tools
+also live in this domain; see `docs/ARCHITECTURE.md` for the full tool
+count.
 
 ## Cost Basis Method
 
@@ -97,6 +103,6 @@ was used.
 
 ## Storage
 
-The SQLAlchemy models are `UserPortfolio` and `PortfolioPosition` in
-`maverick_mcp.data.models`. The active personal-use default is a single local
-portfolio, not a hosted multi-user product.
+Positions are stored in the `pf_portfolios` and `pf_positions` tables
+(SQLAlchemy Core, `maverick/portfolio/data.py`). The active personal-use
+default is a single local portfolio, not a hosted multi-user product.

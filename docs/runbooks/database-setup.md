@@ -1,63 +1,65 @@
 # Database Setup
 
 MaverickMCP defaults to local SQLite and also supports PostgreSQL for larger
-local datasets. Database setup is local personal-use infrastructure, not hosted
-SaaS setup.
+local datasets. Database setup is local personal-use infrastructure, not
+hosted SaaS setup.
 
 ## Quick Setup
+
+There is no separate setup script. Every domain that owns tables calls
+`maverick.platform.db.ensure_schema` the first time its service is used,
+which creates missing tables idempotently (`CREATE TABLE IF NOT EXISTS`
+semantics via SQLAlchemy `create_all`). Just start the server:
 
 ```bash
 uv sync --extra dev
 cp .env.example .env
-./scripts/setup_database.sh
+make dev-stdio   # or: make dev
 ```
 
-The setup script creates the database schema, seeds sample data, and prepares
-screening data for local use.
+The database file (or configured PostgreSQL database) is created and
+populated with schema on first tool call. There is no migration framework;
+schema changes are additive, and there is nothing to run manually.
 
 ## Default SQLite
 
 ```bash
-export DATABASE_URL=sqlite:///maverick_mcp.db
-./scripts/setup_database.sh
+export DATABASE_URL=sqlite:///maverick.db
+make dev-stdio
 ```
 
-SQLite is the lowest-friction development path and is enough for normal local
-MCP use.
+SQLite is the lowest-friction path and is enough for normal local MCP use.
 
 ## PostgreSQL
 
 ```bash
-createdb maverick_mcp
-export DATABASE_URL=postgresql://localhost/maverick_mcp
-./scripts/run-migrations.sh upgrade
+createdb maverick
+export DATABASE_URL=postgresql://localhost/maverick
+make dev-stdio
 ```
 
-Use PostgreSQL when loading larger market datasets or when you need closer
-parity with production-style database behavior.
+Use PostgreSQL when loading larger local datasets or when you want database
+behavior closer to a production-style deployment. `ensure_schema` creates
+the same tables on Postgres as it does on SQLite; no separate migration step
+exists for either backend.
 
-## Manual Setup
+## No Bulk Data Seeding
 
-```bash
-python scripts/migrate_db.py
-python scripts/seed_db.py
-python scripts/test_seeded_data.py
-```
+Earlier versions of this project shipped a Tiingo-backed bulk loader that
+pre-seeded a fixed S&P 500 universe. That loader and its scripts were
+removed at the v1.0.0 cutover (see
+[`migrating-to-v1.md`](migrating-to-v1.md)). The current server has no
+pre-seeded universe:
 
-## Migrations
-
-```bash
-./scripts/run-migrations.sh upgrade
-alembic current
-alembic history
-```
-
-## Seed Verification
-
-```bash
-sqlite3 maverick_mcp.db "SELECT COUNT(*) FROM mcp_stocks;"
-python scripts/test_seeded_data.py
-```
+- Market data (quotes, price history, fundamentals) comes from `yfinance` on
+  demand, with no API key required. Calling `market_data_get_price_history`
+  or `market_data_get_quote` for a ticker registers that symbol in the local
+  `md_stocks` table as a side effect.
+- The screening domain (`screening_run_screens`) computes its Maverick
+  bullish/bearish/supply-demand screens over whatever symbols are already
+  known locally (the same `md_stocks` table). Fetch price history for the
+  tickers you care about before running a screen for meaningful coverage;
+  there is no S&P 500-wide default universe on a fresh install.
 
 ## Claude Desktop After Setup
 
@@ -67,14 +69,19 @@ For HTTP bridge testing:
 
 ```bash
 make dev
-curl http://localhost:8003/health
 ```
 
 ## Troubleshooting
 
-- Missing database file: rerun `./scripts/setup_database.sh`.
-- Missing screening rows: rerun `python scripts/seed_db.py` or the Tiingo loader.
-- Migration mismatch: check `alembic current` and rerun
-  `./scripts/run-migrations.sh upgrade`.
-- Redis unavailable: leave Redis variables unset; the app should use fallback
-  caching.
+- Missing/empty database file: it is created on first tool call; if it looks
+  wrong, delete it and let `ensure_schema` recreate it on the next call
+  (SQLite only -- do not do this against a PostgreSQL database with data you
+  want to keep).
+- Empty screening results: fetch price history for a few tickers via
+  `market_data_get_price_history`/`market_data_get_price_history_batch`
+  first, then call `screening_run_screens`.
+- Redis unavailable: leave Redis variables unset; the app falls back to
+  in-memory/SQLite caching.
+- Carrying data forward from a pre-v1.0 install: see
+  [`migrating-to-v1.md`](migrating-to-v1.md) for the inert-legacy-tables
+  note.

@@ -24,7 +24,7 @@ Prefer STDIO for Claude Desktop:
         "run",
         "python",
         "-m",
-        "maverick_mcp.api.server",
+        "maverick.server",
         "--transport",
         "stdio"
       ],
@@ -35,7 +35,7 @@ Prefer STDIO for Claude Desktop:
 ```
 
 For bridge or remote workflows, run `make dev` and connect to
-`http://localhost:8003/mcp/` with `mcp-remote`. SSE is legacy/debug only.
+`http://localhost:8003/mcp/` with `mcp-remote`. There is no SSE transport.
 
 ## Common Commands
 

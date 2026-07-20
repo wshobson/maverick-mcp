@@ -42,9 +42,9 @@ Status labels:
 | `features/portfolio.md` | current | product/engineering | Portfolio persistence and cost-basis behavior. |
 | `features/deep-research.md` | current | engineering | Research agent behavior and configuration. |
 | `runbooks/claude-desktop.md` | current | operations | MCP client setup and transport guidance. |
-| `runbooks/database-setup.md` | current | operations | Database setup, migrations, and seeding. |
+| `runbooks/database-setup.md` | current | operations | Database setup and schema creation (no migrations). |
 | `runbooks/self-contained-setup.md` | current | operations | Full local setup. |
-| `runbooks/tiingo-loader.md` | current | operations | Tiingo loader setup and usage. |
+| `runbooks/migrating-to-v1.md` | current | operations | Config/database migration guide from pre-v1.0 installs. |
 | `testing/README.md` | current | engineering | Canonical test commands and marker policy. |
 | `testing/in-memory.md` | current | engineering | FastMCP in-memory test patterns. |
 | `testing/integration.md` | current | engineering | Integration test guidance. |
@@ -79,9 +79,10 @@ Status labels:
 | `../tests/integration/README.md` | deleted | `testing/integration.md` |
 | `../maverick_mcp/tests/README_INMEMORY_TESTS.md` | deleted | `testing/in-memory.md` |
 | `../maverick_mcp/README.md` | deleted | `ARCHITECTURE.md` |
+| `runbooks/tiingo-loader.md` | deleted | `runbooks/migrating-to-v1.md`; the Tiingo bulk data loader and its scripts were removed at the v1.0.0 cutover (`maverick_mcp` deletion). Market data now comes from `yfinance` with no API key required. |
 
 ## Allowlisted Non-Documentation Text
 
-| Path | Status | Notes |
-| --- | --- | --- |
-| `../scripts/requirements_tiingo.txt` | current | Dependency input for the Tiingo loader, not prose documentation. |
+No entries. `scripts/requirements_tiingo.txt` (the Tiingo loader's pinned
+dependency file) was removed at the v1.0.0 cutover along with the loader
+scripts it supported.

@@ -15,9 +15,8 @@ opening ports, or managing a server lifecycle.
 ## Commands
 
 ```bash
-uv run pytest maverick_mcp/tests/test_in_memory*.py -v
-uv run pytest maverick_mcp/tests/test_in_memory_server.py -v
-uv run pytest maverick_mcp/tests/test_in_memory_routers.py::TestTechnicalRouter -v
+uv run pytest tests/server -v
+uv run pytest tests/portfolio tests/screening tests/technical tests/market_data -v
 ```
 
 ## Pattern
@@ -25,7 +24,7 @@ uv run pytest maverick_mcp/tests/test_in_memory_routers.py::TestTechnicalRouter 
 ```python
 async with Client(mcp) as client:
     result = await client.call_tool("tool_name", {"param": "value"})
-    assert result.text is not None
+    assert result.data is not None
 ```
 
 ## Guidelines
