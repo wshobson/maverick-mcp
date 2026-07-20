@@ -1,0 +1,80 @@
+# Phase 8: Server Assembly and Cutover Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Build `maverick/server/` assembling every domain's tools on FastMCP, close the tool-parity ledger with explicit port-or-retire rulings, delete the legacy `maverick_mcp/` package entirely, and ship v1.0.0 as `maverick-mcp-server`.
+
+**Architecture:** Phase 8 of the modernization. The 2026-07-20 server recon (`.superpowers/sdd/p8-recon-server.md`, gitignored scratch; load-bearing facts restated here) is the map. The legacy surface is 119 tools / 9 prompts / 11 resources; the new curated surface lands at ~39 existing + the ports below. Assembly wiring: one shared `Engine` + `Cache` → `MarketDataService` first (eager schema; `build_mover_fetcher` must not be forgotten) → screening/portfolio/technical inject it → backtesting/research construct only behind their extras → per-domain `configure(service)` then `register(mcp)`.
+
+**Tech Stack:** Python 3.12+ (the `<3.13` pin dies with ta-lib), FastMCP, maverick.platform.
+
+## Global Constraints
+
+Gates: eight-tree pytest (`tests/portfolio tests/screening tests/technical tests/market_data tests/platform tests/structure tests/backtesting tests/research`) plus the new `tests/server` tree, `make lint`, tracked-files `ruff format --check` plus explicit format-check of changed files, `uv run ty check maverick` (the legacy trees leave the strict zone as they die), `make docs-check` where docs change. Files under 500 lines. Commit per task; stage explicitly. Base install boots with core tools only; extras degrade to zero registrations with one warning each (established pattern). After cutover, no `maverick_mcp` reference may survive anywhere (code, config, CI, docs, packaging).
+
+## Parity ledger rulings (the 43-gap adjudication)
+
+Every legacy tool without a prior decision now has one. PORT: risk dashboard (Phase 4's logged intent), watchlist, trade journal — genuine personal-trader features consumed by the owner. RETIRE (rationale logged per group below): signal engine, health monitoring, introspection, decision-log/registry-status, news/Adanos sentiment, cache introspection, economic calendar, legacy prompts (superseded by 3 new curated prompts), legacy resources, the `get_watchlist` demo tool.
+
+## Decision log
+
+- 2026-07-20: Risk dashboard ports into `maverick/portfolio/` consuming `PortfolioService` reads (closes Phase 4's cutover bridge row): `portfolio_get_risk_dashboard`, `portfolio_check_position_risk`, `portfolio_get_regime_adjusted_sizing`, `portfolio_get_risk_alerts`.
+- 2026-07-20: Watchlist ports into `maverick/portfolio/` as a data-tier sibling (`watchlist.py`, own table, same DB): `portfolio_watchlist_create`, `portfolio_watchlist_add`, `portfolio_watchlist_remove`, `portfolio_watchlist_brief`. `get_upcoming_catalysts` ports only if its data source survives in the new stack (it reads yfinance calendar data via the legacy provider — verify; if it needs a dead provider, retire it with a log line). The hardcoded 15-ticker `get_watchlist` demo tool in `server.py` retires.
+- 2026-07-20: Trade journal ports into `maverick/portfolio/` (`journal.py`, own tables): `portfolio_journal_add_trade`, `portfolio_journal_close_trade`, `portfolio_journal_list_trades`, `portfolio_journal_review`, `portfolio_get_strategy_performance` (absorbing `get_strategy_comparison` — one tool with an optional comparison parameter; consolidation logged).
+- 2026-07-20: Signal engine/alerts (8 tools + `signals://recent`) RETIRES: persistent signal evaluation and alerting need a long-running daemon, which a stdio/request-scoped MCP server is not; the capability's future home is the Maverick Bot companion. 478 legacy lines die at cutover.
+- 2026-07-20: Health/system monitoring (8 tools + 3 resources) RETIRES: an ops dashboard surface built for hosted deployment; a personal server's health check is "did it register tools", observable natively. `reset_circuit_breaker` semantics live on only as platform internals.
+- 2026-07-20: Introspection (`discover_capabilities`, `list_all_strategies`, `get_strategy_help`) RETIRES: native MCP tool discovery + `backtesting_list_strategies` supersede it.
+- 2026-07-20: `get_decision_log`/`get_tool_registry_status` RETIRE with the legacy rate-limiter/decision-logger infrastructure they expose.
+- 2026-07-20: News sentiment (Tiingo path) and Adanos sentiment RETIRE: `research_analyze_sentiment` is the sentiment surface; `TIINGO_API_KEY`/`ADANOS_API_KEY` die. A lightweight news tool may return post-1.0 in market_data if wanted (logged as future, not debt).
+- 2026-07-20: `data_get_cached_price_data` RETIRES (caching is a platform internal now); `get_economic_calendar` RETIRES (legacy already returned a hardcoded empty list — a stub, not a feature).
+- 2026-07-20: The 9 legacy prompts RETIRE; the new server ships 3 curated prompts written against the new tool surface: `analyze_stock` (full technical+screening workflow), `review_portfolio` (portfolio+risk workflow), `run_backtest_workflow` (registered only when the backtesting extra is present). MCP resources ship NONE at 1.0 (tools supersede the three stock:// resources; logged, revisitable).
+- 2026-07-20: Alembic DELETES at cutover: every new-domain table is created via `platform.db.ensure_schema` (idempotent, personal-use scale); migration history for legacy tables dies with the legacy tables. Users carrying data forward keep their SQLite/Postgres files — new tables coexist; dead legacy tables are inert (a `docs/runbooks/` migration note says they may be dropped manually).
+- 2026-07-20: Packaging: PyPI name `maverick-mcp-server` (decided earlier), version 1.0.0, `[project.scripts] maverick-mcp = "maverick.server.app:main"`, wheel packages the `maverick` package only, entrypoint `python -m maverick.server` equivalent. SSE dies everywhere (server.json, Dockerfile, docs) per the earlier MCP-spec decision; transports are stdio (default) and streamable HTTP.
+- 2026-07-20: Dependency endgame at cutover (all verified zero-usage in `maverick/`): ta-lib, matplotlib, seaborn, plotly, kaleido, tiingo, fredapi, pandas-datareader, langgraph-checkpoint-sqlite, and the legacy-only server stack (gunicorn, fastapi if unused by FastMCP path — verify each against `maverick/` + FastMCP requirements before deleting). `requires-python` becomes `>=3.12`.
+- 2026-07-20: Config migration: `OPENROUTER_API_KEY`/`ANTHROPIC_API_KEY`-style auto-detection is gone — a migration note maps old env vars to `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`(/`LLM_BASE_URL`); dead vars (`TIINGO_API_KEY`, `ADANOS_API_KEY*`, `FRED_API_KEY`, auth/billing remnants) are listed as removable.
+
+## Layer contract (Task 0 encodes)
+
+```
+maverick.server -> {every maverick.<domain>.tools + config} -> ...
+```
+
+`maverick.server` may import all domains' `tools`/`config`/`service` plus platform; NOTHING imports `maverick.server`. Extend import-linter: a layers-style contract putting `maverick.server` above the domains, and add `maverick.server` to the platform contract's forbidden list. The legacy-ban contracts (`maverick` ↔ `maverick_mcp`) DELETE in the cutover task along with the legacy package.
+
+---
+
+### Task 0: server skeleton and contracts
+
+Docstring-only `maverick/server/{__init__,app,assembly,prompts}.py`; import-linter contract additions per above; `tests/server/test_layers.py` (subprocess pattern, fail-then-pass proof) + `tests/server/conftest.py`. Full gate. Commit `feat(server): add server skeleton and layer contracts`.
+
+### Task 1: risk dashboard port
+
+Port the four risk tools into `maverick/portfolio/`: new `risk.py` data-tier sibling (the computation: exposure aggregation, position risk checks, regime-adjusted sizing, alert thresholds — legacy source `maverick_mcp/api/routers/risk_dashboard.py` and whatever engine it calls; consume `PortfolioService`/`MarketDataService` reads per Phase 4's logged intent — the service tier orchestrates, risk.py stays pure), settings additions with legacy-literal defaults, 4 tools `portfolio_get_risk_dashboard`/`portfolio_check_position_risk`/`portfolio_get_regime_adjusted_sizing`/`portfolio_get_risk_alerts` (readOnly True). TDD with stub services; layers contract extension for the sibling. Full gate. Commit `feat(portfolio): port risk dashboard onto the portfolio service`.
+
+### Task 2: watchlist port
+
+`maverick/portfolio/watchlist.py` (table `pf_watchlists`/`pf_watchlist_entries` or port legacy names if data carries over — check the legacy schema and keep its table names verbatim so existing rows survive), CRUD via the platform db seam, 4 tools `portfolio_watchlist_create`/`add`/`remove`/`brief` (brief includes latest prices via market_data). `get_upcoming_catalysts`: verify its data path (legacy `watchlist.py`); port as `portfolio_watchlist_catalysts` if it reads yfinance-native data, else retire with a decision-log addendum. Annotations: mutating tools are NOT readOnly. TDD incl. in-memory SQLite round-trips. Full gate. Commit `feat(portfolio): port watchlist`.
+
+### Task 3: trade journal port
+
+`maverick/portfolio/journal.py` (legacy `maverick_mcp/api/routers/journal.py` — keep table names verbatim for data carry-over), 5 tools per the decision log (`portfolio_journal_add_trade`, `portfolio_journal_close_trade`, `portfolio_journal_list_trades`, `portfolio_journal_review`, `portfolio_get_strategy_performance` with optional comparison mode). Decimal discipline per the portfolio domain's established rules. TDD. Full gate. Commit `feat(portfolio): port trade journal`.
+
+### Task 4: server assembly and prompts
+
+`maverick/server/assembly.py`: `build_server() -> FastMCP` implementing the recon's assembly order (shared Engine/Cache; MarketDataService FIRST with `build_mover_fetcher`; screening/portfolio/technical inject it; backtesting/research behind availability guards); `app.py`: `main()` with `--transport stdio|http` (stdio default, streamable HTTP on the configured port; NO SSE), graceful settings validation errors. `prompts.py`: the 3 curated prompts (backtest one gated on the extra). Tests (`tests/server/`): in-memory `fastmcp.Client` against `build_server()` asserting the FULL core tool list by exact name (the parity ledger's core surface: market_data + screening + portfolio incl. new ports + technical), extra-present assertions for backtesting (12) and research (3), zero-extra degradation, prompt registration, transport arg parsing. Makefile: `make dev`/`dev-stdio` target the new entrypoint. Full gate. Two commits allowed: `feat(server): assemble domains on fastmcp` / `feat(server): add curated prompts and transports`.
+
+### Task 5: cutover deletion
+
+THE deletion. Remove `maverick_mcp/` entirely; remove the root `tests/*.py` files that die with it (the recon's 87-file list — re-derive by import grep, don't trust the count); `examples/`, legacy `scripts/` (keep only scripts serving `maverick/` — the fixture recorder stays), `alembic/` + `alembic.ini` (decision logged); legacy Makefile targets; `maverick_mcp/tests` from pyproject testpaths; the two legacy-ban import-linter contracts; CI steps referencing legacy paths (ty strict zone becomes `maverick`); conftest.py entries referencing deleted files. Then the dependency purge per the decision log (each package grep-verified against surviving code + FastMCP needs before removal; `uv lock`), `requires-python >=3.12`, `.env.example` rewrite. STOP on any surviving importer of a deleted module. Full gate (note: suite count will DROP massively — record before/after; the legacy quick tree gate disappears with the tree). Commit `refactor!: delete legacy maverick_mcp package and its dependency tail (cutover)`.
+
+### Task 6: packaging and version
+
+pyproject: `name = "maverick-mcp-server"`, `version = "1.0.0"`, `[project.scripts]`, hatch wheel packaging scoped to `maverick/`, README badges/install text, `server.json` rewritten for the new entrypoint (stdio + uvx `maverick-mcp-server` runtimeHint; registry name `io.github.wshobson/maverick-mcp`; no SSE), Dockerfile → new entrypoint + slim deps, `docker-compose.yml` sweep. Local verification: `uv build` succeeds; `uv run --with dist/*.whl maverick-mcp --help` works (or the closest equivalent); `python -m maverick.server --transport stdio` boots and registers core tools against a scratch DB. Full gate + docs-check. Commit `feat: rename to maverick-mcp-server and cut v1.0.0 packaging`.
+
+### Task 7: docs sweep
+
+README full rewrite (new install `uvx maverick-mcp-server` / `pip install maverick-mcp-server[backtesting,research]`, new tool surface tables, BYOK config, extras story, Claude Desktop stdio config with the new command); `docs/ARCHITECTURE.md` rewrite (maverick/ only); runbooks sweep (claude-desktop, database-setup, self-contained-setup; tiingo-loader runbook DELETES with its scripts — catalog updated); config migration note (`docs/runbooks/migrating-to-v1.md`: env-var mapping table, dead vars, inert legacy tables); CLAUDE.md/AGENTS.md/GEMINI.md command updates; QUALITY_SCORE/RELIABILITY/SECURITY refresh; CATALOG/INDEX for every add/move/delete. `make docs-check`. Commit `docs: rewrite documentation for v1.0.0`.
+
+### Task 8: close-out
+
+Decision-log addenda; move plan to `completed/`; INDEX/CATALOG; full verification; commit `docs: complete phase 8 (server assembly and cutover)`; push; foreground CI watch until green; then `git tag v1.0.0` and `git push origin v1.0.0`; `gh release create v1.0.0 --generate-notes` with a hand-written summary paragraph on top (the modernization story, breaking changes, migration pointer). Phase 9 (registry rollout) follows in its own plan.
