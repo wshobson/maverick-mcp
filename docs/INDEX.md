@@ -47,6 +47,8 @@ use this index as the map to deeper, versioned sources of truth.
   execution plan (research extra).
 - `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` - Phase 8
   execution plan (server assembly and cutover).
+- `exec-plans/active/2026-07-20-phase-9-distribution.md` - Phase 9
+  execution plan (distribution and registry rollout).
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface
   is curated.

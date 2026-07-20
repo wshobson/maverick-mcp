@@ -32,6 +32,7 @@ Status labels:
 | `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` | current | engineering | Phase 6 execution plan (backtesting extra). |
 | `exec-plans/completed/2026-07-20-phase-7-research-extra.md` | current | engineering | Phase 7 execution plan (research extra). |
 | `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` | current | engineering | Phase 8 execution plan (server assembly and cutover). |
+| `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |
