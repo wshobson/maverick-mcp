@@ -19,7 +19,13 @@ from maverick.platform.llm import (
     reset_llm_settings,
 )
 
-_ENV_VARS = ("LLM_PROVIDER", "LLM_API_KEY", "LLM_BASE_URL", "LLM_MODEL", "LLM_TEMPERATURE")
+_ENV_VARS = (
+    "LLM_PROVIDER",
+    "LLM_API_KEY",
+    "LLM_BASE_URL",
+    "LLM_MODEL",
+    "LLM_TEMPERATURE",
+)
 
 
 @pytest.fixture(autouse=True)
@@ -89,7 +95,9 @@ def test_invalid_provider_name_rejected(monkeypatch):
         LLMSettings()
 
 
-@pytest.mark.parametrize("provider", ["openai", "anthropic", "openrouter", "openai_compatible"])
+@pytest.mark.parametrize(
+    "provider", ["openai", "anthropic", "openrouter", "openai_compatible"]
+)
 def test_missing_api_key_fails_fast(monkeypatch, provider):
     monkeypatch.setenv("LLM_PROVIDER", provider)
     with pytest.raises(
@@ -99,7 +107,9 @@ def test_missing_api_key_fails_fast(monkeypatch, provider):
         LLMSettings()
 
 
-@pytest.mark.parametrize("provider", ["openai", "anthropic", "openrouter", "openai_compatible"])
+@pytest.mark.parametrize(
+    "provider", ["openai", "anthropic", "openrouter", "openai_compatible"]
+)
 def test_missing_model_fails_fast(monkeypatch, provider):
     monkeypatch.setenv("LLM_PROVIDER", provider)
     monkeypatch.setenv("LLM_API_KEY", "key-123")

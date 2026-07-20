@@ -82,8 +82,7 @@ class LLMSettings(BaseModel):
             )
         if self.model is None:
             raise ValueError(
-                "LLM_MODEL is required when LLM_PROVIDER="
-                f"{self.provider.value} is set."
+                f"LLM_MODEL is required when LLM_PROVIDER={self.provider.value} is set."
             )
 
         if self.provider is LLMProvider.OPENROUTER:
