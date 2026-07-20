@@ -5,46 +5,34 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies, Chromium for Kaleido v1 image export, and TA-Lib
+# Install system dependencies (build tools + Postgres client headers for
+# psycopg2-binary). ta-lib and its compile step are gone: the backtesting
+# extra now uses pandas-ta, a pure-Python dependency.
 RUN apt-get update && apt-get install -yqq --no-install-recommends \
   build-essential \
   ca-certificates \
-  chromium \
   curl \
-  fonts-liberation \
   libpq-dev \
   python3-dev \
-  wget \
   && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast Python package management
 RUN pip install --no-cache-dir uv
 
-# Install and compile TA-Lib
-ENV TALIB_DIR=/usr/local
-RUN wget https://github.com/ta-lib/ta-lib/releases/download/v0.6.4/ta-lib-0.6.4-src.tar.gz \
-  && tar -xzf ta-lib-0.6.4-src.tar.gz \
-  && cd ta-lib-0.6.4/ \
-  && ./configure --prefix=$TALIB_DIR \
-  && make -j$(nproc) \
-  && make install \
-  && cd .. \
-  && rm -rf ta-lib-0.6.4-src.tar.gz ta-lib-0.6.4/
-
 # Copy dependency files first for better caching
 COPY pyproject.toml uv.lock README.md ./
 
-# Install Python dependencies
-RUN uv sync --frozen
+# Install Python dependencies. Ships the backtesting and research extras so
+# the container image has the full tool surface out of the box; drop
+# --extra backtesting --extra research for a smaller, core-only image.
+RUN uv sync --frozen --extra backtesting --extra research
 
 # Copy application code
 COPY maverick ./maverick
-COPY setup.py ./
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV BROWSER_PATH=/usr/bin/chromium
 
 # Create non-root user
 RUN groupadd -g 1000 maverick && \
@@ -55,9 +43,9 @@ USER maverick
 
 EXPOSE 8000
 
-# Health check for container orchestration (Docker, ECS, Kubernetes)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=45s --retries=3 \
-  CMD curl -f http://localhost:8000/health || exit 1
+# No HEALTHCHECK: the new server exposes no HTTP /health endpoint (it is an
+# MCP server, not a REST API). Container orchestrators should instead use
+# process liveness or an MCP-aware probe.
 
-# Start MCP server
+# Start MCP server (streamable HTTP transport for container deployment)
 CMD ["uv", "run", "python", "-m", "maverick.server", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]

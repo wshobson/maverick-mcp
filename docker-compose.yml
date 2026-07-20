@@ -7,21 +7,15 @@ services:
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/maverick_mcp
       - REDIS_HOST=redis
-      # Optional API Keys for Enhanced Features
+      # Optional BYOK LLM settings (research extra)
+      - LLM_PROVIDER=${LLM_PROVIDER:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
       - EXA_API_KEY=${EXA_API_KEY:-}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
-      # Server Configuration
-      - API_HOST=0.0.0.0
-      - API_PORT=8000
       - LOG_LEVEL=${LOG_LEVEL:-info}
-      - ENVIRONMENT=${ENVIRONMENT:-production}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
+    # No healthcheck: the new server exposes no HTTP /health endpoint (it is
+    # an MCP server, not a REST API).
     volumes:
       - ./maverick:/app/maverick
       - ./.env:/app/.env

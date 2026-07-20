@@ -1,6 +1,6 @@
 [project]
-name = "maverick_mcp"
-version = "0.1.0"
+name = "maverick-mcp-server"
+version = "1.0.0"
 description = "Personal-use MCP server for Claude Desktop providing professional-grade stock analysis and technical indicators"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -78,12 +78,15 @@ research = [
     "exa-py>=2.13.0",
 ]
 
+[project.scripts]
+maverick-mcp = "maverick.server.app:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-include = ["*.py"]
+packages = ["maverick"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"

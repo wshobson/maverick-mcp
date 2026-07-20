@@ -8,12 +8,13 @@ services:
     command: python -m maverick.server --transport http --host 0.0.0.0 --port 8003
     environment:
       # Override for development
-      - ENVIRONMENT=development
       - LOG_LEVEL=debug
-      - API_DEBUG=true
 
       # Add any additional API keys you want to test
       # - EXA_API_KEY=your_key_here
+      # - LLM_PROVIDER=anthropic
+      # - LLM_API_KEY=your_key_here
+      # - LLM_MODEL=claude-sonnet-4-5
 
       # Performance tuning
       - CACHE_ENABLED=true

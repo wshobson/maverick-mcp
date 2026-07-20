@@ -9,12 +9,12 @@
 
 **MaverickMCP** is a personal-use FastMCP server that provides professional-grade financial data analysis, technical indicators, and portfolio optimization tools directly to your Claude Desktop interface. Built for individual traders and investors, it offers comprehensive stock analysis capabilities without any authentication or billing complexity.
 
-The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with HTTP/SSE/STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
+The server comes pre-seeded with all 520 S&P 500 stocks and provides advanced screening recommendations across multiple strategies. It runs locally with streamable HTTP or STDIO transport options for seamless integration with Claude Desktop and other MCP clients.
 
 ## Skip the setup — hosted version
 
-Self-hosting MaverickMCP means TA-Lib, a Tiingo API key, Redis, and MCP client
-config. If you just want the analysis, [Capital Companion](https://capitalcompanion.ai)
+Self-hosting MaverickMCP means Python, uv, and MCP client config (Redis and a
+research LLM key are optional). If you just want the analysis, [Capital Companion](https://capitalcompanion.ai)
 is the hosted product built on the same engine: AI technical analysis, trade-plan
 review sheets with outcome tracking, and price alerts. **25 free analyses,
 no credit card.**
@@ -48,7 +48,7 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 - **Market Data**: Sector performance, market movers, and earnings information
 - **Smart Caching**: Redis-powered performance with automatic fallback to in-memory storage
 - **Database Support**: SQLAlchemy integration with PostgreSQL/SQLite (defaults to SQLite)
-- **Multi-Transport Support**: HTTP, SSE, and STDIO transports for all MCP clients
+- **Multi-Transport Support**: Streamable HTTP and STDIO transports for all MCP clients
 
 ## Quick Start
 
@@ -56,52 +56,8 @@ MaverickMCP provides professional-grade financial analysis tools directly within
 
 - **Python 3.12+**: Core runtime environment
 - **[uv](https://docs.astral.sh/uv/)**: Modern Python package manager (recommended)
-- **TA-Lib**: Technical analysis library for advanced indicators
 - Redis (optional, for enhanced caching)
 - PostgreSQL or SQLite (optional, for data persistence)
-
-#### Installing TA-Lib
-
-TA-Lib is required for technical analysis calculations.
-
-**macOS and Linux (Homebrew):**
-```bash
-brew install ta-lib
-```
-
-**Windows (Multiple Options):**
-
-**Option 1: Conda/Anaconda (Recommended - Easiest)**
-```bash
-conda install -c conda-forge ta-lib
-```
-
-**Option 2: Pre-compiled Wheels**
-1. Download the appropriate wheel for your Python version from:
-   - [cgohlke/talib-build releases](https://github.com/cgohlke/talib-build/releases)
-   - Choose the file matching your Python version (e.g., `TA_Lib-0.4.28-cp312-cp312-win_amd64.whl` for Python 3.12 64-bit)
-2. Install using pip:
-```bash
-pip install path/to/downloaded/TA_Lib-X.X.X-cpXXX-cpXXX-win_amd64.whl
-```
-
-**Option 3: Alternative Pre-compiled Package**
-```bash
-pip install TA-Lib-Precompiled
-```
-
-**Option 4: Build from Source (Advanced)**
-If other methods fail, you can build from source:
-1. Install Microsoft C++ Build Tools
-2. Download and extract ta-lib C library to `C:\ta-lib`
-3. Build using Visual Studio tools
-4. Run `pip install ta-lib`
-
-**Verification:**
-Test your installation:
-```bash
-python -c "import talib; print(talib.__version__)"
-```
 
 #### Installing uv (Recommended)
 
@@ -118,7 +74,22 @@ pip install uv
 
 ### Installation
 
-#### Option 1: Using uv (Recommended - Fastest)
+#### Option 1: Run without installing (uvx)
+
+```bash
+# Runs the published maverick-mcp-server package via uvx, invoking its
+# maverick-mcp console script
+uvx --from maverick-mcp-server maverick-mcp --transport stdio
+```
+
+#### Option 2: pip install
+
+```bash
+pip install "maverick-mcp-server[backtesting,research]"
+maverick-mcp --transport stdio
+```
+
+#### Option 3: From source with uv (for development)
 
 ```bash
 # Clone the repository
@@ -126,28 +97,11 @@ git clone https://github.com/wshobson/maverick-mcp.git
 cd maverick-mcp
 
 # Install dependencies and create virtual environment in one command
-uv sync
+uv sync --extra dev
 
 # Copy environment template
 cp .env.example .env
-# Add your Tiingo API key (free at tiingo.com)
-```
-
-#### Option 2: Using pip (Traditional)
-
-```bash
-# Clone the repository
-git clone https://github.com/wshobson/maverick-mcp.git
-cd maverick-mcp
-
-# Create virtual environment and install
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -e .
-
-# Copy environment template
-cp .env.example .env
-# Add your Tiingo API key (free at tiingo.com)
+# Configure DATABASE_URL / LLM_PROVIDER / EXA_API_KEY as needed (all optional)
 ```
 
 ### Start the Server
@@ -157,8 +111,7 @@ cp .env.example .env
 make dev
 
 # The server is now running with:
-# - HTTP endpoint: http://localhost:8003/mcp/
-# - SSE endpoint: http://localhost:8003/sse/
+# - Streamable HTTP endpoint: http://localhost:8003/mcp/
 # - 520 S&P 500 stocks pre-loaded with screening data
 ```
 
@@ -172,12 +125,31 @@ Claude Desktop works best with direct STDIO for local use:
 {
   "mcpServers": {
     "maverick-mcp": {
+      "command": "uvx",
+      "args": [
+        "--from",
+        "maverick-mcp-server",
+        "maverick-mcp",
+        "--transport",
+        "stdio"
+      ]
+    }
+  }
+}
+```
+
+Running from a local source checkout instead:
+
+```json
+{
+  "mcpServers": {
+    "maverick-mcp": {
       "command": "uv",
       "args": [
         "run",
         "python",
         "-m",
-        "maverick_mcp.api.server",
+        "maverick.server",
         "--transport",
         "stdio"
       ],
@@ -197,7 +169,7 @@ Claude Desktop works best with direct STDIO for local use:
 >   "command": "cmd.exe",
 >   "args": [
 >     "/c",
->     "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick_mcp.api.server --transport stdio"
+>     "cd /d C:\\Path\\To\\maverick-mcp && uv run python -m maverick.server --transport stdio"
 >   ]
 > }
 > ```
@@ -253,21 +225,9 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 }
 ```
 
-**Option 2: Legacy direct SSE**:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "url": "http://localhost:8003/sse/"
-    }
-  }
-}
-```
-
 **Config Location**: Cursor → Settings → MCP Servers
 
-#### Claude Code CLI - All Transports
+#### Claude Code CLI
 
 **HTTP transport**:
 
@@ -275,16 +235,10 @@ That's it! MaverickMCP tools will now be available in your Claude Desktop interf
 claude mcp add --transport http maverick-mcp http://localhost:8003/mcp/
 ```
 
-**SSE transport (legacy/debug)**:
-
-```bash
-claude mcp add --transport sse maverick-mcp http://localhost:8003/sse/
-```
-
 **STDIO transport**:
 
 ```bash
-claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport stdio
+claude mcp add maverick-mcp uv run python -m maverick.server --transport stdio
 ```
 
 #### Windsurf IDE
@@ -297,18 +251,6 @@ claude mcp add maverick-mcp uv run python -m maverick_mcp.api.server --transport
     "maverick-mcp": {
       "command": "npx",
       "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
-    }
-  }
-}
-```
-
-**Option 2: Legacy direct SSE**:
-
-```json
-{
-  "mcpServers": {
-    "maverick-mcp": {
-      "serverUrl": "http://localhost:8003/sse/"
     }
   }
 }
@@ -332,17 +274,11 @@ MaverickMCP provides 39+ financial analysis tools organized into focused categor
 
 ```bash
 # Start the server (one command!)
-make dev
-
-# Alternative startup methods
-./scripts/start-backend.sh --dev    # Script-based startup
-./tools/fast_dev.sh                 # Ultra-fast startup (< 3 seconds)
-uv run python tools/hot_reload.py   # Auto-restart on file changes
+make dev          # Streamable HTTP transport
+make dev-stdio    # STDIO transport (recommended for Claude Desktop)
 
 # Server will be available at:
 # - HTTP endpoint: http://localhost:8003/mcp/ (streamable-http - use with mcp-remote)
-# - SSE endpoint: http://localhost:8003/sse/ (SSE - direct connection only, not mcp-remote)
-# - Health check: http://localhost:8003/health
 ```
 
 ### Testing
@@ -393,26 +329,20 @@ Configure MaverickMCP via `.env` file or environment variables:
 **Essential Settings:**
 
 - `REDIS_HOST`, `REDIS_PORT` - Redis cache (optional, defaults to localhost:6379)
-- `DATABASE_URL` - PostgreSQL connection or `sqlite:///maverick_mcp.db` for SQLite (default)
+- `DATABASE_URL` - PostgreSQL connection or `sqlite:///maverick.db` for SQLite (default)
 - `LOG_LEVEL` - Logging verbosity (INFO, DEBUG, ERROR)
 - S&P 500 data automatically seeds on first startup
 
-**Required API Keys:**
+No API key is required to run the core server; stock data comes from yfinance.
 
-- `TIINGO_API_KEY` - Stock data provider (free tier available at [tiingo.com](https://tiingo.com))
+**Optional API Keys (research extra, bring your own key):**
 
-**Optional API Keys:**
-
-- `OPENROUTER_API_KEY` - **Strongly Recommended for Research**: Access to 400+ AI models with intelligent cost optimization (40-60% cost savings)
-- `EXA_API_KEY` - **Recommended for Research**: Web search capabilities for comprehensive research
-- `OPENAI_API_KEY` - Direct OpenAI access (fallback)
-- `ANTHROPIC_API_KEY` - Direct Anthropic access (fallback)
-- `FRED_API_KEY` - Federal Reserve economic data
-- `TAVILY_API_KEY` - Alternative web search provider
-- `ADANOS_API_KEY` - Optional Adanos Market Sentiment API access for stock sentiment from Reddit, X / FinTwit, News, and Polymarket ([docs](https://api.adanos.org/docs))
-- `ADANOS_API_BASE_URL` - Optional Adanos API base URL override; defaults to `https://api.adanos.org`
-
-When configured, use the `data_get_adanos_market_sentiment` MCP tool for ticker-level sentiment (`ticker="AAPL"`) or market-wide sentiment (`ticker=null`). Optional `sources` values are `reddit`, `x`, `news`, and `polymarket`.
+- `LLM_PROVIDER` - LLM provider for research agent tools (e.g. `anthropic`, `openai`, `openai_compatible`)
+- `LLM_API_KEY` - API key for the configured `LLM_PROVIDER`
+- `LLM_MODEL` - Model name for the configured `LLM_PROVIDER`
+- `LLM_BASE_URL` - Base URL override, required when `LLM_PROVIDER=openai_compatible`
+- `LLM_TEMPERATURE` - Sampling temperature (default: `0.0`)
+- `EXA_API_KEY` - Web search capabilities for comprehensive research (get at [exa.ai](https://exa.ai))
 
 **Performance:**
 
@@ -681,8 +611,8 @@ For containerized deployment:
 cp .env.example .env
 
 # Using uv in Docker (recommended for faster builds)
-docker build -t maverick_mcp .
-docker run -p 8003:8003 --env-file .env maverick_mcp
+docker build -t maverick-mcp-server .
+docker run -p 8003:8000 --env-file .env maverick-mcp-server
 
 # Or start with docker-compose
 docker-compose up -d
@@ -695,8 +625,8 @@ docker-compose up -d
 ### Common Issues
 
 **Tools Disappearing in Claude Desktop:**
-- **Solution**: Ensure SSE endpoint has trailing slash: `http://localhost:8003/sse/`
-- The 307 redirect from `/sse` to `/sse/` causes tool registration to fail
+- **Solution**: Ensure the streamable HTTP endpoint has a trailing slash: `http://localhost:8003/mcp/`
+- The 307 redirect from `/mcp` to `/mcp/` causes tool registration to fail
 - Always use the exact configuration with trailing slash shown above
 
 **Research Tool Timeouts:**
@@ -704,10 +634,10 @@ docker-compose up -d
 - Deep research may take 2-10 minutes depending on complexity
 - Monitor progress in server logs with `make tail-log`
 
-**OpenRouter Not Working:**
-- Ensure `OPENROUTER_API_KEY` is set in `.env`
-- Check API key validity at [openrouter.ai](https://openrouter.ai)
-- System falls back to direct providers if OpenRouter unavailable
+**Research Tools Not Available:**
+- Ensure the `research` extra is installed: `pip install "maverick-mcp-server[research]"`
+- Ensure `LLM_PROVIDER`, `LLM_API_KEY`, and `LLM_MODEL` are set in `.env`
+- Ensure `EXA_API_KEY` is set for web search
 
 ```bash
 # Common development issues

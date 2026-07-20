@@ -2641,8 +2641,8 @@ wheels = [
 ]
 
 [[package]]
-name = "maverick-mcp"
-version = "0.1.0"
+name = "maverick-mcp-server"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiofiles" },
