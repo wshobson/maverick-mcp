@@ -26,6 +26,8 @@ use this index as the map to deeper, versioned sources of truth.
   installs.
 - `runbooks/releasing.md` - the full publish sequence (PyPI, official MCP
   Registry, GHCR, third-party registries, `.mcpb` release asset); owner-run.
+- `generated/registry/README.md` - ready-to-paste registry submission
+  drafts (Docker MCP Catalog, Smithery, Glama, PulseMCP, mcp.so).
 
 ## Modernization
 

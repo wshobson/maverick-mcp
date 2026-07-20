@@ -100,6 +100,8 @@ CLI's own `login` command for the current auth flow.
 history remains visible.
 
 ```bash
+# Command syntax matches the registry's quickstart as of 2026-07-20; confirm
+# against `mcp-publisher --help` on the installed CLI before running.
 mcp-publisher login github
 mcp-publisher publish
 ```

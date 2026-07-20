@@ -1,5 +1,5 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.wshobson/maverick-mcp",
   "description": "Stock analysis MCP server with S&P 500 data, technical indicators, and AI research tools.",
   "status": "active",
@@ -10,68 +10,68 @@
   "version": "1.0.0",
   "packages": [
     {
-      "registry_type": "pypi",
-      "registry_base_url": "https://pypi.org",
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
       "identifier": "maverick-mcp-server",
       "version": "1.0.0",
-      "runtime_hint": "uvx",
+      "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
       },
-      "environment_variables": [
+      "environmentVariables": [
         {
           "name": "DATABASE_URL",
           "description": "Optional database URL. Defaults to SQLite (sqlite:///maverick.db) if not provided. PostgreSQL supported for better performance.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "REDIS_HOST",
           "description": "Optional Redis host for enhanced caching performance. Defaults to in-memory caching if not provided.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "REDIS_PORT",
           "description": "Optional Redis port (default: 6379)",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_PROVIDER",
           "description": "Optional LLM provider for the research extra (e.g. anthropic, openai, openai_compatible). Required only to enable research agent tools; bring your own API key.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_API_KEY",
           "description": "Optional API key for the configured LLM_PROVIDER. Required only when LLM_PROVIDER is set.",
-          "is_required": false,
-          "is_secret": true
+          "isRequired": false,
+          "isSecret": true
         },
         {
           "name": "LLM_MODEL",
           "description": "Optional model name for the configured LLM_PROVIDER. Required only when LLM_PROVIDER is set.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_BASE_URL",
           "description": "Optional base URL override, required when LLM_PROVIDER=openai_compatible.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_TEMPERATURE",
           "description": "Optional sampling temperature for the configured LLM_PROVIDER. Defaults to 0.0.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "EXA_API_KEY",
           "description": "Optional API key for Exa web search (research extra). Get at https://exa.ai",
-          "is_required": false,
-          "is_secret": true
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     }
@@ -89,60 +89,60 @@
         "Start server: make dev (or uv run python -m maverick.server --transport http --port 8003)",
         "Connect via mcp-remote: npx mcp-remote http://localhost:8003/mcp/"
       ],
-      "environment_variables": [
+      "environmentVariables": [
         {
           "name": "DATABASE_URL",
           "description": "Optional database URL. Defaults to SQLite (sqlite:///maverick.db) if not provided. PostgreSQL supported for better performance.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "REDIS_HOST",
           "description": "Optional Redis host for enhanced caching performance. Defaults to in-memory caching if not provided.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "REDIS_PORT",
           "description": "Optional Redis port (default: 6379)",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_PROVIDER",
           "description": "Optional LLM provider for the research extra (e.g. anthropic, openai, openai_compatible). Required only to enable research agent tools; bring your own API key.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_API_KEY",
           "description": "Optional API key for the configured LLM_PROVIDER. Required only when LLM_PROVIDER is set.",
-          "is_required": false,
-          "is_secret": true
+          "isRequired": false,
+          "isSecret": true
         },
         {
           "name": "LLM_MODEL",
           "description": "Optional model name for the configured LLM_PROVIDER. Required only when LLM_PROVIDER is set.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_BASE_URL",
           "description": "Optional base URL override, required when LLM_PROVIDER=openai_compatible.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "LLM_TEMPERATURE",
           "description": "Optional sampling temperature for the configured LLM_PROVIDER. Defaults to 0.0.",
-          "is_required": false,
-          "is_secret": false
+          "isRequired": false,
+          "isSecret": false
         },
         {
           "name": "EXA_API_KEY",
           "description": "Optional API key for Exa web search (research extra). Get at https://exa.ai",
-          "is_required": false,
-          "is_secret": true
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     }

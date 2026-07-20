@@ -1,0 +1,75 @@
+# HOW TO SUBMIT: copy this file to the repository root as `smithery.yaml`
+# (Smithery's classic GitHub-linked deploy path expects it there, not under
+# docs/generated/registry/), connect the repo at https://smithery.ai, then
+# authenticate and push:
+#   smithery auth login
+#   smithery mcp publish <public-server-url-or-.mcpb-bundle> -n wshobson/maverick-mcp
+#
+# ACCURACY NOTE: Smithery's fetched docs (July 2026) describe two
+# DIFFERENT-looking publish mechanisms and did not fully reconcile for us:
+#   (a) a `smithery.yaml` at the repo root with a `startCommand` block,
+#       picked up by Smithery's GitHub-linked build/deploy pipeline (the
+#       long-established mechanism, seen in many real servers' repos); and
+#   (b) `smithery mcp publish <url-or-.mcpb>` in the current CLI docs, which
+#       publishes from a public MCP URL or a local `.mcpb` bundle and does
+#       not obviously reference `smithery.yaml` at all.
+# maverick-mcp is a local stdio server (no public MCP URL) and does not yet
+# have a `.mcpb` bundle built (Phase 9 Task 2, not yet landed as of this
+# draft) or a hosted HTTP deployment, so path (b) may not be usable until
+# Task 2 lands. This file targets path (a). VERIFY the current mechanism
+# against https://smithery.ai/docs/build/project-config/smithery.yaml and
+# https://smithery.ai/docs/concepts/cli at submit time before assuming
+# either path is still current.
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required: []
+    properties:
+      DATABASE_URL:
+        type: string
+        description: >-
+          Optional database URL. Defaults to SQLite (sqlite:///maverick.db)
+          if not provided. PostgreSQL supported for better performance.
+      REDIS_HOST:
+        type: string
+        description: >-
+          Optional Redis host for enhanced caching performance. Defaults to
+          in-memory caching if not provided.
+      LLM_PROVIDER:
+        type: string
+        description: >-
+          Optional LLM provider for the research extra (e.g. anthropic,
+          openai, openai_compatible). Required only to enable research agent
+          tools; bring your own API key.
+      LLM_API_KEY:
+        type: string
+        description: >-
+          Optional API key for the configured LLM_PROVIDER. Required only
+          when LLM_PROVIDER is set.
+      EXA_API_KEY:
+        type: string
+        description: >-
+          Optional API key for Exa web search (research extra). Get at
+          https://exa.ai
+  # UNCONFIRMED: commandFunction is the field name observed in several
+  # real-world Python-server smithery.yaml files (e.g. adhikasp/mcp-twikit),
+  # but those examples assume the package's console script is already on
+  # PATH inside Smithery's build environment. maverick-mcp is not yet
+  # published to PyPI, so `uvx --from maverick-mcp-server maverick-mcp` will
+  # not resolve until Phase 9 Task 4 (PyPI publish) lands. Verify Smithery's
+  # current expectations for Python/uv-based servers (their docs primarily
+  # show Node/TypeScript examples) before relying on this verbatim.
+  commandFunction: |-
+    (config) => ({
+      command: 'uvx',
+      args: ['--from', 'maverick-mcp-server', 'maverick-mcp', '--transport', 'stdio'],
+      env: {
+        ...(config.DATABASE_URL ? { DATABASE_URL: config.DATABASE_URL } : {}),
+        ...(config.REDIS_HOST ? { REDIS_HOST: config.REDIS_HOST } : {}),
+        ...(config.LLM_PROVIDER ? { LLM_PROVIDER: config.LLM_PROVIDER } : {}),
+        ...(config.LLM_API_KEY ? { LLM_API_KEY: config.LLM_API_KEY } : {}),
+        ...(config.EXA_API_KEY ? { EXA_API_KEY: config.EXA_API_KEY } : {})
+      }
+    })

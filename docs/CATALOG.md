@@ -36,6 +36,12 @@ Status labels:
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |
+| `generated/registry/README.md` | current | docs | Index of registry submission drafts (Phase 9 Task 3). |
+| `generated/registry/docker-mcp-catalog.md` | current | docs | Docker MCP Catalog PR draft (server.yaml + PR body). |
+| `generated/registry/glama.md` | current | docs | Glama submission draft. |
+| `generated/registry/pulsemcp.md` | current | docs | PulseMCP submission draft (submission mechanism unconfirmed). |
+| `generated/registry/mcp-so.md` | current | docs | mcp.so submission draft. |
+| `generated/registry/smithery.yaml` | current | docs | Smithery config draft (YAML, not scanned by the docs-catalog checker; listed here for completeness). |
 | `QUALITY_SCORE.md` | current | engineering | Per-area quality grades. |
 | `RELIABILITY.md` | current | engineering | Reliability state and gaps. |
 | `SECURITY.md` | current | engineering | Engineering security posture. |
