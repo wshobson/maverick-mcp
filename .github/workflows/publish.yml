@@ -1,0 +1,109 @@
+# Release publishing: PyPI -> MCP Registry -> GHCR image.
+#
+# INERT until two owner actions happen (see docs/runbooks/releasing.md):
+#   1. PyPI trusted publishing is configured for this repo
+#      (pypi.org -> project maverick-mcp-server -> Publishing -> add
+#      GitHub publisher: owner wshobson, repo maverick-mcp, workflow
+#      publish.yml, environment pypi), and
+#   2. a v* tag is pushed (v1.0.0 predates this workflow, so the first
+#      run needs either a new tag or a manual workflow_dispatch).
+#
+# The MCP Registry job authenticates via GitHub OIDC (no secret needed);
+# the io.github.wshobson/* namespace is proven by the repo identity.
+# Workflow shape follows the registry's own github-actions guide
+# (docs/modelcontextprotocol-io/github-actions.mdx, fetched 2026-07-20).
+
+name: Publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "publish" to confirm a manual publish run'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || inputs.confirm == 'publish'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+      - name: Build wheel and sdist
+        run: uv build
+      - name: Sanity-check wheel contents
+        run: |
+          python3 -c "
+          import zipfile, glob, sys
+          whl = glob.glob('dist/*.whl')[0]
+          names = zipfile.ZipFile(whl).namelist()
+          bad = [n for n in names if n.startswith(('tests/', 'maverick_mcp/', '.claude/', 'data/'))]
+          assert not bad, f'forbidden paths in wheel: {bad[:5]}'
+          assert any(n.startswith('maverick/') for n in names), 'maverick/ missing from wheel'
+          print(f'wheel OK: {len(names)} files')
+          "
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # PyPI trusted publishing (OIDC)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+  publish-mcp-registry:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # MCP Registry OIDC authentication
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mcp-publisher
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+      - name: Publish server.json to MCP Registry
+        run: ./mcp-publisher publish
+
+  publish-ghcr:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Derive tags
+        id: meta
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/wshobson/maverick-mcp:latest
+            ghcr.io/wshobson/maverick-mcp:${{ steps.meta.outputs.version }}
