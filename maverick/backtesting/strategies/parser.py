@@ -304,6 +304,14 @@ class StrategyParser:
             result["method"] = "simple_degraded"
             return result
 
+        if not isinstance(result, dict):
+            # Valid JSON but not an object (e.g. a bare array or string) -- degrade the
+            # same way as the JSONDecodeError path instead of raising `TypeError` on
+            # `result["method"] = "llm"` below.
+            result = self.parse_simple(description)
+            result["method"] = "simple_degraded"
+            return result
+
         result["method"] = "llm"
         return result
 

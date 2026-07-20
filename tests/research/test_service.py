@@ -190,6 +190,31 @@ async def test_run_comprehensive_errors_when_llm_not_configured():
     assert "no LLM configured" in result.error
 
 
+async def test_run_comprehensive_errors_when_llm_config_incomplete(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    # LLM_PROVIDER set but LLM_API_KEY/LLM_MODEL missing: `LLMSettings()` raises a
+    # `ValueError` at construction (inside `get_llm_settings()`) rather than returning a
+    # settings object with `provider=None` -- this must still route through the same
+    # typed `ResearchError` shape as the other two not-configured cases, not escape as a
+    # raw pydantic-formatted message (see `service.py`'s `_configuration_error`).
+    monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+    monkeypatch.delenv("LLM_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_MODEL", raising=False)
+    reset_llm_settings()
+    service = _service(FakeAgent())
+
+    result = await service.run_comprehensive("AAPL outlook")
+
+    assert isinstance(result, ResearchError)
+    assert result.success is False
+    assert result.error_type == "not_configured"
+    assert "LLM_API_KEY" in result.error
+    assert "LLM_PROVIDER=anthropic" in result.error
+    assert result.model_extra is not None
+    assert "LLM_API_KEY" in result.model_extra["details"]["required_configuration"]
+
+
 async def test_analyze_company_not_configured_error_names_symbol():
     service = ResearchService(settings=ResearchSettings())
 

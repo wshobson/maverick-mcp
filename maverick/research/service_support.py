@@ -97,6 +97,32 @@ def timeout_seconds_for(
     return depth_timeout_seconds.get("standard", 240.0)
 
 
+def llm_configuration_value_error_problem(
+    exc: ValueError,
+) -> tuple[str, dict[str, Any]]:
+    """Build a `configuration_error` problem tuple from the `ValueError`
+    `LLMSettings()` raises (via its `model_validator`) when `LLM_PROVIDER` is set but
+    `LLM_API_KEY`/`LLM_MODEL`/`LLM_BASE_URL` is missing. Pydantic wraps that inner
+    `ValueError` in a multi-line `ValidationError` with type/url noise; unwrap it via
+    `.errors()[0]["ctx"]["error"]` (the original exception pydantic stashes there) so
+    the typed `ResearchError` carries the same clean, variable-naming message the
+    other two configuration branches produce, not the pydantic-formatted wrapper. See
+    `service.py`'s `_configuration_error` docstring/module docs, "Configuration
+    errors" section."""
+    message = str(exc)
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        for error in errors():
+            ctx_error = error.get("ctx", {}).get("error")
+            if isinstance(ctx_error, Exception):
+                message = str(ctx_error)
+                break
+    return (
+        f"Research functionality unavailable - {message}",
+        {"required_configuration": message},
+    )
+
+
 def configuration_problem(
     *, exa_configured: bool, llm_provider: str | None, valid_llm_providers: str
 ) -> tuple[str, dict[str, Any]] | None:

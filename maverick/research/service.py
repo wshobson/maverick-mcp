@@ -92,7 +92,11 @@ Legacy only ever checked Exa (`research.py:567`); the BYOK LLM seam (`maverick.p
 a second prerequisite this port must also gate on, so `service_support.configuration_problem`
 checks Exa first (same message/`details` shape as legacy's "Exa not configured" branch), then the
 LLM provider, each returning a `ResearchError` naming exactly what to set (`EXA_API_KEY`, or
-`LLM_PROVIDER` + `LLM_API_KEY` + `LLM_MODEL`) rather than a generic message.
+`LLM_PROVIDER` + `LLM_API_KEY` + `LLM_MODEL`) rather than a generic message. A third case --
+`LLM_PROVIDER` set but `LLM_API_KEY`/`LLM_MODEL`/`LLM_BASE_URL` missing -- fails earlier, at
+`LLMSettings()` construction inside `get_llm_settings()`, with a pydantic `ValueError`;
+`_configuration_error` catches that and routes it through the same typed shape via
+`service_support.llm_configuration_value_error_problem`.
 """
 
 from __future__ import annotations
@@ -110,6 +114,7 @@ from maverick.research.service_support import (
     configuration_error,
     configuration_problem,
     execution_error,
+    llm_configuration_value_error_problem,
     normalize_depth,
     normalize_persona,
     now_iso,
@@ -171,7 +176,18 @@ class ResearchService:
     def _configuration_error(
         self, request_id: str, **extra: object
     ) -> ResearchError | None:
-        provider = get_llm_settings().provider
+        try:
+            provider = get_llm_settings().provider
+        except ValueError as exc:
+            # `LLMSettings()` raises (via its `model_validator`) when `LLM_PROVIDER` is
+            # set but `LLM_API_KEY`/`LLM_MODEL`/`LLM_BASE_URL` is missing -- this call
+            # happens before the `try`/`except` in `run_comprehensive`/`analyze_company`/
+            # `analyze_sentiment` that turns agent-execution failures into a typed
+            # `ResearchError`, so left uncaught this would escape as a raw
+            # pydantic-formatted message instead. Route it through the same typed shape
+            # the other two configuration branches (no Exa key, no LLM provider) use.
+            problem = llm_configuration_value_error_problem(exc)
+            return configuration_error(problem, request_id=request_id, **extra)
         problem = configuration_problem(
             exa_configured=self._settings.exa_api_key is not None,
             llm_provider=provider.value if provider is not None else None,

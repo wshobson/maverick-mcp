@@ -164,6 +164,27 @@ async def test_parse_with_llm_degrades_on_non_json_response(monkeypatch):
     assert result == expected
 
 
+async def test_parse_with_llm_degrades_on_valid_json_non_dict_response(monkeypatch):
+    pytest.importorskip("langchain_core")
+
+    class _FakeModel:
+        async def ainvoke(self, _prompt):
+            class _Response:
+                content = "[1, 2, 3]"
+
+            return _Response()
+
+    monkeypatch.setattr("maverick.platform.llm.get_llm", lambda: _FakeModel())
+
+    parser = StrategyParser()
+    description = "Use 10-day and 20-day moving average crossover"
+    result = await parser.parse_with_llm(description)
+
+    expected = parser.parse_simple(description)
+    expected["method"] = "simple_degraded"
+    assert result == expected
+
+
 # ---------------------------------------------------------------------------
 # parse_with_llm: successful model-backed parse (stubbed model)
 # ---------------------------------------------------------------------------
