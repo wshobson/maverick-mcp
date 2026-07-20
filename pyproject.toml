@@ -80,6 +80,7 @@ research = [
 
 [project.scripts]
 maverick-mcp = "maverick.server.app:main"
+maverick-mcp-server = "maverick.server.app:main"
 
 [build-system]
 requires = ["hatchling"]
