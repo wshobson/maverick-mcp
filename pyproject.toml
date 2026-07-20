@@ -16,20 +16,13 @@ dependencies = [
     "apscheduler>=3.11.2,<4.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.2.2",
-    # LangChain and AI dependencies
-    "langchain>=1.3.9",
-    "langchain-anthropic>=1.4.6",
-    "langchain-community>=0.4.2",
-    "langchain-openai>=1.2.2",
-    "langchain-mcp-adapters>=0.2.2",
-    "langgraph>=1.2.4",
+    # LangGraph checkpointing: guarded, lazy-imported fallback in the legacy
+    # maverick_mcp.memory.checkpointer (try/except ImportError), still a
+    # live import path for the legacy agents until Phase 7 cutover -- stays
+    # in core rather than the [research] extra or deleted outright.
     "langgraph-checkpoint-sqlite>=3.1.0",
-    "langgraph-supervisor>=0.0.31",
     "anthropic>=0.104.1",
     "openai>=2.38.0",
-    "tiktoken>=0.13.0",
-    # Deep research dependencies
-    "exa-py>=2.13.0",
     # Database and caching
     "sqlalchemy>=2.0.50",
     "alembic>=1.18.4",
@@ -97,6 +90,14 @@ backtesting = [
     "scikit-learn>=1.9.0",
     "scipy>=1.17.1",
     "pandas-ta>=0.4.71b0",
+]
+research = [
+    "langchain>=1.3.9",
+    "langchain-anthropic>=1.4.6",
+    "langchain-community>=0.4.2",
+    "langchain-openai>=1.2.2",
+    "langgraph>=1.2.4",
+    "exa-py>=2.13.0",
 ]
 
 [build-system]
@@ -243,7 +244,7 @@ layers = [
 name = "The platform never imports domains"
 type = "forbidden"
 source_modules = ["maverick.platform"]
-forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.technical", "maverick.portfolio", "maverick.backtesting"]
+forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.technical", "maverick.portfolio", "maverick.backtesting", "maverick.research"]
 
 [[tool.importlinter.contracts]]
 name = "The technical indicator core never imports domains"
@@ -268,3 +269,26 @@ name = "Backtesting service and tools never import screening or portfolio"
 type = "forbidden"
 source_modules = ["maverick.backtesting.service", "maverick.backtesting.service_ml", "maverick.backtesting.service_support", "maverick.backtesting.tools", "maverick.backtesting.tools_ml", "maverick.backtesting.tools_support"]
 forbidden_modules = ["maverick.screening", "maverick.portfolio"]
+
+[[tool.importlinter.contracts]]
+name = "Research layers are forward-only"
+type = "layers"
+layers = [
+    "maverick.research.tools",
+    "maverick.research.service",
+    "maverick.research.agents | maverick.research.providers",
+    "maverick.research.config",
+    "maverick.research.types",
+]
+
+[[tool.importlinter.contracts]]
+name = "The research core never imports domains"
+type = "forbidden"
+source_modules = ["maverick.research.agents", "maverick.research.providers", "maverick.research.config", "maverick.research.types"]
+forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.portfolio", "maverick.technical", "maverick.backtesting"]
+
+[[tool.importlinter.contracts]]
+name = "Research service and tools never import other domains"
+type = "forbidden"
+source_modules = ["maverick.research.service", "maverick.research.tools"]
+forbidden_modules = ["maverick.screening", "maverick.portfolio", "maverick.technical", "maverick.backtesting"]

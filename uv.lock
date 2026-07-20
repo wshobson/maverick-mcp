@@ -1662,20 +1662,6 @@ wheels = [
 ]
 
 [[package]]
-name = "langchain-mcp-adapters"
-version = "0.2.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "langchain-core" },
-    { name = "mcp" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/66/1cc7039e2daaddcdea9d8887851fe6eb67401925999b2aa394aa855c7132/langchain_mcp_adapters-0.2.2.tar.gz", hash = "sha256:12d39e91ae4389c54b61b221094e53850b6e152934d8bc10c80665d600e76530", size = 37942, upload-time = "2026-03-16T17:13:30.35Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/7d/2f/15d5e6c1765d8404a9cce38d8c81d7b33fb3392f9db5b992c000dddbd2a3/langchain_mcp_adapters-0.2.2-py3-none-any.whl", hash = "sha256:d08e64954e86281002653071b7430e0377c9a577cb4ac3143abfeb3e24ef8797", size = 23288, upload-time = "2026-03-16T17:13:29.073Z" },
-]
-
-[[package]]
 name = "langchain-openai"
 version = "1.2.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1784,19 +1770,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b4/2b/bd8ac26d4e97f6df88ef05ce5b6a38945a3903e1025d926f4752aa88aa97/langgraph_sdk-0.4.2.tar.gz", hash = "sha256:b88f0f5f6328ac0680d6790614a905b2bcfa257f2276dba4e38f0e86db0aa738", size = 348327, upload-time = "2026-06-01T17:51:19.856Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/05/aac507337cceae773c2cc9ab91eb6301963af7aeeb55b4217a00e15aff17/langgraph_sdk-0.4.2-py3-none-any.whl", hash = "sha256:75fa5096c1177ce39c847096a8fe3745ffd480ddb412995f836e9f5f884c43dd", size = 160521, upload-time = "2026-06-01T17:51:18.849Z" },
-]
-
-[[package]]
-name = "langgraph-supervisor"
-version = "0.0.31"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "langchain-core" },
-    { name = "langgraph" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/15/a0/6e9286a2e4a9ed8c9d299d0131b323cae376316a63286d2880031bb01082/langgraph_supervisor-0.0.31.tar.gz", hash = "sha256:0f71d5098fa1ac274423eff08750345450045c1e0dd2480ab7f3e5c1848f6016", size = 21910, upload-time = "2025-11-19T18:34:29.795Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/7f/bb73da8db36c96f32cdd0292f2cd75e2d671150b0d177575da560ad994a1/langgraph_supervisor-0.0.31-py3-none-any.whl", hash = "sha256:6bbe5311f536d38779766cc6f074005e3e892d37edbfd875731923221daa1889", size = 16505, upload-time = "2025-11-19T18:34:28.481Z" },
 ]
 
 [[package]]
@@ -1971,7 +1944,6 @@ dependencies = [
     { name = "asyncpg" },
     { name = "certifi" },
     { name = "cryptography" },
-    { name = "exa-py" },
     { name = "fastapi" },
     { name = "fastmcp" },
     { name = "finvizfinance" },
@@ -1981,14 +1953,7 @@ dependencies = [
     { name = "hiredis" },
     { name = "httpx" },
     { name = "kaleido" },
-    { name = "langchain" },
-    { name = "langchain-anthropic" },
-    { name = "langchain-community" },
-    { name = "langchain-mcp-adapters" },
-    { name = "langchain-openai" },
-    { name = "langgraph" },
     { name = "langgraph-checkpoint-sqlite" },
-    { name = "langgraph-supervisor" },
     { name = "matplotlib" },
     { name = "mcp" },
     { name = "msgpack" },
@@ -2010,7 +1975,6 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "ta-lib" },
     { name = "tiingo" },
-    { name = "tiktoken" },
     { name = "uvicorn" },
     { name = "yfinance" },
 ]
@@ -2043,6 +2007,14 @@ dev = [
     { name = "vcrpy" },
     { name = "watchdog" },
 ]
+research = [
+    { name = "exa-py" },
+    { name = "langchain" },
+    { name = "langchain-anthropic" },
+    { name = "langchain-community" },
+    { name = "langchain-openai" },
+    { name = "langgraph" },
+]
 vectors = [
     { name = "chromadb" },
 ]
@@ -2066,7 +2038,7 @@ requires-dist = [
     { name = "certifi", specifier = ">=2026.5.20" },
     { name = "chromadb", marker = "extra == 'vectors'", specifier = ">=1.5.9" },
     { name = "cryptography", specifier = ">=48.0.1" },
-    { name = "exa-py", specifier = ">=2.13.0" },
+    { name = "exa-py", marker = "extra == 'research'", specifier = ">=2.13.0" },
     { name = "fastapi", specifier = ">=0.136.3" },
     { name = "fastmcp", specifier = ">=3.3.1" },
     { name = "finvizfinance", specifier = ">=1.3.0" },
@@ -2077,14 +2049,12 @@ requires-dist = [
     { name = "hiredis", specifier = ">=3.3.1" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "kaleido", specifier = ">=1.3.0" },
-    { name = "langchain", specifier = ">=1.3.9" },
-    { name = "langchain-anthropic", specifier = ">=1.4.6" },
-    { name = "langchain-community", specifier = ">=0.4.2" },
-    { name = "langchain-mcp-adapters", specifier = ">=0.2.2" },
-    { name = "langchain-openai", specifier = ">=1.2.2" },
-    { name = "langgraph", specifier = ">=1.2.4" },
+    { name = "langchain", marker = "extra == 'research'", specifier = ">=1.3.9" },
+    { name = "langchain-anthropic", marker = "extra == 'research'", specifier = ">=1.4.6" },
+    { name = "langchain-community", marker = "extra == 'research'", specifier = ">=0.4.2" },
+    { name = "langchain-openai", marker = "extra == 'research'", specifier = ">=1.2.2" },
+    { name = "langgraph", marker = "extra == 'research'", specifier = ">=1.2.4" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.0" },
-    { name = "langgraph-supervisor", specifier = ">=0.0.31" },
     { name = "matplotlib", specifier = ">=3.10.9" },
     { name = "mcp", specifier = ">=1.28.1" },
     { name = "msgpack", specifier = ">=1.2.1" },
@@ -2119,7 +2089,6 @@ requires-dist = [
     { name = "ta-lib", specifier = ">=0.6.8" },
     { name = "testcontainers", extras = ["postgres", "redis"], marker = "extra == 'dev'", specifier = ">=4.14.2" },
     { name = "tiingo", specifier = ">=0.16.1" },
-    { name = "tiktoken", specifier = ">=0.13.0" },
     { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.43" },
     { name = "types-pytz", marker = "extra == 'dev'", specifier = ">=2026.2.0.20260518" },
     { name = "types-requests", marker = "extra == 'dev'", specifier = ">=2.33.0.20260518" },
@@ -2129,7 +2098,7 @@ requires-dist = [
     { name = "watchdog", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "yfinance", specifier = ">=1.4.0" },
 ]
-provides-extras = ["dev", "vectors", "backtesting"]
+provides-extras = ["dev", "vectors", "backtesting", "research"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "import-linter", specifier = ">=2.13" }]
