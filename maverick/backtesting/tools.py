@@ -12,13 +12,19 @@ so tests can `monkeypatch.setattr(tools, "_backtesting_extra_available", ...)` t
 extra's absence without needing to actually uninstall vectorbt) and registers zero tools with one
 clear warning log if it's missing -- the base install must boot with no traceback.
 
-**readOnlyHint.** All 11 tools are marked `readOnlyHint=True`: grepping the legacy
+**readOnlyHint.** All 12 tools are marked `readOnlyHint=True`: grepping the legacy
 `maverick_mcp/api/routers/backtesting.py` for every surviving tool finds zero persistence call
 sites (see `service.py`'s module docstring), so none of these tools mutate server-side state --
 they only fetch market data and compute.
 
 Tool functions 8-11 (the ML-strategy tools) live in `tools_ml.py`, split out to keep this file
-under the repo's 500-line-per-file cap; `_READ_ONLY_TOOLS` below still registers all 11.
+under the repo's 500-line-per-file cap; `_READ_ONLY_TOOLS` below still registers all 12.
+
+**Tool 12, `backtesting_parse_strategy`,** is unlike the other 11: it needs no
+`BacktestingService`/`vectorbt` at all (`strategies.parser.StrategyParser` is pure-Python plus,
+optionally, `platform.llm`). It still registers only under this same `[backtesting]`-extra guard
+(not unconditionally) per the phase 7 decision log, for one registration surface consistent with
+the rest of this domain's tools rather than a second bespoke guard for one tool.
 """
 
 from __future__ import annotations
@@ -28,6 +34,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastmcp import FastMCP
 
+from maverick.backtesting.strategies.parser import StrategyParser
 from maverick.backtesting.tools_ml import (
     backtesting_analyze_market_regimes,
     backtesting_create_strategy_ensemble,
@@ -246,6 +253,31 @@ async def backtesting_backtest_portfolio(
         return {"status": "error", "error": str(exc)}
 
 
+async def backtesting_parse_strategy(description: str) -> dict[str, Any]:
+    """Parse a natural-language strategy description into a strategy type and parameters,
+    using the configured BYOK LLM when available and degrading to zero-dependency keyword
+    parsing otherwise (see `strategies.parser.StrategyParser.parse_with_llm`)."""
+    try:
+        parser = StrategyParser()
+        config = await parser.parse_with_llm(description)
+        method = config.pop("method", "simple_degraded")
+        if parser.validate_strategy(config):
+            return {
+                "success": True,
+                "strategy": config,
+                "method": method,
+                "message": f"Successfully parsed as {config['strategy_type']} strategy",
+            }
+        return {
+            "success": False,
+            "strategy": config,
+            "method": method,
+            "message": "Could not fully parse strategy, using defaults",
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 _READ_ONLY_TOOLS = (
     backtesting_run_backtest,
     backtesting_optimize_strategy,
@@ -258,11 +290,12 @@ _READ_ONLY_TOOLS = (
     backtesting_train_ml_predictor,
     backtesting_analyze_market_regimes,
     backtesting_create_strategy_ensemble,
-)  # all 11: nothing persists (see module docstring), so nothing is non-read-only.
+    backtesting_parse_strategy,
+)  # all 12: nothing persists (see module docstring), so nothing is non-read-only.
 
 
 def register(mcp: FastMCP) -> None:
-    """Register all 11 `backtesting_*` tools, or zero of them with one clear warning log if the
+    """Register all 12 `backtesting_*` tools, or zero of them with one clear warning log if the
     `[backtesting]` extra isn't installed -- the phase's availability contract. Never raises
     either way."""
     if not _backtesting_extra_available():

@@ -33,4 +33,4 @@ async def test_register_attaches_tools_when_extra_available(monkeypatch):
     tools.register(mcp)
 
     registered = await mcp.list_tools()
-    assert len(registered) == 11
+    assert len(registered) == 12

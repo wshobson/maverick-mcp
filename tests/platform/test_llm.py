@@ -185,11 +185,28 @@ def test_module_imports_clean_without_langchain(monkeypatch):
     file's top-level `from maverick.platform.llm import ...`) pointing at a
     stale generation of the lru_cache-wrapped singleton -- polluting later
     tests such as the singleton/reset test.
+
+    Re-importing also rebinds the parent `maverick.platform` package's `llm`
+    attribute to this fresh module object (that's how `import a.b` always
+    works: it sets `a.llm = <module>` as a side effect). Restoring only
+    `sys.modules["maverick.platform.llm"]` in `finally` leaves that parent
+    attribute pointing at the fresh module forever, which silently breaks
+    any later test in the suite that does
+    `monkeypatch.setattr("maverick.platform.llm.get_llm", ...)`: monkeypatch
+    patches the (correctly restored) `sys.modules` entry, but any other
+    module's `from maverick.platform.llm import get_llm` executed inside a
+    function body resolves via attribute traversal from the parent package,
+    picking up the never-restored fresh module and its unpatched
+    `get_llm` -- observed empirically as a cross-file leak into
+    `tests/backtesting/test_parser.py` when run after this file. Restoring
+    the parent's attribute too closes that leak.
     """
     monkeypatch.setitem(sys.modules, "langchain_openai", None)
     monkeypatch.setitem(sys.modules, "langchain_anthropic", None)
     monkeypatch.setitem(sys.modules, "langchain_core", None)
     monkeypatch.setitem(sys.modules, "langchain_core.language_models", None)
+
+    import maverick.platform as platform_pkg
 
     original_module = sys.modules.pop("maverick.platform.llm")
     try:
@@ -197,6 +214,7 @@ def test_module_imports_clean_without_langchain(monkeypatch):
         assert fresh.get_llm_settings().provider is None
     finally:
         sys.modules["maverick.platform.llm"] = original_module
+        platform_pkg.llm = original_module
 
 
 def test_get_llm_raises_clear_import_error_when_openai_package_missing(monkeypatch):

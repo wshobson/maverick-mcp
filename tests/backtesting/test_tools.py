@@ -529,7 +529,77 @@ async def test_create_strategy_ensemble_error_payload(stub_service):
 
 
 # ---------------------------------------------------------------------------
-# register: attaches 11 tools, all honestly read-only
+# backtesting_parse_strategy: no BacktestingService involved (see tools.py's
+# module docstring on why tool 12 is still gated by the same extra guard).
+# ---------------------------------------------------------------------------
+
+
+async def test_parse_strategy_success_degrades_to_simple_when_no_llm_configured(
+    monkeypatch,
+):
+    def _raise_not_configured():
+        raise ValueError("No LLM configured; set LLM_PROVIDER ...")
+
+    monkeypatch.setattr("maverick.platform.llm.get_llm", _raise_not_configured)
+
+    result = await tools.backtesting_parse_strategy(
+        "Buy when RSI is below 30 and sell when above 70"
+    )
+
+    assert result == {
+        "success": True,
+        "strategy": {
+            "strategy_type": "rsi",
+            "parameters": {"period": 14, "oversold": 30, "overbought": 70},
+        },
+        "method": "simple_degraded",
+        "message": "Successfully parsed as rsi strategy",
+    }
+
+
+async def test_parse_strategy_reports_llm_method_on_success(monkeypatch):
+    pytest.importorskip("langchain_core")
+
+    class _FakeModel:
+        async def ainvoke(self, _prompt):
+            class _Response:
+                content = (
+                    '{"strategy_type": "macd", '
+                    '"parameters": {"fast_period": 12, "slow_period": 26, '
+                    '"signal_period": 9}}'
+                )
+
+            return _Response()
+
+    monkeypatch.setattr("maverick.platform.llm.get_llm", lambda: _FakeModel())
+
+    result = await tools.backtesting_parse_strategy("MACD with standard settings")
+
+    assert result["success"] is True
+    assert result["method"] == "llm"
+    assert result["strategy"]["strategy_type"] == "macd"
+
+
+async def test_parse_strategy_error_payload_on_unexpected_exception(monkeypatch):
+    def _raise_unexpected(_self, _description):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(
+        "maverick.backtesting.strategies.parser.StrategyParser.parse_simple",
+        _raise_unexpected,
+    )
+    monkeypatch.setattr(
+        "maverick.platform.llm.get_llm",
+        lambda: (_ for _ in ()).throw(ValueError("not configured")),
+    )
+
+    result = await tools.backtesting_parse_strategy("anything")
+
+    assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# register: attaches 12 tools, all honestly read-only
 # ---------------------------------------------------------------------------
 
 
@@ -545,10 +615,11 @@ _EXPECTED_TOOL_NAMES = {
     "backtesting_train_ml_predictor",
     "backtesting_analyze_market_regimes",
     "backtesting_create_strategy_ensemble",
+    "backtesting_parse_strategy",
 }
 
 
-async def test_register_attaches_eleven_tools(stub_service):
+async def test_register_attaches_twelve_tools(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
 
@@ -590,3 +661,24 @@ async def test_register_in_memory_client_round_trips_run_backtest(stub_service):
     assert result.data["status"] == "success"
     assert result.data["symbol"] == "AAPL"
     assert stub_service.calls["run_backtest"][0][0] == "AAPL"
+
+
+async def test_register_in_memory_client_round_trips_parse_strategy(
+    stub_service, monkeypatch
+):
+    monkeypatch.setattr(
+        "maverick.platform.llm.get_llm",
+        lambda: (_ for _ in ()).throw(ValueError("not configured")),
+    )
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "backtesting_parse_strategy",
+            {"description": "MACD strategy with standard parameters"},
+        )
+
+    assert result.data["success"] is True
+    assert result.data["method"] == "simple_degraded"
+    assert result.data["strategy"]["strategy_type"] == "macd"
