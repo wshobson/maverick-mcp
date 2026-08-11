@@ -3,6 +3,8 @@
 import argparse
 import sys
 
+from dotenv import find_dotenv, load_dotenv
+
 from maverick.platform.telemetry import get_logger, setup_logging
 from maverick.server.assembly import build_server
 
@@ -11,6 +13,29 @@ _DEFAULT_HTTP_HOST = "127.0.0.1"
 # (it only covers database/redis/cache/http-client/telemetry), so this
 # falls back to the legacy server's own default port.
 _DEFAULT_HTTP_PORT = 8003
+
+
+def _load_env_file() -> None:
+    """Apply the project's `.env` to the process environment.
+
+    `maverick.platform.config` reads settings from the process environment
+    only, so the `.env` has to be applied before anything resolves settings --
+    this is the bootstrap path that owns that, which is why it runs here rather
+    than as an import side effect in a library module.
+
+    The search is anchored at the current working directory because that is
+    what both documented launch paths use: `make dev` runs from the project
+    root, and the Claude Desktop config in CLAUDE.md sets `"cwd"` to the
+    checkout. Anchoring on this file instead would miss the `.env` whenever the
+    package is installed outside the project tree.
+
+    Real environment variables win: `load_dotenv` does not override values that
+    are already set, so an explicit `DATABASE_URL=... make dev` still takes
+    precedence over the file. Missing `.env` is a no-op.
+    """
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path)
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -48,6 +73,7 @@ def main(argv: list[str] | None = None) -> None:
     can offer that.
     """
     args = _parse_args(argv)
+    _load_env_file()
     setup_logging()
     logger = get_logger("maverick.server")
 
