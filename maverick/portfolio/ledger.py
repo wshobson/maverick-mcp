@@ -124,9 +124,7 @@ def find_position(
     positions: list[PositionPayload], ticker: str
 ) -> PositionPayload | None:
     """Return the position for ``ticker`` in ``positions``, or None."""
-    return next(
-        (position for position in positions if position.ticker == ticker), None
-    )
+    return next((position for position in positions if position.ticker == ticker), None)
 
 
 def position_value(
