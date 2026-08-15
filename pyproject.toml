@@ -73,7 +73,7 @@ research = [
     "langchain>=1.3.9",
     "langchain-anthropic>=1.4.6",
     "langchain-community>=0.4.2",
-    "langchain-openai>=1.2.2",
+    "langchain-openai>=1.3.5",
     "langgraph>=1.2.4",
     "exa-py>=2.13.0",
 ]
