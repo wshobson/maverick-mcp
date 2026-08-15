@@ -6,6 +6,7 @@ including one symbol that always fails, to exercise the "never fatal"
 partial-failure paths.
 """
 
+import logging
 import math
 from datetime import date
 from decimal import Decimal
@@ -14,7 +15,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from maverick.market_data.types import Quote
+from maverick.market_data.types import (
+    CompanyInfo,
+    Fundamentals,
+    MarketNumbers,
+    Quote,
+    TradingStats,
+)
 from maverick.platform.config import DatabaseSettings
 from maverick.platform.db import create_engine_from_settings
 from maverick.portfolio.config import PortfolioSettings
@@ -59,7 +66,7 @@ def _ohlcv_frame(
 
 
 class StubMarketData:
-    """Async fake matching `MarketDataService`'s `get_quote`/`get_price_history` surface."""
+    """Async fake matching the `MarketDataService` surface used by portfolios."""
 
     def __init__(
         self,
@@ -67,13 +74,18 @@ class StubMarketData:
         frames: dict[str, pd.DataFrame] | None = None,
         quote_errors: set[str] | None = None,
         history_errors: set[str] | None = None,
+        sectors: dict[str, str | None] | None = None,
+        fundamentals_errors: set[str] | None = None,
     ) -> None:
         self._quotes = quotes or {}
         self._frames = frames or {}
         self._quote_errors = quote_errors or set()
         self._history_errors = history_errors or set()
+        self._sectors = sectors or {}
+        self._fundamentals_errors = fundamentals_errors or set()
         self.quote_calls: list[str] = []
         self.history_calls: list[tuple[str, date | None, date | None]] = []
+        self.fundamentals_calls: list[str] = []
 
     async def get_quote(self, symbol: str) -> Quote:
         self.quote_calls.append(symbol)
@@ -86,6 +98,37 @@ class StubMarketData:
             change_percent=0.0,
             volume=1_000_000,
             timestamp="2026-07-19T00:00:00+00:00",
+        )
+
+    async def get_fundamentals(self, symbol: str) -> Fundamentals:
+        self.fundamentals_calls.append(symbol)
+        if symbol in self._fundamentals_errors:
+            raise RuntimeError(f"fundamentals fetch failed for {symbol}")
+        return Fundamentals(
+            symbol=symbol,
+            company=CompanyInfo(
+                name=None,
+                sector=self._sectors.get(symbol),
+                industry=None,
+                website=None,
+                description=None,
+            ),
+            market_data=MarketNumbers(
+                current_price=None,
+                market_cap=None,
+                enterprise_value=None,
+                shares_outstanding=None,
+                float_shares=None,
+            ),
+            valuation={},
+            financials={},
+            trading=TradingStats(
+                avg_volume=None,
+                avg_volume_10d=None,
+                beta=None,
+                week_52_high=None,
+                week_52_low=None,
+            ),
         )
 
     async def get_price_history(
@@ -131,6 +174,52 @@ async def test_add_position_creates_new_position(tmp_path):
     assert position.notes == "note"
 
 
+async def test_add_position_stores_looked_up_sector(tmp_path):
+    market_data = StubMarketData(
+        quotes={"AAPL": 150.0}, sectors={"AAPL": "  Technology  "}
+    )
+    service = _service(tmp_path, market_data=market_data)
+
+    await service.add_position(
+        "default", "My Portfolio", "aapl", Decimal("10"), Decimal("100")
+    )
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+
+    assert snapshot.positions[0].sector == "Technology"
+    assert market_data.fundamentals_calls == ["AAPL"]
+
+
+async def test_add_position_fundamentals_failure_stores_null_sector(tmp_path, caplog):
+    market_data = StubMarketData(quotes={"AAPL": 150.0}, fundamentals_errors={"AAPL"})
+    service = _service(tmp_path, market_data=market_data)
+
+    with caplog.at_level(logging.WARNING):
+        position = await service.add_position(
+            "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+        )
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+
+    assert position.sector is None
+    assert snapshot.positions[0].sector is None
+    assert any(
+        "failed to fetch sector for AAPL, storing None" in message
+        for message in caplog.messages
+    )
+
+
+async def test_add_position_empty_sector_stores_null(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 150.0}, sectors={"AAPL": ""})
+    service = _service(tmp_path, market_data=market_data)
+
+    position = await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+    )
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+
+    assert position.sector is None
+    assert snapshot.positions[0].sector is None
+
+
 async def test_add_position_second_lot_averages_cost_basis_via_ledger(tmp_path):
     service = _service(tmp_path)
     await service.add_position(
@@ -144,6 +233,42 @@ async def test_add_position_second_lot_averages_cost_basis_via_ledger(tmp_path):
     assert position.shares == Decimal("20")
     assert position.total_cost == Decimal("2200")
     assert position.average_cost_basis == Decimal("110.0000")
+
+
+async def test_add_position_existing_sector_skips_second_fundamentals_lookup(tmp_path):
+    market_data = StubMarketData(sectors={"AAPL": "Technology"})
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+    )
+    market_data.fundamentals_calls.clear()
+
+    position = await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("120")
+    )
+
+    assert market_data.fundamentals_calls == []
+    assert position.sector == "Technology"
+
+
+async def test_add_position_null_sector_fetches_and_backfills_on_second_lot(tmp_path):
+    sectors: dict[str, str | None] = {"AAPL": None}
+    market_data = StubMarketData(quotes={"AAPL": 150.0}, sectors=sectors)
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+    )
+    sectors["AAPL"] = "Technology"
+    market_data.fundamentals_calls.clear()
+
+    position = await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("120")
+    )
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+
+    assert market_data.fundamentals_calls == ["AAPL"]
+    assert position.sector == "Technology"
+    assert snapshot.positions[0].sector == "Technology"
 
 
 async def test_add_position_second_lot_with_naive_date_against_stored_aware_date(
@@ -306,6 +431,7 @@ async def test_get_portfolio_empty_returns_zero_metrics(tmp_path):
     assert snapshot.positions == []
     assert snapshot.metrics.position_count == 0
     assert snapshot.metrics.total_invested == Decimal("0")
+    assert snapshot.sector_exposure == {}
 
 
 async def test_get_portfolio_failed_quote_leaves_price_fields_none_but_metrics_fallback(
@@ -343,6 +469,47 @@ async def test_get_portfolio_failed_quote_leaves_price_fields_none_but_metrics_f
     assert snapshot.metrics.total_pnl_percent == 25.0
     assert snapshot.metrics.position_count == 2
     assert set(market_data.quote_calls) == {"AAPL", "MSFT"}
+
+
+async def test_get_portfolio_sector_exposure_uses_quote_fallback_and_unknown_bucket(
+    tmp_path,
+):
+    market_data = StubMarketData(
+        quotes={"AAPL": 150.0},
+        quote_errors={"MSFT"},
+        sectors={"AAPL": "Technology", "MSFT": None},
+    )
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+    )
+    await service.add_position(
+        "default", "My Portfolio", "MSFT", Decimal("5"), Decimal("200")
+    )
+
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+
+    assert snapshot.sector_exposure == {"Technology": 0.6, "Unknown": 0.4}
+    assert sum(snapshot.sector_exposure.values()) == pytest.approx(1.0)
+
+
+async def test_get_portfolio_sector_exposure_uses_unrounded_position_values(tmp_path):
+    market_data = StubMarketData(
+        quotes={"AAPL": 1.004, "MSFT": 2.004},
+        sectors={"AAPL": "Technology", "MSFT": "Industrials"},
+    )
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("1"), Decimal("1")
+    )
+    await service.add_position(
+        "default", "My Portfolio", "MSFT", Decimal("1"), Decimal("2")
+    )
+
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+
+    assert snapshot.sector_exposure == {"Technology": 0.3338, "Industrials": 0.6662}
+    assert sum(snapshot.sector_exposure.values()) == pytest.approx(1.0)
 
 
 # ---------------------------------------------------------------------------
@@ -631,7 +798,10 @@ def _spy_frame(n: int = 60, start: float = 100.0) -> pd.DataFrame:
 
 
 async def test_get_risk_dashboard_seeded_positions_via_service_reads(tmp_path):
-    market_data = StubMarketData(quotes={"AAPL": 150.0, "MSFT": 100.0})
+    market_data = StubMarketData(
+        quotes={"AAPL": 150.0, "MSFT": 100.0},
+        sectors={"AAPL": "Technology", "MSFT": None},
+    )
     service = _service(tmp_path, market_data=market_data)
     await service.add_position(
         "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100"), "2026-01-01"
@@ -642,9 +812,9 @@ async def test_get_risk_dashboard_seeded_positions_via_service_reads(tmp_path):
 
     result = await service.get_risk_dashboard("default", "My Portfolio")
 
-    # value = 10*150 + 10*100 = 2500; sector "Unknown" 100% concentrated.
+    # value = 10*150 + 10*100 = 2500; Technology = 60%, Unknown = 40%.
     assert result.total_value == 2500.0
-    assert result.sector_concentration == {"Unknown": 1.0}
+    assert result.sector_concentration == {"Technology": 0.6, "Unknown": 0.4}
     assert result.position_count == 2
     assert set(market_data.quote_calls) == {"AAPL", "MSFT"}
 
@@ -687,6 +857,51 @@ async def test_check_position_risk_projects_against_seeded_holdings(tmp_path):
     assert result.current.total_value == 1500.0
     assert result.projected.total_value == 1500.0 + 2000.0
     assert result.new_position.ticker == "MSFT"
+
+
+async def test_check_position_risk_new_ticker_uses_looked_up_sector(tmp_path):
+    market_data = StubMarketData(sectors={"MSFT": "Technology"})
+    service = _service(tmp_path, market_data=market_data)
+
+    result = await service.check_position_risk(
+        "default", "My Portfolio", "MSFT", 10, 200.0
+    )
+
+    assert result.projected.sector_concentration == {"Technology": 1.0}
+
+
+async def test_check_position_risk_held_ticker_reuses_sector_without_lookup(tmp_path):
+    market_data = StubMarketData(quotes={"AAPL": 150.0}, sectors={"AAPL": "Technology"})
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+    )
+    market_data.fundamentals_calls.clear()
+
+    result = await service.check_position_risk(
+        "default", "My Portfolio", "AAPL", 5, 160.0
+    )
+
+    assert market_data.fundamentals_calls == []
+    assert result.projected.sector_concentration == {"Technology": 1.0}
+
+
+async def test_check_position_risk_held_null_sector_uses_fresh_lookup(tmp_path):
+    sectors: dict[str, str | None] = {"AAPL": None}
+    market_data = StubMarketData(quotes={"AAPL": 150.0}, sectors=sectors)
+    service = _service(tmp_path, market_data=market_data)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("10"), Decimal("100")
+    )
+    sectors["AAPL"] = "Technology"
+    market_data.fundamentals_calls.clear()
+
+    result = await service.check_position_risk(
+        "default", "My Portfolio", "AAPL", 5, 160.0
+    )
+
+    assert market_data.fundamentals_calls == ["AAPL"]
+    assert result.projected.sector_concentration == {"Technology": 1.0}
 
 
 async def test_check_position_risk_rejects_invalid_ticker(tmp_path):

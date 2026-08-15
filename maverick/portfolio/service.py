@@ -41,16 +41,19 @@ from maverick.portfolio.data import (
     read_positions,
     upsert_position,
 )
-from maverick.portfolio.ledger import add_shares, portfolio_metrics, position_value
+from maverick.portfolio.ledger import (
+    add_shares,
+    find_position,
+    portfolio_snapshot_values,
+    position_value,
+)
 from maverick.portfolio.ledger import remove_shares as ledger_remove_shares
 from maverick.portfolio.types import (
     ComparisonResult,
     CorrelationResult,
-    PortfolioMetrics,
     PortfolioSnapshot,
     PositionPayload,
     PositionRiskCheck,
-    PositionWithPrice,
     RegimeAdjustedSizing,
     RemoveResult,
     RiskAlertsResult,
@@ -158,20 +161,31 @@ class PortfolioService:
         resolved_date = self._normalize_purchase_date(
             purchase_date or date.today().isoformat()
         )
+        # Pre-read only gates the slow sector lookup; the merge re-reads inside
+        # the write transaction so a concurrent add can't be lost to staleness.
+        pre_read = find_position(
+            await self._read_positions(user_id, portfolio_name), normalized_ticker
+        )
+        sector = None
+        if pre_read is None or pre_read.sector is None:
+            sector = await service_risk.resolve_sector(
+                self._market_data, normalized_ticker
+            )
 
         def _write() -> PositionPayload:
             with session_scope(self._session_factory) as session:
                 portfolio_id = get_or_create_portfolio(session, user_id, portfolio_name)
-                existing = next(
-                    (
-                        p
-                        for p in read_positions(session, portfolio_id)
-                        if p.ticker == normalized_ticker
-                    ),
-                    None,
+                existing = find_position(
+                    read_positions(session, portfolio_id), normalized_ticker
                 )
                 updated = add_shares(
-                    existing, normalized_ticker, shares, price, resolved_date, notes
+                    existing,
+                    normalized_ticker,
+                    shares,
+                    price,
+                    resolved_date,
+                    notes,
+                    sector,
                 )
                 upsert_position(session, portfolio_id, updated)
                 return updated
@@ -191,13 +205,8 @@ class PortfolioService:
         def _write() -> RemoveResult:
             with session_scope(self._session_factory) as session:
                 portfolio_id = get_or_create_portfolio(session, user_id, portfolio_name)
-                existing = next(
-                    (
-                        p
-                        for p in read_positions(session, portfolio_id)
-                        if p.ticker == normalized_ticker
-                    ),
-                    None,
+                existing = find_position(
+                    read_positions(session, portfolio_id), normalized_ticker
                 )
                 if existing is None:
                     raise ValueError(
@@ -261,38 +270,16 @@ class PortfolioService:
         positions = await self._read_positions(user_id, portfolio_name)
         prices = await self._fetch_quote_prices([p.ticker for p in positions])
 
-        positions_with_price: list[PositionWithPrice] = []
-        for position in positions:
-            price = prices.get(position.ticker)
-            if price is None:
-                positions_with_price.append(
-                    PositionWithPrice(
-                        **position.model_dump(),
-                        current_price=None,
-                        current_value=None,
-                        unrealized_pnl=None,
-                        unrealized_pnl_percent=None,
-                    )
-                )
-                continue
-            value, pnl, pnl_percent = position_value(position, price)
-            positions_with_price.append(
-                PositionWithPrice(
-                    **position.model_dump(),
-                    current_price=float(price),
-                    current_value=float(value),
-                    unrealized_pnl=float(pnl),
-                    unrealized_pnl_percent=float(pnl_percent),
-                )
-            )
-
-        metrics: PortfolioMetrics = portfolio_metrics(positions, prices)
+        positions_with_price, metrics, sector_exposure = portfolio_snapshot_values(
+            positions, prices
+        )
 
         return PortfolioSnapshot(
             user_id=user_id,
             name=portfolio_name,
             positions=positions_with_price,
             metrics=metrics,
+            sector_exposure=sector_exposure,
             as_of=datetime.now(UTC).isoformat(),
         )
 
@@ -441,9 +428,21 @@ class PortfolioService:
         await self._ensure_schema()
         normalized_ticker = self._normalize_ticker(ticker)
         positions = await self._read_positions(user_id, portfolio_name)
+        existing = find_position(positions, normalized_ticker)
+        new_sector = existing.sector if existing is not None else None
+        if new_sector is None:
+            new_sector = await service_risk.resolve_sector(
+                self._market_data, normalized_ticker
+            )
         prices = await self._fetch_quote_prices([p.ticker for p in positions])
         return service_risk.check_position_risk(
-            positions, prices, normalized_ticker, shares, entry_price, self._settings
+            positions,
+            prices,
+            normalized_ticker,
+            shares,
+            entry_price,
+            self._settings,
+            new_sector,
         )
 
     async def get_regime_adjusted_sizing(

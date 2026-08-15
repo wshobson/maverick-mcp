@@ -76,6 +76,7 @@ PF_POSITIONS = Table(
     Column("total_cost", Numeric(20, 4), nullable=False),
     Column("purchase_date", DateTime(timezone=True), nullable=False),
     Column("notes", Text, nullable=True),
+    Column("sector", String(100), nullable=True),
     UniqueConstraint(
         "portfolio_id", "ticker", name="pf_positions_portfolio_ticker_unique"
     ),
@@ -146,6 +147,7 @@ def _position_values(position: PositionPayload) -> dict[str, object]:
         "total_cost": Decimal(str(position.total_cost)),
         "purchase_date": _purchase_date_to_datetime(position.purchase_date),
         "notes": position.notes,
+        "sector": position.sector,
     }
 
 
@@ -157,6 +159,7 @@ def _row_to_position(row) -> PositionPayload:  # noqa: ANN001
         total_cost=Decimal(str(row.total_cost)),
         purchase_date=_datetime_to_purchase_date(row.purchase_date),
         notes=row.notes,
+        sector=row.sector,
     )
 
 

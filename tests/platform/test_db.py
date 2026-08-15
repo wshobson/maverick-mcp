@@ -1,6 +1,7 @@
 """Tests for maverick.platform.db."""
 
 import gc
+import logging
 
 import pytest
 import sqlalchemy
@@ -74,6 +75,70 @@ def test_ensure_schema_is_lazy_and_idempotent(tmp_path):
     assert ensure_schema(engine, METADATA) is True
     assert ensure_schema(engine, METADATA) is False
     assert ensure_schema(engine, METADATA, force=True) is True
+
+
+def test_ensure_schema_adds_plain_nullable_column_and_skips_indexed_column(
+    tmp_path, caplog
+):
+    old_metadata = MetaData()
+    Table("legacy_items", old_metadata, Column("id", Integer, primary_key=True))
+    desired_metadata = MetaData()
+    Table(
+        "legacy_items",
+        desired_metadata,
+        Column("id", Integer, primary_key=True),
+        Column("sector", String(100), nullable=True),
+        Column("lookup_key", String(100), nullable=True, index=True),
+    )
+    engine = create_engine_from_settings(_settings(tmp_path))
+    old_metadata.create_all(engine)
+
+    with caplog.at_level(logging.WARNING):
+        assert ensure_schema(engine, desired_metadata) is True
+    assert {
+        column["name"] for column in inspect(engine).get_columns("legacy_items")
+    } == {
+        "id",
+        "sector",
+    }
+    assert any("legacy_items.lookup_key" in message for message in caplog.messages)
+    assert ensure_schema(engine, desired_metadata) is False
+
+
+def test_ensure_schema_continues_after_one_column_alter_fails(
+    tmp_path, monkeypatch, caplog
+):
+    old_metadata = MetaData()
+    Table("race_items", old_metadata, Column("id", Integer, primary_key=True))
+    desired_metadata = MetaData()
+    Table(
+        "race_items",
+        desired_metadata,
+        Column("id", Integer, primary_key=True),
+        Column("raced_column", String(100), nullable=True),
+        Column("later_column", String(100), nullable=True),
+    )
+    engine = create_engine_from_settings(_settings(tmp_path))
+    old_metadata.create_all(engine)
+    original_exec_driver_sql = sqlalchemy.engine.Connection.exec_driver_sql
+
+    def flaky_exec_driver_sql(connection, statement, *args, **kwargs):
+        if statement.startswith("ALTER TABLE") and "raced_column" in statement:
+            raise sqlalchemy.exc.SQLAlchemyError("concurrent migration")
+        return original_exec_driver_sql(connection, statement, *args, **kwargs)
+
+    monkeypatch.setattr(
+        sqlalchemy.engine.Connection, "exec_driver_sql", flaky_exec_driver_sql
+    )
+
+    with caplog.at_level(logging.WARNING):
+        assert ensure_schema(engine, desired_metadata) is True
+
+    assert {column["name"] for column in inspect(engine).get_columns("race_items")} == {
+        "id",
+        "later_column",
+    }
+    assert any("race_items.raced_column" in message for message in caplog.messages)
 
 
 def test_ensure_schema_creates_a_second_metadatas_tables_on_a_shared_engine(tmp_path):

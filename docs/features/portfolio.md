@@ -64,6 +64,18 @@ new_total_cost = new_shares * average_cost_basis
 
 When all shares are removed, the position row is removed.
 
+## Sector Tagging
+
+`portfolio_add_position` best-effort populates each position's GICS sector
+from yfinance fundamentals. Provider failures store `NULL` and never block
+the position write; existing databases gain the nullable sector column
+automatically at startup.
+
+Positions without a sector surface as `Unknown`. Portfolio snapshots expose
+`sector_exposure` as the fraction of portfolio value in each sector. The risk
+dashboard keeps the `Unknown` concentration bucket visible, but that bucket
+never produces a sector-concentration alert.
+
 ## Precision Rules
 
 - Use `Decimal` for financial calculations.

@@ -234,6 +234,7 @@ def test_portfolio_snapshot_composes_positions_and_metrics():
         name="My Portfolio",
         positions=[position],
         metrics=metrics,
+        sector_exposure={"Technology": 1.0},
         as_of="2026-07-19T00:00:00+00:00",
     )
     assert snapshot.user_id == "default"
@@ -242,6 +243,7 @@ def test_portfolio_snapshot_composes_positions_and_metrics():
     assert snapshot.positions[0].shares == Decimal("10.0001")
     assert snapshot.metrics == metrics
     assert snapshot.metrics.total_invested == Decimal("1502.75")
+    assert snapshot.sector_exposure == {"Technology": 1.0}
     assert snapshot.as_of == "2026-07-19T00:00:00+00:00"
 
 
@@ -258,6 +260,7 @@ def test_portfolio_snapshot_allows_empty_positions():
         name="My Portfolio",
         positions=[],
         metrics=metrics,
+        sector_exposure={},
         as_of="2026-07-19T00:00:00+00:00",
     )
     assert snapshot.positions == []
@@ -288,6 +291,7 @@ def test_portfolio_snapshot_round_trips_through_model_dump():
         name="My Portfolio",
         positions=[position],
         metrics=metrics,
+        sector_exposure={"Technology": 1.0},
         as_of="2026-07-19T00:00:00+00:00",
     )
     data = snapshot.model_dump()
@@ -318,6 +322,7 @@ def test_portfolio_snapshot_model_dump_json_mode_serializes_nested_decimal_as_st
         name="My Portfolio",
         positions=[position_with_price],
         metrics=metrics,
+        sector_exposure={"Unknown": 1.0},
         as_of="2026-07-19T00:00:00+00:00",
     )
     json_data = snapshot.model_dump(mode="json")

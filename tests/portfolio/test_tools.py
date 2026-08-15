@@ -65,6 +65,7 @@ def _snapshot() -> PortfolioSnapshot:
         name="My Portfolio",
         positions=[position],
         metrics=metrics,
+        sector_exposure={"Unknown": 1.0},
         as_of="2026-07-19T00:00:00+00:00",
     )
 

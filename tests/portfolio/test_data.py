@@ -153,6 +153,28 @@ def test_upsert_then_read_preserves_total_cost_exactly(factory):
     assert positions[0].total_cost == Decimal("1062.7259")
 
 
+def test_upsert_then_read_preserves_sector(factory):
+    with session_scope(factory) as session:
+        portfolio_id = get_or_create_portfolio(session, "default", "My Portfolio")
+        upsert_position(session, portfolio_id, _position(sector="Technology"))
+
+    with session_scope(factory) as session:
+        positions = read_positions(session, portfolio_id)
+
+    assert positions[0].sector == "Technology"
+
+
+def test_read_positions_maps_null_sector_to_none(factory):
+    with session_scope(factory) as session:
+        portfolio_id = get_or_create_portfolio(session, "default", "My Portfolio")
+        upsert_position(session, portfolio_id, _position(sector=None))
+
+    with session_scope(factory) as session:
+        positions = read_positions(session, portfolio_id)
+
+    assert positions[0].sector is None
+
+
 # -- read_positions -----------------------------------------------------------
 
 

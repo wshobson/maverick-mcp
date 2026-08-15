@@ -13,6 +13,7 @@ class PositionPayload(BaseModel):
     total_cost: Decimal = Field(gt=0)
     purchase_date: str
     notes: str | None = None
+    sector: str | None = None
 
 
 class PositionWithPrice(PositionPayload):
@@ -35,6 +36,7 @@ class PortfolioSnapshot(BaseModel):
     name: str
     positions: list[PositionWithPrice]
     metrics: PortfolioMetrics
+    sector_exposure: dict[str, float]
     as_of: str
 
 
@@ -88,9 +90,7 @@ class RiskAnalysis(BaseModel):
 class PositionExposure(BaseModel):
     """A position's risk-computation inputs: `risk.py`'s pure functions take
     lists of these, never `PositionPayload`/ledger types directly. `sector`
-    defaults to "Unknown" because positions do not carry sector data (Phase
-    4 decision), matching the legacy risk-dashboard router's hardcoded
-    placeholder."""
+    defaults to "Unknown" for positions whose persisted sector is NULL."""
 
     symbol: str
     shares: float

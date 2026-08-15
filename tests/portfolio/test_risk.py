@@ -205,6 +205,14 @@ def test_generate_alerts_sector_concentration_critical_and_warning():
     assert concentration["Financial"].severity == "warning"
 
 
+def test_generate_alerts_unknown_sector_never_creates_concentration_alert():
+    positions = [_exposure("AAPL", 10, 100, 100)]
+
+    alerts = generate_alerts(positions, _SETTINGS)
+
+    assert not any(alert.alert_type == "concentration" for alert in alerts)
+
+
 def test_generate_alerts_oversized_position_warning():
     # AAPL = 1500/2500 = 60% > 20% position warn threshold.
     positions = [
