@@ -9,7 +9,12 @@ string (never reformatted), so callers' formatting is preserved verbatim.
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
-from maverick.portfolio.types import PortfolioMetrics, PositionPayload, RemoveResult
+from maverick.portfolio.types import (
+    PortfolioMetrics,
+    PositionPayload,
+    PositionWithPrice,
+    RemoveResult,
+)
 
 _BASIS_QUANT = Decimal("0.0001")
 _MONEY_QUANT = Decimal("0.01")
@@ -26,6 +31,7 @@ def add_shares(
     price: Decimal,
     purchase_date: str,
     notes: str | None = None,
+    sector: str | None = None,
 ) -> PositionPayload:
     """Add shares to `position` (or create one if `position` is None).
 
@@ -51,6 +57,7 @@ def add_shares(
             total_cost=shares * price,
             purchase_date=purchase_date,
             notes=notes,
+            sector=sector,
         )
 
     new_total_shares = position.shares + shares
@@ -71,6 +78,7 @@ def add_shares(
         total_cost=new_total_cost,
         purchase_date=earliest_date,
         notes=position.notes,
+        sector=position.sector or sector,
     )
 
 
@@ -103,12 +111,20 @@ def remove_shares(
         total_cost=new_shares * position.average_cost_basis,
         purchase_date=position.purchase_date,
         notes=position.notes,
+        sector=position.sector,
     )
     return updated, RemoveResult(
         ticker=position.ticker,
         shares_removed=shares,
         position_fully_closed=False,
     )
+
+
+def find_position(
+    positions: list[PositionPayload], ticker: str
+) -> PositionPayload | None:
+    """Return the position for ``ticker`` in ``positions``, or None."""
+    return next((position for position in positions if position.ticker == ticker), None)
 
 
 def position_value(
@@ -166,3 +182,73 @@ def portfolio_metrics(
         total_pnl_percent=float(total_pnl_percent),
         position_count=len(positions),
     )
+
+
+def portfolio_snapshot_values(
+    positions: list[PositionPayload], prices: dict[str, Decimal]
+) -> tuple[list[PositionWithPrice], PortfolioMetrics, dict[str, float]]:
+    """Build priced positions, aggregate metrics, and sector exposure.
+
+    Failed quotes leave per-position price fields empty while metrics and
+    sector exposure fall back to average cost basis.
+    """
+    positions_with_price: list[PositionWithPrice] = []
+    sector_values: dict[str, Decimal] = {}
+    total_value = Decimal("0")
+    total_cost = Decimal("0")
+    sector_total_value = Decimal("0")
+
+    for position in positions:
+        price = prices.get(position.ticker)
+        exposure_price = price if price is not None else position.average_cost_basis
+        exposure_value = position.shares * exposure_price
+        value, pnl, pnl_percent = position_value(position, exposure_price)
+        sector = position.sector or "Unknown"
+        sector_values[sector] = sector_values.get(sector, Decimal("0")) + exposure_value
+        total_value += value
+        total_cost += position.total_cost
+        sector_total_value += exposure_value
+
+        if price is None:
+            positions_with_price.append(
+                PositionWithPrice(
+                    **position.model_dump(),
+                    current_price=None,
+                    current_value=None,
+                    unrealized_pnl=None,
+                    unrealized_pnl_percent=None,
+                )
+            )
+            continue
+        positions_with_price.append(
+            PositionWithPrice(
+                **position.model_dump(),
+                current_price=float(price),
+                current_value=float(value),
+                unrealized_pnl=float(pnl),
+                unrealized_pnl_percent=float(pnl_percent),
+            )
+        )
+
+    sector_exposure = (
+        {
+            sector: round(float(value / sector_total_value), 4)
+            for sector, value in sector_values.items()
+        }
+        if sector_total_value > 0
+        else {}
+    )
+    total_pnl = total_value - total_cost
+    total_pnl_percent = (
+        (total_pnl / total_cost * 100).quantize(_MONEY_QUANT, rounding=ROUND_HALF_UP)
+        if total_cost > 0
+        else Decimal("0.00")
+    )
+    metrics = PortfolioMetrics(
+        total_invested=total_cost,
+        total_value=float(total_value),
+        total_pnl=float(total_pnl),
+        total_pnl_percent=float(total_pnl_percent),
+        position_count=len(positions),
+    )
+    return positions_with_price, metrics, sector_exposure

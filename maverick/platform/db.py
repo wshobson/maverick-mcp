@@ -30,8 +30,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy.schema import CreateColumn
 
 from maverick.platform.config import DatabaseSettings
+from maverick.platform.telemetry import get_logger
+
+logger = get_logger(__name__)
 
 # Legacy default: seconds to wait for a new TCP connection before giving up.
 _POSTGRES_CONNECT_TIMEOUT_SECONDS = 10
@@ -165,7 +169,7 @@ _schema_created: "weakref.WeakKeyDictionary[Engine, set[str]]" = (
 
 
 def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) -> bool:
-    """Ensure ``metadata``'s tables exist on ``engine``, lazily and once.
+    """Ensure ``metadata``'s tables and nullable columns exist, lazily and once.
 
     Memoizes per ``(engine, table name)`` so repeat calls for a metadata
     whose tables are already known-present are a set-membership check, not a
@@ -174,9 +178,15 @@ def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) ->
     tables created on its first call. Pass ``force=True`` to bypass the
     memoized fast path and re-run ``create_all`` unconditionally.
 
+    Existing tables gain plain nullable columns defined by ``metadata``
+    through portable SQLAlchemy column compilation. Missing non-nullable or
+    constrained columns are skipped with a warning because they require a
+    data-migration policy. Each ALTER is isolated; a concurrent migration
+    race logs a warning without preventing startup or later column attempts.
+
     Returns:
-        ``True`` if table creation was executed, ``False`` if the schema
-        was already known to be present.
+        ``True`` if schema DDL was executed, ``False`` if the schema was
+        already known to be present.
     """
     defined_tables = set(metadata.tables.keys())
     known_tables = _schema_created.get(engine, set())
@@ -191,17 +201,70 @@ def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) ->
         try:
             inspector = inspect(engine)
             existing_tables = set(inspector.get_table_names())
+            existing_columns = {
+                table_name: {
+                    column["name"] for column in inspector.get_columns(table_name)
+                }
+                for table_name in defined_tables & existing_tables
+            }
         except SQLAlchemyError:
             existing_tables = set()
+            existing_columns = {}
 
         missing_tables = defined_tables - existing_tables
+        missing_columns = [
+            (metadata.tables[table_name], column)
+            for table_name, column_names in existing_columns.items()
+            for column in metadata.tables[table_name].columns
+            if column.name not in column_names
+        ]
+        columns_to_add = []
+        for table, column in missing_columns:
+            if (
+                not column.nullable
+                or column.foreign_keys
+                or column.unique
+                or column.index
+                or column.primary_key
+            ):
+                logger.warning(
+                    "database: skipping automatic add for missing column %s.%s; "
+                    "column is non-nullable or constrained",
+                    table.fullname,
+                    column.name,
+                )
+                continue
+            columns_to_add.append((table, column))
 
         should_create = force or bool(missing_tables)
         if should_create:
             metadata.create_all(bind=engine)
 
+        columns_added = False
+        if columns_to_add:
+            preparer = engine.dialect.identifier_preparer
+            for table, column in columns_to_add:
+                try:
+                    table_ddl = preparer.format_table(table)
+                    column_ddl = str(
+                        CreateColumn(column).compile(dialect=engine.dialect)
+                    )
+                    with engine.begin() as connection:
+                        connection.exec_driver_sql(
+                            f"ALTER TABLE {table_ddl} ADD COLUMN {column_ddl}"
+                        )
+                except SQLAlchemyError:
+                    logger.warning(
+                        "database: failed to add missing column %s.%s",
+                        table.fullname,
+                        column.name,
+                        exc_info=True,
+                    )
+                    continue
+                columns_added = True
+
         _schema_created[engine] = known_tables | defined_tables
-        return should_create
+        return should_create or columns_added
 
 
 @contextmanager

@@ -27,6 +27,25 @@ from maverick.portfolio.types import (
 logger = get_logger(__name__)
 
 
+async def resolve_sector(market_data: MarketDataService, ticker: str) -> str | None:
+    """Best-effort GICS sector for `ticker` via fundamentals; any provider
+    failure returns None (the position write must never depend on yfinance),
+    and an empty/whitespace sector normalizes to None."""
+    try:
+        fundamentals = await market_data.get_fundamentals(ticker)
+        sector = fundamentals.company.sector
+        if sector is None:
+            return None
+        return sector.strip() or None
+    except Exception:
+        logger.warning(
+            "portfolio: failed to fetch sector for %s, storing None",
+            ticker,
+            exc_info=True,
+        )
+        return None
+
+
 def positions_to_exposures(
     positions: list[PositionPayload], prices: dict[str, Decimal]
 ) -> list[PositionExposure]:
@@ -34,8 +53,8 @@ def positions_to_exposures(
     ticker missing from `prices` (failed quote) falls back to its own
     average cost basis -- never dropped, unlike `get_portfolio`'s None
     price fields -- matching the legacy risk-dashboard router's position
-    fetch. Sector is always "Unknown": not tracked on positions (Phase 4
-    decision)."""
+    fetch. A position whose persisted sector is NULL stays in the
+    "Unknown" dashboard bucket."""
     return [
         PositionExposure(
             symbol=position.ticker,
@@ -44,7 +63,7 @@ def positions_to_exposures(
             current_price=float(
                 prices.get(position.ticker, position.average_cost_basis)
             ),
-            sector="Unknown",
+            sector=position.sector or "Unknown",
         )
         for position in positions
     ]
@@ -66,9 +85,12 @@ def check_position_risk(
     shares: float,
     entry_price: float,
     settings: PortfolioSettings,
+    new_sector: str | None = None,
 ) -> PositionRiskCheck:
     exposures = positions_to_exposures(positions, prices)
-    return risk.check_position_risk(exposures, ticker, shares, entry_price, settings)
+    return risk.check_position_risk(
+        exposures, ticker, shares, entry_price, settings, new_sector
+    )
 
 
 async def detect_market_regime(

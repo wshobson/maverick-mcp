@@ -18,9 +18,10 @@ are advisory floats, matching legacy and the existing `analysis.py`
 outputs -- positions feeding this module have already round-tripped
 through the Decimal ledger upstream in the service tier.
 
-Sector: portfolio positions do not carry sector data (Phase 4 decision:
-"sector info not stored on position"), so every `PositionExposure.sector`
-is "Unknown" in practice, exactly as the legacy router hardcoded it.
+Sector: portfolio positions carry an optional persisted GICS sector. NULL
+values remain visible in dashboard concentration as "Unknown", but that
+bucket is skipped by concentration alerts because missing classifications
+are not evidence of actual sector concentration.
 """
 
 import math
@@ -136,6 +137,7 @@ def check_position_risk(
     new_shares: float,
     new_price: float,
     settings: PortfolioSettings,
+    new_sector: str | None = None,
 ) -> PositionRiskCheck:
     """Current vs. projected dashboard after merging in a prospective new
     (or added-to, if `new_symbol` is already held) position."""
@@ -158,6 +160,7 @@ def check_position_risk(
                         "shares": total_shares,
                         "cost_basis": avg_cost,
                         "current_price": new_price,
+                        "sector": new_sector or pos.sector,
                     }
                 )
             )
@@ -171,7 +174,7 @@ def check_position_risk(
                 shares=new_shares,
                 cost_basis=new_price,
                 current_price=new_price,
-                sector="Unknown",
+                sector=new_sector or "Unknown",
             )
         )
 
@@ -244,6 +247,8 @@ def generate_alerts(
     total_value = dashboard.total_value
 
     for sector, pct in dashboard.sector_concentration.items():
+        if sector == "Unknown":
+            continue
         if pct > settings.risk_sector_critical_pct:
             alerts.append(
                 RiskAlert(

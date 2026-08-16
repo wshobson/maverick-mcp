@@ -36,6 +36,7 @@ def _position(
     total_cost: str = "1500.00",
     purchase_date: str = "2026-01-01",
     notes: str | None = None,
+    sector: str | None = None,
 ) -> PositionPayload:
     return PositionPayload(
         ticker=ticker,
@@ -44,6 +45,7 @@ def _position(
         total_cost=Decimal(total_cost),
         purchase_date=purchase_date,
         notes=notes,
+        sector=sector,
     )
 
 
@@ -142,6 +144,34 @@ class TestAddSharesExistingPosition:
 
         assert pos.notes == "Original notes"
 
+    def test_keeps_existing_sector_when_new_lot_has_fresh_sector(self):
+        pos = _position(sector="Technology")
+
+        pos = add_shares(
+            pos,
+            "AAPL",
+            Decimal("10"),
+            Decimal("170.00"),
+            "2026-01-02",
+            sector="Consumer Cyclical",
+        )
+
+        assert pos.sector == "Technology"
+
+    def test_adopts_new_sector_when_existing_sector_is_null(self):
+        pos = _position(sector=None)
+
+        pos = add_shares(
+            pos,
+            "AAPL",
+            Decimal("10"),
+            Decimal("170.00"),
+            "2026-01-02",
+            sector="Technology",
+        )
+
+        assert pos.sector == "Technology"
+
     def test_rejects_zero_shares(self):
         pos = _position()
 
@@ -185,7 +215,12 @@ class TestAddSharesExistingPosition:
 
 class TestRemoveShares:
     def test_partial_removal_keeps_basis(self):
-        pos = _position(shares="20", average_cost_basis="160.00", total_cost="3200.00")
+        pos = _position(
+            shares="20",
+            average_cost_basis="160.00",
+            total_cost="3200.00",
+            sector="Technology",
+        )
 
         updated, result = remove_shares(pos, Decimal("10"))
 
@@ -193,6 +228,7 @@ class TestRemoveShares:
         assert updated.shares == Decimal("10")
         assert updated.average_cost_basis == Decimal("160.00")  # unchanged
         assert updated.total_cost == Decimal("1600.00")
+        assert updated.sector == "Technology"
         assert result.ticker == "AAPL"
         assert result.shares_removed == Decimal("10")
         assert result.position_fully_closed is False
