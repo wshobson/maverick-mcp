@@ -20,4 +20,3 @@ One line per item. Remove the line in the same change that removes the debt.
 | run_screen executes rubrics on the event loop; wrap in to_thread if universe_max grows | `maverick/screening/service.py` | deferred |
 | `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |
 | service_ml.py, ensemble.py, online_learning.py, and feature_engineering.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py`, `maverick/backtesting/strategies/ml/online_learning.py`, `maverick/backtesting/strategies/ml/feature_engineering.py` | deferred |
-| exa search_and_contents() deprecated upstream -- migrate to search() post-cutover | `maverick/research/providers/exa.py` | deferred |

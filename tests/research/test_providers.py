@@ -26,10 +26,10 @@ from maverick.research.providers.exa import ExaSearchProvider
 
 def _install_fake_exa_py(
     monkeypatch: pytest.MonkeyPatch,
-    search_and_contents: Callable[..., Awaitable[Any]],
+    search_impl: Callable[..., Awaitable[Any]],
 ) -> None:
-    """Install a fake `exa_py` module: `AsyncExa(api_key).search_and_contents(**kw)`
-    delegates to `search_and_contents`. Mirrors legacy's own import seam
+    """Install a fake `exa_py` module: `AsyncExa(api_key).search(**kw)`
+    delegates to `search_impl`. Mirrors legacy's own import seam
     (`from exa_py import AsyncExa` inside the search call), so
     `ExaSearchProvider` needs no code changes to be testable this way.
     """
@@ -39,8 +39,8 @@ def _install_fake_exa_py(
         def __init__(self, api_key: str) -> None:
             self.api_key = api_key
 
-        async def search_and_contents(self, **kwargs: Any) -> Any:
-            return await search_and_contents(**kwargs)
+        async def search(self, **kwargs: Any) -> Any:
+            return await search_impl(**kwargs)
 
     fake_module.AsyncExa = FakeAsyncExa  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "exa_py", fake_module)
@@ -132,12 +132,12 @@ async def test_search_normalizes_fields():
         )
     ]
 
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         return _Response(results_in)
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
         results = await provider.search("AAPL earnings", num_results=5)
 
     assert len(results) == 1
@@ -156,12 +156,12 @@ async def test_search_normalizes_fields():
 
 
 async def test_search_defaults_missing_score_and_author():
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         return _Response([_result(url="https://example.com", title=None, text=None)])
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
         results = await provider.search("widget prices")
 
     item = results[0]
@@ -189,12 +189,12 @@ async def test_search_truncation_boundaries(
 ):
     text = "x" * text_len
 
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         return _Response([_result(text=text)])
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
         results = await provider.search("query")
 
     item = results[0]
@@ -210,12 +210,12 @@ async def test_search_sorts_by_financial_relevance_then_score():
         score=0.1,
     )
 
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         return _Response([low, high])
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
         results = await provider.search("query")
 
     assert [r["url"] for r in results] == [
@@ -230,12 +230,12 @@ async def test_search_sorts_by_financial_relevance_then_score():
 
 
 async def test_search_wraps_client_error_in_web_search_error():
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         raise RuntimeError("boom")
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
         with pytest.raises(WebSearchError, match="Exa search failed"):
             await provider.search("query")
 
@@ -246,14 +246,14 @@ async def test_search_wraps_client_error_in_web_search_error():
 async def test_provider_disables_itself_after_repeated_non_timeout_failures():
     call_count = 0
 
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         nonlocal call_count
         call_count += 1
         raise RuntimeError("boom")
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
 
         for _ in range(6):  # _MAX_NON_TIMEOUT_FAILURES
             with pytest.raises(WebSearchError):
@@ -271,7 +271,7 @@ async def test_provider_disables_itself_after_repeated_non_timeout_failures():
 async def test_successful_search_resets_failure_count():
     calls: list[bool] = []
 
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         if not calls:
             calls.append(True)
             raise RuntimeError("boom")
@@ -279,7 +279,7 @@ async def test_successful_search_resets_failure_count():
 
     provider = ExaSearchProvider("test-key")
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
 
         with pytest.raises(WebSearchError):
             await provider.search("query")
@@ -296,7 +296,7 @@ async def test_successful_search_resets_failure_count():
 
 
 async def test_open_circuit_breaker_short_circuits_subsequent_calls():
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         raise RuntimeError("boom")
 
     # A single failure trips the breaker; recovery is set far in the
@@ -308,7 +308,7 @@ async def test_open_circuit_breaker_short_circuits_subsequent_calls():
     provider = ExaSearchProvider("test-key", settings=settings)
 
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
 
         with pytest.raises(WebSearchError, match="Exa search failed"):
             await provider.search("first query")
@@ -331,7 +331,7 @@ async def test_open_circuit_breaker_short_circuits_subsequent_calls():
 async def test_search_timeout_raises_web_search_error():
     import asyncio
 
-    async def fake_search_and_contents(**kwargs: Any) -> Any:
+    async def fake_search(**kwargs: Any) -> Any:
         await asyncio.sleep(10)
         return _Response([])
 
@@ -340,7 +340,7 @@ async def test_search_timeout_raises_web_search_error():
     provider._calculate_timeout = lambda *args, **kwargs: 0.01  # type: ignore[method-assign]
 
     with pytest.MonkeyPatch.context() as mp:
-        _install_fake_exa_py(mp, fake_search_and_contents)
+        _install_fake_exa_py(mp, fake_search)
         with pytest.raises(WebSearchError, match="timed out"):
             await provider.search("query")
 

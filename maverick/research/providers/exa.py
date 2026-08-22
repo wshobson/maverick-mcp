@@ -250,9 +250,7 @@ class ExaSearchProvider(WebSearchProvider):
             try:
                 async_exa_client = AsyncExa(api_key=self.api_key)
                 search_params = self._get_search_params(query, num_results, strategy)
-                exa_response = await async_exa_client.search_and_contents(
-                    **search_params
-                )
+                exa_response = await async_exa_client.search(**search_params)
             except Exception as e:
                 logger.error(f"Error calling Exa API: {e}")
                 raise
@@ -291,7 +289,7 @@ class ExaSearchProvider(WebSearchProvider):
             raise WebSearchError(f"Exa search failed: {str(e)}") from e
 
     def _normalize_response(self, exa_response: Any) -> list[dict[str, Any]]:
-        """Convert an Exa `search_and_contents` response into the legacy result shape."""
+        """Convert an Exa `search` response into the legacy result shape."""
         results = []
         if exa_response and hasattr(exa_response, "results"):
             for result in exa_response.results:
@@ -328,7 +326,7 @@ class ExaSearchProvider(WebSearchProvider):
         params: dict[str, Any] = {
             "query": query,
             "num_results": num_results,
-            "text": {"max_characters": 5000},
+            "contents": {"text": {"max_characters": 5000}},
         }
 
         if strategy == "authoritative":
