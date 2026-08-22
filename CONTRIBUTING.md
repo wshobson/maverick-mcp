@@ -84,17 +84,23 @@ Pre-commit hooks will automatically run on every commit and include:
 
 ## Project Structure
 
-MaverickMCP follows Domain-Driven Design (DDD) principles:
+As of v1.0.0, the entire server lives in `maverick/` (the legacy `maverick_mcp/`
+package was deleted at the v1.0 cutover; see `docs/runbooks/migrating-to-v1.md`
+if you're carrying config forward from a pre-v1.0 install). Each domain follows
+the same forward-only layer order: `types.py` -> `config.py` -> `data.py`
+(when the domain owns tables) -> `service.py` -> `tools.py`. See
+`docs/ARCHITECTURE.md` for the full layering rules.
 
-```
-maverick_mcp/
-├── api/           # FastAPI routers and server
-├── domain/        # Core business logic (entities, services)
-├── application/   # Use cases and DTOs
-├── infrastructure/# External services (database, APIs)
-├── auth/         # Authentication and security
-├── config/       # Settings and configuration
-└── tests/        # Test suite
+```text
+maverick/
+├── platform/       # cross-cutting seam; the only place that reads env vars
+├── market_data/    # quotes, history, fundamentals, market overview
+├── technical/      # RSI/MACD/support-resistance/full technical analysis
+├── screening/      # Maverick bullish/bearish/supply-demand screens
+├── portfolio/      # positions, risk dashboard, watchlist, trade journal
+├── backtesting/    # [backtesting] extra: VectorBT engine + strategies
+├── research/       # [research] extra: LangGraph research workflow
+└── server/         # FastMCP assembly, CLI entry point, prompts
 ```
 
 ## Running Tests
@@ -112,7 +118,7 @@ make test-all
 make test-specific TEST=test_name
 
 # With coverage
-pytest --cov=maverick_mcp
+pytest --cov=maverick
 ```
 
 **Note**: Integration tests require PostgreSQL and Redis. They're excluded from CI by default.
