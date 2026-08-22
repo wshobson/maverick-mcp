@@ -120,6 +120,29 @@ async def test_search_raises_when_exa_py_is_not_installed(
 # ---------------------------------------------------------------------------
 
 
+async def test_search_passes_content_options_nested_under_contents():
+    """`search()` takes content options under `contents`; the deprecated
+    `search_and_contents()` nested them on the caller's behalf. Nothing else
+    guards the shape -- `search_params` is a `dict[str, Any]` splatted into the
+    call, so a revert to a top-level `text=` kwarg type-checks fine and only
+    fails against the live API. Pin it here.
+    """
+    captured: dict[str, Any] = {}
+
+    async def fake_search(**kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return _Response([_result()])
+
+    provider = ExaSearchProvider("test-key")
+    with pytest.MonkeyPatch.context() as mp:
+        _install_fake_exa_py(mp, fake_search)
+        await provider.search("AAPL earnings", num_results=5)
+
+    assert captured["contents"] == {"text": {"max_characters": 5000}}
+    assert "text" not in captured
+    assert captured["num_results"] == 5
+
+
 async def test_search_normalizes_fields():
     results_in = [
         _result(
