@@ -91,7 +91,7 @@ the same forward-only layer order: `types.py` -> `config.py` -> `data.py`
 (when the domain owns tables) -> `service.py` -> `tools.py`. See
 `docs/ARCHITECTURE.md` for the full layering rules.
 
-```
+```text
 maverick/
 ├── platform/       # cross-cutting seam; the only place that reads env vars
 ├── market_data/    # quotes, history, fundamentals, market overview
