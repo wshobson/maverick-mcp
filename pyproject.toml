@@ -157,6 +157,10 @@ ignore = [
 "tests/*" = ["F403", "F405"]  # star imports allowed in tests
 
 [tool.ruff.format]
+# Ruff 0.16 stabilized Markdown code-block formatting, which was preview-gated
+# in 0.15. Keep the formatter scoped to Python so prose docs — including the
+# archived exec-plans under docs/ — keep their snippets as authored.
+exclude = ["*.md"]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
