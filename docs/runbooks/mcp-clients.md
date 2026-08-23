@@ -464,7 +464,7 @@ the model's context, so enable only the servers you need.
 > [stable MCP docs](https://opencode.ai/docs/mcp-servers).
 >
 > OpenCode 2.0 is in beta and its migration guide refers to it as `opencode2`
-> --- [v2 MCP docs](https://opencode.ai/v2/docs/mcp-servers),
+> -- [v2 MCP docs](https://opencode.ai/v2/docs/mcp-servers),
 > [migration guide](https://opencode.ai/v2/docs/migrate-v1). The v2 schema
 > differs: servers nest under `mcp.servers`, and `enabled` is replaced by
 > `disabled`. Stable 1.18.21 rejects the `mcp.servers` form with a config
