@@ -109,7 +109,7 @@ What actually happened?
 
 **Where would you expect to find this information?**
 - [ ] README
-- [ ] CLAUDE.md project guide
+- [ ] AGENTS.md project guide
 - [ ] API documentation
 - [ ] Examples directory
 - [ ] Contributing guide

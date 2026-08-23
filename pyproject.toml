@@ -52,7 +52,6 @@ dev = [
     "greenlet>=3.5.1",
     "asyncpg>=0.31.0",
     "ruff>=0.15.14",
-    "pyright>=1.1.409",
     "bandit>=1.9.4",
     "safety>=3.7.0",
     "types-requests>=2.33.0.20260518",

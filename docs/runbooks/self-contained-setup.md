@@ -69,7 +69,7 @@ For HTTP bridge workflows:
 make dev
 ```
 
-The server is now available at `http://localhost:8003/mcp/` (streamable
+The server is now available at `http://localhost:8003/mcp` (streamable
 HTTP) or over stdio, per `--transport`.
 
 ## Bring In Market Data

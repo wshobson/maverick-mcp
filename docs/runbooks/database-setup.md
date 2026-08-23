@@ -61,9 +61,9 @@ pre-seeded universe:
   tickers you care about before running a screen for meaningful coverage;
   there is no S&P 500-wide default universe on a fresh install.
 
-## Claude Desktop After Setup
+## Connecting A Client After Setup
 
-Prefer STDIO for Claude Desktop. See `claude-desktop.md`.
+Prefer STDIO for a single local client. See `mcp-clients.md`.
 
 For HTTP bridge testing:
 

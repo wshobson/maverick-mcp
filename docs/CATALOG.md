@@ -13,15 +13,14 @@ Status labels:
 | Path | Status | Owner | Notes |
 | --- | --- | --- | --- |
 | `../AGENTS.md` | current | agents | Canonical agent entry point. |
-| `../CLAUDE.md` | current | agents | Claude-specific pointer to canonical docs. |
-| `../GEMINI.md` | current | agents | Gemini-specific pointer to canonical docs. |
+| `../CLAUDE.md` | current | agents | Symlink to `../AGENTS.md`. Not a separate source of truth. |
 | `../README.md` | current | project | User-facing overview and quick start. |
 | `../CONTRIBUTING.md` | current | project | Contributor workflow. |
 | `../SECURITY.md` | current | project | Vulnerability reporting and security guidance. |
 | `../CODE_OF_CONDUCT.md` | current | project | Community standards. |
 | `INDEX.md` | current | docs | Documentation entry point. |
 | `CATALOG.md` | current | docs | Inventory and cleanup state. |
-| `ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. |
+| `../ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. Root-level entry point alongside `AGENTS.md`. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
 | `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
 | `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | current | engineering | Phase 1 execution plan (platform seam). |
@@ -48,7 +47,7 @@ Status labels:
 | `api/backtesting.md` | current | engineering | Backtesting API reference. |
 | `features/portfolio.md` | current | product/engineering | Portfolio persistence and cost-basis behavior. |
 | `features/deep-research.md` | current | engineering | Research agent behavior and configuration. |
-| `runbooks/claude-desktop.md` | current | operations | MCP client setup and transport guidance. |
+| `runbooks/mcp-clients.md` | current | operations | Transports and per-client MCP setup (Claude Desktop, Claude Code, VS Code, GitHub Copilot CLI, Codex CLI, Cursor, OpenCode, Antigravity CLI). Config verified against vendor docs and live CLIs 2026-08-22. |
 | `runbooks/database-setup.md` | current | operations | Database setup and schema creation (no migrations). |
 | `runbooks/self-contained-setup.md` | current | operations | Full local setup. |
 | `runbooks/migrating-to-v1.md` | current | operations | Config/database migration guide from pre-v1.0 installs. |
@@ -64,7 +63,6 @@ Status labels:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `../conductor/` | historical | Tool-owned planning context. Keep cataloged, but do not treat as the current product docs. |
 | `superpowers/` | historical | Historical specs and plans. Current plans should live under `docs/plans/` or a new approved plan location. |
 
 ## Deleted Or Consolidated
@@ -81,13 +79,18 @@ Status labels:
 | `deep_research_agent.md` | deleted | `features/deep-research.md` |
 | `exa_research_testing_strategy.md` | deleted | `testing/exa-research.md` |
 | `speed_testing_framework.md` | deleted | `testing/speed.md` |
-| `../scripts/INSTALLATION_GUIDE.md` | deleted | `runbooks/tiingo-loader.md` |
-| `../scripts/README_TIINGO_LOADER.md` | deleted | `runbooks/tiingo-loader.md` |
+| `../scripts/INSTALLATION_GUIDE.md` | deleted | `runbooks/migrating-to-v1.md` |
+| `../scripts/README_TIINGO_LOADER.md` | deleted | `runbooks/migrating-to-v1.md` |
 | `../tests/README.md` | deleted | `testing/README.md` |
 | `../tests/integration/README.md` | deleted | `testing/integration.md` |
 | `../maverick_mcp/tests/README_INMEMORY_TESTS.md` | deleted | `testing/in-memory.md` |
-| `../maverick_mcp/README.md` | deleted | `ARCHITECTURE.md` |
+| `../maverick_mcp/README.md` | deleted | `../ARCHITECTURE.md` |
 | `runbooks/tiingo-loader.md` | deleted | `runbooks/migrating-to-v1.md`; the Tiingo bulk data loader and its scripts were removed at the v1.0.0 cutover (`maverick_mcp` deletion). Market data now comes from `yfinance` with no API key required. |
+| `runbooks/claude-desktop.md` | deleted | `runbooks/mcp-clients.md`; renamed and broadened. The server is client-agnostic, so the runbook is organized by transport with per-client config rather than around Claude Desktop. |
+| `../conductor/` | deleted | Conductor is no longer used on this project. The `conductor/` planning scaffold was removed; Git history is the archive. |
+| `ARCHITECTURE.md` | deleted | `../ARCHITECTURE.md`; moved to the repository root so the architecture map sits beside `AGENTS.md` as a top-level entry point. |
+| `../GEMINI.md` | deleted | `../AGENTS.md`; it was a pure pointer with no unique content. |
+| `../CLAUDE.md` (regular file) | deleted | Replaced by a symlink to `../AGENTS.md`. Its unique rules were folded into `AGENTS.md` so there is one agent entry point. |
 
 ## Allowlisted Non-Documentation Text
 
