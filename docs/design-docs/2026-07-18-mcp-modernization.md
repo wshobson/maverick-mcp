@@ -166,8 +166,7 @@ migrate into the new tree as their subjects are ported.
   so the numbers cannot drift silently.
 - `pyproject.toml` sets `requires-python = ">=3.12"` with no upper bound,
   declares a `maverick-mcp` script entry point, and defines the extras
-  `[backtesting]`, `[research]`, and `[vectors]`. The vestigial `setup.py`
-  is deleted.
+  `[backtesting]` and `[research]`. The vestigial `setup.py` is deleted.
 - Releases publish to PyPI, build a Docker image on GHCR with the
   `io.modelcontextprotocol.server.name` label, and attach an `.mcpb` bundle
   to the GitHub release for one-click Claude Desktop install.
