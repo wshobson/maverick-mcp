@@ -23,11 +23,14 @@ def _load_env_file() -> None:
     this is the bootstrap path that owns that, which is why it runs here rather
     than as an import side effect in a library module.
 
-    The search is anchored at the current working directory because that is
-    what both documented launch paths use: `make dev` runs from the project
-    root, and the STDIO client configs in `docs/runbooks/mcp-clients.md` set
-    `"cwd"` to the checkout. Anchoring on this file instead would miss the `.env` whenever the
-    package is installed outside the project tree.
+    The search is anchored at the current working directory, so `.env` lookup
+    follows the server process's working directory rather than this file's
+    location. `make dev` runs from the project root. STDIO clients vary: some
+    set `"cwd"` to the checkout, others pass `uv run --directory`, and the
+    published `uvx` config sets neither -- that last case has no checkout to
+    find, which is why it relies on real environment variables instead.
+    Anchoring on this file would miss the `.env` whenever the package is
+    installed outside the project tree.
 
     Real environment variables win: `load_dotenv` does not override values that
     are already set, so an explicit `DATABASE_URL=... make dev` still takes
