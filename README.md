@@ -168,7 +168,7 @@ Streamable HTTP when several clients should share a single server process.
 
 | Client | STDIO | HTTP | Config location |
 | --- | --- | --- | --- |
-| Claude Desktop | Yes | Via `mcp-remote` or `.mcpb` | `claude_desktop_config.json` |
+| Claude Desktop | Yes (incl. `.mcpb`) | Via `mcp-remote` | `claude_desktop_config.json` |
 | Claude Code | Yes | Yes | `claude mcp add` |
 | VS Code (Copilot) | Yes | Yes | `.vscode/mcp.json` |
 | GitHub Copilot CLI | Yes | Yes | `~/.copilot/mcp-config.json` |

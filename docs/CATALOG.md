@@ -79,8 +79,8 @@ Status labels:
 | `deep_research_agent.md` | deleted | `features/deep-research.md` |
 | `exa_research_testing_strategy.md` | deleted | `testing/exa-research.md` |
 | `speed_testing_framework.md` | deleted | `testing/speed.md` |
-| `../scripts/INSTALLATION_GUIDE.md` | deleted | `runbooks/tiingo-loader.md` |
-| `../scripts/README_TIINGO_LOADER.md` | deleted | `runbooks/tiingo-loader.md` |
+| `../scripts/INSTALLATION_GUIDE.md` | deleted | `runbooks/migrating-to-v1.md` |
+| `../scripts/README_TIINGO_LOADER.md` | deleted | `runbooks/migrating-to-v1.md` |
 | `../tests/README.md` | deleted | `testing/README.md` |
 | `../tests/integration/README.md` | deleted | `testing/integration.md` |
 | `../maverick_mcp/tests/README_INMEMORY_TESTS.md` | deleted | `testing/in-memory.md` |

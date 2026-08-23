@@ -144,8 +144,9 @@ See `docs/runbooks/mcp-clients.md` for concrete client configuration.
 
 ## Historical Context
 
-The `docs/superpowers/` folder, and everything under `docs/exec-plans/` and
-`docs/design-docs/`, contain historical planning and migration context from
-the v1.0 rebuild. They explain why the domains are
+The `docs/superpowers/` folder, and the completed plans under
+`docs/exec-plans/completed/`, contain historical planning and migration context
+from the v1.0 rebuild. The modernization design doc and the active plan stay
+`current` in `docs/CATALOG.md`. They explain why the domains are
 shaped the way they are, but the current source of truth starts at
 `docs/INDEX.md` and this file.

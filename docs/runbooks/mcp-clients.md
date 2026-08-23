@@ -50,7 +50,7 @@ portfolio and trade journal.
 
 | Client | STDIO | HTTP | Config location |
 | --- | --- | --- | --- |
-| Claude Desktop | Yes | Via `mcp-remote` or `.mcpb` | `claude_desktop_config.json` |
+| Claude Desktop | Yes (incl. `.mcpb`) | Via `mcp-remote` | `claude_desktop_config.json` |
 | Claude Code | Yes | Yes | `claude mcp add` |
 | VS Code (Copilot) | Yes | Yes | `.vscode/mcp.json` |
 | GitHub Copilot CLI | Yes | Yes | `~/.copilot/mcp-config.json` or `.mcp.json` |
@@ -114,7 +114,7 @@ Config locations:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 
-Fully quit and restart Claude Desktop after editing; the config is read only at
+Fully quit and restart Claude Desktop after editing; the config is read-only at
 startup.
 
 > [!WARNING]
@@ -297,8 +297,9 @@ codex mcp add maverick-mcp --url http://localhost:8003/mcp
 codex mcp add maverick-mcp -- uv run --directory /path/to/maverick-mcp python -m maverick.server --transport stdio
 ```
 
-Raise `startup_timeout_sec` past the 10s default if a cold `uvx` resolve times
-out on first launch.
+Raise `startup_timeout_sec` if a cold `uvx` resolve times out on first launch;
+the stock default is tight enough that a slow first resolve can look like a
+broken server.
 
 ## Antigravity CLI
 
