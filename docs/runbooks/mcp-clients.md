@@ -459,11 +459,17 @@ all of its arguments, unlike the `command` plus `args` split most clients use:
 the model's context, so enable only the servers you need.
 
 > [!NOTE]
-> The above is the schema for the current release (verified on 1.18.21, the
-> published `latest`). OpenCode's v2 documentation describes a different shape:
-> servers nest under `mcp.servers`, and `enabled` is replaced by `disabled`.
-> No 2.x is published yet, and 1.18.21 rejects the `mcp.servers` form with a
-> config validation error, so use the schema above until v2 ships.
+> **Version:** this section targets stable OpenCode 1.x, verified against
+> `1.18.21` (the published `latest`) on 2026-08-22 --
+> [stable MCP docs](https://opencode.ai/docs/mcp-servers).
+>
+> OpenCode 2.0 is in beta and its migration guide refers to it as `opencode2`
+> --- [v2 MCP docs](https://opencode.ai/v2/docs/mcp-servers),
+> [migration guide](https://opencode.ai/v2/docs/migrate-v1). The v2 schema
+> differs: servers nest under `mcp.servers`, and `enabled` is replaced by
+> `disabled`. Stable 1.18.21 rejects the `mcp.servers` form with a config
+> validation error, so use the schema above unless you are running the 2.0
+> beta.
 
 ## Any Other Client
 
