@@ -11,9 +11,11 @@
 
 **MaverickMCP** is a personal-use FastMCP server that provides financial data
 analysis, technical indicators, stock screening, and portfolio tracking tools
-directly to your Claude Desktop interface. Built for individual traders and
-investors, it runs entirely on your own machine with no authentication or
-billing complexity.
+to any MCP client -- Claude Desktop, Claude Code, Cursor, VS Code, Codex CLI,
+Antigravity CLI, OpenCode, and others. Built for individual traders and
+investors,
+it runs entirely on your own machine with no authentication or billing
+complexity.
 
 Core tools need no API key: market data comes from `yfinance`. Two optional
 extras add more: `[backtesting]` (VectorBT-powered strategy backtesting) and
@@ -36,8 +38,9 @@ Self-hosting instructions continue below.
 - **No Setup Complexity**: `make dev` gets the server running; no database
   migrations, no seed scripts, no API key required for core tools.
 - **Modern Python Tooling**: Built with `uv` for fast dependency management.
-- **Claude Desktop Integration**: Native MCP support via stdio or streamable
-  HTTP.
+- **Works With Any MCP Client**: Standard MCP server over STDIO or Streamable
+  HTTP -- no client-specific code. See
+  [Connect Your MCP Client](#connect-your-mcp-client).
 - **37 Core Tools**: Market data, technical analysis, screening, portfolio
   tracking with a risk dashboard, watchlists, and a trade journal.
 - **Optional Extras**: 12 backtesting tools and 3 research tools, each fully
@@ -62,7 +65,8 @@ Self-hosting instructions continue below.
 - **Research** (`[research]` extra): LangGraph-based deep research over
   companies, sectors, and market sentiment, backed by Exa web search and a
   bring-your-own LLM.
-- **Multi-Transport Support**: Streamable HTTP and STDIO.
+- **Multi-Transport Support**: STDIO and Streamable HTTP, so any MCP client
+  can connect.
 
 ## Quick Start
 
@@ -130,18 +134,62 @@ cp .env.example .env
 ### Start the Server
 
 ```bash
-# One command to start everything
-make dev
-
-# The server is now running with:
-# - Streamable HTTP endpoint: http://localhost:8003/mcp/
+make dev          # Streamable HTTP on http://localhost:8003/mcp
+make dev-stdio    # STDIO on this terminal
 ```
 
-### Connect to Claude Desktop
+Clients configured for STDIO launch the server themselves -- you do not need
+`make dev` running for those.
 
-**Recommended: STDIO connection**
+### Connect Your MCP Client
 
-Claude Desktop works best with direct STDIO for local use:
+MaverickMCP is a standard MCP server with no client-specific behavior. Any
+client that speaks the Model Context Protocol can use it: Claude Desktop,
+Claude Code, GitHub Copilot, Codex CLI, Cursor, OpenCode, Antigravity CLI, and
+others.
+
+Setup is one decision -- **which transport** -- followed by pasting the right
+config shape for your client.
+
+| | STDIO | Streamable HTTP |
+| --- | --- | --- |
+| Who starts the server | Your client, as a subprocess | You, via `make dev` |
+| Endpoint | n/a | `http://localhost:8003/mcp` |
+| Best for | A single local client | Several clients sharing one server, or remote access |
+| Config shape | `command` + `args` | `url` |
+
+STDIO is the default and the simplest path for one local client. Use
+Streamable HTTP when several clients should share a single server process.
+
+> [!IMPORTANT]
+> The HTTP endpoint has **no trailing slash**: `http://localhost:8003/mcp`.
+> `/mcp/` returns a `307` redirect, and clients that do not follow redirects on
+> `POST` will fail to register tools.
+
+| Client | STDIO | HTTP | Config location |
+| --- | --- | --- | --- |
+| Claude Desktop | Yes | Via `mcp-remote` or `.mcpb` | `claude_desktop_config.json` |
+| Claude Code | Yes | Yes | `claude mcp add` |
+| VS Code (Copilot) | Yes | Yes | `.vscode/mcp.json` |
+| GitHub Copilot CLI | Yes | Yes | `~/.copilot/mcp-config.json` |
+| Codex CLI | Yes | Yes | `~/.codex/config.toml` |
+| Cursor | Yes | Yes | `~/.cursor/mcp.json` |
+| OpenCode | Yes | Yes | `~/.config/opencode/opencode.json` |
+| Antigravity CLI | Yes | Yes | `~/.gemini/config/mcp_config.json` |
+| Zed, LM Studio, Goose, Cline, Continue | Yes | Varies | Client-specific |
+
+Clients not listed still work -- give them the STDIO command or the HTTP
+endpoint in whatever shape their config expects.
+
+> **Full reference**: [`docs/runbooks/mcp-clients.md`](docs/runbooks/mcp-clients.md)
+> covers every client below in more depth, plus the `.mcpb` bundle,
+> LAN binding, and per-client troubleshooting. The sections below are the
+> common cases.
+
+#### Claude Desktop
+
+`claude_desktop_config.json` launches local **STDIO** servers only. Using the
+published package via `uvx` (no checkout needed):
 
 ```json
 {
@@ -181,10 +229,28 @@ Running from a local source checkout instead:
 }
 ```
 
+**Config File Location:**
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+Always fully quit and restart Claude Desktop after making configuration changes.
+
+> [!WARNING]
+> Do **not** paste `http://localhost:8003/mcp` into Claude Desktop's "custom
+> connector" dialog. Custom connectors are brokered from Anthropic's cloud
+> rather than from your machine, so they cannot reach your localhost. For
+> Claude Desktop, local means STDIO or a `.mcpb` bundle (`make bundle`).
+
+Claude Desktop's config file cannot express an HTTP server directly. To use the
+HTTP transport there, bridge it with `mcp-remote`
+([config](docs/runbooks/mcp-clients.md#streamable-http-via-mcp-remote)). It is
+the main client that still needs that bridge -- every client below speaks
+Streamable HTTP natively, so do not wrap them in `mcp-remote`.
+
 > [!WARNING]
 > **Windows Claude Desktop Users**
-> Claude Desktop on Windows currently has a bug where it ignores the `"cwd"` configuration parameter, which can cause the server to crash with a `ModuleNotFoundError` when running via `uv`. 
-> 
+> Claude Desktop on Windows currently has a bug where it ignores the `"cwd"` configuration parameter, which can cause the server to crash with a `ModuleNotFoundError` when running via `uv`.
+>
 > To bypass this, wrap the command in `cmd.exe` to force the directory change:
 > ```json
 > "maverick-mcp": {
@@ -196,96 +262,135 @@ Running from a local source checkout instead:
 > }
 > ```
 
-**Config File Location:**
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-
-Always restart Claude Desktop after making configuration changes.
-
-**Alternative: Streamable HTTP with `mcp-remote`**
-
-Start the server:
+#### Claude Code
 
 ```bash
-make dev
+# Streamable HTTP, against a running `make dev`
+claude mcp add --transport http maverick-mcp http://localhost:8003/mcp
+
+# STDIO. The `--` separator is required: without it, `claude mcp add`
+# consumes `--transport stdio` as its own flag.
+claude mcp add maverick-mcp -- \
+  uv run --directory /path/to/maverick-mcp python -m maverick.server --transport stdio
 ```
 
-Then configure a bridge:
+Add `--scope user` to register the server outside the current project. Verify
+with `claude mcp list`.
+
+#### Cursor
+
+**Config Location**: `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project)
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
+      "url": "http://localhost:8003/mcp"
     }
   }
 }
 ```
 
-That's it! MaverickMCP tools will now be available in your Claude Desktop interface.
+#### VS Code (GitHub Copilot)
 
-#### Cursor IDE
+**Config Location**: `.vscode/mcp.json`. The key is `servers`, not
+`mcpServers`, and `type` is required.
 
-**Streamable HTTP bridge**:
+```json
+{
+  "servers": {
+    "maverick-mcp": {
+      "type": "http",
+      "url": "http://localhost:8003/mcp"
+    }
+  }
+}
+```
+
+#### GitHub Copilot CLI
+
+**Config Location**: `~/.copilot/mcp-config.json` (user) or `.mcp.json` in the
+repository. `tools` filters which tools Copilot exposes; `"*"` is the default.
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
+      "type": "http",
+      "url": "http://localhost:8003/mcp",
+      "tools": ["*"]
     }
   }
 }
 ```
 
-**Config Location**: Cursor → Settings → MCP Servers
+Or: `copilot mcp add --transport http maverick-mcp http://localhost:8003/mcp`
 
-#### Claude Code CLI
+#### Codex CLI
 
-**HTTP transport**:
+**Config Location**: `~/.codex/config.toml` (global) or `.codex/config.toml`
+(trusted projects). Shared by the ChatGPT desktop app, Codex CLI, and the IDE
+extension.
 
-```bash
-claude mcp add --transport http maverick-mcp http://localhost:8003/mcp/
+```toml
+[mcp_servers.maverick-mcp]
+url = "http://localhost:8003/mcp"
 ```
 
-**STDIO transport**:
+Or: `codex mcp add maverick-mcp --url http://localhost:8003/mcp`
 
-```bash
-claude mcp add maverick-mcp uv run python -m maverick.server --transport stdio
+#### OpenCode
+
+**Config Location**: `~/.config/opencode/opencode.json` (global) or
+`opencode.json` in the project root. Servers live under `mcp`, and each entry
+declares `type` as `remote` or `local`.
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "maverick-mcp": {
+      "type": "remote",
+      "url": "http://localhost:8003/mcp",
+      "enabled": true
+    }
+  }
+}
 ```
 
-#### Windsurf IDE
+#### Antigravity CLI
 
-**Streamable HTTP bridge**:
+Google's replacement for Gemini CLI, which stopped serving individual accounts
+on 2026-06-18.
+
+**Config Location**: `~/.gemini/config/mcp_config.json` (global) or
+`.agents/mcp_config.json` (workspace). Remote servers use `serverUrl` -- the
+legacy Gemini CLI keys `url` and `httpUrl` are not used.
 
 ```json
 {
   "mcpServers": {
     "maverick-mcp": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote", "http://localhost:8003/mcp/"]
+      "serverUrl": "http://localhost:8003/mcp"
     }
   }
 }
 ```
 
-**Config Location**: Windsurf → Settings → Advanced Settings → MCP Servers
+Or: `agy mcp add maverick-mcp http://localhost:8003/mcp`
 
-#### Why mcp-remote is Needed
+#### Any Other Client
 
-The `mcp-remote` tool bridges clients that launch local STDIO commands to a
-server that is already running over HTTP:
-
-- **Without mcp-remote**: Client tries STDIO → Server expects HTTP → Connection fails
-- **With mcp-remote**: Client uses STDIO → mcp-remote converts to HTTP → Server receives HTTP → Success
+Nothing client-specific is required: supply either the STDIO command or the
+HTTP endpoint above. See
+[`docs/runbooks/mcp-clients.md`](docs/runbooks/mcp-clients.md#any-other-client)
+for the exact `command`/`args` values to paste.
 
 ## Tools
 
 MaverickMCP registers **37 core tools** with a base install. Two optional
 extras add more. Every tool is read-only (`readOnlyHint: true`) unless noted
-otherwise. Full behavior detail lives in `docs/ARCHITECTURE.md`,
+otherwise. Full behavior detail lives in `ARCHITECTURE.md`,
 `docs/features/portfolio.md`, `docs/features/deep-research.md`, and
 `docs/api/backtesting.md`.
 
@@ -489,7 +594,7 @@ make test-watch         # Auto-run tests on file changes
 
 make lint         # ruff check + lint-imports
 make format       # ruff format + ruff check --fix
-make typecheck     # pyright
+make typecheck     # ty (Astral), same gate as CI
 make check          # lint + typecheck
 make docs-check      # validate the documentation catalog
 ```
@@ -502,7 +607,7 @@ uv run pytest -m ""           # All tests (requires PostgreSQL/Redis for some)
 
 uv run ruff check .    # Linting
 uv run ruff format .   # Formatting
-uv run ty check .      # Type checking (Astral's ty)
+uv run ty check maverick   # Type checking (Astral's ty); same scope as CI
 ```
 
 ## Docker (Optional)
@@ -531,10 +636,14 @@ endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
 
 ### Common Issues
 
-**Tools Disappearing in Claude Desktop:**
-- **Solution**: Ensure the streamable HTTP endpoint has a trailing slash: `http://localhost:8003/mcp/`
-- The 307 redirect from `/mcp` to `/mcp/` causes tool registration to fail
-- Always use the exact configuration with trailing slash shown above
+**Tools missing or disappearing in your client:**
+- **Solution**: Use the streamable HTTP endpoint with **no** trailing slash:
+  `http://localhost:8003/mcp`
+- `/mcp/` returns a `307` redirect to `/mcp`; clients that do not follow
+  redirects on `POST` fail to register tools
+- Also confirm the transport matches: a client configured for STDIO against a
+  running HTTP server (or the reverse) fails silently in most clients
+- Per-client troubleshooting: `docs/runbooks/mcp-clients.md`
 
 **Research Tool Timeouts:**
 - Research tools have adaptive timeouts (120s-600s) based on requested depth

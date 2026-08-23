@@ -142,7 +142,7 @@ for the full rationale on each):
 1. Reinstall: `pip install "maverick-mcp-server[backtesting,research]"` (or
    `uvx --from maverick-mcp-server maverick-mcp`).
 2. Update your MCP client config to the new run command (see
-   [`claude-desktop.md`](claude-desktop.md)).
+   [`mcp-clients.md`](mcp-clients.md)).
 3. Rewrite your `.env` against the current `.env.example`: drop dead vars,
    add `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL` if you use research tools.
 4. Point `DATABASE_URL` at your existing database if you want to keep

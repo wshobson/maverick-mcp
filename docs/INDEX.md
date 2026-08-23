@@ -3,14 +3,19 @@
 This directory is the repository knowledge base. Keep root agent files short and
 use this index as the map to deeper, versioned sources of truth.
 
+Each entry says **when** to read it, so you can load only what the task needs
+rather than the whole knowledge base up front.
+
 ## Start Here
 
 - `../AGENTS.md` - agent entry point: structure, commands, conventions, and
   safety notes.
 - `CATALOG.md` - documentation inventory with current, historical, archived, and
   deleted status.
-- `ARCHITECTURE.md` - package layout, service boundaries, and data flow.
-- `runbooks/claude-desktop.md` - Claude Desktop and MCP transport setup.
+- `../ARCHITECTURE.md` - package layout, service boundaries, and data flow.
+  Read before changing domain layering or adding a package.
+- `runbooks/mcp-clients.md` - transports and per-client MCP setup. Read when
+  connecting any client, changing transports, or debugging tool registration.
 - `testing/README.md` - test commands, markers, and focused-suite guidance.
 
 ## Current Product And Technical Docs
@@ -71,11 +76,10 @@ use this index as the map to deeper, versioned sources of truth.
 
 ## Historical Or Tool-Owned Context
 
-- `../conductor/` - historical Conductor planning and workflow context.
 - `superpowers/` - historical Superpowers specs and plans.
 
-These folders are cataloged but are not the current product documentation
-unless a current doc links to a specific artifact.
+This folder is cataloged but is not the current product documentation unless a
+current doc links to a specific artifact.
 
 ## Hygiene Rules
 

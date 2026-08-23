@@ -33,6 +33,5 @@
   "css.lint.unknownAtRules": "ignore",
   "css.lint.unknownProperties": "ignore",
   "yaml.customTags": ["!reference sequence", "!Ref", "!Sub", "!secret"],
-  "yaml.validate": false,
-  "cursorpyright.analysis.autoImportCompletions": true
+  "yaml.validate": false
 }

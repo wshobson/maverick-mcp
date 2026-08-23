@@ -8,7 +8,7 @@ MaverickMCP is a local FastMCP server. The entire system lives in the
 ## Runtime Shape
 
 ```text
-MCP clients (Claude Desktop, Claude Code, mcp-remote bridges, ...)
+MCP clients (Claude Desktop, Claude Code, Cursor, VS Code, Codex, ...)
   -> maverick.server (FastMCP assembly, stdio/http transports)
   -> per-domain tools -> services -> data/providers
   -> maverick.platform (db, cache, http, telemetry, llm)
@@ -135,17 +135,17 @@ returned to the client labeled as data, never blended into instructions.
 
 - STDIO is the default and the preferred Claude Desktop path
   (`maverick-mcp --transport stdio` / `python -m maverick.server`).
-- Streamable HTTP at `http://localhost:8003/mcp/` is the `make dev`
+- Streamable HTTP at `http://localhost:8003/mcp` is the `make dev`
   transport for bridge (`mcp-remote`) and remote workflows.
 - SSE does not exist in the new server; it was deleted at the v1.0.0
   cutover along with its monkey-patches.
 
-See `runbooks/claude-desktop.md` for concrete client configuration.
+See `docs/runbooks/mcp-clients.md` for concrete client configuration.
 
 ## Historical Context
 
-The `conductor/` and `docs/superpowers/` folders, and everything under
-`docs/exec-plans/` and `docs/design-docs/`, contain historical planning and
-migration context from the v1.0 rebuild. They explain why the domains are
+The `docs/superpowers/` folder, and everything under `docs/exec-plans/` and
+`docs/design-docs/`, contain historical planning and migration context from
+the v1.0 rebuild. They explain why the domains are
 shaped the way they are, but the current source of truth starts at
 `docs/INDEX.md` and this file.

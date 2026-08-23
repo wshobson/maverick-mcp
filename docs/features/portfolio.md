@@ -35,7 +35,7 @@ The risk dashboard (`portfolio_get_risk_dashboard`,
 `portfolio_check_position_risk`, `portfolio_get_regime_adjusted_sizing`,
 `portfolio_get_risk_alerts`), watchlist (`portfolio_watchlist_*`), and trade
 journal (`portfolio_journal_*`, `portfolio_get_strategy_performance`) tools
-also live in this domain; see `docs/ARCHITECTURE.md` for the full tool
+also live in this domain; see `ARCHITECTURE.md` for the full tool
 count.
 
 ## Cost Basis Method

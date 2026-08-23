@@ -18,8 +18,8 @@ CATALOG_PATH = REPO_ROOT / "docs" / "CATALOG.md"
 
 ROOT_DOCS = {
     "AGENTS.md",
+    "ARCHITECTURE.md",
     "CLAUDE.md",
-    "GEMINI.md",
     "README.md",
     "CONTRIBUTING.md",
     "SECURITY.md",
@@ -28,10 +28,9 @@ ROOT_DOCS = {
 
 NON_DOC_TEXT: set[str] = set()
 
+# CLAUDE.md is a symlink to AGENTS.md, so it is covered by the AGENTS.md limit.
 CONCISE_LIMITS = {
     "AGENTS.md": 220,
-    "CLAUDE.md": 120,
-    "GEMINI.md": 80,
 }
 
 LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
@@ -80,7 +79,6 @@ def is_allowlisted(path: Path) -> bool:
         path_str in ROOT_DOCS
         or path_str in NON_DOC_TEXT
         or path_str.startswith(".github/")
-        or path_str.startswith("conductor/")
         or path_str.startswith("docs/superpowers/")
     )
 

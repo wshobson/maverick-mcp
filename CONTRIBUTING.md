@@ -89,7 +89,7 @@ package was deleted at the v1.0 cutover; see `docs/runbooks/migrating-to-v1.md`
 if you're carrying config forward from a pre-v1.0 install). Each domain follows
 the same forward-only layer order: `types.py` -> `config.py` -> `data.py`
 (when the domain owns tables) -> `service.py` -> `tools.py`. See
-`docs/ARCHITECTURE.md` for the full layering rules.
+`ARCHITECTURE.md` for the full layering rules.
 
 ```text
 maverick/
@@ -130,7 +130,7 @@ We enforce strict code quality standards:
 ### Tools
 
 - **ruff** for linting and formatting
-- **pyright** for type checking
+- **ty** (Astral) for type checking
 - **pytest** for testing
 
 ### Guidelines
@@ -309,7 +309,7 @@ def calculate_risk_metric(data: pd.DataFrame) -> float:
 - **Discussions** - Use GitHub Discussions for questions
 - **Issues** - Create issues for bugs or feature requests
 - **Code Review** - Participate in PR reviews to learn
-- **Documentation** - Check existing docs and CLAUDE.md for project context
+- **Documentation** - Check existing docs and AGENTS.md for project context
 
 ## Contributing to Open Source
 

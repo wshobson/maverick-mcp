@@ -11,7 +11,7 @@ One line per item. Remove the line in the same change that removes the debt.
 | Default pytest filter deselects 664 tests; review the marker policy | `pyproject.toml` | cutover |
 | MCP Apps chart rendering | new server | deferred |
 | Tasks extension for long-running backtests | new server | deferred |
-| Two typecheckers disagree: CI gates on ty, make check runs pyright; retire one or document ty as the gate | `Makefile`, `.github/workflows/ci.yml` | maintainer decision |
+| `ty check` clean over `maverick/` but ~147 diagnostics under `tests/`; tests are outside the gate | `tests/` | deferred |
 | Macro (FRED) port deferred; zero live consumers today; no macro domain exists yet | not ported | macro port |
 | Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |
 | Capital Companion tier uses `request_with_retry` without breaker and creates a client per call; align with `request_resilient` at server assembly | `maverick/market_data/fetchers.py` | cutover |

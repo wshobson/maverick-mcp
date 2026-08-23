@@ -25,8 +25,8 @@ def _load_env_file() -> None:
 
     The search is anchored at the current working directory because that is
     what both documented launch paths use: `make dev` runs from the project
-    root, and the Claude Desktop config in CLAUDE.md sets `"cwd"` to the
-    checkout. Anchoring on this file instead would miss the `.env` whenever the
+    root, and the STDIO client configs in `docs/runbooks/mcp-clients.md` set
+    `"cwd"` to the checkout. Anchoring on this file instead would miss the `.env` whenever the
     package is installed outside the project tree.
 
     Real environment variables win: `load_dotenv` does not override values that

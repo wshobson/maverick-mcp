@@ -63,7 +63,7 @@ pre-seeded universe:
 
 ## Claude Desktop After Setup
 
-Prefer STDIO for Claude Desktop. See `claude-desktop.md`.
+Prefer STDIO for a single local client. See `mcp-clients.md`.
 
 For HTTP bridge testing:
 

@@ -1,11 +1,16 @@
 # Repository Guidelines
 
+This is the canonical agent entry point for every assistant. `CLAUDE.md` is a
+symlink to this file; there is no separate Claude- or Gemini-specific guidance.
+Keep this file a table of contents, not an encyclopedia -- durable detail lives
+in `docs/`, mapped by `docs/INDEX.md`.
+
 ## Project Overview
 
 MaverickMCP is a personal-use FastMCP server for local financial analysis in
-Claude Desktop and other MCP clients. It provides stock data, technical
-analysis, screening, portfolio tracking, backtesting, research, watchlists,
-a trade journal, and a risk dashboard.
+any MCP client. It provides stock data, technical analysis, screening,
+portfolio tracking, backtesting, research, watchlists, a trade journal, and a
+risk dashboard.
 
 This project is for educational and informational use only. It is not financial
 advice, tax advice, or a trading system.
@@ -30,7 +35,6 @@ config or a database forward from a pre-v1.0 install, read
 - `tests/`: primary pytest suite, mirroring the domain tree plus
   `tests/structure` (layering/naming checks) and `tests/server`.
 - `scripts/`: local utility scripts (currently just indicator fixtures).
-- `conductor/`: historical/tool-owned Conductor planning context.
 - `docs/`: canonical project documentation and catalog.
 
 ## Documentation Map
@@ -40,8 +44,8 @@ Durable detail belongs in `docs/`.
 
 - `docs/INDEX.md`: start here for the documentation structure.
 - `docs/CATALOG.md`: status of current, historical, archived, and deleted docs.
-- `docs/ARCHITECTURE.md`: package layout, service boundaries, and data flow.
-- `docs/runbooks/claude-desktop.md`: Claude Desktop and MCP transport setup.
+- `ARCHITECTURE.md`: package layout, service boundaries, and data flow.
+- `docs/runbooks/mcp-clients.md`: transports and per-client MCP setup.
 - `docs/runbooks/database-setup.md`: SQLite/PostgreSQL setup.
 - `docs/runbooks/migrating-to-v1.md`: config/database migration from pre-v1.0.
 - `docs/features/portfolio.md`: portfolio persistence and cost-basis behavior.
@@ -59,7 +63,7 @@ uv sync --extra dev                        # core + dev tooling
 uv sync --extra dev --extra backtesting --extra research  # full tool surface
 
 make dev          # Streamable HTTP server on port 8003
-make dev-stdio    # STDIO transport for Claude Desktop
+make dev-stdio    # STDIO transport (any local MCP client)
 make stop
 
 make test         # Unit tests only by default
@@ -86,12 +90,16 @@ excludes `integration`, `slow`, and `external` tests.
 
 ## MCP Transport Defaults
 
-- Claude Desktop: prefer direct STDIO via `make dev-stdio` or the `uv run`
-  command in `docs/runbooks/claude-desktop.md`.
-- Streamable HTTP: default local server transport for bridge/remote workflows
-  at `http://localhost:8003/mcp/`.
+- STDIO: the default (`--transport stdio`), and the right choice for a single
+  local client. Start with `make dev-stdio`.
+- Streamable HTTP: `make dev` serves `http://localhost:8003/mcp`. The endpoint
+  has **no trailing slash** -- `/mcp/` returns a 307 redirect that breaks
+  clients which do not follow redirects on `POST`.
+- The HTTP transport binds `127.0.0.1`; `--host 0.0.0.0` is required for LAN
+  access and exposes an unauthenticated tool surface.
 - SSE does not exist in this server; do not add it back without an explicit
   design decision.
+- Per-client config belongs in `docs/runbooks/mcp-clients.md`, not here.
 
 ## Testing Guidelines
 
@@ -112,3 +120,8 @@ excludes `integration`, `slow`, and `external` tests.
   `backtesting_parse_strategy`). See `.env.example` for the full list.
 - Keep authentication/billing complexity out of the local personal-use path
   unless a future plan explicitly changes that scope.
+- Do not reintroduce auth, billing, or hosted SaaS scope without an explicit
+  plan.
+- Do not use `.claude/` files as the repository source of truth.
+- Keep documentation changes cataloged in `docs/CATALOG.md`; run
+  `make docs-check` after adding, moving, or deleting docs.

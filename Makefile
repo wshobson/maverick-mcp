@@ -95,9 +95,13 @@ format:
 	@uv run --extra dev ruff format .
 	@uv run --extra dev ruff check . --fix
 
+# ty resolves imports on every code path, so the optional-extra domains
+# (maverick/backtesting, maverick/research) need their packages present even
+# though they lazy-import at runtime. Same checker, scope, and extras as the
+# CI typecheck job.
 typecheck:
 	@echo "Running type checker..."
-	@uv run --extra dev pyright
+	@uv run --extra dev --extra backtesting --extra research ty check maverick
 
 docs-check:
 	@echo "Checking documentation catalog..."
