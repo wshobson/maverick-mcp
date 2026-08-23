@@ -458,6 +458,13 @@ all of its arguments, unlike the `command` plus `args` split most clients use:
 `opencode mcp list` shows connection status. OpenCode counts MCP tools against
 the model's context, so enable only the servers you need.
 
+> [!NOTE]
+> The above is the schema for the current release (verified on 1.18.21, the
+> published `latest`). OpenCode's v2 documentation describes a different shape:
+> servers nest under `mcp.servers`, and `enabled` is replaced by `disabled`.
+> No 2.x is published yet, and 1.18.21 rejects the `mcp.servers` form with a
+> config validation error, so use the schema above until v2 ships.
+
 ## Any Other Client
 
 There is nothing client-specific to configure. Supply one of:
