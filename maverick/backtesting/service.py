@@ -355,9 +355,10 @@ class BacktestingService(_ExtendedBacktestingMixin):
 
             total_return = sum(r.metrics.total_return for r in results) / len(results)
             average_sharpe = sum(r.metrics.sharpe_ratio for r in results) / len(results)
-            # `BacktestMetrics.max_drawdown` is signed (0 or negative); the worst constituent
-            # drawdown is the most negative value, i.e. `min()`, not `max()`. `max()` selected
-            # the mildest constituent instead of the worst, understating portfolio-level risk.
+            # `BacktestMetrics.max_drawdown` is signed (0 or negative); the worst
+            # constituent drawdown is the most negative value, i.e. `min()`, not
+            # `max()`. `max()` selected the mildest constituent instead of the
+            # worst, understating portfolio-level risk.
             max_drawdown = min(r.metrics.max_drawdown for r in results)
             total_trades = sum(r.metrics.total_trades for r in results)
 

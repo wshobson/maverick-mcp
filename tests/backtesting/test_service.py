@@ -263,8 +263,9 @@ async def test_backtest_portfolio_raises_when_every_symbol_fails():
 
 
 def _canned_backtest_result(symbol: str, max_drawdown: float) -> BacktestResult:
-    """Minimal `BacktestResult` with a controlled `metrics.max_drawdown`, for aggregation
-    tests that don't need a real vectorbt-driven backtest to produce a specific drawdown."""
+    """Minimal `BacktestResult` with a controlled `metrics.max_drawdown`, for
+    aggregation tests that don't need a real vectorbt-driven backtest to
+    produce a specific drawdown."""
     return BacktestResult(
         symbol=symbol,
         strategy="sma_cross",
@@ -303,8 +304,9 @@ def _canned_backtest_result(symbol: str, max_drawdown: float) -> BacktestResult:
 def _stub_per_symbol_drawdowns(
     service: BacktestingService, drawdowns: dict[str, float]
 ) -> None:
-    """Monkeypatch `_run_single_backtest` to return a canned result per symbol, isolating
-    `backtest_portfolio`'s aggregation from vectorbt/signal-generation entirely."""
+    """Monkeypatch `_run_single_backtest` to return a canned result per symbol,
+    isolating `backtest_portfolio`'s aggregation from vectorbt/signal-generation
+    entirely."""
 
     async def _fake(symbol, strategy, start, end, *, initial_capital, parameters=None):
         return _canned_backtest_result(symbol, drawdowns[symbol])
@@ -313,9 +315,9 @@ def _stub_per_symbol_drawdowns(
 
 
 async def test_backtest_portfolio_max_drawdown_selects_worst_not_mildest():
-    """Regression test for the `max()`-on-signed-values bug: a portfolio containing a mild
-    -12.4% drawdown and a severe -21.3% drawdown must report the severe one, not the mild
-    one."""
+    """Regression test for the `max()`-on-signed-values bug: a portfolio
+    containing a mild -12.4% drawdown and a severe -21.3% drawdown must report
+    the severe one, not the mild one."""
     service = _service(StubMarketData(pd.DataFrame()))
     _stub_per_symbol_drawdowns(service, {"AAPL": -0.124, "MSFT": -0.213})
 

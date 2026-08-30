@@ -296,10 +296,11 @@ class StrategyCatalog(BaseModel):
 
 
 class PortfolioBacktestMetrics(BaseModel):
-    """Aggregated across each symbol's independent single-symbol backtest -- not a joint
-    portfolio-equity simulation (no combined equity curve, no correlation between symbols).
-    `total_return`/`average_sharpe` are plain per-symbol averages; `max_drawdown` is the worst
-    (most negative) constituent drawdown, matching `BacktestMetrics.max_drawdown`'s sign
+    """Aggregated across each symbol's independent single-symbol backtest -- not
+    a joint portfolio-equity simulation (no combined equity curve, no
+    correlation between symbols). `total_return`/`average_sharpe` are plain
+    per-symbol averages; `max_drawdown` is the worst (most negative)
+    constituent drawdown, matching `BacktestMetrics.max_drawdown`'s sign
     convention (0 or negative, more negative is worse)."""
 
     symbols_tested: int
