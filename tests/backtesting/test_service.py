@@ -526,6 +526,28 @@ async def test_template_strategy_rejects_unknown_strategy_type():
         TemplateStrategy("bogus")
 
 
+async def test_template_strategy_to_dict_exposes_real_template_defaults():
+    """Regression test: `Strategy.to_dict()` calls `get_default_parameters()`, which the base
+    class defaults to `{}`. Without overriding it, `TemplateStrategy.to_dict()` would report
+    an empty `default_parameters` even though the selected template's real defaults are known
+    via `self.strategy_type`."""
+    from maverick.backtesting.service_support import TemplateStrategy
+
+    rsi_defaults = TemplateStrategy("rsi").to_dict()["default_parameters"]
+    assert rsi_defaults == {"period": 14, "oversold": 30, "overbought": 70}
+
+    # Overriding parameters at construction must not change the template's own defaults.
+    overridden = TemplateStrategy(
+        "rsi", {"period": 21, "oversold": 25, "overbought": 75}
+    )
+    assert overridden.to_dict()["default_parameters"] == rsi_defaults
+    assert overridden.to_dict()["parameters"] == {
+        "period": 21,
+        "oversold": 25,
+        "overbought": 75,
+    }
+
+
 # ---------------------------------------------------------------------------
 # timeout
 # ---------------------------------------------------------------------------

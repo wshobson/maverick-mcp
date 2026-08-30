@@ -79,6 +79,13 @@ class TemplateStrategy(Strategy):
     def description(self) -> str:
         return str(templates.STRATEGY_TEMPLATES[self.strategy_type]["description"])
 
+    def get_default_parameters(self) -> dict[str, Any]:
+        """The selected template's own default parameters -- distinct from `self.parameters`,
+        which may hold caller-supplied overrides. `Strategy.to_dict()` calls this method, so
+        without this override it would report an empty `default_parameters` regardless of
+        which template was selected."""
+        return dict(templates.STRATEGY_TEMPLATES[self.strategy_type]["parameters"])
+
     def generate_signals(self, data: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
         return signal_dispatch.generate_signals(
             data, self.strategy_type, self.parameters
