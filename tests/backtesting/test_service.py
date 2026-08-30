@@ -439,10 +439,11 @@ async def test_analyze_market_regimes_rejects_insufficient_data():
 
 
 async def test_analyze_market_regimes_reports_actual_fallback_method():
-    """Regression test: with enough data to pass the tool's own minimum-data guard but not
-    enough to clear `MarketRegimeDetector`'s internal fit-sample threshold, the detector
-    silently falls back to the rule-based "threshold" method. The reported `method` field must
-    reflect that actual fallback, not the originally-requested "hmm"/"kmeans" -- previously it
+    """Regression test: with enough data to pass the tool's own minimum-data
+    guard but not enough to clear `MarketRegimeDetector`'s internal
+    fit-sample threshold, the detector silently falls back to the rule-based
+    "threshold" method. The reported `method` field must reflect that actual
+    fallback, not the originally-requested "hmm"/"kmeans" -- previously it
     always echoed the request, misrepresenting what was actually used."""
     service = _service(StubMarketData(_make_ohlcv(150)))
 
@@ -451,11 +452,14 @@ async def test_analyze_market_regimes_reports_actual_fallback_method():
     )
 
     assert result.method == "threshold"
-    # Every probability entry must be an honest one-hot (sums to 1, one entry is 1.0), never
-    # the previous fabricated uniform [1/3, 1/3, 1/3].
+    # Every probability entry must be the exact one-hot vector at its own
+    # `regime` -- never the previous fabricated uniform [1/3, 1/3, 1/3], and
+    # not merely "sums to 1 with a max of 1" (which a non-one-hot vector
+    # could also satisfy).
     for entry in result.recent_regime_history:
-        assert sum(entry.probabilities) == pytest.approx(1.0)
-        assert max(entry.probabilities) == pytest.approx(1.0)
+        expected = [0.0, 0.0, 0.0]
+        expected[entry.regime] = 1.0
+        assert entry.probabilities == expected
 
 
 # ---------------------------------------------------------------------------

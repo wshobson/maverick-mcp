@@ -356,8 +356,9 @@ class MLTrainingResult(BaseModel):
 class RegimeHistoryEntry(BaseModel):
     date: str
     regime: int
-    # The fitted model's real posterior probability per regime when one exists; otherwise an
-    # honest one-hot vector at `regime` (never a fabricated uniform distribution -- see
+    # The fitted model's real posterior probability per regime when one
+    # exists; otherwise an honest one-hot vector at `regime` (never a
+    # fabricated uniform distribution -- see
     # `MarketRegimeDetector.get_regime_probabilities`). Sums to ~1 either way.
     probabilities: list[float]
 
@@ -367,10 +368,12 @@ class MarketRegimeAnalysis(BaseModel):
 
     symbol: str
     analysis_period: str
-    # The method actually used, which can differ from what was requested: `fit_regimes` falls
-    # back to `"threshold"` when there isn't enough history to fit a genuine statistical model.
-    # `"hmm"` fits `sklearn.mixture.GaussianMixture` -- not a real Hidden Markov Model; the name
-    # is kept for backward compatibility (see `MarketRegimeDetector`'s docstring).
+    # The method actually used, which can differ from what was requested:
+    # `fit_regimes` falls back to `"threshold"` when there isn't enough
+    # history to fit a genuine statistical model. `"hmm"` fits
+    # `sklearn.mixture.GaussianMixture` -- not a real Hidden Markov Model;
+    # the name is kept for backward compatibility (see
+    # `MarketRegimeDetector`'s docstring).
     method: str
     n_regimes: int
     regime_names: dict[int, str]

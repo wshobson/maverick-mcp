@@ -383,10 +383,12 @@ class _ExtendedBacktestingMixin:
             return MarketRegimeAnalysis(
                 symbol=symbol,
                 analysis_period=f"{start} to {end}",
-                # `detector.method`, not the requested `method`: `fit_regimes` silently
-                # switches to "threshold" when there isn't enough data to fit a genuine
-                # statistical model (see `MarketRegimeDetector.fit_regimes`) -- reporting the
-                # originally-requested value here would misrepresent what was actually used.
+                # `detector.method`, not the requested `method`: `fit_regimes`
+                # silently switches to "threshold" when there isn't enough
+                # data to fit a genuine statistical model (see
+                # `MarketRegimeDetector.fit_regimes`) -- reporting the
+                # originally-requested value here would misrepresent what was
+                # actually used.
                 method=detector.method,
                 n_regimes=n_regimes,
                 # Hardcoded regardless of n_regimes -- a legacy quirk, preserved verbatim.

@@ -37,13 +37,14 @@ logger = logging.getLogger(__name__)
 class MarketRegimeDetector:
     """Detect market regimes using various statistical methods.
 
-    Despite its name, `method="hmm"` does not implement a Hidden Markov Model -- there is no
-    transition matrix or temporal state-sequence modeling anywhere in this class. It fits an
-    `sklearn.mixture.GaussianMixture` (static clustering over a rolling window of regime
-    features) and reuses the "hmm" label for backward compatibility with existing callers/tool
-    schemas. `method="kmeans"` is genuine k-means clustering; `method="threshold"` is a
-    zero-model rule-based classifier on trend slope and volatility (see
-    `detect_regime_threshold`)."""
+    Despite its name, `method="hmm"` does not implement a Hidden Markov Model
+    -- there is no transition matrix or temporal state-sequence modeling
+    anywhere in this class. It fits an `sklearn.mixture.GaussianMixture`
+    (static clustering over a rolling window of regime features) and reuses
+    the "hmm" label for backward compatibility with existing callers/tool
+    schemas. `method="kmeans"` is genuine k-means clustering;
+    `method="threshold"` is a zero-model rule-based classifier on trend slope
+    and volatility (see `detect_regime_threshold`)."""
 
     def __init__(
         self,
@@ -55,10 +56,11 @@ class MarketRegimeDetector:
         """Initialize regime detector.
 
         Args:
-            method: Detection method. `'hmm'` -- misnomer kept for backward compatibility;
-                actually fits `sklearn.mixture.GaussianMixture`, not a real Hidden Markov Model
-                (see class docstring). `'kmeans'` -- genuine k-means clustering. `'threshold'`
-                -- rule-based trend/volatility classifier, no fitted model.
+            method: Detection method. `'hmm'` -- misnomer kept for backward
+                compatibility; actually fits `sklearn.mixture.GaussianMixture`,
+                not a real Hidden Markov Model (see class docstring).
+                `'kmeans'` -- genuine k-means clustering. `'threshold'` --
+                rule-based trend/volatility classifier, no fitted model.
             n_regimes: Number of market regimes to detect
             lookback_period: Period for regime detection
             random_state: Optional seed. `None` (default) preserves legacy
@@ -159,17 +161,21 @@ class MarketRegimeDetector:
             return 1  # Sideways/uncertain market
 
     def _fall_back_to_threshold_method(self, reason: str) -> None:
-        """Switch to the rule-based threshold method, matching the already-established
-        convention for an explicit `method="threshold"` request or a `model.fit()` exception
-        (`self.method = "threshold"; self.is_fitted = True`). Every "can't fit a genuine
-        statistical model" branch in `fit_regimes` now converges on this one state, instead of
-        some branches claiming `is_fitted = True` while leaving `self.method` unchanged and
-        `self.scaler`/`self.model` never actually fit -- which previously let
-        `get_regime_probabilities` reach an unfitted `StandardScaler`, raise `NotFittedError`,
-        and silently fabricate a uniform distribution, while `detect_current_regime`
-        independently and separately fell back to the same threshold method through its own,
-        differently-triggered exception handling. `detector.method` (surfaced by
-        `analyze_market_regimes`) now honestly reports "threshold" in every such case."""
+        """Switch to the rule-based threshold method, matching the
+        already-established convention for an explicit `method="threshold"`
+        request or a `model.fit()` exception (`self.method = "threshold";
+        self.is_fitted = True`). Every "can't fit a genuine statistical
+        model" branch in `fit_regimes` now converges on this one state,
+        instead of some branches claiming `is_fitted = True` while leaving
+        `self.method` unchanged and `self.scaler`/`self.model` never
+        actually fit -- which previously let `get_regime_probabilities`
+        reach an unfitted `StandardScaler`, raise `NotFittedError`, and
+        silently fabricate a uniform distribution, while
+        `detect_current_regime` independently and separately fell back to
+        the same threshold method through its own, differently-triggered
+        exception handling. `detector.method` (surfaced by
+        `analyze_market_regimes`) now honestly reports "threshold" in every
+        such case."""
         logger.warning(f"Falling back to threshold regime method: {reason}")
         self.method = "threshold"
         self.is_fitted = True
@@ -379,13 +385,20 @@ class MarketRegimeDetector:
             return self.detect_regime_threshold(data)  # Always fallback to threshold
 
     def _one_hot_via_threshold_fallback(self, data: DataFrame) -> np.ndarray:
-        """Deterministic, honestly-labeled fallback: a one-hot vector at whatever regime
-        `detect_current_regime` actually resolves to (itself falling back to the rule-based
-        threshold classifier when no fitted probabilistic model is usable). This reflects a
-        real hard-classifier decision -- unlike a flat uniform array, which asserts nothing
-        about how the regime was actually chosen and previously masked exactly this condition
-        (see `fit_regimes`'s docstring note)."""
-        regime = self.detect_current_regime(data)
+        """Deterministic, honestly-labeled fallback: a one-hot vector at
+        whatever regime `detect_current_regime` actually resolves to (itself
+        falling back to the rule-based threshold classifier when no fitted
+        probabilistic model is usable). This reflects a real hard-classifier
+        decision -- unlike a flat uniform array, which asserts nothing about
+        how the regime was actually chosen and previously masked exactly
+        this condition (see `fit_regimes`'s docstring note).
+
+        `detect_regime_threshold` always returns one of exactly three
+        hardcoded labels (0/1/2) regardless of `self.n_regimes`, so the
+        label is clamped into `[0, n_regimes)` before indexing -- otherwise
+        a detector configured with `n_regimes < 3` could raise `IndexError`
+        here instead of returning a valid one-hot vector."""
+        regime = min(self.detect_current_regime(data), self.n_regimes - 1)
         probs = np.zeros(self.n_regimes)
         probs[regime] = 1.0
         return probs
@@ -393,12 +406,14 @@ class MarketRegimeDetector:
     def get_regime_probabilities(self, data: DataFrame) -> np.ndarray:
         """Get probabilities for each regime.
 
-        Returns the fitted probabilistic model's actual `predict_proba` output when one is
-        genuinely available; otherwise an honest one-hot vector reflecting the regime that was
-        actually assigned (see `_one_hot_via_threshold_fallback`). Never returns a fabricated
-        flat/uniform distribution disconnected from the real classification decision -- that
-        previously happened whenever the statistical model wasn't genuinely fitted (see
-        `fit_regimes`) and `self.scaler.transform(...)` raised `NotFittedError`, which this
+        Returns the fitted probabilistic model's actual `predict_proba`
+        output when one is genuinely available; otherwise an honest one-hot
+        vector reflecting the regime that was actually assigned (see
+        `_one_hot_via_threshold_fallback`). Never returns a fabricated
+        flat/uniform distribution disconnected from the real classification
+        decision -- that previously happened whenever the statistical model
+        wasn't genuinely fitted (see `fit_regimes`) and
+        `self.scaler.transform(...)` raised `NotFittedError`, which this
         method's own `except` swallowed into `np.ones(n) / n`.
 
         Args:
