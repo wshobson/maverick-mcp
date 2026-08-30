@@ -232,7 +232,11 @@ async def backtesting_backtest_portfolio(
     slow_period: int | None = None,
     period: int | None = None,
 ) -> dict[str, Any]:
-    """Backtest one strategy across multiple symbols and aggregate portfolio-level metrics."""
+    """Backtest one strategy across multiple symbols and aggregate portfolio-level metrics.
+
+    Each symbol is backtested independently (no combined equity curve, no cross-symbol
+    correlation). `total_return`/`average_sharpe` are per-symbol averages; `max_drawdown` is
+    the worst (most negative) constituent drawdown, not a joint-portfolio calculation."""
     try:
         service = _require_service()
         result = await service.backtest_portfolio(

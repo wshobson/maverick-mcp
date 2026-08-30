@@ -17,6 +17,8 @@ pytest.importorskip("sklearn")
 from maverick.backtesting.config import BacktestingSettings
 from maverick.backtesting.service import BacktestingService
 from maverick.backtesting.types import (
+    BacktestMetrics,
+    BacktestResult,
     EnsembleBacktestResult,
     MarketRegimeAnalysis,
     MLBacktestResult,
@@ -258,6 +260,94 @@ async def test_backtest_portfolio_raises_when_every_symbol_fails():
 
     with pytest.raises(ValueError, match="No symbols could be backtested"):
         await service.backtest_portfolio(["AAPL", "MSFT"])
+
+
+def _canned_backtest_result(symbol: str, max_drawdown: float) -> BacktestResult:
+    """Minimal `BacktestResult` with a controlled `metrics.max_drawdown`, for aggregation
+    tests that don't need a real vectorbt-driven backtest to produce a specific drawdown."""
+    return BacktestResult(
+        symbol=symbol,
+        strategy="sma_cross",
+        parameters={},
+        metrics=BacktestMetrics(
+            total_return=0.0,
+            annual_return=0.0,
+            sharpe_ratio=0.0,
+            sortino_ratio=0.0,
+            calmar_ratio=0.0,
+            max_drawdown=max_drawdown,
+            win_rate=0.0,
+            profit_factor=0.0,
+            expectancy=0.0,
+            total_trades=0,
+            winning_trades=0,
+            losing_trades=0,
+            avg_win=0.0,
+            avg_loss=0.0,
+            best_trade=0.0,
+            worst_trade=0.0,
+            avg_duration=0.0,
+            kelly_criterion=0.0,
+            recovery_factor=0.0,
+            risk_reward_ratio=0.0,
+        ),
+        trades=[],
+        equity_curve={},
+        drawdown_series={},
+        start_date="2022-01-01",
+        end_date="2022-12-31",
+        initial_capital=1000.0,
+    )
+
+
+def _stub_per_symbol_drawdowns(
+    service: BacktestingService, drawdowns: dict[str, float]
+) -> None:
+    """Monkeypatch `_run_single_backtest` to return a canned result per symbol, isolating
+    `backtest_portfolio`'s aggregation from vectorbt/signal-generation entirely."""
+
+    async def _fake(symbol, strategy, start, end, *, initial_capital, parameters=None):
+        return _canned_backtest_result(symbol, drawdowns[symbol])
+
+    service._run_single_backtest = _fake  # type: ignore[method-assign]
+
+
+async def test_backtest_portfolio_max_drawdown_selects_worst_not_mildest():
+    """Regression test for the `max()`-on-signed-values bug: a portfolio containing a mild
+    -12.4% drawdown and a severe -21.3% drawdown must report the severe one, not the mild
+    one."""
+    service = _service(StubMarketData(pd.DataFrame()))
+    _stub_per_symbol_drawdowns(service, {"AAPL": -0.124, "MSFT": -0.213})
+
+    result = await service.backtest_portfolio(["AAPL", "MSFT"])
+
+    assert result.portfolio_metrics.max_drawdown == pytest.approx(-0.213)
+
+
+async def test_backtest_portfolio_max_drawdown_is_order_independent():
+    service_a = _service(StubMarketData(pd.DataFrame()))
+    _stub_per_symbol_drawdowns(
+        service_a, {"AAPL": -0.124, "MSFT": -0.213, "JPM": -0.05}
+    )
+    service_b = _service(StubMarketData(pd.DataFrame()))
+    _stub_per_symbol_drawdowns(
+        service_b, {"AAPL": -0.124, "MSFT": -0.213, "JPM": -0.05}
+    )
+
+    result_forward = await service_a.backtest_portfolio(["AAPL", "MSFT", "JPM"])
+    result_reversed = await service_b.backtest_portfolio(["JPM", "MSFT", "AAPL"])
+
+    assert result_forward.portfolio_metrics.max_drawdown == pytest.approx(-0.213)
+    assert result_reversed.portfolio_metrics.max_drawdown == pytest.approx(-0.213)
+
+
+async def test_backtest_portfolio_max_drawdown_zero_when_no_symbol_drew_down():
+    service = _service(StubMarketData(pd.DataFrame()))
+    _stub_per_symbol_drawdowns(service, {"AAPL": 0.0, "MSFT": 0.0})
+
+    result = await service.backtest_portfolio(["AAPL", "MSFT"])
+
+    assert result.portfolio_metrics.max_drawdown == pytest.approx(0.0)
 
 
 # ---------------------------------------------------------------------------
