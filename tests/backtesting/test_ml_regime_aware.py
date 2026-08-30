@@ -105,12 +105,106 @@ class TestMarketRegimeDetector:
         )
 
     def test_insufficient_data_falls_back_to_threshold(self):
+        """Regression test: with too little data to fit a genuine statistical model,
+        `fit_regimes` must honestly switch `self.method` to `"threshold"` (matching the
+        existing explicit-request/model.fit()-exception convention), not merely claim
+        `is_fitted = True` while leaving `self.method` at `"kmeans"`/`"hmm"` with
+        `self.scaler`/`self.model` never actually fit -- the previous behavior let
+        `get_regime_probabilities` reach an unfitted `StandardScaler`, raise `NotFittedError`,
+        and silently fabricate a uniform distribution (see `regime_detector.py`'s
+        `fit_regimes`)."""
         det = MarketRegimeDetector(method="kmeans", n_regimes=3, lookback_period=50)
         det.fit_regimes(pd.DataFrame({"close": np.linspace(100, 110, 60)}))
         assert det.is_fitted
+        assert det.method == "threshold"
         # Too few valid windows to fit -- estimator stays unfitted.
         assert det.model is not None
         assert not hasattr(det.model, "cluster_centers_")
+
+        # Both regime detection and probability reporting must now consistently use the
+        # rule-based threshold path, and probabilities must be an honest one-hot -- never the
+        # old fabricated uniform distribution.
+        data = pd.DataFrame({"close": np.linspace(100, 110, 60)})
+        regime = det.detect_current_regime(data)
+        probs = det.get_regime_probabilities(data)
+        assert probs.shape == (3,)
+        assert probs.sum() == pytest.approx(1.0)
+        assert probs[regime] == pytest.approx(1.0)
+        assert not np.allclose(probs, 1 / 3)
+
+
+class TestRegimeProbabilities:
+    """Regression tests for the uniform-probability defect: `get_regime_probabilities` must
+    return the fitted model's real posterior when genuinely available, and an honest one-hot
+    (never a fabricated uniform distribution) otherwise."""
+
+    @staticmethod
+    def _well_separated_series(
+        n_per_segment: int = 200, seed: int = 11
+    ) -> pd.DataFrame:
+        """Repeated bull/bear/sideways legs -- enough data (>= the 60-sample fit minimum for
+        `n_regimes=3`) and clearly distinct regimes for the fitted model to express real,
+        confident, non-uniform posteriors rather than a degenerate/insufficient-data fit."""
+        rng = np.random.default_rng(seed)
+        segments = []
+        for _ in range(3):
+            bull = np.cumprod(1 + rng.normal(0.004, 0.008, n_per_segment))
+            bear = np.cumprod(1 + rng.normal(-0.004, 0.02, n_per_segment))
+            sideways = np.cumprod(1 + rng.normal(0.0, 0.005, n_per_segment))
+            segments.extend([bull, bear, sideways])
+        close = 100 * np.concatenate(segments)
+        return pd.DataFrame(
+            {
+                "close": close,
+                "high": close * 1.01,
+                "low": close * 0.99,
+                "volume": rng.integers(1_000_000, 5_000_000, len(close)),
+            }
+        )
+
+    def test_well_separated_regimes_produce_non_uniform_probabilities(self):
+        data = self._well_separated_series()
+        det = MarketRegimeDetector(method="hmm", n_regimes=3, lookback_period=50)
+        det.fit_regimes(data)
+        assert det.is_fitted and det.method == "hmm"
+
+        window = data.iloc[-51:]
+        regime = det.detect_current_regime(window)
+        probs = det.get_regime_probabilities(window)
+
+        assert probs.shape == (3,)
+        assert probs.sum() == pytest.approx(1.0)
+        assert not np.allclose(probs, 1 / 3)
+        # The assigned regime must be the model's own highest-probability component.
+        assert int(np.argmax(probs)) == regime
+
+    def test_hmm_method_is_gaussian_mixture_not_hidden_markov_model(self):
+        """Locks in the naming decision: `"hmm"` is documented as -- and actually
+        instantiates -- `sklearn.mixture.GaussianMixture`, kept for backward compatibility
+        rather than a real Hidden Markov Model."""
+        det = MarketRegimeDetector(method="hmm", n_regimes=3, lookback_period=50)
+        assert type(det.model).__name__ == "GaussianMixture"
+
+    def test_probability_lookup_failure_falls_back_to_one_hot_not_uniform(self):
+        """If computing real probabilities raises for any reason after a genuine fit, the
+        fallback must be an honest one-hot tied to the actual classification decision -- never
+        the previous `np.ones(n) / n` fabrication."""
+        data = self._well_separated_series()
+        det = MarketRegimeDetector(method="hmm", n_regimes=3, lookback_period=50)
+        det.fit_regimes(data)
+        assert det.is_fitted
+
+        def _boom(_features):
+            raise RuntimeError("simulated scaler failure")
+
+        det.scaler.transform = _boom
+        window = data.iloc[-51:]
+        regime = det.detect_current_regime(window)
+        probs = det.get_regime_probabilities(window)
+
+        assert probs.sum() == pytest.approx(1.0)
+        assert probs[regime] == pytest.approx(1.0)
+        assert not np.allclose(probs, 1 / 3)
 
 
 class TestRegimeAwareStrategy:

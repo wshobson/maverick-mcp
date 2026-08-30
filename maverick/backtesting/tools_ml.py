@@ -87,7 +87,16 @@ async def backtesting_analyze_market_regimes(
     n_regimes: int = 3,
     lookback_period: int = 50,
 ) -> dict[str, Any]:
-    """Analyze market regimes (bear/sideways/bull) for a symbol using ML methods."""
+    """Analyze market regimes (bear/sideways/bull) for a symbol using ML methods.
+
+    `method="hmm"` (the default) fits an `sklearn.mixture.GaussianMixture`, not a genuine
+    Hidden Markov Model -- the name is kept for backward compatibility. `method="kmeans"` is
+    real k-means clustering; `method="threshold"` is a zero-model rule-based classifier. The
+    returned `method` field reports what was actually used, which can differ from the request
+    if there wasn't enough history to fit a statistical model (silently falls back to
+    "threshold"). Each history entry's `probabilities` are the fitted model's real posterior
+    when one exists, otherwise an honest one-hot at the assigned regime -- never a fabricated
+    uniform distribution."""
     try:
         service = require_service()
         result = await service.analyze_market_regimes(

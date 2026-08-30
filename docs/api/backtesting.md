@@ -551,12 +551,25 @@ Train a random-forest ML predictor model for trading signals.
 
 Analyze market regimes (bear/sideways/bull) for a symbol using ML methods.
 
+`method="hmm"` fits an `sklearn.mixture.GaussianMixture`, not a genuine
+Hidden Markov Model -- the name is kept for backward compatibility.
+`method="kmeans"` is real k-means clustering; `method="threshold"` is a
+zero-model rule-based classifier on trend slope and volatility. The
+returned `method` field reports what was **actually** used, which can
+differ from the request: fitting silently falls back to `"threshold"` when
+there isn't enough history to fit a genuine statistical model (in practice,
+this tool's own default 365-day lookback is usually *not* enough for
+`n_regimes=3`; use a longer `start_date`/`end_date` range to fit a real
+model). Each `recent_regime_history` entry's `probabilities` are the fitted
+model's real posterior when one exists, otherwise an honest one-hot vector
+at the assigned regime -- never a fabricated uniform distribution.
+
 **Tool name**: `backtesting_analyze_market_regimes` (readOnlyHint: true)
 
 **Parameters**:
 - `symbol` (str, required)
 - `start_date`, `end_date` (str, optional)
-- `method` (str, default: "hmm"): `hmm`, `kmeans`, or `threshold`
+- `method` (str, default: "hmm"): `hmm` (Gaussian-mixture clustering; see above), `kmeans`, or `threshold`
 - `n_regimes` (int, default: 3)
 - `lookback_period` (int, default: 50)
 
