@@ -23,6 +23,7 @@ from maverick.backtesting.config import BacktestingSettings
 from maverick.backtesting.service_support import (
     WALK_FORWARD_OPTIMIZATION_WINDOW_DAYS,
     SimpleMovingAverageStrategy,
+    TemplateStrategy,
     generate_wf_summary,
     resolve_dates,
     signal_fn_for,
@@ -417,22 +418,12 @@ class _ExtendedBacktestingMixin:
             strategy_list = base_strategies or ["sma_cross", "rsi", "macd"]
             start, end = resolve_dates(start_date, end_date, default_days=365)
 
-            instances: list[Strategy] = []
-            for name in strategy_list:
-                if name == "sma_cross":
-                    instances.append(SimpleMovingAverageStrategy())
-                elif name == "rsi":
-                    instances.append(
-                        SimpleMovingAverageStrategy(
-                            {"fast_period": 14, "slow_period": 28}
-                        )
-                    )
-                elif name == "macd":
-                    instances.append(
-                        SimpleMovingAverageStrategy(
-                            {"fast_period": 12, "slow_period": 26}
-                        )
-                    )
+            # Each requested name runs its own real signal logic (`TemplateStrategy` dispatches
+            # through `strategies.signals.generate_signals`), so `"rsi"`/`"macd"` are genuine
+            # RSI/MACD strategies -- not SMA-crossover variants sharing one collapsed label.
+            instances: list[Strategy] = [
+                TemplateStrategy(name) for name in strategy_list
+            ]
             if not instances:
                 raise ValueError("No valid base strategies provided")
 

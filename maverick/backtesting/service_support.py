@@ -47,6 +47,44 @@ class SimpleMovingAverageStrategy(Strategy):
         return signal_dispatch.generate_signals(data, "sma_cross", self.parameters)
 
 
+class TemplateStrategy(Strategy):
+    """`Strategy` wrapper around any real `STRATEGY_TEMPLATES` entry, dispatching signal
+    generation through `strategies.signals.generate_signals` -- the same rule-based logic
+    `run_backtest`/`compare_strategies` use. Built for `create_strategy_ensemble`'s base
+    strategies: unlike `SimpleMovingAverageStrategy` (always SMA-crossover regardless of the
+    requested label), this makes `"rsi"` run real RSI signal logic and `"macd"` run real MACD
+    signal logic, each keeping its own template `name` -- so an ensemble's per-strategy weights
+    and performance breakdown stay separately addressable instead of collapsing multiple
+    differently-labeled base strategies onto one shared name."""
+
+    def __init__(
+        self, strategy_type: str, parameters: dict[str, Any] | None = None
+    ) -> None:
+        if strategy_type not in templates.STRATEGY_TEMPLATES:
+            available = ", ".join(templates.STRATEGY_TEMPLATES)
+            raise ValueError(
+                f"Unknown ensemble base strategy: {strategy_type!r}. Available: {available}"
+            )
+        self.strategy_type = strategy_type
+        super().__init__(
+            parameters
+            or dict(templates.STRATEGY_TEMPLATES[strategy_type]["parameters"])
+        )
+
+    @property
+    def name(self) -> str:
+        return str(templates.STRATEGY_TEMPLATES[self.strategy_type]["name"])
+
+    @property
+    def description(self) -> str:
+        return str(templates.STRATEGY_TEMPLATES[self.strategy_type]["description"])
+
+    def generate_signals(self, data: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+        return signal_dispatch.generate_signals(
+            data, self.strategy_type, self.parameters
+        )
+
+
 # Matches legacy `strategy_executor.py`'s `max_concurrent_strategies: int = 6` /
 # `batch_processing.py`'s `run_parallel_backtests(max_workers: int = 6)` -- the discoverable
 # "legacy effective parallelism" for `compare_strategies`/`backtest_portfolio`'s bounded
