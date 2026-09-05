@@ -7,11 +7,11 @@ from fastmcp import FastMCP
 from maverick.screening.service import ScreeningService
 from maverick.screening.types import ScreeningCriteria, ScreeningResult, ScreenName
 
-_READ_ONLY_ANNOTATIONS = {"readOnlyHint": True}
+_READ_ONLY_ANNOTATIONS = {"read_only_hint": True}
 _RUN_SCREENS_ANNOTATIONS = {
-    "readOnlyHint": False,
-    "destructiveHint": False,
-    "idempotentHint": True,
+    "read_only_hint": False,
+    "destructive_hint": False,
+    "idempotent_hint": True,
 }
 
 _service: ScreeningService | None = None

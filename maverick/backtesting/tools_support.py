@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-READ_ONLY_ANNOTATIONS = {"readOnlyHint": True}
+READ_ONLY_ANNOTATIONS = {"read_only_hint": True}
 
 _service: BacktestingService | None = None
 

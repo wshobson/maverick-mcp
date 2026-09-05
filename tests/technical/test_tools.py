@@ -311,7 +311,7 @@ async def test_register_marks_every_tool_read_only(stub_service):
     for name in _EXPECTED_TOOL_NAMES:
         tool = await mcp.get_tool(name)
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.read_only_hint is True
 
 
 async def test_register_in_memory_client_round_trips_get_rsi(stub_service):

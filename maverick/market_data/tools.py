@@ -9,11 +9,11 @@ from fastmcp import FastMCP
 
 from maverick.market_data.service import MarketDataService
 
-_READ_ONLY_ANNOTATIONS = {"readOnlyHint": True}
+_READ_ONLY_ANNOTATIONS = {"read_only_hint": True}
 _CLEAR_CACHE_ANNOTATIONS = {
-    "readOnlyHint": False,
-    "destructiveHint": False,
-    "idempotentHint": True,
+    "read_only_hint": False,
+    "destructive_hint": False,
+    "idempotent_hint": True,
 }
 
 _service: MarketDataService | None = None

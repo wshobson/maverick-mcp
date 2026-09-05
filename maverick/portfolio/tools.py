@@ -17,29 +17,29 @@ from maverick.portfolio.tools_journal import (
     portfolio_journal_review,
 )
 
-_READ_ONLY_ANNOTATIONS = {"readOnlyHint": True}
+_READ_ONLY_ANNOTATIONS = {"read_only_hint": True}
 _ADD_ANNOTATIONS = {
-    "readOnlyHint": False,
-    "destructiveHint": False,
-    "idempotentHint": False,
+    "read_only_hint": False,
+    "destructive_hint": False,
+    "idempotent_hint": False,
 }
 _REMOVE_ANNOTATIONS = {
-    "readOnlyHint": False,
-    "destructiveHint": True,
-    "idempotentHint": False,
+    "read_only_hint": False,
+    "destructive_hint": True,
+    "idempotent_hint": False,
 }
 _CLEAR_ANNOTATIONS = {
-    "readOnlyHint": False,
-    "destructiveHint": True,
-    "idempotentHint": True,
+    "read_only_hint": False,
+    "destructive_hint": True,
+    "idempotent_hint": True,
 }
 # A watchlist remove deletes every matching row in one call, so repeat calls
 # for the same (watchlist_id, symbol) are a no-op after the first --
 # idempotent, unlike partial-shares `portfolio_remove_position`.
 _WATCHLIST_REMOVE_ANNOTATIONS = {
-    "readOnlyHint": False,
-    "destructiveHint": True,
-    "idempotentHint": True,
+    "read_only_hint": False,
+    "destructive_hint": True,
+    "idempotent_hint": True,
 }
 
 _service: PortfolioService | None = None

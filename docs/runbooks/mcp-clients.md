@@ -27,6 +27,15 @@ process, or when you are connecting from somewhere other than this machine.
 > Requesting `/mcp/` returns a `307` redirect to `/mcp`, and clients that do
 > not follow redirects on `POST` will fail to register tools.
 
+> [!NOTE]
+> Protocol revisions (FastMCP 4 on the MCP Python SDK 2.x): the HTTP
+> transport serves both the sessionless `2026-07-28` revision and the
+> `2025-11-25` handshake revision, negotiated per connection. The STDIO
+> transport serves the handshake revision only; the SDK answers a
+> `2026-07-28` request on stdio with "this connection serves the handshake
+> protocol era". Clients built on the official SDKs negotiate this
+> automatically.
+
 ## Endpoint And Binding
 
 ```bash
