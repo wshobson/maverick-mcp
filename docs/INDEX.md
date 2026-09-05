@@ -38,6 +38,9 @@ rather than the whole knowledge base up front.
 
 - `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
   design and migration plan.
+- `design-docs/2026-09-05-open-items-remediation.md` - approved design for
+  the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG
+  research backend.
 - `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
   execution plan.
 - `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` - Phase 1
@@ -58,6 +61,8 @@ rather than the whole knowledge base up front.
   execution plan (server assembly and cutover).
 - `exec-plans/active/2026-07-20-phase-9-distribution.md` - Phase 9
   execution plan (distribution and registry rollout).
+- `exec-plans/active/2026-09-05-open-items-remediation.md` - execution plan
+  for the 2026-09 open-items remediation.
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
 - `product-specs/index.md` - product spec index, empty until the tool surface
   is curated.
