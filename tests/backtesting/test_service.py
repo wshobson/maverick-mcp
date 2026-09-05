@@ -464,13 +464,88 @@ async def test_create_strategy_ensemble_calls_symbols_in_order_sequentially(ohlc
     assert [c[0] for c in market_data.calls] == ["MSFT", "AAPL", "GOOG"]
 
 
-async def test_create_strategy_ensemble_raises_when_no_valid_base_strategies(ohlcv):
+async def test_create_strategy_ensemble_raises_clearly_for_unknown_base_strategy(ohlcv):
+    """`TemplateStrategy` now validates each requested name eagerly against
+    `STRATEGY_TEMPLATES` and raises immediately naming the bad value, rather than silently
+    dropping it and only failing later with a generic "no valid base strategies" error."""
     service = _service(StubMarketData(ohlcv))
 
-    with pytest.raises(ValueError, match="No valid base strategies"):
+    with pytest.raises(
+        ValueError, match="Unknown ensemble base strategy: 'not_a_strategy'"
+    ):
         await service.create_strategy_ensemble(
             ["AAPL"], base_strategies=["not_a_strategy"]
         )
+
+
+async def test_create_strategy_ensemble_rsi_and_macd_use_real_signal_logic(ohlcv):
+    """Regression test for the rsi/macd mislabeling defect: requesting "rsi"/"macd" base
+    strategies must run actual RSI/MACD signal generation (via `TemplateStrategy`), not
+    SMA-crossover under a different name, and must keep three distinct, separately-addressable
+    identities in the result -- not collapse into one shared "SMA Crossover" key."""
+    service = _service(StubMarketData(ohlcv))
+
+    result = await service.create_strategy_ensemble(
+        ["AAPL"], base_strategies=["sma_cross", "rsi", "macd"]
+    )
+
+    weight_names = set(result.final_strategy_weights)
+    assert weight_names == {"SMA Crossover", "RSI Mean Reversion", "MACD Signal"}
+    performance_names = set(result.strategy_performance_analysis)
+    assert performance_names == {"SMA Crossover", "RSI Mean Reversion", "MACD Signal"}
+
+
+async def test_create_strategy_ensemble_rsi_signals_differ_from_sma_signals(ohlcv):
+    """`TemplateStrategy("rsi")` must dispatch to real RSI logic, not SMA -- confirmed by
+    comparing its generated signals directly against `TemplateStrategy("sma_cross")`'s on the
+    same frame; identical signal generation would mean the mislabeling regressed."""
+    from maverick.backtesting.service_support import TemplateStrategy
+
+    frame = ohlcv.rename(columns=str.lower)
+    sma_entries, sma_exits = TemplateStrategy("sma_cross").generate_signals(frame)
+    rsi_entries, rsi_exits = TemplateStrategy("rsi").generate_signals(frame)
+    macd_entries, macd_exits = TemplateStrategy("macd").generate_signals(frame)
+
+    assert not sma_entries.equals(rsi_entries) or not sma_exits.equals(rsi_exits)
+    assert not sma_entries.equals(macd_entries) or not sma_exits.equals(macd_exits)
+    assert not rsi_entries.equals(macd_entries) or not rsi_exits.equals(macd_exits)
+
+
+async def test_template_strategy_names_match_templates():
+    from maverick.backtesting.service_support import TemplateStrategy
+
+    assert TemplateStrategy("sma_cross").name == "SMA Crossover"
+    assert TemplateStrategy("rsi").name == "RSI Mean Reversion"
+    assert TemplateStrategy("macd").name == "MACD Signal"
+
+
+async def test_template_strategy_rejects_unknown_strategy_type():
+    from maverick.backtesting.service_support import TemplateStrategy
+
+    with pytest.raises(ValueError, match="Unknown ensemble base strategy: 'bogus'"):
+        TemplateStrategy("bogus")
+
+
+async def test_template_strategy_to_dict_exposes_real_template_defaults():
+    """Regression test: `Strategy.to_dict()` calls `get_default_parameters()`, which the base
+    class defaults to `{}`. Without overriding it, `TemplateStrategy.to_dict()` would report
+    an empty `default_parameters` even though the selected template's real defaults are known
+    via `self.strategy_type`."""
+    from maverick.backtesting.service_support import TemplateStrategy
+
+    rsi_defaults = TemplateStrategy("rsi").to_dict()["default_parameters"]
+    assert rsi_defaults == {"period": 14, "oversold": 30, "overbought": 70}
+
+    # Overriding parameters at construction must not change the template's own defaults.
+    overridden = TemplateStrategy(
+        "rsi", {"period": 21, "oversold": 25, "overbought": 75}
+    )
+    assert overridden.to_dict()["default_parameters"] == rsi_defaults
+    assert overridden.to_dict()["parameters"] == {
+        "period": 21,
+        "oversold": 25,
+        "overbought": 75,
+    }
 
 
 # ---------------------------------------------------------------------------

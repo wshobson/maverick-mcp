@@ -585,6 +585,16 @@ symbols. Runs sequentially by design: `StrategyEnsemble` shares one mutable
 instance across symbols (weights mutate per call), so concurrency would
 make results order-dependent.
 
+Each entry in `base_strategies` must be a valid name from the strategy
+catalog (`backtesting_list_strategies`) -- for example `"sma_cross"`,
+`"rsi"`, `"macd"`, `"bollinger"`, `"momentum"`. Each runs its own real
+signal logic (so `"rsi"` is genuine RSI mean-reversion, not a relabeled
+SMA-crossover variant) and keeps its own template name in the result, so
+`final_strategy_weights`/`strategy_performance_analysis` stay separately
+addressable per requested strategy rather than collapsing onto one shared
+key. An unknown name raises a clear error rather than being silently
+dropped.
+
 **Tool name**: `backtesting_create_strategy_ensemble` (readOnlyHint: true)
 
 **Parameters**:
@@ -610,11 +620,11 @@ make results order-dependent.
       "symbol": "AAPL",
       "results": {
         "metrics": {"total_return": 0.21, "sharpe_ratio": 1.18},
-        "ensemble_metrics": {"strategy_weights": {"sma_cross": 0.4, "rsi": 0.3, "macd": 0.3}}
+        "ensemble_metrics": {"strategy_weights": {"SMA Crossover": 0.4, "RSI Mean Reversion": 0.3, "MACD Signal": 0.3}}
       }
     }
   ],
-  "final_strategy_weights": {"sma_cross": 0.42, "rsi": 0.28, "macd": 0.30},
+  "final_strategy_weights": {"SMA Crossover": 0.42, "RSI Mean Reversion": 0.28, "MACD Signal": 0.30},
   "strategy_performance_analysis": {"...": "..."},
   "status": "success"
 }
