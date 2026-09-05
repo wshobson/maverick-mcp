@@ -438,6 +438,30 @@ async def test_analyze_market_regimes_rejects_insufficient_data():
         await service.analyze_market_regimes("AAPL", lookback_period=50)
 
 
+async def test_analyze_market_regimes_reports_actual_fallback_method():
+    """Regression test: with enough data to pass the tool's own minimum-data
+    guard but not enough to clear `MarketRegimeDetector`'s internal
+    fit-sample threshold, the detector silently falls back to the rule-based
+    "threshold" method. The reported `method` field must reflect that actual
+    fallback, not the originally-requested "hmm"/"kmeans" -- previously it
+    always echoed the request, misrepresenting what was actually used."""
+    service = _service(StubMarketData(_make_ohlcv(150)))
+
+    result = await service.analyze_market_regimes(
+        "AAPL", method="hmm", lookback_period=50
+    )
+
+    assert result.method == "threshold"
+    # Every probability entry must be the exact one-hot vector at its own
+    # `regime` -- never the previous fabricated uniform [1/3, 1/3, 1/3], and
+    # not merely "sums to 1 with a max of 1" (which a non-one-hot vector
+    # could also satisfy).
+    for entry in result.recent_regime_history:
+        expected = [0.0, 0.0, 0.0]
+        expected[entry.regime] = 1.0
+        assert entry.probabilities == expected
+
+
 # ---------------------------------------------------------------------------
 # 11. create_strategy_ensemble
 # ---------------------------------------------------------------------------

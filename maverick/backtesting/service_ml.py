@@ -383,7 +383,7 @@ class _ExtendedBacktestingMixin:
             return MarketRegimeAnalysis(
                 symbol=symbol,
                 analysis_period=f"{start} to {end}",
-                method=method,
+                method=detector.method,  # what was used; fit_regimes may fall back
                 n_regimes=n_regimes,
                 # Hardcoded regardless of n_regimes -- a legacy quirk, preserved verbatim.
                 regime_names={
