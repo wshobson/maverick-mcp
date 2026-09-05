@@ -22,6 +22,7 @@ Status labels:
 | `CATALOG.md` | current | docs | Inventory and cleanup state. |
 | `../ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. Root-level entry point alongside `AGENTS.md`. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
+| `design-docs/2026-09-05-open-items-remediation.md` | current | engineering | Approved design for the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG research backend. |
 | `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
 | `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | current | engineering | Phase 1 execution plan (platform seam). |
 | `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` | current | engineering | Phase 2 execution plan (market data domain). |
