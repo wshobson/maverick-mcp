@@ -50,7 +50,10 @@ even if yanked. Publishing 1.1.0 is a one-time, permanent action.
    - Owner: `wshobson`
    - Repository: `maverick-mcp`
    - Workflow: `publish.yml`
-   - Environment: leave blank unless the workflow defines one.
+   - Environment: `pypi`. The workflow's `publish-pypi` job runs inside the
+     GitHub environment named `pypi`, so the publisher must name it; a
+     blank environment does not match and PyPI rejects the run as
+     `invalid-publisher`.
 2. Push (or re-push) the `v1.1.0` tag so the workflow's tag trigger fires:
    ```bash
    git push origin v1.1.0
