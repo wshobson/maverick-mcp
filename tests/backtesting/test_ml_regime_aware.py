@@ -166,7 +166,9 @@ class TestRegimeProbabilities:
 
     def test_well_separated_regimes_produce_non_uniform_probabilities(self):
         data = self._well_separated_series()
-        det = MarketRegimeDetector(method="hmm", n_regimes=3, lookback_period=50)
+        det = MarketRegimeDetector(
+            method="hmm", n_regimes=3, lookback_period=50, random_state=0
+        )
         det.fit_regimes(data)
         assert det.is_fitted and det.method == "hmm"
 
@@ -193,7 +195,9 @@ class TestRegimeProbabilities:
         actual classification decision -- never the previous `np.ones(n) / n`
         fabrication."""
         data = self._well_separated_series()
-        det = MarketRegimeDetector(method="hmm", n_regimes=3, lookback_period=50)
+        det = MarketRegimeDetector(
+            method="hmm", n_regimes=3, lookback_period=50, random_state=0
+        )
         det.fit_regimes(data)
         assert det.is_fitted
 
