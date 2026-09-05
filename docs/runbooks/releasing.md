@@ -47,7 +47,7 @@ even if yanked. Publishing 1.1.0 is a one-time, permanent action.
 unrelated, dormant project (all releases removed 2026-06-10, source
 repositories gone), so the trusted-publishing exchange fails with
 `invalid-publisher` no matter how the publisher is configured. A PEP 541
-transfer request is on file with PyPI support. After the transfer: add the
+transfer request is on file with PyPI support (https://github.com/pypi/support/issues/12150). After the transfer: add the
 publisher on the project's own Publishing settings (owner `wshobson`,
 repository `maverick-mcp`, workflow `publish.yml`, environment `pypi`), then
 run `gh workflow run publish.yml -f confirm=publish`, which rebuilds and
