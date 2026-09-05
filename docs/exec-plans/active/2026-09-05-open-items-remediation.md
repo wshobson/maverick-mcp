@@ -44,7 +44,7 @@
 - Create: `docs/exec-plans/active/2026-09-05-open-items-remediation.md` (this file)
 - Modify: `docs/CATALOG.md` (row for this plan), `docs/INDEX.md` (line for this plan)
 
-- [ ] **Step 1: Confirm the branch state and the docs check**
+- [x] **Step 1: Confirm the branch state and the docs check**
 
 Run:
 ```bash
@@ -52,7 +52,7 @@ git status --short && git branch --show-current && make docs-check
 ```
 Expected: no uncommitted changes, branch `docs/2026-09-05-remediation-design`, `Documentation catalog check passed`.
 
-- [ ] **Step 2: Push and open the PR**
+- [x] **Step 2: Push and open the PR**
 
 Run:
 ```bash
@@ -61,7 +61,7 @@ gh pr create --title "docs: 2026-09-05 open-items remediation design and plan" -
 ```
 Expected: a PR URL. CI runs lint, docs catalog, type check, and unit tests; all four must pass (docs-only change).
 
-- [ ] **Step 3: Merge and return to main**
+- [x] **Step 3: Merge and return to main**
 
 Run:
 ```bash
@@ -74,7 +74,7 @@ Expected: `main` contains both docs; `git log --oneline -1` shows the squash com
 
 **Files:** none (GitHub Actions state only)
 
-- [ ] **Step 1: List the runs waiting for approval**
+- [x] **Step 1: List the runs waiting for approval**
 
 Run:
 ```bash
@@ -87,7 +87,7 @@ Expected (the newest run per branch is the one to approve; older shas are supers
 33317566423 head=fix/backtesting-portfolio-drawdown sha=d54401d
 ```
 
-- [ ] **Step 2: Approve the three current CI runs**
+- [x] **Step 2: Approve the three current CI runs**
 
 Run:
 ```bash
@@ -97,7 +97,7 @@ done
 ```
 Expected: three `approved <id>` lines with no error body. If the API answers 422 for an id, the run was superseded; re-run Step 1 and approve the id it lists for that branch.
 
-- [ ] **Step 3: Confirm the runs started**
+- [x] **Step 3: Confirm the runs started**
 
 Run:
 ```bash
@@ -109,7 +109,7 @@ Expected: each PR lists `Lint (ruff)`, `Docs catalog`, `Type check (ty, baseline
 
 **Files:** none
 
-- [ ] **Step 1: Post the hold comment**
+- [x] **Step 1: Post the hold comment**
 
 Run:
 ```bash
@@ -121,7 +121,7 @@ Expected: the comment URL.
 
 **Files:** none
 
-- [ ] **Step 1: Reply and close**
+- [x] **Step 1: Reply and close**
 
 Run:
 ```bash
@@ -133,7 +133,7 @@ Expected: `Closed issue #241`.
 
 **Files:** none
 
-- [ ] **Step 1: Reply and close**
+- [x] **Step 1: Reply and close**
 
 Run:
 ```bash
@@ -147,14 +147,14 @@ Expected: `Closed issue #254`.
 - Modify: `SECURITY.md` (whole file)
 - Modify: `docs/exec-plans/tech-debt-tracker.md` (one new row at the end of the table)
 
-- [ ] **Step 1: Branch**
+- [x] **Step 1: Branch**
 
 Run:
 ```bash
 git checkout -b docs/security-policy-refresh main
 ```
 
-- [ ] **Step 2: Replace SECURITY.md**
+- [x] **Step 2: Replace SECURITY.md**
 
 Write the file with exactly this content:
 
@@ -209,7 +209,7 @@ deleted at the v1.0.0 cutover and receives no fixes.
 - Personal-use security model maintained: no auth or billing surface.
 ```
 
-- [ ] **Step 3: Add the tech-debt row**
+- [x] **Step 3: Add the tech-debt row**
 
 Append this row to the table in `docs/exec-plans/tech-debt-tracker.md` (after the last existing row):
 
@@ -217,7 +217,7 @@ Append this row to the table in `docs/exec-plans/tech-debt-tracker.md` (after th
 | Regime detector fallback overwrites the requested method (`self.method = "threshold"`), so a detector held by `RegimeAwareStrategy` never retries the statistical fit on later, larger data; store the requested method separately and allow a refit | `maverick/backtesting/strategies/ml/regime_detector.py` | deferred |
 ```
 
-- [ ] **Step 4: Check, commit, PR, merge**
+- [x] **Step 4: Check, commit, PR, merge**
 
 Run:
 ```bash
@@ -249,7 +249,7 @@ uv run pytest --timeout=60
 
 **Files:** none modified locally; the PR changes `maverick/backtesting/service.py`, `maverick/backtesting/tools.py`, `maverick/backtesting/types.py`, `docs/api/backtesting.md`, `tests/backtesting/test_service.py`.
 
-- [ ] **Step 1: Wait for CI**
+- [x] **Step 1: Wait for CI**
 
 Run:
 ```bash
@@ -257,7 +257,7 @@ gh pr checks 242 --watch
 ```
 Expected: all four CI jobs pass. If a job fails, read it with `gh run view <id> --log-failed` and report the failure on the PR rather than merging.
 
-- [ ] **Step 2: Confirm the sign convention that makes `min()` correct**
+- [x] **Step 2: Confirm the sign convention that makes `min()` correct**
 
 Run:
 ```bash
@@ -266,7 +266,7 @@ grep -n 'abs(max_dd)\|abs(metrics.max_drawdown)' maverick/backtesting/engine.py 
 ```
 Expected: `_extract_metrics` sets `max_drawdown=_safe_float(portfolio.max_drawdown)`, which is vectorbt's signed drawdown (zero or negative), and every consumer wraps it in `abs(...)`. So the most negative value is the worst constituent and `min()` is right. If any producer emitted positive drawdowns, stop and request a normalization step on the PR instead of merging.
 
-- [ ] **Step 3: Review the diff**
+- [x] **Step 3: Review the diff**
 
 Run:
 ```bash
@@ -274,7 +274,7 @@ gh pr diff 242
 ```
 Check: the only code change is `max(...)` to `min(...)` at `maverick/backtesting/service.py:358` plus the comment; the three tests stub `_run_single_backtest` and assert the worst, order independence, and zero; the docs describe per-symbol averaging and worst-constituent drawdown. Nothing else.
 
-- [ ] **Step 4: Run the gate on the PR head**
+- [x] **Step 4: Run the gate on the PR head**
 
 Run:
 ```bash
@@ -284,7 +284,7 @@ git checkout main
 ```
 Expected: `All checks passed!` and a green pytest run.
 
-- [ ] **Step 5: Merge and thank the author**
+- [x] **Step 5: Merge and thank the author**
 
 Run:
 ```bash
@@ -299,14 +299,14 @@ Expected: `CLOSED` for #245.
 
 **Files:** none modified by hand; the rebase replays the contributor's two commits onto `main`.
 
-- [ ] **Step 1: Tell the author before touching the branch**
+- [x] **Step 1: Tell the author before touching the branch**
 
 Run:
 ```bash
 gh pr comment 243 --body "Rebasing this onto main now that #242 landed (both PRs touch docs/api/backtesting.md and tests/backtesting/test_service.py). No content changes to your commits."
 ```
 
-- [ ] **Step 2: Rebase onto main**
+- [x] **Step 2: Rebase onto main**
 
 Run:
 ```bash
@@ -315,7 +315,7 @@ git rebase main
 ```
 Expected: a clean replay of two commits. The two PRs edit different regions of the shared files (242 adds the portfolio paragraph near line 321 of the docs and tests before the ensemble section; 243 adds the ensemble paragraph near line 581 and tests after `test_create_strategy_ensemble_calls_symbols_in_order_sequentially`). If git still reports a conflict, open the file, keep both sides in order (242's block first), remove the markers, `git add` the file, and `git rebase --continue`.
 
-- [ ] **Step 3: Run the gate and push**
+- [x] **Step 3: Run the gate and push**
 
 Run:
 ```bash
@@ -326,7 +326,7 @@ git checkout main
 ```
 Expected: gate green; `service_ml.py` at 490 lines; the push lands on the fork branch `fix/backtesting-ensemble-strategy-mapping`.
 
-- [ ] **Step 4: Review the diff**
+- [x] **Step 4: Review the diff**
 
 Run:
 ```bash
@@ -334,7 +334,7 @@ gh pr diff 243
 ```
 Check: `TemplateStrategy` validates against `templates.STRATEGY_TEMPLATES`, exposes `name`, `description`, `get_default_parameters()`, and dispatches `generate_signals` through `signal_dispatch.generate_signals(data, self.strategy_type, self.parameters)`; `create_strategy_ensemble` builds `TemplateStrategy(name)` per requested name. The `if not instances` guard is now unreachable (`base_strategies or [...]` never yields an empty list); leave it, it is harmless.
 
-- [ ] **Step 5: Wait for CI, merge, thank**
+- [x] **Step 5: Wait for CI, merge, thank**
 
 Run:
 ```bash
@@ -351,14 +351,14 @@ Expected: `CLOSED`.
 **Files:**
 - Modify (on the contributor's branch): `maverick/backtesting/service_ml.py` (the comment above `method=detector.method`), `tests/backtesting/test_ml_regime_aware.py` (two detector constructions)
 
-- [ ] **Step 1: Tell the author**
+- [x] **Step 1: Tell the author**
 
 Run:
 ```bash
 gh pr comment 244 --body "Rebasing onto main after #243 and adding one fixup commit: (1) maverick/ is under a 500-line-per-file structural rule (tests/structure/test_harness_rules.py), and the multi-line comment above method=detector.method pushed service_ml.py to 505 lines on the pre-rebase base, so it becomes a one-line trailing comment; (2) the two GaussianMixture tests pass random_state=0 so they cannot flake on an unlucky initialization. Everything else is yours as submitted."
 ```
 
-- [ ] **Step 2: Rebase onto main**
+- [x] **Step 2: Rebase onto main**
 
 Run:
 ```bash
@@ -367,7 +367,7 @@ git rebase main
 ```
 Expected: clean replay of two commits (244's `service_ml.py` hunk is the `method=` line near 382; 243's hunk is the ensemble block near 420, so they do not overlap). On a conflict in the docs or tests, keep both sides in order and continue as in Task 8.
 
-- [ ] **Step 3: Apply the comment fixup**
+- [x] **Step 3: Apply the comment fixup**
 
 In `maverick/backtesting/service_ml.py`, replace this block inside `analyze_market_regimes`:
 
@@ -387,7 +387,7 @@ with:
                 method=detector.method,  # what was used; fit_regimes may fall back
 ```
 
-- [ ] **Step 4: Apply the seed fixup**
+- [x] **Step 4: Apply the seed fixup**
 
 In `tests/backtesting/test_ml_regime_aware.py`, inside `TestRegimeProbabilities`, change both occurrences of
 
@@ -405,7 +405,7 @@ In `tests/backtesting/test_ml_regime_aware.py`, inside `TestRegimeProbabilities`
 
 Leave `test_hmm_method_is_gaussian_mixture_not_hidden_markov_model` as is; it never fits.
 
-- [ ] **Step 5: Run the gate, commit the fixup, push**
+- [x] **Step 5: Run the gate, commit the fixup, push**
 
 Run:
 ```bash
@@ -418,7 +418,7 @@ git checkout main
 ```
 Expected: 490 lines; gate green; three commits on the PR.
 
-- [ ] **Step 6: Review the diff**
+- [x] **Step 6: Review the diff**
 
 Run:
 ```bash
@@ -426,7 +426,7 @@ gh pr diff 244
 ```
 Check: `_fall_back_to_threshold_method` is the only path that sets `is_fitted = True` without a fit (six call sites: four early returns and two exception handlers); `get_regime_probabilities` returns the model posterior or `_one_hot_via_threshold_fallback`, never `np.ones(n) / n`; the clamp `min(regime, n_regimes - 1)` only changes behavior for `n_regimes < 3`; `analyze_market_regimes` reports `detector.method`.
 
-- [ ] **Step 7: Wait for CI, merge, thank**
+- [x] **Step 7: Wait for CI, merge, thank**
 
 Run:
 ```bash
@@ -446,7 +446,7 @@ Expected: `CLOSED`.
 
 **Files:** none kept; a scratch branch that is deleted at the end.
 
-- [ ] **Step 1: Build the combined lock on a scratch branch**
+- [x] **Step 1: Build the combined lock on a scratch branch**
 
 Run:
 ```bash
@@ -456,7 +456,7 @@ grep -A1 -E '^name = "(fastmcp|mcp|langchain-anthropic|redis|greenlet|uvicorn|nl
 ```
 Expected versions: fastmcp 3.3.1 and mcp 1.28.1 unchanged; langchain-anthropic 1.7.0, redis 8.1.0, greenlet 3.5.5, uvicorn 0.52.4, nltk 3.10.3. If fastmcp or mcp moved, stop: the resolver found a path to the major upgrade and Task 11 must go first.
 
-- [ ] **Step 2: Run the gate on the combined lock**
+- [x] **Step 2: Run the gate on the combined lock**
 
 Run:
 ```bash
@@ -464,7 +464,7 @@ uv sync --extra dev --extra backtesting --extra research --frozen && make check 
 ```
 Expected: green.
 
-- [ ] **Step 3: Discard the scratch branch**
+- [x] **Step 3: Discard the scratch branch**
 
 Run:
 ```bash
@@ -472,7 +472,7 @@ git checkout main && git branch -D scratch/deps-2026-09 && git checkout -- uv.lo
 ```
 Expected: clean tree.
 
-- [ ] **Step 4: Merge the five PRs one at a time**
+- [x] **Step 4: Merge the five PRs one at a time**
 
 Run, waiting for each merge before the next:
 ```bash
@@ -484,7 +484,7 @@ done
 ```
 If a merge reports a conflict on `uv.lock`, comment `@dependabot rebase` on that PR, wait for the new run, and merge it.
 
-- [ ] **Step 5: Confirm main**
+- [x] **Step 5: Confirm main**
 
 Run:
 ```bash
@@ -506,7 +506,7 @@ One PR from branch `chore/fastmcp-4` in a worktree. The project's exposure is sm
 - Modify: `pyproject.toml` (dependencies block, lines 7 to 16)
 - Modify: `uv.lock` (regenerated)
 
-- [ ] **Step 1: Create the worktree**
+- [x] **Step 1: Create the worktree**
 
 Run:
 ```bash
@@ -514,7 +514,7 @@ git -C /home/wshobson/workspace/major7apps/maverick-mcp worktree add ../maverick
 cd /home/wshobson/workspace/major7apps/maverick-mcp-fastmcp4
 ```
 
-- [ ] **Step 2: Edit the dependency block**
+- [x] **Step 2: Edit the dependency block**
 
 In `pyproject.toml`, replace
 
@@ -542,7 +542,7 @@ with
     "httpx>=0.28.1",
 ```
 
-- [ ] **Step 3: Re-lock and inspect the resolution**
+- [x] **Step 3: Re-lock and inspect the resolution**
 
 Run:
 ```bash
@@ -551,7 +551,7 @@ grep -A1 -E '^name = "(fastmcp|fastmcp-slim|mcp|mcp-types|pydantic|starlette|htt
 ```
 Expected: fastmcp 4.0.3 (or newer 4.x), fastmcp-slim at the same version, mcp 2.1.x, mcp-types present, pydantic 2.12 or newer, starlette 1.0.1 or newer, httpx still present (direct), httpx2 present (FastMCP's).
 
-- [ ] **Step 4: Sync and run the gate as-is**
+- [x] **Step 4: Sync and run the gate as-is**
 
 Run:
 ```bash
@@ -560,7 +560,7 @@ make check && uv run pytest --timeout=60 2>&1 | tail -15
 ```
 Expected: green. Deprecation warnings mentioning `readOnlyHint` or `FastMCPDeprecationWarning` are expected at this step and go away in Task 12.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run:
 ```bash
@@ -579,7 +579,7 @@ git commit -m "build: move to FastMCP 4 (fastmcp>=4.0.3) and drop the unused dir
 **Interfaces:**
 - Produces: annotation dicts keyed `read_only_hint`, `destructive_hint`, `idempotent_hint`, `open_world_hint`; the suite runs with `fastmcp.settings.mcp_camelcase_compat = False`.
 
-- [ ] **Step 1: Write the failing setup: disable the bridge for the whole suite**
+- [x] **Step 1: Write the failing setup: disable the bridge for the whole suite**
 
 Append to `tests/conftest.py`:
 
@@ -599,7 +599,7 @@ def _camelcase_bridge_off():
     yield
 ```
 
-- [ ] **Step 2: Run the portfolio annotation tests to verify they fail**
+- [x] **Step 2: Run the portfolio annotation tests to verify they fail**
 
 Run:
 ```bash
@@ -607,7 +607,7 @@ uv run pytest tests/portfolio/test_tools.py -k "marks" --timeout=60 2>&1 | tail 
 ```
 Expected: FAIL with `AttributeError: ... readOnlyHint` on the `tool.annotations.readOnlyHint` reads. If they pass instead, print `uv run python -c "import fastmcp; print(fastmcp.settings.mcp_camelcase_compat)"`; it must print `False`. If the attribute does not exist, check `uv run python -c "import fastmcp; print([f for f in type(fastmcp.settings).model_fields if 'camel' in f])"` and use the field it names.
 
-- [ ] **Step 3: Migrate the dict keys and the test reads**
+- [x] **Step 3: Migrate the dict keys and the test reads**
 
 Run:
 ```bash
@@ -639,7 +639,7 @@ _CLEAR_ANNOTATIONS = {
 }
 ```
 
-- [ ] **Step 4: Add a wire-format test**
+- [x] **Step 4: Add a wire-format test**
 
 Append to `tests/server/test_assembly.py`:
 
@@ -659,7 +659,7 @@ async def test_tool_annotations_serialize_camel_case_on_the_wire():
     assert wire["readOnlyHint"] is True
 ```
 
-- [ ] **Step 5: Run the full gate**
+- [x] **Step 5: Run the full gate**
 
 Run:
 ```bash
@@ -667,7 +667,7 @@ make check && uv run pytest --timeout=60 -W error::DeprecationWarning 2>&1 | tai
 ```
 Expected: green with no deprecation warnings escalated to errors. If a third-party library emits an unrelated `DeprecationWarning`, rerun without `-W` and confirm no `FastMCPDeprecationWarning` appears in the warnings summary.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 ```bash
@@ -683,7 +683,7 @@ git commit -m "refactor: declare tool annotations with SDK v2 snake_case names a
 - Modify: `README.md:7` (badge)
 - Modify only if the smoke test contradicts it: `docs/runbooks/mcp-clients.md:25-28`
 
-- [ ] **Step 1: Prove the removed and changed APIs are unused**
+- [x] **Step 1: Prove the removed and changed APIs are unused**
 
 Run:
 ```bash
@@ -691,7 +691,7 @@ grep -rn -E 'as_proxy|import_server|\.mount\(|add_tool_transformation|remove_too
 ```
 Expected: `no matches: ...`. Record the command and its output in the PR description.
 
-- [ ] **Step 2: Smoke the stdio transport with a negotiated client**
+- [x] **Step 2: Smoke the stdio transport with a negotiated client**
 
 Run:
 ```bash
@@ -717,7 +717,7 @@ EOF
 ```
 Expected: `tools=52 prompts=3 resources=1` (37 core, 12 backtesting, 3 research with both extras installed) and `call ok: success`.
 
-- [ ] **Step 3: Smoke the HTTP transport and the trailing-slash behavior**
+- [x] **Step 3: Smoke the HTTP transport and the trailing-slash behavior**
 
 Run:
 ```bash
@@ -738,7 +738,7 @@ pkill -f "maverick.server" || true
 ```
 Expected: `http tools: 52` and `POST /mcp/ -> 307`. If the trailing-slash request no longer answers 307, edit the note at `docs/runbooks/mcp-clients.md:25-28` and the troubleshooting lines at 487 to 492 to state the observed status.
 
-- [ ] **Step 4: Update the README badge**
+- [x] **Step 4: Update the README badge**
 
 Run:
 ```bash
@@ -747,7 +747,7 @@ grep -n 'FastMCP-4' README.md
 ```
 Expected: line 7 shows the FastMCP 4 badge.
 
-- [ ] **Step 5: Gate and commit**
+- [x] **Step 5: Gate and commit**
 
 Run:
 ```bash
@@ -761,7 +761,7 @@ git commit -m "docs: FastMCP 4 badge and transport notes"
 
 **Files:** none in the repository; two reports in the scratchpad.
 
-- [ ] **Step 1: Run both protocol revisions**
+- [x] **Step 1: Run both protocol revisions**
 
 Run from the worktree root:
 ```bash
@@ -772,11 +772,11 @@ grep -E '^\*\*Verdict|^\| (Passed|Failed|Not verified)' "$S"/conformance-*.md
 ```
 Expected: both reports render a verdict table. The target is `Verdict: conformant` on both, with `server/discover` checks passing on `2026-07-28`.
 
-- [ ] **Step 2: Fix anything the server owns**
+- [x] **Step 2: Fix anything the server owns**
 
 For each failed check, decide whether it is server code (this repository) or the framework (FastMCP or the SDK). Server-owned failures get a fix in this branch with a test; framework-owned failures get recorded with the check name and the upstream project. A version-less `tools/list` refusal, `server/discover` errors, or result-envelope field problems are framework behavior; a tool schema or resource read problem is ours.
 
-- [ ] **Step 3: Attach the reports to #235**
+- [x] **Step 3: Attach the reports to #235**
 
 Run:
 ```bash
@@ -785,7 +785,7 @@ S=/tmp/claude-1000/-home-wshobson-workspace-major7apps-maverick-mcp/9eed80ae-44b
 gh issue comment 235 --body-file "$S/issue-235-comment.md"
 ```
 
-- [ ] **Step 4: Close or keep open with the residual list**
+- [x] **Step 4: Close or keep open with the residual list**
 
 If both verdicts are conformant, run:
 ```bash
@@ -797,7 +797,7 @@ Otherwise leave #235 open and post one comment listing each residual failed chec
 
 **Files:** none new.
 
-- [ ] **Step 1: Push and open the PR**
+- [x] **Step 1: Push and open the PR**
 
 Run:
 ```bash
@@ -812,7 +812,7 @@ Moves the server to FastMCP 4 (MCP Python SDK v2), which serves the 2026-07-28 p
 EOF
 ```
 
-- [ ] **Step 2: Wait for CI and merge**
+- [x] **Step 2: Wait for CI and merge**
 
 Run:
 ```bash
@@ -822,7 +822,7 @@ git checkout main && git pull --ff-only
 git worktree remove ../maverick-mcp-fastmcp4
 ```
 
-- [ ] **Step 3: Close PR 249**
+- [x] **Step 3: Close PR 249**
 
 Run:
 ```bash
@@ -855,7 +855,7 @@ uv sync --extra dev --extra backtesting --extra research --frozen
 **Interfaces:**
 - Produces: `extract_domain(url: str) -> str`, `is_authoritative_source(url: str) -> bool`, `financial_relevance(*, url: str, text: str | None, title: str | None, published_date: str | None, financial_domains: list[str] | None = None) -> float`, and the constants `FINANCIAL_DOMAINS`, `AUTHORITATIVE_DOMAINS`, `FINANCIAL_KEYWORDS`. Task 18 consumes the three functions.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/research/test_scoring.py`:
 
@@ -939,12 +939,12 @@ def test_financial_relevance_honors_a_custom_domain_list():
     assert score == pytest.approx(0.2)
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/research/test_scoring.py --timeout=60`
 Expected: FAIL at import with `ModuleNotFoundError: No module named 'maverick.research.providers.scoring'`.
 
-- [ ] **Step 3: Create the scoring module**
+- [x] **Step 3: Create the scoring module**
 
 Create `maverick/research/providers/scoring.py`:
 
@@ -1103,12 +1103,12 @@ def financial_relevance(
     return min(score, 1.0)
 ```
 
-- [ ] **Step 4: Run the scoring tests to verify they pass**
+- [x] **Step 4: Run the scoring tests to verify they pass**
 
 Run: `uv run pytest tests/research/test_scoring.py --timeout=60`
 Expected: 8 passed.
 
-- [ ] **Step 5: Point the Exa provider at the shared helpers**
+- [x] **Step 5: Point the Exa provider at the shared helpers**
 
 In `maverick/research/providers/exa.py`:
 
@@ -1172,7 +1172,7 @@ from maverick.research.providers.scoring import (
         return is_authoritative_source(url)
 ```
 
-- [ ] **Step 6: Verify nothing dangling remains and the Exa tests still pass**
+- [x] **Step 6: Verify nothing dangling remains and the Exa tests still pass**
 
 Run:
 ```bash
@@ -1183,7 +1183,7 @@ uv run lint-imports
 ```
 Expected: `clean`, ruff clean, all tests pass, `0 broken` contracts.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 Run:
 ```bash
@@ -1200,7 +1200,7 @@ git commit -m "refactor(research): share financial-relevance scoring across sear
 **Interfaces:**
 - Produces: `ResearchSettings.search_backend: Literal["exa", "searxng"]` (env `RESEARCH_SEARCH_BACKEND`, default `"exa"`) and `ResearchSettings.searxng_base_url: str | None` (env `SEARXNG_BASE_URL`, trailing slash stripped, `http://` or `https://` required). Tasks 19 and 20 consume both.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `tests/research/test_config.py`, extend the env list and add tests:
 
@@ -1252,12 +1252,12 @@ def test_searxng_base_url_requires_an_http_scheme(monkeypatch):
         ResearchSettings()
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/research/test_config.py --timeout=60`
 Expected: the four new tests FAIL (`AttributeError: 'ResearchSettings' object has no attribute 'search_backend'` and no `ValidationError` raised).
 
-- [ ] **Step 3: Add the settings**
+- [x] **Step 3: Add the settings**
 
 In `maverick/research/config.py`:
 
@@ -1314,12 +1314,12 @@ enabled) and no key."""
   selection (#186). See `providers/searxng.py`.
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `uv run pytest tests/research/test_config.py --timeout=60`
 Expected: all pass, including `test_defaults_are_zero_config`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 Run:
 ```bash
@@ -1338,7 +1338,7 @@ git commit -m "feat(research): add RESEARCH_SEARCH_BACKEND and SEARXNG_BASE_URL 
 - Consumes: `extract_domain`, `financial_relevance`, `is_authoritative_source` from Task 16; `WebSearchProvider`, `WebSearchError` from `providers/base.py`; `create_client`, `request_resilient`, `CircuitOpenError` from `maverick.platform.http`; `HttpSettings`, `get_platform_settings` from `maverick.platform.config`.
 - Produces: `SearXNGProvider(base_url: str, *, settings: ResearchSettings | None = None, time_range: str | None = None, http_settings: HttpSettings | None = None, transport: httpx.AsyncBaseTransport | None = None)` with `search(query, num_results=10, timeout_budget=None) -> list[dict[str, Any]]`, attributes `base_url` and `time_range`; and `time_range_for(timeframe: str | None) -> str | None`. Task 19 consumes both.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `tests/research/test_searxng.py`:
 
@@ -1580,12 +1580,12 @@ async def test_open_circuit_breaker_short_circuits_subsequent_calls():
     assert calls == 1
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/research/test_searxng.py --timeout=60`
 Expected: FAIL at import with `ModuleNotFoundError: No module named 'maverick.research.providers.searxng'`.
 
-- [ ] **Step 3: Create the provider**
+- [x] **Step 3: Create the provider**
 
 Create `maverick/research/providers/searxng.py`:
 
@@ -1796,7 +1796,7 @@ class SearXNGProvider(WebSearchProvider):
         return results
 ```
 
-- [ ] **Step 4: Name the provider in the package docstring**
+- [x] **Step 4: Name the provider in the package docstring**
 
 In `maverick/research/providers/__init__.py`, change the first line to:
 
@@ -1804,7 +1804,7 @@ In `maverick/research/providers/__init__.py`, change the first line to:
 """Web search providers (`WebSearchProvider`, `ExaSearchProvider`, `SearXNGProvider`). Third-layer sibling: imports config and types.
 ```
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run:
 ```bash
@@ -1814,7 +1814,7 @@ uv run lint-imports
 ```
 Expected: all pass; ruff clean; `0 broken`. The financial-relevance assertion of `0.6` is the SEC domain tier (0.4) plus two keyword hits (`revenue`, `earnings`: 0.1) plus the title term `quarterly` (0.1). If ruff format rewrites a line, apply `uv run ruff format maverick/research tests/research` and re-run.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 ```bash
@@ -1833,7 +1833,7 @@ git commit -m "feat(research): add a SearXNG search provider on the platform HTT
 - Consumes: `SearXNGProvider`, `time_range_for` (Task 18); `ResearchSettings.search_backend`, `ResearchSettings.searxng_base_url` (Task 17).
 - Produces: `configuration_problem(*, search_backend: str, search_configured: bool, llm_provider: str | None, valid_llm_providers: str)`; `ResearchService._search_configured() -> bool`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/research/test_service.py` (the module already imports `ResearchSettings`, `ResearchService`, `ResearchError`, `pytest`, and defines `FakeAgent`, `_fixture_report`, `_configured_settings`, and the `configured_llm` fixture):
 
@@ -1914,12 +1914,12 @@ async def test_default_agent_factory_picks_exa_by_default(monkeypatch):
     assert isinstance(client, ExaSearchProvider)
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `uv run pytest tests/research/test_service.py -k "searxng or picks" --timeout=60`
 Expected: the four new tests FAIL (the not-configured test reports the Exa message; the factory test raises the Exa assertion).
 
-- [ ] **Step 3: Generalize the prerequisite check**
+- [x] **Step 3: Generalize the prerequisite check**
 
 In `maverick/research/service_support.py`, replace `configuration_problem` with:
 
@@ -1973,7 +1973,7 @@ def configuration_problem(
     return None
 ```
 
-- [ ] **Step 4: Select the provider in the service**
+- [x] **Step 4: Select the provider in the service**
 
 In `maverick/research/service.py`:
 
@@ -2033,7 +2033,7 @@ from maverick.research.providers.searxng import SearXNGProvider, time_range_for
 
 4. In the module docstring, change the sentence `The default factory (\`_build_default_agent\`) constructs a real \`ExaSearchProvider\` +` to `The default factory (\`_build_default_agent\`) constructs a real \`ExaSearchProvider\` (or \`SearXNGProvider\`, per \`ResearchSettings.search_backend\`) +`.
 
-- [ ] **Step 5: Run the research suite and the gate**
+- [x] **Step 5: Run the research suite and the gate**
 
 Run:
 ```bash
@@ -2042,7 +2042,7 @@ make check
 ```
 Expected: all research tests pass, including the pre-existing Exa not-configured tests; `All checks passed!`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 Run:
 ```bash
@@ -2055,7 +2055,7 @@ git commit -m "feat(research): select the search backend from settings and name 
 **Files:**
 - Modify: `.env.example` (after the `EXA_API_KEY` line), `docs/features/deep-research.md` (Configuration section), `README.md:492-493`, `README.md:531`, `README.md:656`, `server.json` (environment variable arrays)
 
-- [ ] **Step 1: .env.example**
+- [x] **Step 1: .env.example**
 
 After the line `# EXA_API_KEY=your_exa_api_key_here`, add:
 
@@ -2066,7 +2066,7 @@ After the line `# EXA_API_KEY=your_exa_api_key_here`, add:
 # SEARXNG_BASE_URL=http://localhost:8080
 ```
 
-- [ ] **Step 2: Feature doc**
+- [x] **Step 2: Feature doc**
 
 In `docs/features/deep-research.md`, change the Configuration intro sentence
 
@@ -2120,7 +2120,7 @@ search: `EXA_API_KEY` for Exa, `SEARXNG_BASE_URL` for SearXNG.
 
 ````
 
-- [ ] **Step 3: README**
+- [x] **Step 3: README**
 
 Replace
 
@@ -2164,7 +2164,7 @@ with
 - Ensure `EXA_API_KEY` is set for web search, or `RESEARCH_SEARCH_BACKEND=searxng` with `SEARXNG_BASE_URL`
 ```
 
-- [ ] **Step 4: server.json**
+- [x] **Step 4: server.json**
 
 Run:
 ```bash
@@ -2206,7 +2206,7 @@ EOF
 ```
 Expected: `server.json updated` and `server.json is valid`.
 
-- [ ] **Step 5: Gate, commit, PR, merge**
+- [x] **Step 5: Gate, commit, PR, merge**
 
 Run:
 ```bash
@@ -2227,7 +2227,7 @@ git checkout main && git pull --ff-only
 git worktree remove ../maverick-mcp-searxng
 ```
 
-- [ ] **Step 6: Reply on #186**
+- [x] **Step 6: Reply on #186**
 
 Run (substitute the merged PR number):
 ```bash
@@ -2247,14 +2247,14 @@ Expected: `CLOSED` (the `Closes #186` line in the PR closes it on merge; if it p
 - Create: `docs/generated/release-notes/v1.1.0.md`
 - Modify: `docs/CATALOG.md` (row for the release notes), `docs/INDEX.md` (line for the release notes)
 
-- [ ] **Step 1: Branch**
+- [x] **Step 1: Branch**
 
 Run:
 ```bash
 git checkout -b release/v1.1.0-prep main
 ```
 
-- [ ] **Step 2: Bump the version in code and metadata**
+- [x] **Step 2: Bump the version in code and metadata**
 
 Run:
 ```bash
@@ -2281,7 +2281,7 @@ git diff --stat
 ```
 Expected: `pyproject.toml`, `maverick/__init__.py`, `tests/structure/test_package.py`, `server.json`, and `uv.lock` (the project's own version entry) changed; every version field reads 1.1.0.
 
-- [ ] **Step 3: Write the release notes**
+- [x] **Step 3: Write the release notes**
 
 Create `docs/generated/release-notes/v1.1.0.md`:
 
@@ -2336,7 +2336,7 @@ pip install "maverick-mcp-server[backtesting,research]==1.1.0"
 ```
 ```
 
-- [ ] **Step 4: Catalog the release notes**
+- [x] **Step 4: Catalog the release notes**
 
 Add to `docs/CATALOG.md` in the Current table, after the `generated/registry/smithery.yaml` row:
 
@@ -2350,7 +2350,7 @@ Add to `docs/INDEX.md` under "Current Product And Technical Docs", after the `ge
 - `generated/release-notes/v1.1.0.md` - release notes for v1.1.0.
 ```
 
-- [ ] **Step 5: Refresh the release runbook**
+- [x] **Step 5: Refresh the release runbook**
 
 Run:
 ```bash
@@ -2382,7 +2382,7 @@ grep -n '1\.0\.0' docs/runbooks/releasing.md
 ```
 Expected: the remaining `1.0.0` mentions are historical ("v1.0.0 was released on GitHub only", the `.mcpb` prose). Read each remaining line and change it only if it instructs a command.
 
-- [ ] **Step 6: Gate, commit, PR, merge**
+- [x] **Step 6: Gate, commit, PR, merge**
 
 Run:
 ```bash
@@ -2653,6 +2653,25 @@ git checkout main && git pull --ff-only
 ```
 
 ---
+
+## Execution addenda (2026-09-05)
+
+Deviations and lessons from executing Tasks 1 to 21 inline in one session.
+
+1. **Local gates and a leaked key.** The executing shell exported a real `EXA_API_KEY`, so the "Exa not configured" research test silently built a live agent and made network calls. PR #257 (not in the plan) makes the research conftest scrub the research and BYOK variables before every test; gates before it ran with `env -u EXA_API_KEY`. CI never had a key and was never affected.
+2. **`gh pr checkout` has no `-q` flag**; a chain using it skipped the whole PR 242 gate once before the retry.
+3. **Force-pushing a contributor's branch.** `gh pr checkout` configures the fork as a bare URL, so `--force-with-lease` has no remote-tracking ref ("stale info"). Use `--force-with-lease=<branch>:<contributor head sha>` from `gh pr view --json headRefOid`.
+4. **Dependency batch.** `uv lock --upgrade-package` resolved langchain-anthropic 1.7.1 while dependabot's PR pinned 1.7.0; the merged lock carries dependabot's 1.7.0. The gate passed on both.
+5. **camelCase reads lived in six test modules**, not only `tests/portfolio/test_tools.py`: market data, screening, technical, backtesting, research, and portfolio. The bridge-off fixture found them; the plan's grep had been truncated.
+6. **Removed-API grep** matched `except httpx.TransportError` in `maverick/platform/http.py`. That guards our own outbound client, not anything handed to FastMCP; no change.
+7. **Conformance harness.** `@hasmcp/mcp-spec-test` runs its tests with the working directory set to the npm package root, so `uv run python -m maverick.server` there resolves no project; the suite's own client ran whatever venv `VIRTUAL_ENV` pointed at, and its bundled official-SDK client started a bare interpreter and reported "Connection closed". Run it as `env -u VIRTUAL_ENV npx -y @hasmcp/mcp-spec-test@0.1.5 -c "uv run --directory /abs/path python -m maverick.server --transport stdio" --spec-version <rev>`.
+8. **Conformance results (FastMCP 4.0.3, mcp 2.1.1).** 2025-11-25 conformant on stdio and HTTP. 2026-07-28 over HTTP: 31 passed, 2 failed (negotiated-version response header not echoed; version-less request answered 400), 7 not verified. Over stdio the SDK serves the handshake era only. FastMCP 3, run the same way, fails the 2025-11-25 `CallToolResult` content check (#234's finding). #235 stays open as the tracker for the three upstream items. Reports are attached to #235.
+9. **Scoring helpers** live in `maverick/research/providers/scoring.py`, not `providers/base.py`; the spec was updated to match.
+10. **Factory tests** in `tests/research/test_service.py` compare against the provider classes held by `maverick.research.service`: `tests/research/test_providers.py` re-imports the provider modules, so `isinstance` against a fresh import fails. The first Task 19 commit landed with that failure because `pytest | tail` hid the exit code; it was amended. Use `set -o pipefail` in gate chains.
+11. **Worktree sequencing.** The SearXNG worktree was cut from the FastMCP 4 branch before #258 merged and replayed onto `main` with `git rebase --onto main <fastmcp-4 tip> feat/searxng-backend`.
+12. **Release runbook.** Option A told the owner to leave the PyPI trusted publisher's environment blank while `publish.yml` runs its PyPI job in the GitHub environment `pypi`; that mismatch is the likely cause of the 2026-07-20 `invalid-publisher` failure. Corrected in #260: the publisher must name environment `pypi`.
+
+Merged this session: #255, #256, #242, #243, #244, #248, #250, #251, #252, #253, #257, #258, #259, #260. Closed: #241, #254, #245, #246, #247, #186, #249. Open by design: #235 (upstream tracker). Owner-gated and not started: Tasks 22 and 23.
 
 ## Spec coverage
 
