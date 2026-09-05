@@ -62,7 +62,7 @@ uv sync --extra backtesting
 or, from a published wheel:
 
 ```bash
-pip install "maverick-mcp-server[backtesting]"
+pip install "maverick-mcp-server[backtesting] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"
 ```
 
 If the extra is absent, `maverick.backtesting.tools.register()` logs one

@@ -92,23 +92,31 @@ pip install uv
 
 ### Installation
 
-> **Note:** v1.0.0 is not yet published to PyPI (registry rollout is in
-> progress). Until it is, use Option 3 (from source). Options 1 and 2 are the
-> intended usage once the package is published.
+> **Note:** The package is not on PyPI yet. The name `maverick-mcp-server`
+> is held by a dormant, unrelated project, and a PEP 541 name-transfer
+> request is pending with PyPI. Until this note is gone, do **not**
+> `pip install maverick-mcp-server` or `uvx --from maverick-mcp-server`:
+> that name is not ours, and whatever its current owner publishes is what
+> you would get. Use Option 1 (uvx from the release tag), Option 2 (the
+> GHCR image), or Option 3 (from source).
 
-#### Option 1: Run without installing (uvx, once published)
+#### Option 1: Run without installing (uvx from the release tag)
 
 ```bash
-# Runs the published maverick-mcp-server package via uvx, invoking its
-# maverick-mcp console script
-uvx --from maverick-mcp-server maverick-mcp --transport stdio
+# Runs the v1.1.0 tag straight from GitHub via uvx, invoking its
+# maverick-mcp console script (no checkout, nothing from PyPI)
+uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio
+
+# With the backtesting and research extras
+uvx --from "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio
 ```
 
-#### Option 2: pip install (once published)
+#### Option 2: Docker image (GHCR)
 
 ```bash
-pip install "maverick-mcp-server[backtesting,research]"
-maverick-mcp --transport stdio
+# Streamable HTTP on port 8000 inside the container, mapped to 8003 here;
+# --env-file is optional (core tools need no keys)
+docker run --rm -p 8003:8000 --env-file .env ghcr.io/wshobson/maverick-mcp:1.1.0
 ```
 
 Drop `[backtesting,research]` for a smaller, core-only install (37 tools,
@@ -189,7 +197,7 @@ endpoint in whatever shape their config expects.
 #### Claude Desktop
 
 `claude_desktop_config.json` launches local **STDIO** servers only. Using the
-published package via `uvx` (no checkout needed):
+release tag via `uvx` (no checkout needed, nothing from PyPI):
 
 ```json
 {
@@ -198,7 +206,7 @@ published package via `uvx` (no checkout needed):
       "command": "uvx",
       "args": [
         "--from",
-        "maverick-mcp-server",
+        "git+https://github.com/wshobson/maverick-mcp@v1.1.0",
         "maverick-mcp",
         "--transport",
         "stdio"
@@ -477,7 +485,7 @@ method and precision rules.
 | `backtesting_create_strategy_ensemble` | Backtest a weighted ensemble of base strategies. |
 
 12 rule-based strategy templates plus 8 ML strategy classes. Install with
-`uv sync --extra backtesting` or `pip install "maverick-mcp-server[backtesting]"`.
+`uv sync --extra backtesting` or `pip install "maverick-mcp-server[backtesting] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`.
 Absent the extra, the server still boots and registers zero
 `backtesting_*` tools.
 
@@ -494,7 +502,7 @@ Requires a search backend (`EXA_API_KEY` for Exa, the default, or
 SearXNG instance) and a configured BYOK LLM
 (`LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`; see [Configuration](#configuration)).
 Install with `uv sync --extra research` or
-`pip install "maverick-mcp-server[research]"`. Absent the extra, the server
+`pip install "maverick-mcp-server[research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`. Absent the extra, the server
 still boots and registers zero `research_*` tools.
 
 ## Resources
@@ -655,12 +663,12 @@ endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
 - Monitor progress in server logs with `make tail-log`
 
 **Research Tools Not Available:**
-- Ensure the `research` extra is installed: `pip install "maverick-mcp-server[research]"`
+- Ensure the `research` extra is installed: `pip install "maverick-mcp-server[research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`
 - Ensure `LLM_PROVIDER`, `LLM_API_KEY`, and `LLM_MODEL` are set in `.env`
 - Ensure `EXA_API_KEY` is set for web search, or `RESEARCH_SEARCH_BACKEND=searxng` with `SEARXNG_BASE_URL`
 
 **Backtesting Tools Not Available:**
-- Ensure the `backtesting` extra is installed: `pip install "maverick-mcp-server[backtesting]"`
+- Ensure the `backtesting` extra is installed: `pip install "maverick-mcp-server[backtesting] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`
 
 **Empty screening results:**
 - There is no pre-seeded universe; fetch price history for the tickers you

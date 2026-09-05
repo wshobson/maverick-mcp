@@ -73,7 +73,7 @@ uv sync --extra research
 or, from a published wheel:
 
 ```bash
-pip install "maverick-mcp-server[research]"
+pip install "maverick-mcp-server[research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"
 ```
 
 If the extra is absent, `maverick.research.tools.register()` logs one clear
