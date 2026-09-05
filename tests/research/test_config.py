@@ -15,6 +15,8 @@ _ENV_VARS = (
     "RESEARCH_DEFAULT_MAX_SOURCES",
     "RESEARCH_DEFAULT_TIMEFRAME",
     "RESEARCH_SENTIMENT_DEFAULT_TIMEFRAME",
+    "RESEARCH_SEARCH_BACKEND",
+    "SEARXNG_BASE_URL",
 )
 
 
@@ -103,3 +105,34 @@ def test_singleton_and_reset():
     assert get_research_settings() is a
     reset_research_settings()
     assert get_research_settings() is not a
+
+
+def test_search_backend_defaults_to_exa_with_no_searxng_url():
+    s = ResearchSettings()
+
+    assert s.search_backend == "exa"
+    assert s.searxng_base_url is None
+
+
+def test_search_backend_env_override_normalizes_the_url(monkeypatch):
+    monkeypatch.setenv("RESEARCH_SEARCH_BACKEND", "searxng")
+    monkeypatch.setenv("SEARXNG_BASE_URL", "http://localhost:8080/")
+
+    s = ResearchSettings()
+
+    assert s.search_backend == "searxng"
+    assert s.searxng_base_url == "http://localhost:8080"
+
+
+def test_invalid_search_backend_fails_fast(monkeypatch):
+    monkeypatch.setenv("RESEARCH_SEARCH_BACKEND", "bing")
+
+    with pytest.raises(ValidationError):
+        ResearchSettings()
+
+
+def test_searxng_base_url_requires_an_http_scheme(monkeypatch):
+    monkeypatch.setenv("SEARXNG_BASE_URL", "localhost:8080")
+
+    with pytest.raises(ValidationError):
+        ResearchSettings()

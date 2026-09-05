@@ -62,11 +62,15 @@ package's import reach:
   count after which `WebSearchProvider._record_failure` (`.../base.py:57-84`)
   marks a provider unhealthy -- distinct from the breaker fields above; this
   gates the provider's own `is_healthy()` flag, not `get_breaker`.
+- `search_backend` (`RESEARCH_SEARCH_BACKEND`, default `exa`) and
+  `searxng_base_url` (`SEARXNG_BASE_URL`): the 2026-09 SearXNG backend
+  selection (#186). See `providers/searxng.py`.
 """
 
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr, field_validator
 
 from maverick.platform.config import _clean_env, _env_float, _env_int, _env_str
 from maverick.research.types import ResearchDepth
@@ -84,8 +88,32 @@ def _resolve_exa_api_key() -> SecretStr | None:
     return SecretStr(value) if value is not None else None
 
 
+SearchBackend = Literal["exa", "searxng"]
+"""Which web search provider backs the research tools. `exa` needs `EXA_API_KEY`;
+`searxng` needs `SEARXNG_BASE_URL` (a self-hosted instance with the JSON format
+enabled) and no key."""
+
+
 class ResearchSettings(BaseModel):
     exa_api_key: SecretStr | None = Field(default_factory=_resolve_exa_api_key)
+    search_backend: SearchBackend = Field(
+        default_factory=lambda: _env_str("RESEARCH_SEARCH_BACKEND", "exa"),
+        validate_default=True,
+    )
+    searxng_base_url: str | None = Field(
+        default_factory=lambda: _clean_env("SEARXNG_BASE_URL"),
+        validate_default=True,
+    )
+
+    @field_validator("searxng_base_url")
+    @classmethod
+    def _normalize_searxng_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip().rstrip("/")
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("SEARXNG_BASE_URL must start with http:// or https://")
+        return value
 
     default_research_depth: ResearchDepth = Field(
         default_factory=lambda: _env_str("RESEARCH_DEFAULT_DEPTH", "standard"),
