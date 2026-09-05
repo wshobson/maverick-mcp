@@ -55,14 +55,18 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import UTC
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
 
 from maverick.platform.config import HttpSettings
 from maverick.platform.http import CircuitOpenError, get_breaker
 from maverick.research.config import ResearchSettings
 from maverick.research.providers.base import WebSearchError, WebSearchProvider
+from maverick.research.providers.scoring import (
+    FINANCIAL_DOMAINS,
+    extract_domain,
+    financial_relevance,
+    is_authoritative_source,
+)
 
 if TYPE_CHECKING:
     from exa_py.api import Result as ExaResult
@@ -70,32 +74,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _BREAKER_NAME = "exa_search"
-
-# Financial-specific domain preferences for better results.
-_FINANCIAL_DOMAINS = [
-    "sec.gov",
-    "edgar.sec.gov",
-    "investor.gov",
-    "bloomberg.com",
-    "reuters.com",
-    "wsj.com",
-    "ft.com",
-    "marketwatch.com",
-    "yahoo.com/finance",
-    "finance.yahoo.com",
-    "morningstar.com",
-    "fool.com",
-    "seekingalpha.com",
-    "investopedia.com",
-    "barrons.com",
-    "cnbc.com",
-    "nasdaq.com",
-    "nyse.com",
-    "finra.org",
-    "federalreserve.gov",
-    "treasury.gov",
-    "bls.gov",
-]
 
 # Domains to exclude for financial searches.
 _EXCLUDED_DOMAINS = [
@@ -109,41 +87,6 @@ _EXCLUDED_DOMAINS = [
     "linkedin.com",
     "youtube.com",
     "wikipedia.org",
-]
-
-_AUTHORITATIVE_DOMAINS = [
-    "sec.gov",
-    "edgar.sec.gov",
-    "federalreserve.gov",
-    "treasury.gov",
-    "bloomberg.com",
-    "reuters.com",
-    "wsj.com",
-    "ft.com",
-]
-
-_FINANCIAL_KEYWORDS = [
-    "earnings",
-    "revenue",
-    "profit",
-    "financial",
-    "quarterly",
-    "annual",
-    "sec filing",
-    "10-k",
-    "10-q",
-    "balance sheet",
-    "income statement",
-    "cash flow",
-    "dividend",
-    "market cap",
-    "valuation",
-    "analyst",
-    "forecast",
-    "guidance",
-    "ebitda",
-    "eps",
-    "pe ratio",
 ]
 
 _FINANCIAL_QUERY_TERMS = {
@@ -172,16 +115,6 @@ _CONTENT_CHARS = 2000
 _RAW_CONTENT_CHARS = 5000
 _DEFAULT_SCORE = 0.7
 
-# Financial-relevance scoring weights, verbatim from legacy.
-_DOMAIN_SCORE_TOP_TIER = 0.4
-_DOMAIN_SCORE_HIGH_QUALITY = 0.3
-_DOMAIN_SCORE_OTHER = 0.2
-_KEYWORD_SCORE_PER_MATCH = 0.05
-_KEYWORD_SCORE_MAX = 0.3
-_TITLE_SCORE = 0.1
-_RECENCY_SCORE_30D = 0.1
-_RECENCY_SCORE_90D = 0.05
-
 
 class ExaSearchProvider(WebSearchProvider):
     """Exa search provider for comprehensive web search using MCP tools with financial optimization."""
@@ -189,7 +122,7 @@ class ExaSearchProvider(WebSearchProvider):
     def __init__(self, api_key: str, *, settings: ResearchSettings | None = None):
         super().__init__(api_key, settings=settings)
         self._api_key_verified = bool(api_key)
-        self.financial_domains = list(_FINANCIAL_DOMAINS)
+        self.financial_domains = list(FINANCIAL_DOMAINS)
         self.excluded_domains = list(_EXCLUDED_DOMAINS)
         logger.info("Initialized ExaSearchProvider with financial optimization")
 
@@ -389,61 +322,18 @@ class ExaSearchProvider(WebSearchProvider):
 
     def _calculate_financial_relevance(self, result: ExaResult | Any) -> float:
         """Calculate financial relevance score for a search result (0.0 to 1.0)."""
-        score = 0.0
-
-        domain = self._extract_domain(result.url)
-        if domain in self.financial_domains:
-            if domain in ["sec.gov", "edgar.sec.gov", "federalreserve.gov"]:
-                score += _DOMAIN_SCORE_TOP_TIER
-            elif domain in ["bloomberg.com", "reuters.com", "wsj.com", "ft.com"]:
-                score += _DOMAIN_SCORE_HIGH_QUALITY
-            else:
-                score += _DOMAIN_SCORE_OTHER
-
-        if hasattr(result, "text") and result.text:
-            text_lower = result.text.lower()
-            keyword_matches = sum(
-                1 for keyword in _FINANCIAL_KEYWORDS if keyword in text_lower
-            )
-            score += min(keyword_matches * _KEYWORD_SCORE_PER_MATCH, _KEYWORD_SCORE_MAX)
-
-        if hasattr(result, "title") and result.title:
-            title_lower = result.title.lower()
-            if any(
-                term in title_lower
-                for term in ["financial", "earnings", "quarterly", "annual", "sec"]
-            ):
-                score += _TITLE_SCORE
-
-        if hasattr(result, "published_date") and result.published_date:
-            try:
-                from datetime import datetime
-
-                date_str = str(result.published_date)
-                if date_str and date_str != "":
-                    if date_str.endswith("Z"):
-                        date_str = date_str.replace("Z", "+00:00")
-
-                    pub_date = datetime.fromisoformat(date_str)
-                    days_old = (datetime.now(UTC) - pub_date).days
-
-                    if days_old <= 30:
-                        score += _RECENCY_SCORE_30D
-                    elif days_old <= 90:
-                        score += _RECENCY_SCORE_90D
-            except (ValueError, AttributeError, TypeError):
-                pass
-
-        return min(score, 1.0)
+        return financial_relevance(
+            url=result.url or "",
+            text=getattr(result, "text", None),
+            title=getattr(result, "title", None),
+            published_date=getattr(result, "published_date", None),
+            financial_domains=self.financial_domains,
+        )
 
     def _extract_domain(self, url: str) -> str:
         """Extract domain from URL."""
-        try:
-            return urlparse(url).netloc.lower().replace("www.", "")
-        except Exception:
-            return ""
+        return extract_domain(url)
 
     def _is_authoritative_source(self, url: str) -> bool:
         """Check if URL is from an authoritative financial source."""
-        domain = self._extract_domain(url)
-        return domain in _AUTHORITATIVE_DOMAINS
+        return is_authoritative_source(url)
