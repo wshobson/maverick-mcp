@@ -24,7 +24,7 @@ depth -- so, unlike `market_data`, the collaborator here can't be a single long-
 handed to the constructor. `AgentFactory` (`service_support.py`) is a `Protocol` called once per
 research call with the resolved `persona`/`default_depth`, returning a `ResearchRunner` (the
 structural subset of `DeepResearchAgent`'s public surface this service actually calls). The
-default factory (`_build_default_agent`) constructs a real `ExaSearchProvider` +
+default factory (`_build_default_agent`) constructs a real `ExaSearchProvider` (or `SearXNGProvider`, per `ResearchSettings.search_backend`) +
 `DeepResearchAgent`; tests inject a fake `agent_factory` that returns a scripted double, never
 touching langgraph/langchain/exa-py.
 
@@ -107,7 +107,9 @@ import uuid
 from maverick.platform.llm import LLMProvider, get_llm_settings
 from maverick.research.agents.graph import DeepResearchAgent
 from maverick.research.config import ResearchSettings, get_research_settings
+from maverick.research.providers.base import WebSearchProvider
 from maverick.research.providers.exa import ExaSearchProvider
+from maverick.research.providers.searxng import SearXNGProvider, time_range_for
 from maverick.research.service_support import (
     AgentFactory,
     build_metadata,
@@ -162,16 +164,34 @@ class ResearchService:
     def _build_default_agent(
         self, *, persona: Persona, default_depth: ResearchDepth
     ) -> DeepResearchAgent:
-        assert self._settings.exa_api_key is not None, (
-            "_build_default_agent must only run after _configuration_error confirms "
-            "exa_api_key is set"
-        )
-        exa = ExaSearchProvider(
-            self._settings.exa_api_key.get_secret_value(), settings=self._settings
-        )
+        search: WebSearchProvider
+        if self._settings.search_backend == "searxng":
+            assert self._settings.searxng_base_url is not None, (
+                "_build_default_agent must only run after _configuration_error confirms "
+                "searxng_base_url is set"
+            )
+            search = SearXNGProvider(
+                self._settings.searxng_base_url,
+                settings=self._settings,
+                time_range=time_range_for(self._settings.default_timeframe),
+            )
+        else:
+            assert self._settings.exa_api_key is not None, (
+                "_build_default_agent must only run after _configuration_error confirms "
+                "exa_api_key is set"
+            )
+            search = ExaSearchProvider(
+                self._settings.exa_api_key.get_secret_value(), settings=self._settings
+            )
         return DeepResearchAgent(
-            search_clients=[exa], persona=persona, default_depth=default_depth
+            search_clients=[search], persona=persona, default_depth=default_depth
         )
+
+    def _search_configured(self) -> bool:
+        """Whether the selected search backend has what it needs."""
+        if self._settings.search_backend == "searxng":
+            return self._settings.searxng_base_url is not None
+        return self._settings.exa_api_key is not None
 
     def _configuration_error(
         self, request_id: str, **extra: object
@@ -189,7 +209,8 @@ class ResearchService:
             problem = llm_configuration_value_error_problem(exc)
             return configuration_error(problem, request_id=request_id, **extra)
         problem = configuration_problem(
-            exa_configured=self._settings.exa_api_key is not None,
+            search_backend=self._settings.search_backend,
+            search_configured=self._search_configured(),
             llm_provider=provider.value if provider is not None else None,
             valid_llm_providers=_VALID_LLM_PROVIDERS,
         )

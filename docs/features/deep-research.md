@@ -87,18 +87,42 @@ accessed without it installed.
 
 ## Configuration
 
-Research needs two independent things configured: a search provider (Exa)
-and a BYOK LLM. Both are checked at call time; a tool call fails fast with a
+Research needs two independent things configured: a search backend (Exa by
+default, or a self-hosted SearXNG instance) and a BYOK LLM. Both are checked at call time; a tool call fails fast with a
 clear error naming exactly what to set if either is missing.
 
-### Search provider
+### Search backend
+
+The default backend is Exa:
 
 ```bash
 EXA_API_KEY=your_exa_key
 ```
 
-`EXA_API_KEY` is the sole "is research configured" gate for search -- there
-is no other search-provider key in this port.
+To use a self-hosted SearXNG instance instead, with no API key, select the
+backend and point it at the instance:
+
+```bash
+RESEARCH_SEARCH_BACKEND=searxng
+SEARXNG_BASE_URL=http://localhost:8080
+```
+
+The instance must serve the JSON API. Most SearXNG installs ship with it
+disabled; enable it in the instance's `settings.yml`:
+
+```yaml
+search:
+  formats:
+    - html
+    - json
+```
+
+A 403 from the instance is reported by the research tools with that
+instruction. SearXNG returns result snippets rather than page text, so
+`raw_content` equals `content` for its results, and the recency window
+follows `RESEARCH_DEFAULT_TIMEFRAME` (`1m` maps to SearXNG's `month`
+range). The selected backend is the one "is research configured" gate for
+search: `EXA_API_KEY` for Exa, `SEARXNG_BASE_URL` for SearXNG.
 
 ### BYOK LLM
 

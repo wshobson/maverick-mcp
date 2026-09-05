@@ -72,6 +72,18 @@
           "description": "Optional API key for Exa web search (research extra). Get at https://exa.ai",
           "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "RESEARCH_SEARCH_BACKEND",
+          "description": "Optional research search backend: exa (default) or searxng.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SEARXNG_BASE_URL",
+          "description": "Optional base URL of a self-hosted SearXNG instance with the JSON format enabled; used when RESEARCH_SEARCH_BACKEND=searxng.",
+          "isRequired": false,
+          "isSecret": false
         }
       ]
     },
@@ -151,6 +163,18 @@
           "description": "Optional API key for Exa web search (research extra). Get at https://exa.ai",
           "isRequired": false,
           "isSecret": true
+        },
+        {
+          "name": "RESEARCH_SEARCH_BACKEND",
+          "description": "Optional research search backend: exa (default) or searxng.",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "SEARXNG_BASE_URL",
+          "description": "Optional base URL of a self-hosted SearXNG instance with the JSON format enabled; used when RESEARCH_SEARCH_BACKEND=searxng.",
+          "isRequired": false,
+          "isSecret": false
         }
       ]
     }

@@ -1,4 +1,4 @@
-"""Web search providers (`WebSearchProvider`, `ExaSearchProvider`). Third-layer sibling: imports config and types.
+"""Web search providers (`WebSearchProvider`, `ExaSearchProvider`, `SearXNGProvider`). Third-layer sibling: imports config and types.
 
 No parallel circuit-breaker manager lives here: `exa.py`'s module docstring
 records the comparison against `maverick.platform.http`'s `CircuitBreaker`/

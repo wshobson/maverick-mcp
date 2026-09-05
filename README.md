@@ -489,7 +489,9 @@ Absent the extra, the server still boots and registers zero
 | `research_analyze_company` | Comprehensive research on a specific company. |
 | `research_analyze_sentiment` | Market sentiment analysis for a topic or sector. |
 
-Requires `EXA_API_KEY` (web search) plus a configured BYOK LLM
+Requires a search backend (`EXA_API_KEY` for Exa, the default, or
+`RESEARCH_SEARCH_BACKEND=searxng` plus `SEARXNG_BASE_URL` for a self-hosted
+SearXNG instance) and a configured BYOK LLM
 (`LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL`; see [Configuration](#configuration)).
 Install with `uv sync --extra research` or
 `pip install "maverick-mcp-server[research]"`. Absent the extra, the server
@@ -529,6 +531,8 @@ No API key is required to run the core server; stock data comes from `yfinance`.
 - `LLM_BASE_URL` - Base URL override, required when `LLM_PROVIDER=openai_compatible`.
 - `LLM_TEMPERATURE` - Sampling temperature (default: `0.0`).
 - `EXA_API_KEY` - Web search for the research tools (get at [exa.ai](https://exa.ai)).
+- `RESEARCH_SEARCH_BACKEND` - `exa` (default) or `searxng`.
+- `SEARXNG_BASE_URL` - Base URL of a self-hosted SearXNG instance with the JSON format enabled; used when the backend is `searxng`.
 
 Migrating an older `.env` (legacy `OPENROUTER_API_KEY`-style auto-detection,
 `TIINGO_API_KEY`, etc.)? See `docs/runbooks/migrating-to-v1.md`.
@@ -653,7 +657,7 @@ endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
 **Research Tools Not Available:**
 - Ensure the `research` extra is installed: `pip install "maverick-mcp-server[research]"`
 - Ensure `LLM_PROVIDER`, `LLM_API_KEY`, and `LLM_MODEL` are set in `.env`
-- Ensure `EXA_API_KEY` is set for web search
+- Ensure `EXA_API_KEY` is set for web search, or `RESEARCH_SEARCH_BACKEND=searxng` with `SEARXNG_BASE_URL`
 
 **Backtesting Tools Not Available:**
 - Ensure the `backtesting` extra is installed: `pip install "maverick-mcp-server[backtesting]"`
