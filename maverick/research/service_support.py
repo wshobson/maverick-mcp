@@ -124,12 +124,33 @@ def llm_configuration_value_error_problem(
 
 
 def configuration_problem(
-    *, exa_configured: bool, llm_provider: str | None, valid_llm_providers: str
+    *,
+    search_backend: str,
+    search_configured: bool,
+    llm_provider: str | None,
+    valid_llm_providers: str,
 ) -> tuple[str, dict[str, Any]] | None:
-    """Return `(message, details)` for the first missing prerequisite (Exa, then the BYOK LLM),
-    or `None` when both are configured. See `service.py`'s module docstring, "Configuration
-    errors" section."""
-    if not exa_configured:
+    """Return `(message, details)` for the first missing prerequisite (the selected
+    search backend, then the BYOK LLM), or `None` when both are configured. See
+    `service.py`'s module docstring, "Configuration errors" section."""
+    if not search_configured:
+        if search_backend == "searxng":
+            return (
+                "Research functionality unavailable - SearXNG search backend not configured",
+                {
+                    "required_configuration": (
+                        "SEARXNG_BASE_URL is required when RESEARCH_SEARCH_BACKEND=searxng"
+                    ),
+                    "searxng_base_url": (
+                        "Missing (configure SEARXNG_BASE_URL environment variable)"
+                    ),
+                    "setup_instructions": (
+                        "Point SEARXNG_BASE_URL at a SearXNG instance with the json "
+                        "format enabled (settings.yml: search.formats includes json), "
+                        "or set RESEARCH_SEARCH_BACKEND=exa with EXA_API_KEY"
+                    ),
+                },
+            )
         return (
             "Research functionality unavailable - Exa search provider not configured",
             {

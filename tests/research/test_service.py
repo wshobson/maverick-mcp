@@ -502,3 +502,79 @@ async def test_run_comprehensive_no_warning_when_well_under_budget(configured_ll
     assert isinstance(result, ComprehensiveResearchResult)
     assert result.research_metadata.timeout_warning is False
     assert result.warning is None
+
+
+# ---------------------------------------------------------------------------
+# Search backend selection (SearXNG, #186)
+# ---------------------------------------------------------------------------
+
+
+async def test_run_comprehensive_errors_when_searxng_not_configured(configured_llm):
+    service = ResearchService(settings=ResearchSettings(search_backend="searxng"))
+
+    result = await service.run_comprehensive("AAPL outlook")
+
+    assert isinstance(result, ResearchError)
+    assert result.error_type == "not_configured"
+    assert "SearXNG search backend not configured" in result.error
+    assert result.model_extra is not None
+    assert result.model_extra["details"]["searxng_base_url"].startswith("Missing")
+
+
+async def test_searxng_backend_does_not_require_an_exa_key(configured_llm):
+    service = ResearchService(
+        settings=_configured_settings(
+            exa_api_key=None,
+            search_backend="searxng",
+            searxng_base_url="http://searx.local:8080",
+        ),
+        agent_factory=lambda **_kw: FakeAgent(report=_fixture_report()),
+    )
+
+    result = await service.run_comprehensive("AAPL outlook")
+
+    assert not isinstance(result, ResearchError)
+
+
+async def test_default_agent_factory_picks_the_searxng_provider(monkeypatch):
+    # Compare against the class object the service module holds: another test
+    # re-imports the provider modules, so a fresh import here could be a copy.
+    from maverick.research import service as service_module
+
+    captured: dict[str, Any] = {}
+
+    class _StubAgent:
+        def __init__(self, *, search_clients, persona, default_depth) -> None:
+            captured["clients"] = search_clients
+
+    monkeypatch.setattr("maverick.research.service.DeepResearchAgent", _StubAgent)
+    service = ResearchService(
+        settings=ResearchSettings(
+            search_backend="searxng", searxng_base_url="http://searx.local:8080"
+        )
+    )
+
+    service._build_default_agent(persona="moderate", default_depth="basic")
+
+    (client,) = captured["clients"]
+    assert isinstance(client, service_module.SearXNGProvider)
+    assert client.base_url == "http://searx.local:8080"
+    assert client.time_range == "month"  # default_timeframe "1m"
+
+
+async def test_default_agent_factory_picks_exa_by_default(monkeypatch):
+    from maverick.research import service as service_module
+
+    captured: dict[str, Any] = {}
+
+    class _StubAgent:
+        def __init__(self, *, search_clients, persona, default_depth) -> None:
+            captured["clients"] = search_clients
+
+    monkeypatch.setattr("maverick.research.service.DeepResearchAgent", _StubAgent)
+    service = ResearchService(settings=_configured_settings())
+
+    service._build_default_agent(persona="moderate", default_depth="basic")
+
+    (client,) = captured["clients"]
+    assert isinstance(client, service_module.ExaSearchProvider)
