@@ -4,4 +4,4 @@
 def test_version_is_importable():
     import maverick
 
-    assert maverick.__version__ == "1.0.0.dev0"
+    assert maverick.__version__ == "1.1.0"

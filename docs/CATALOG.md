@@ -43,6 +43,7 @@ Status labels:
 | `generated/registry/pulsemcp.md` | current | docs | PulseMCP submission draft (submission mechanism unconfirmed). |
 | `generated/registry/mcp-so.md` | current | docs | mcp.so submission draft. |
 | `generated/registry/smithery.yaml` | current | docs | Smithery config draft (YAML, not scanned by the docs-catalog checker; listed here for completeness). |
+| `generated/release-notes/v1.1.0.md` | current | engineering | Release notes for v1.1.0 (used by `gh release create --notes-file`). |
 | `QUALITY_SCORE.md` | current | engineering | Per-area quality grades. |
 | `RELIABILITY.md` | current | engineering | Reliability state and gaps. |
 | `SECURITY.md` | current | engineering | Engineering security posture. |

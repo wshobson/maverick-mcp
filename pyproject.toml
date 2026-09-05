@@ -1,6 +1,6 @@
 [project]
 name = "maverick-mcp-server"
-version = "1.0.0"
+version = "1.1.0"
 description = "Personal-use MCP server for Claude Desktop providing professional-grade stock analysis and technical indicators"
 readme = "README.md"
 requires-python = ">=3.12"

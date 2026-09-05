@@ -33,6 +33,7 @@ rather than the whole knowledge base up front.
   Registry, GHCR, third-party registries, `.mcpb` release asset); owner-run.
 - `generated/registry/README.md` - ready-to-paste registry submission
   drafts (Docker MCP Catalog, Smithery, Glama, PulseMCP, mcp.so).
+- `generated/release-notes/v1.1.0.md` - release notes for v1.1.0.
 
 ## Modernization
 
