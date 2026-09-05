@@ -43,6 +43,17 @@ doesn't exist on PyPI yet).
 **Reversible?** No. A version number published to PyPI can never be reused,
 even if yanked. Publishing 1.1.0 is a one-time, permanent action.
 
+**Status (2026-09-05):** the PyPI name `maverick-mcp-server` is held by an
+unrelated, dormant project (all releases removed 2026-06-10, source
+repositories gone), so the trusted-publishing exchange fails with
+`invalid-publisher` no matter how the publisher is configured. A PEP 541
+transfer request is on file with PyPI support. After the transfer: add the
+publisher on the project's own Publishing settings (owner `wshobson`,
+repository `maverick-mcp`, workflow `publish.yml`, environment `pypi`), then
+run `gh workflow run publish.yml -f confirm=publish`, which rebuilds and
+publishes PyPI, the MCP Registry, and GHCR. Until then the README must not
+point installs at the PyPI name.
+
 ### Option A: trusted publishing + tag push (once `publish.yml` exists)
 
 1. In the PyPI project settings (or, for a first-time publish, at

@@ -10,8 +10,8 @@ pre-v1.0 `.env` file or database forward.
 
 - PyPI package renamed to `maverick-mcp-server` (console script:
   `maverick-mcp`, entry point `maverick.server.app:main`).
-- New install: `pip install "maverick-mcp-server[backtesting,research]"` or
-  `uvx --from maverick-mcp-server maverick-mcp --transport stdio`.
+- New install: `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"` or
+  `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio`.
 - Run invocation changed from `python -m maverick_mcp.api.server` to
   `python -m maverick.server` (same `--transport stdio|http` flags).
 - SSE transport is gone. Only `stdio` and streamable `http` exist now.
@@ -139,8 +139,8 @@ for the full rationale on each):
 
 ## Checklist
 
-1. Reinstall: `pip install "maverick-mcp-server[backtesting,research]"` (or
-   `uvx --from maverick-mcp-server maverick-mcp`).
+1. Reinstall: `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"` (or
+   `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp`).
 2. Update your MCP client config to the new run command (see
    [`mcp-clients.md`](mcp-clients.md)).
 3. Rewrite your `.env` against the current `.env.example`: drop dead vars,
