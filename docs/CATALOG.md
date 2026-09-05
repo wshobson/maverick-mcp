@@ -33,6 +33,7 @@ Status labels:
 | `exec-plans/completed/2026-07-20-phase-7-research-extra.md` | current | engineering | Phase 7 execution plan (research extra). |
 | `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` | current | engineering | Phase 8 execution plan (server assembly and cutover). |
 | `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
+| `exec-plans/active/2026-09-05-open-items-remediation.md` | current | engineering | Execution plan for the 2026-09 open-items remediation (25 tasks: triage, contributor fixes, deps, FastMCP 4, SearXNG, v1.1.0). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |

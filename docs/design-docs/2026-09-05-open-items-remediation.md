@@ -304,8 +304,9 @@ Provider, `maverick/research/providers/searxng.py`:
   `is_authoritative`). SearXNG returns snippets, so `raw_content` equals
   `content`. Missing fields default the way the Exa tests already require.
 - The domain, authority, and financial-relevance helpers move from
-  `ExaSearchProvider` methods to module-level functions in `providers/base.py`;
-  the Exa methods become one-line wrappers so its tests stay untouched.
+  `ExaSearchProvider` methods to module-level functions in a new
+  `providers/scoring.py` (so `base.py` keeps to timeouts and health); the
+  Exa methods become one-line wrappers so its tests stay untouched.
 - A 403 or a non-JSON body produces a `WebSearchError` that says the
   instance must enable the `json` format in its `search.formats` setting.
   Other transport errors wrap into `WebSearchError`, and the base class's
@@ -440,7 +441,7 @@ registry submissions.
 | Annotations | snake_case dict keys | Smallest diff; typed objects add imports for no gain |
 | camelCase bridge | Off in the test suite | Surfaces every stale read now, before FastMCP removes the shim |
 | Ensemble result keys | Keep display names | Inherent to `StrategyEnsemble`; changing it is a separate API decision |
-| SearXNG helpers | Lift to module functions in `providers/base.py` | Two providers share scoring without duplicating it |
+| SearXNG helpers | Lift to module functions in `providers/scoring.py` | Two providers share scoring without duplicating it; `base.py` stays about timeouts and health |
 | Spec location | `docs/design-docs/` | The catalog marks `docs/superpowers/` historical |
 
 ## Risks
