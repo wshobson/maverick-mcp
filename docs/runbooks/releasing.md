@@ -13,8 +13,8 @@ The canonical server identity across every step is `io.github.wshobson/maverick-
 provenance comment the official registry uses to verify PyPI/repo ownership,
 and `server.json` declares the package/transport surface registries read.
 
-v1.0.0 is already tagged and released on GitHub
-(`gh release list` shows `v1.0.0`). The steps below take that release the
+v1.0.0 was released on GitHub only and never reached PyPI. v1.1.0 is the
+first tag the publish workflow carries end to end. The steps below take that release the
 rest of the way to installable-by-everyone.
 
 ## Sequence overview
@@ -25,7 +25,7 @@ rest of the way to installable-by-everyone.
 3. GHCR image push (independent of steps 1-2; can happen any time).
 4. Third-party registry submissions (Docker MCP Catalog, Smithery, Glama,
    PulseMCP, mcp.so).
-5. Attach the `.mcpb` bundle to the v1.0.0 GitHub release.
+5. Attach the `.mcpb` bundle to the v1.1.0 GitHub release.
 
 Steps 1 and 3 are independent of each other. Step 2 needs step 1 done first.
 Step 4 can happen any time after step 1 (most third-party catalogs just want
@@ -41,7 +41,7 @@ project, or an account-wide token for the first publish since the project
 doesn't exist on PyPI yet).
 
 **Reversible?** No. A version number published to PyPI can never be reused,
-even if yanked. Publishing 1.0.0 is a one-time, permanent action.
+even if yanked. Publishing 1.1.0 is a one-time, permanent action.
 
 ### Option A: trusted publishing + tag push (once `publish.yml` exists)
 
@@ -50,10 +50,13 @@ even if yanked. Publishing 1.0.0 is a one-time, permanent action.
    - Owner: `wshobson`
    - Repository: `maverick-mcp`
    - Workflow: `publish.yml`
-   - Environment: leave blank unless the workflow defines one.
-2. Push (or re-push) the `v1.0.0` tag so the workflow's tag trigger fires:
+   - Environment: `pypi`. The workflow's `publish-pypi` job runs inside the
+     GitHub environment named `pypi`, so the publisher must name it; a
+     blank environment does not match and PyPI rejects the run as
+     `invalid-publisher`.
+2. Push (or re-push) the `v1.1.0` tag so the workflow's tag trigger fires:
    ```bash
-   git push origin v1.0.0
+   git push origin v1.1.0
    ```
 3. Watch the run: `gh run watch --repo wshobson/maverick-mcp`.
 
@@ -81,7 +84,7 @@ uvx maverick-mcp-server --help
 pip install "maverick-mcp-server[backtesting,research]"
 ```
 
-Then edit the v1.0.0 GitHub release notes to remove any "install from source
+Then edit the v1.1.0 GitHub release notes to remove any "install from source
 until published" phrasing and state real PyPI availability.
 
 ## Step 2: official MCP Registry publish
@@ -125,8 +128,8 @@ GHCR, but once pulled by others the image content is out in the world.
 
 ```bash
 docker login ghcr.io -u wshobson
-docker build -t ghcr.io/wshobson/maverick-mcp:1.0.0 -t ghcr.io/wshobson/maverick-mcp:latest .
-docker push ghcr.io/wshobson/maverick-mcp:1.0.0
+docker build -t ghcr.io/wshobson/maverick-mcp:1.1.0 -t ghcr.io/wshobson/maverick-mcp:latest .
+docker push ghcr.io/wshobson/maverick-mcp:1.1.0
 docker push ghcr.io/wshobson/maverick-mcp:latest
 ```
 
@@ -135,7 +138,7 @@ The Dockerfile must carry the
 before this step (Phase 9, Task 2). Verify the image runs:
 
 ```bash
-docker run --rm ghcr.io/wshobson/maverick-mcp:1.0.0 --help
+docker run --rm ghcr.io/wshobson/maverick-mcp:1.1.0 --help
 ```
 
 ### Follow-up: add the Docker package entry to server.json
@@ -154,7 +157,7 @@ package entry like:
   "registry_type": "oci",
   "registry_base_url": "https://ghcr.io",
   "identifier": "wshobson/maverick-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "transport": { "type": "stdio" }
 }
 ```
@@ -195,7 +198,7 @@ delisting on request but there is no self-service undo for most of these.
 make bundle   # builds dist/maverick-mcp.mcpb (thin bundle: launches the
               # PyPI package via uvx; requires uv + the PyPI publish first)
 npx @anthropic-ai/mcpb validate dist/manifest.json  # official validator
-gh release upload v1.0.0 dist/maverick-mcp.mcpb
+gh release upload v1.1.0 dist/maverick-mcp.mcpb
 ```
 
 The bundle vendors no code -- its manifest launches
