@@ -310,7 +310,7 @@ async def test_register_marks_all_but_run_screens_read_only(stub_service):
     for name in _EXPECTED_TOOL_NAMES - {"screening_run_screens"}:
         tool = await mcp.get_tool(name)
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.read_only_hint is True
 
 
 async def test_register_marks_run_screens_honestly_non_read_only(stub_service):
@@ -320,9 +320,9 @@ async def test_register_marks_run_screens_honestly_non_read_only(stub_service):
     tool = await mcp.get_tool("screening_run_screens")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is False
-    assert tool.annotations.idempotentHint is True
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.annotations.idempotent_hint is True
 
 
 async def test_register_in_memory_client_round_trips_get_bullish(stub_service):

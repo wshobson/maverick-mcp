@@ -200,3 +200,16 @@ class TestSmokeRoundTrip:
         assert payload["status"] == "success"
         assert payload["ticker"] == "AAPL"
         assert "trading_view" in payload["charts"]
+
+
+async def test_tool_annotations_serialize_camel_case_on_the_wire():
+    """Annotations are declared with SDK v2 snake_case field names; the MCP wire
+    format is camelCase. Pin both sides so a future rename cannot drop the hint."""
+    mcp = build_server()
+    async with Client(mcp) as client:
+        tools = {tool.name: tool for tool in await client.list_tools()}
+    tool = tools["market_data_get_chart_links"]
+    assert tool.annotations is not None
+    assert tool.annotations.read_only_hint is True
+    wire = tool.annotations.model_dump(by_alias=True, exclude_none=True)
+    assert wire["readOnlyHint"] is True

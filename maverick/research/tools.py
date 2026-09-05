@@ -48,7 +48,7 @@ __all__ = ["configure", "register"]
 
 logger = logging.getLogger(__name__)
 
-_ANNOTATIONS = {"readOnlyHint": True, "openWorldHint": True}
+_ANNOTATIONS = {"read_only_hint": True, "open_world_hint": True}
 
 _service: ResearchService | None = None
 

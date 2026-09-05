@@ -6,7 +6,7 @@ from fastmcp import FastMCP
 
 from maverick.technical.service import TechnicalService
 
-_READ_ONLY_ANNOTATIONS = {"readOnlyHint": True}
+_READ_ONLY_ANNOTATIONS = {"read_only_hint": True}
 
 _service: TechnicalService | None = None
 

@@ -1260,7 +1260,7 @@ async def test_register_marks_reads_read_only(stub_service):
     for name in _READ_ONLY_NAMES:
         tool = await mcp.get_tool(name)
         assert tool.annotations is not None
-        assert tool.annotations.readOnlyHint is True
+        assert tool.annotations.read_only_hint is True
 
 
 async def test_register_marks_add_honestly(stub_service):
@@ -1270,9 +1270,9 @@ async def test_register_marks_add_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_add_position")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is False
-    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.annotations.idempotent_hint is False
 
 
 async def test_register_marks_remove_honestly(stub_service):
@@ -1282,9 +1282,9 @@ async def test_register_marks_remove_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_remove_position")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is True
-    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is True
+    assert tool.annotations.idempotent_hint is False
 
 
 async def test_register_marks_clear_honestly(stub_service):
@@ -1294,9 +1294,9 @@ async def test_register_marks_clear_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_clear_portfolio")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is True
-    assert tool.annotations.idempotentHint is True
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is True
+    assert tool.annotations.idempotent_hint is True
 
 
 async def test_register_marks_watchlist_create_honestly(stub_service):
@@ -1306,9 +1306,9 @@ async def test_register_marks_watchlist_create_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_watchlist_create")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is False
-    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.annotations.idempotent_hint is False
 
 
 async def test_register_marks_watchlist_add_honestly(stub_service):
@@ -1318,9 +1318,9 @@ async def test_register_marks_watchlist_add_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_watchlist_add")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is False
-    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.annotations.idempotent_hint is False
 
 
 async def test_register_marks_watchlist_remove_honestly(stub_service):
@@ -1330,9 +1330,9 @@ async def test_register_marks_watchlist_remove_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_watchlist_remove")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is True
-    assert tool.annotations.idempotentHint is True
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is True
+    assert tool.annotations.idempotent_hint is True
 
 
 async def test_register_marks_journal_add_trade_honestly(stub_service):
@@ -1342,9 +1342,9 @@ async def test_register_marks_journal_add_trade_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_journal_add_trade")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is False
-    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.annotations.idempotent_hint is False
 
 
 async def test_register_marks_journal_close_trade_honestly(stub_service):
@@ -1354,9 +1354,9 @@ async def test_register_marks_journal_close_trade_honestly(stub_service):
     tool = await mcp.get_tool("portfolio_journal_close_trade")
 
     assert tool.annotations is not None
-    assert tool.annotations.readOnlyHint is False
-    assert tool.annotations.destructiveHint is False
-    assert tool.annotations.idempotentHint is False
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.annotations.idempotent_hint is False
 
 
 async def test_register_attaches_my_holdings_resource(stub_service):

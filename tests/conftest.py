@@ -12,3 +12,16 @@ at the Phase 8 cutover. None of the surviving domain trees
 is kept only as the collection root; nothing in it is required for the
 surviving suites.
 """
+
+import fastmcp
+import pytest
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _camelcase_bridge_off():
+    """FastMCP 4 bridges camelCase reads of MCP SDK v2 models (`readOnlyHint`
+    for `read_only_hint`) with a deprecation warning. Run the suite with the
+    bridge off so any stale camelCase read fails as an `AttributeError` now,
+    before FastMCP removes the shim."""
+    fastmcp.settings.mcp_camelcase_compat = False
+    yield
