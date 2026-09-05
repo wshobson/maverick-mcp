@@ -321,7 +321,11 @@ Backtest multiple strategies on the same symbol and rank them.
 
 Backtest one strategy across multiple symbols and aggregate portfolio-level
 metrics. Per-symbol backtests run with bounded concurrency (a semaphore of
-6, matching the legacy effective parallelism).
+6, matching the legacy effective parallelism). Each symbol is backtested
+independently -- there is no combined equity curve and no cross-symbol
+correlation. `total_return`/`average_sharpe` are per-symbol averages;
+`max_drawdown` is the worst (most negative) constituent drawdown, not a
+joint-portfolio calculation.
 
 **Tool name**: `backtesting_backtest_portfolio` (readOnlyHint: true)
 
