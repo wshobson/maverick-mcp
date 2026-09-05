@@ -5,9 +5,11 @@ description = "Personal-use MCP server for Claude Desktop providing professional
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    # Core MCP and server dependencies
-    "fastmcp>=3.3.1",
-    "mcp>=1.28.1",
+    # Core MCP and server dependencies. FastMCP 4 owns the MCP SDK version
+    # (no direct `mcp` pin: nothing here imports it). FastMCP 4 no longer
+    # depends on httpx, and maverick/platform/http.py imports it directly,
+    # so the httpx pin below is load-bearing.
+    "fastmcp>=4.0.3",
     "uvicorn>=0.48.0",
     "python-multipart>=0.0.31",
     "aiofiles>=25.1.0",
