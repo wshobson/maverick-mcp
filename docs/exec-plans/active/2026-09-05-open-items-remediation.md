@@ -2489,7 +2489,7 @@ Using the drafts in `docs/generated/registry/` (Smithery, Glama, PulseMCP, mcp.s
 
 Run this task in pieces as workstreams close; the changelog gets one line per write.
 
-- [ ] **Step 1: Project page entries**
+- [x] **Step 1: Project page entries**
 
 Append to `projects/maverick-mcp.md` before the `## Working agreements` heading, one entry per completed workstream, each dated. Write the numbers from the actual command outputs (the pytest summary line and the conformance verdict), not estimates:
 
@@ -2502,7 +2502,7 @@ Append to `projects/maverick-mcp.md` before the `## Working agreements` heading,
 
 Then bump the frontmatter `updated:` to the date of the last entry written.
 
-- [ ] **Step 2: Decision records**
+- [x] **Step 2: Decision records**
 
 Create `decisions/2026-09-05-fastmcp-4-migration.md`:
 
@@ -2550,7 +2550,7 @@ Why now: the request had a scoped design and an offered contribution that never 
 See [[maverick-mcp]] and [[josephur]].
 ```
 
-- [ ] **Step 3: People pages**
+- [x] **Step 3: People pages**
 
 Create `people/a1-nws-dev1.md`:
 
@@ -2600,7 +2600,7 @@ Add two rows to the table in `people/_index.md`:
 
 and bump that file's `updated:`.
 
-- [ ] **Step 4: Open loops**
+- [x] **Step 4: Open loops**
 
 In `TODO.md`: when #235 closes, delete the line `- [ ] [[maverick-mcp]] — revisit issue #235 once FastMCP 4 ships stable (needs mcp 2.x)`. Under `## Everything else`, add while it is still true:
 
@@ -2608,7 +2608,7 @@ In `TODO.md`: when #235 closes, delete the line `- [ ] [[maverick-mcp]] — revi
 - [ ] [[maverick-mcp]] — configure PyPI trusted publishing for publish.yml (pending publisher for maverick-mcp-server, environment pypi), then tag v1.1.0; the .mcpb bundle and the MCP Registry listing wait on it (plan Task 22)
 ```
 
-- [ ] **Step 5: Changelog lines**
+- [x] **Step 5: Changelog lines**
 
 Append one line per write, in this shape:
 
@@ -2671,8 +2671,9 @@ Deviations and lessons from executing Tasks 1 to 21 inline in one session.
 11. **Worktree sequencing.** The SearXNG worktree was cut from the FastMCP 4 branch before #258 merged and replayed onto `main` with `git rebase --onto main <fastmcp-4 tip> feat/searxng-backend`.
 12. **Release runbook.** Option A told the owner to leave the PyPI trusted publisher's environment blank while `publish.yml` runs its PyPI job in the GitHub environment `pypi`; that mismatch is the likely cause of the 2026-07-20 `invalid-publisher` failure. Corrected in #260: the publisher must name environment `pypi`.
 13. **Task 22 outcome.** The tag and GitHub release were created and the GHCR image published, but the PyPI job failed twice with `invalid-publisher`. Root cause: a PyPI project named `maverick-mcp-server` already exists under another account, created by an unrelated product (Day-AI-Labs' agent runtime) that released 0.1.3 to 0.1.6 on 2026-05-29 to 05-31 and removed everything on 2026-06-10; the pending-publisher form reports "This project already exists". The owner chose a PEP 541 transfer request over a rename (filed as https://github.com/pypi/support/issues/12150); until it lands, no install instruction points at the PyPI name (README, release notes, runbooks updated; the v1.0.0 `.mcpb` asset, which launched that name, was removed). Resume with `gh workflow run publish.yml -f confirm=publish` after adding the publisher on the transferred project.
+14. **Task 24 outcome.** Done in pieces as the workstreams closed (the vault lives outside this repo, so nothing to diff here): project page entries for the sweep, the FastMCP 4 migration, the SearXNG backend, and the v1.1.0 publish attempt; both decision records plus a third, `2026-09-05-pypi-name-claim-over-rename`; people pages for A1-NWS-Dev1 and josephur; the TODO open loop, reworded after the PyPI finding to point at the PEP 541 request and its watcher routine instead of a pending-publisher setup; one changelog line per write.
 
-Merged this session: #255, #256, #242, #243, #244, #248, #250, #251, #252, #253, #257, #258, #259, #260. Closed: #241, #254, #245, #246, #247, #186, #249. Open by design: #235 (upstream tracker). Owner-gated and not started: Tasks 22 and 23.
+Merged this session: #255, #256, #242, #243, #244, #248, #250, #251, #252, #253, #257, #258, #259, #260, #261, #262, #263. Closed: #241, #254, #245, #246, #247, #186, #249. Open by design: #235 (upstream tracker). Owner-gated and not started: Tasks 22 and 23.
 
 ## Spec coverage
 
