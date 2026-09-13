@@ -52,3 +52,25 @@ def test_module_names_are_snake_case():
     assert not bad, (
         f"Module names must be lowercase snake_case: {bad}. Rename the file."
     )
+
+
+def test_pandas_ta_is_not_a_dependency_or_an_import():
+    """pandas-ta is used only by scripts/record_indicator_fixtures.py, which
+    runs in its own environment. See
+    docs/design-docs/2026-09-13-pandas-ta-removal.md."""
+    repo = MAVERICK.parent
+    pyproject = (repo / "pyproject.toml").read_text()
+    assert "pandas-ta" not in pyproject, (
+        "pyproject.toml declares pandas-ta; the indicator core in "
+        "maverick/technical/indicators.py replaces it."
+    )
+    pattern = re.compile(r"^\s*(import|from)\s+pandas_ta\b", re.MULTILINE)
+    offenders = [
+        str(p)
+        for root in (MAVERICK, repo / "tests")
+        for p in root.rglob("*.py")
+        if "__pycache__" not in p.parts and pattern.search(p.read_text())
+    ]
+    assert not offenders, (
+        f"pandas_ta imported by {offenders}; use maverick.technical.indicators."
+    )

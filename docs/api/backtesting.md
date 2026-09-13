@@ -12,7 +12,7 @@ strategies, ML-enhanced strategies, parameter optimization, walk-forward
 analysis, Monte Carlo simulation, and multi-symbol portfolio backtesting.
 
 The backtesting surface lives behind the optional `[backtesting]` dependency
-extra (`vectorbt`, `numba`, `scikit-learn`, `scipy`, `pandas-ta`). On a base
+extra (`vectorbt`, `numba`, `scikit-learn`, `scipy`). On a base
 install with the extra absent, the server still boots cleanly and registers
 **zero** `backtesting_*` tools -- see [Installation](#installation) below.
 

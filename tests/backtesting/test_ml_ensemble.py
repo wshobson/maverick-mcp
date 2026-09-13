@@ -7,7 +7,7 @@ math is deterministic, so every assertion here is hand-computed rather than
 just a determinism check.
 
 Uses the shared `MockStrategy`/`SilentStrategy` from
-`tests/backtesting/conftest.py`. No `sklearn`/`pandas_ta` dependency, but
+`tests/backtesting/conftest.py`. No `sklearn` dependency, but
 importorskip("sklearn") is kept for consistency with the sibling
 `test_ml_*` suites (this module is part of the same `ml/` package split).
 """

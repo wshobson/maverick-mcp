@@ -11,9 +11,9 @@ Every top-level indicator call below passes ``talib=False``, but that flag
 alone is not sufficient for every indicator: several of pandas-ta's
 composite indicators call an internal helper (a sub-``ma()``/ATR call)
 without forwarding their own ``talib=False`` argument down to it, so with
-the compiled TA-Lib package installed (it is, in this project's dev
-environment) that inner call silently uses TA-Lib instead of pandas-ta's
-own pure-python formula. ``adx()`` has exactly this bug in its internal ATR
+the compiled TA-Lib package installed (the recording command below installs
+it) that inner call silently uses TA-Lib instead of pandas-ta's own
+pure-python formula. ``adx()`` has exactly this bug in its internal ATR
 sub-call. Rather than disabling TA-Lib globally for the whole recording run
 -- which was tried and rejected, because pandas-ta's own ``stoch()`` has the
 *same* unforwarded-``talib`` bug in its internal smoothing sub-calls, so a
@@ -25,13 +25,27 @@ the override to exactly the ``adx()`` call, restoring pandas-ta's prior
 TA-Lib usage flag immediately after so every other recorded indicator's
 code path, and therefore its golden values, is completely unaffected.
 
-Run once to (re)generate the fixture:
-
-    uv run python scripts/record_indicator_fixtures.py
-
 The pure-python implementations in ``maverick/technical/indicators.py`` are
 hand-derived to match pandas-ta's non-TA-Lib formulas exactly (see that
 module's docstrings). This script is never imported by package or test code.
+
+Run it in its own environment; pandas-ta is no longer a project dependency
+(docs/design-docs/2026-09-13-pandas-ta-removal.md):
+
+    uv run --no-project --python 3.12 \
+        --with "pandas-ta==0.4.71b0" --with "pandas>=2.3.3,<3" \
+        --with "scipy==1.17.1" --with "ta-lib" \
+        python scripts/record_indicator_fixtures.py
+
+Both extra pins are load-bearing for byte-identical output, and neither is a
+project dependency. ``scipy`` supplies the BLAS inner product that numba's
+``np.convolve`` calls, so sma, ema and bbands drift by ~1 ULP when it is
+absent or at another version; ``ta-lib`` is what the unforwarded-``talib``
+sub-calls described above reach for, so stoch and adx drift without it.
+
+Then `git diff --exit-code tests/technical/fixtures/indicator_goldens.json`
+must print nothing: the goldens are frozen, and this script exists only to
+regenerate them if an indicator is added.
 """
 
 from __future__ import annotations

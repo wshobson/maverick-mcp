@@ -1,5 +1,5 @@
 """Public API of the backtesting domain, gated behind the optional
-`[backtesting]` extra (vectorbt, numba, scikit-learn, scipy, pandas-ta).
+`[backtesting]` extra (vectorbt, numba, scikit-learn, scipy).
 
 **The base-install contract.** `import maverick.backtesting` must always
 succeed, with no extra installed, and never print a traceback -- mirroring
