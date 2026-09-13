@@ -38,7 +38,7 @@
 
 The shared `ohlcv` fixture in `tests/backtesting/conftest.py` is a 400-row frame with lowercase columns `open`, `high`, `low`, `close`, `volume`.
 
-- [ ] **Step 1: Write the failing import test**
+- [x] **Step 1: Write the failing import test**
 
 In `tests/backtesting/test_ml_feature_engineering.py`, delete the line `pytest.importorskip("pandas_ta")` and add these imports and test at module level (after the existing imports):
 
@@ -56,12 +56,12 @@ def test_module_imports_without_pandas_ta(monkeypatch):
     assert not hasattr(feature_engineering, "ta")
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `uv run pytest tests/backtesting/test_ml_feature_engineering.py::test_module_imports_without_pandas_ta -v`
 Expected: FAIL with `ImportError` raised from `import pandas_ta as ta` during the reload.
 
-- [ ] **Step 3: Write the failing parity test**
+- [x] **Step 3: Write the failing parity test**
 
 Add to the `TestFeatureExtractor` class:
 
@@ -101,12 +101,12 @@ Add to the `TestFeatureExtractor` class:
         assert np.isnan(features["stoch_k"].iloc[0])
 ```
 
-- [ ] **Step 4: Run it to verify it fails**
+- [x] **Step 4: Run it to verify it fails**
 
 Run: `uv run pytest tests/backtesting/test_ml_feature_engineering.py::TestFeatureExtractor::test_technical_features_come_from_the_indicator_core -v`
 Expected: FAIL. Under pandas-ta the first `stoch_k`/`macd_histogram` rows may already be NaN, but `assert_series_equal` on `stoch_k` or `bb_middle` fails on values or on dtype/name mismatches; if every assertion happens to pass, note that in the report and continue (the import test in Step 1 is the red gate).
 
-- [ ] **Step 5: Replace the pandas-ta calls**
+- [x] **Step 5: Replace the pandas-ta calls**
 
 In `maverick/backtesting/strategies/ml/feature_engineering.py`:
 
@@ -237,7 +237,7 @@ gone; warmup rows are NaN like every other rolling feature here.
 
 Then run `uv run ruff format maverick/backtesting/strategies/ml/feature_engineering.py`.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `uv run pytest tests/backtesting/test_ml_feature_engineering.py -v`
 Expected: all PASS, including the two new tests.
@@ -245,12 +245,12 @@ Expected: all PASS, including the two new tests.
 Run: `uv run pytest tests/backtesting -q`
 Expected: all PASS (the ML predictor, ensemble, and adaptive tests consume these features).
 
-- [ ] **Step 7: Run the static checks**
+- [x] **Step 7: Run the static checks**
 
 Run: `uv run ruff check . ; uv run ruff format --check . ; uv run lint-imports ; uv run ty check maverick`
 Expected: ruff clean, `Contracts: 14 kept, 0 broken`, ty `All checks passed!`. Record `wc -l maverick/backtesting/strategies/ml/feature_engineering.py` in the report (expected about 385).
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add maverick/backtesting/strategies/ml/feature_engineering.py tests/backtesting/test_ml_feature_engineering.py
@@ -277,7 +277,7 @@ git commit -m "refactor(backtesting): compute ML features with the in-house indi
 - Consumes: Task 1's `feature_engineering.py`, which no longer imports `pandas_ta`.
 - Produces: a lock without `pandas-ta`, with numpy >= 2.5.3, numba >= 0.67.0, llvmlite >= 0.49.0; pandas and vectorbt unchanged until Task 3.
 
-- [ ] **Step 1: Write the failing structural test**
+- [x] **Step 1: Write the failing structural test**
 
 Append to `tests/structure/test_harness_rules.py`:
 
@@ -304,12 +304,12 @@ def test_pandas_ta_is_not_a_dependency_or_an_import():
     )
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `uv run pytest tests/structure/test_harness_rules.py::test_pandas_ta_is_not_a_dependency_or_an_import -v`
 Expected: FAIL on the `pyproject.toml declares pandas-ta` assertion.
 
-- [ ] **Step 3: Remove the dependency and relock**
+- [x] **Step 3: Remove the dependency and relock**
 
 Delete the line `    "pandas-ta>=0.4.71b0",` from the `backtesting = [` list in `pyproject.toml`. Leave every other floor as it is.
 
@@ -324,12 +324,12 @@ uv run python -c "import numpy, numba, llvmlite, pandas, vectorbt; print(numpy._
 
 Expected: the first `uv lock` prints `Removed pandas-ta v0.4.71b0`; the second prints updates for numpy, numba, and llvmlite; the version line shows numpy >= 2.5.3, numba >= 0.67.0, llvmlite >= 0.49.0, pandas 2.3.3, vectorbt 1.0.0. If the resolver moves pandas or vectorbt here, report it; do not add pins to stop it.
 
-- [ ] **Step 4: Run the structural test to verify it passes**
+- [x] **Step 4: Run the structural test to verify it passes**
 
 Run: `uv run pytest tests/structure/test_harness_rules.py -v`
 Expected: PASS.
 
-- [ ] **Step 5: Keep the warning count flat**
+- [x] **Step 5: Keep the warning count flat**
 
 Run: `uv run pytest -q -p no:cacheprovider 2>&1 | tail -3`
 Expected: all tests pass. Read the warnings count in the summary line. The 2026-09-13 baseline before this plan was 18 warnings; a prototype of this exact bump showed 412, all `NumbaPendingDeprecationWarning` raised from vectorbt's compiled kernels.
@@ -348,7 +348,7 @@ filterwarnings = [
 
 Re-run the full suite and confirm the warning count is at or below 18. If a warning originates under `maverick/`, fix that code instead of filtering it, and say so in the report. If the module-scoped filter does not catch the warnings (numba attributes them to the jitted function's module), replace the module field with a message regex copied from the actual warning text, and keep it narrower than the whole category.
 
-- [ ] **Step 6: Update the prose that names pandas-ta**
+- [x] **Step 6: Update the prose that names pandas-ta**
 
 `maverick/backtesting/__init__.py` line 2: change `` `[backtesting]` extra (vectorbt, numba, scikit-learn, scipy, pandas-ta). `` to `` `[backtesting]` extra (vectorbt, numba, scikit-learn, scipy). ``
 
@@ -375,7 +375,7 @@ system library to compile.
 
 `docs/exec-plans/tech-debt-tracker.md`: delete the row that starts with `` | `pandas-ta` 0.4.71b0 ``. In the row that starts with `| service_ml.py, ensemble.py, online_learning.py, and feature_engineering.py at 499-500/500 line cap`, remove `, and feature_engineering.py` from the item text and `, `maverick/backtesting/strategies/ml/feature_engineering.py`` from the Where column, so the row reads `| service_ml.py, ensemble.py, and online_learning.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py`, `maverick/backtesting/strategies/ml/online_learning.py` | deferred |`.
 
-- [ ] **Step 7: Make the fixture script self-describing and prove it still records the same goldens**
+- [x] **Step 7: Make the fixture script self-describing and prove it still records the same goldens**
 
 In `scripts/record_indicator_fixtures.py`, add this paragraph to the module docstring, immediately before the closing `"""`:
 
@@ -395,12 +395,12 @@ regenerate them if an indicator is added.
 Run exactly that command from the repository root, then `git diff --exit-code tests/technical/fixtures/indicator_goldens.json`.
 Expected: the script exits 0 and the diff is empty. If the diff is not empty, do not commit the fixture; report the diff and stop with BLOCKED.
 
-- [ ] **Step 8: Run the full gate**
+- [x] **Step 8: Run the full gate**
 
 Run: `uv run ruff check . ; uv run ruff format --check . ; uv run lint-imports ; uv run ty check maverick ; uv run python tools/check_docs_catalog.py ; uv run pytest -q -p no:cacheprovider 2>&1 | tail -3`
 Expected: all clean; 1,177 tests pass (the 1,174 baseline plus two from Task 1 and one from this task); warnings at or below 18.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add pyproject.toml uv.lock maverick/backtesting/__init__.py docs/api/backtesting.md docs/runbooks/self-contained-setup.md .github/workflows/ci.yml tests/backtesting/test_ml_ensemble.py scripts/record_indicator_fixtures.py docs/exec-plans/tech-debt-tracker.md tests/structure/test_harness_rules.py
@@ -420,7 +420,7 @@ git commit -m "build: drop pandas-ta and move numpy, numba, and llvmlite off the
 - Consumes: the lock from Task 2.
 - Produces: `read_price_range` returning a `DatetimeIndex` with `.unit == "ns"`; lock with pandas >= 3.0.5 and vectorbt >= 1.1.0.
 
-- [ ] **Step 1: Write the failing resolution test**
+- [x] **Step 1: Write the failing resolution test**
 
 Add to `tests/market_data/test_data.py`, after `test_write_then_read_full_range_round_trips`:
 
@@ -450,7 +450,7 @@ to
     index = pd.DatetimeIndex(dates, name="Date").as_unit("ns")
 ```
 
-- [ ] **Step 2: Move pandas and vectorbt, then run the market-data tests to see the failures**
+- [x] **Step 2: Move pandas and vectorbt, then run the market-data tests to see the failures**
 
 ```bash
 uv lock --upgrade-package pandas --upgrade-package vectorbt
@@ -461,7 +461,7 @@ uv run pytest tests/market_data/test_data.py -v
 
 Expected: pandas >= 3.0.5, vectorbt >= 1.1.0. Four tests FAIL: the new resolution test (`unit` is `s`), `test_write_then_read_full_range_round_trips`, `test_overlapping_write_dedupes_and_returns_new_count`, and `test_read_partial_range_returns_subset` (index dtype `datetime64[s]` vs `datetime64[ns]`).
 
-- [ ] **Step 3: Pin the reader's resolution**
+- [x] **Step 3: Pin the reader's resolution**
 
 In `maverick/market_data/data.py`, change
 
@@ -481,17 +481,17 @@ to
 
 Also check `_empty_price_frame` (line 57-63): `pd.DatetimeIndex([], name="Date")` must carry `.as_unit("ns")` too, so an empty read has the same dtype as a non-empty one. Change it to `pd.DatetimeIndex([], name="Date").as_unit("ns")`.
 
-- [ ] **Step 4: Run the market-data tests to verify they pass**
+- [x] **Step 4: Run the market-data tests to verify they pass**
 
 Run: `uv run pytest tests/market_data -v`
 Expected: all PASS.
 
-- [ ] **Step 5: Run the full gate on pandas 3**
+- [x] **Step 5: Run the full gate on pandas 3**
 
 Run: `uv run ruff check . ; uv run ruff format --check . ; uv run lint-imports ; uv run ty check maverick ; uv run python tools/check_docs_catalog.py ; uv run pytest -q -p no:cacheprovider 2>&1 | tail -3`
 Expected: all clean; 1,178 tests pass; warnings at or below 18. If `ty` reports pandas-3 stub changes, fix each site minimally and list them in the report. If any test other than the four above fails on pandas 3, fix it only if the fix is a one-line dtype or copy-on-write adjustment; otherwise stop with BLOCKED and report the failure verbatim.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add maverick/market_data/data.py tests/market_data/test_data.py uv.lock
@@ -507,16 +507,16 @@ git commit -m "build: move to pandas 3 and vectorbt 1.1; pin the price cache ind
 
 The catalog rows for the design doc and this plan were added with the plan itself, so `make docs-check` already passes.
 
-- [ ] **Step 1: Tick the completed steps**
+- [x] **Step 1: Tick the completed steps**
 
 Change every `- [ ]` under Tasks 1, 2, and 3 of `docs/exec-plans/active/2026-09-13-pandas-ta-removal.md` to `- [x]`, and tick this task's own steps last.
 
-- [ ] **Step 2: Verify the catalog check**
+- [x] **Step 2: Verify the catalog check**
 
 Run: `uv run python tools/check_docs_catalog.py`
 Expected: `Documentation catalog check passed`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docs/exec-plans/active/2026-09-13-pandas-ta-removal.md
