@@ -39,9 +39,16 @@ rows back while the expected frame carries `datetime64[us]`.
    `pyproject.toml` does not declare `pandas-ta`. A structural test
    enforces both.
 2. `extract_technical_features` computes every indicator through
-   `maverick.technical.indicators`. Warmup rows are `NaN`, matching the
-   other indicators in the frame; the pandas-ta `None`/empty fallbacks and
-   the manual Bollinger helper are removed.
+   `maverick.technical.indicators`. Warmup rows of every indicator value
+   are `NaN`, matching the other rolling features in the frame; the
+   pandas-ta `None`/empty fallbacks and the manual Bollinger helper are
+   removed. Derived boolean flags (`rsi_oversold`, `rsi_overbought`,
+   `macd_bullish`) stay `0` where the comparison is undefined, as they did
+   before. Two properties of the indicator core carry over as designed: RSI
+   emits values from the second row, with the same `NaN` mask the golden
+   test pins to pandas-ta's output, and a fully flat series reads 50 (the
+   neutral value) where pandas-ta produced `NaN` that the pipeline then
+   filled with 0.
 3. `read_price_range` returns a `DatetimeIndex` with nanosecond
    resolution on every supported pandas version, so the cache reader's
    index dtype is stable across pandas versions.
