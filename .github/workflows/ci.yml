@@ -59,8 +59,8 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - name: Sync dependencies
-        # `--extra backtesting` pulls in vectorbt/numba/scikit-learn/scipy/
-        # pandas-ta, needed to resolve `maverick/backtesting/**` imports.
+        # `--extra backtesting` pulls in vectorbt/numba/scikit-learn/scipy,
+        # needed to resolve `maverick/backtesting/**` imports.
         # `--extra research` pulls in langchain/langgraph/exa-py, needed to
         # resolve `maverick/platform/llm.py` (lazy `langchain_anthropic`/
         # `langchain_openai` imports inside `get_llm()`), `maverick/research/
@@ -91,8 +91,8 @@ jobs:
           enable-cache: true
       - name: Sync dependencies
         # `--extra dev` pulls in pytest, testcontainers, etc. `--extra
-        # backtesting` pulls in vectorbt/numba/scikit-learn/scipy/pandas-ta:
-        # the `tests/backtesting` tree imports them at collection time.
+        # backtesting` pulls in vectorbt/numba/scikit-learn/scipy: the
+        # `tests/backtesting` tree imports them at collection time.
         # `--extra research` pulls in langchain/langgraph/exa-py: the
         # `tests/research` tree imports them at collection time.
         run: uv sync --extra dev --extra backtesting --extra research --frozen

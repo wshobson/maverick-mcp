@@ -55,7 +55,7 @@ def _to_date(value: pd.Timestamp) -> date:
 
 
 def _empty_price_frame() -> pd.DataFrame:
-    index = pd.DatetimeIndex([], name="Date")
+    index = pd.DatetimeIndex([], name="Date").as_unit("ns")
     data = {
         col: pd.Series(dtype="int64" if col == "Volume" else "float64")
         for col in PRICE_COLUMNS
@@ -140,7 +140,12 @@ def read_price_range(
     if not rows:
         return _empty_price_frame()
 
-    index = pd.DatetimeIndex([pd.Timestamp(row.date) for row in rows], name="Date")
+    # pandas 3 infers `s` from `date` objects; pin ns so the reader's index
+    # dtype is stable across pandas versions and independent of how a caller
+    # built the frame it compares against.
+    index = pd.DatetimeIndex(
+        [pd.Timestamp(row.date) for row in rows], name="Date"
+    ).as_unit("ns")
     return pd.DataFrame(
         {
             "Open": [float(row.open) for row in rows],

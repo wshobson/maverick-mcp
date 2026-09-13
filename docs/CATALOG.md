@@ -23,6 +23,7 @@ Status labels:
 | `../ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. Root-level entry point alongside `AGENTS.md`. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
 | `design-docs/2026-09-05-open-items-remediation.md` | current | engineering | Approved design for the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG research backend. |
+| `design-docs/2026-09-13-pandas-ta-removal.md` | current | engineering | Approved design for removing pandas-ta and moving numpy, numba, pandas, and vectorbt. |
 | `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
 | `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | current | engineering | Phase 1 execution plan (platform seam). |
 | `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` | current | engineering | Phase 2 execution plan (market data domain). |
@@ -32,6 +33,7 @@ Status labels:
 | `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` | current | engineering | Phase 6 execution plan (backtesting extra). |
 | `exec-plans/completed/2026-07-20-phase-7-research-extra.md` | current | engineering | Phase 7 execution plan (research extra). |
 | `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` | current | engineering | Phase 8 execution plan (server assembly and cutover). |
+| `exec-plans/completed/2026-09-13-pandas-ta-removal.md` | current | engineering | Execution plan for the pandas-ta removal (4 tasks: feature engineering, dependency drop, pandas 3, bookkeeping). |
 | `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
 | `exec-plans/active/2026-09-05-open-items-remediation.md` | current | engineering | Execution plan for the 2026-09 open-items remediation (25 tasks: triage, contributor fixes, deps, FastMCP 4, SearXNG, v1.1.0). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |

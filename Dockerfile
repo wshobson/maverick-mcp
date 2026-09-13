@@ -9,8 +9,8 @@ LABEL io.modelcontextprotocol.server.name="io.github.wshobson/maverick-mcp"
 WORKDIR /app
 
 # Install system dependencies (build tools + Postgres client headers for
-# psycopg2-binary). ta-lib and its compile step are gone: the backtesting
-# extra now uses pandas-ta, a pure-Python dependency.
+# psycopg2-binary). ta-lib and its compile step are gone: every indicator is
+# computed in maverick/technical/indicators.py with pandas and numpy.
 RUN apt-get update && apt-get install -yqq --no-install-recommends \
   build-essential \
   ca-certificates \
