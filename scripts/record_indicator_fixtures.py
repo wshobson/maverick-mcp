@@ -34,14 +34,17 @@ Run it in its own environment; pandas-ta is no longer a project dependency
 
     uv run --no-project --python 3.12 \
         --with "pandas-ta==0.4.71b0" --with "pandas>=2.3.3,<3" \
-        --with "scipy==1.17.1" --with "ta-lib" \
+        --with "scipy==1.17.1" --with "ta-lib==0.7.1" \
         python scripts/record_indicator_fixtures.py
 
 Both extra pins are load-bearing for byte-identical output, and neither is a
 project dependency. ``scipy`` supplies the BLAS inner product that numba's
 ``np.convolve`` calls, so sma, ema and bbands drift by ~1 ULP when it is
 absent or at another version; ``ta-lib`` is what the unforwarded-``talib``
-sub-calls described above reach for, so stoch and adx drift without it.
+sub-calls described above reach for, so stoch and adx drift without it. The
+``ta-lib`` binding needs the TA-Lib C library installed unless a prebuilt
+wheel exists for the platform; the 0.7.1 wheel bundles C library 0.7.1, so a
+system install is neither used nor required where that wheel is available.
 
 Then `git diff --exit-code tests/technical/fixtures/indicator_goldens.json`
 must print nothing: the goldens are frozen, and this script exists only to
