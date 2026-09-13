@@ -34,7 +34,7 @@ def factory(tmp_path):
 
 
 def _bars(dates, start_value: float = 100.0) -> pd.DataFrame:
-    index = pd.DatetimeIndex(dates, name="Date")
+    index = pd.DatetimeIndex(dates, name="Date").as_unit("ns")
     n = len(index)
     return pd.DataFrame(
         {
@@ -60,6 +60,19 @@ def test_write_then_read_full_range_round_trips(factory):
         frame = read_price_range(session, "AAPL", dates[0].date(), dates[-1].date())
 
     pd.testing.assert_frame_equal(frame, bars, check_freq=False)
+
+
+def test_read_price_range_index_is_nanosecond_resolution(factory):
+    # pandas 3 infers a coarser unit from `date` objects; the reader pins ns so
+    # cached frames match the yfinance frames they are merged with.
+    dates = pd.date_range("2026-01-05", periods=3, freq="B").as_unit("us")
+    with session_scope(factory) as session:
+        write_price_bars(session, "NVDA", _bars(dates))
+
+    with session_scope(factory) as session:
+        frame = read_price_range(session, "NVDA", dates[0].date(), dates[-1].date())
+
+    assert frame.index.unit == "ns"
 
 
 def test_overlapping_write_dedupes_and_returns_new_count(factory):

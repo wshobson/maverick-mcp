@@ -125,13 +125,6 @@ addopts = [
     "-m", "not integration and not slow and not external",
     "--durations=10",  # Show 10 slowest tests
 ]
-# numpy 2.5 deprecates the generic timedelta unit, and pandas 2.3 still trips
-# it from inside vectorbt's default `year_freq`. Nothing under maverick/ builds
-# a Timedelta. Matched on message and origin so the filter stays narrower than
-# the category, and parses on a base install where vectorbt is absent.
-filterwarnings = [
-    "ignore:The 'generic' unit for NumPy timedelta is deprecated:DeprecationWarning:.*vectorbt",
-]
 # Async configuration
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
