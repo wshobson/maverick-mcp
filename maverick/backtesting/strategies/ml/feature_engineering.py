@@ -4,28 +4,23 @@ Ported from `maverick_mcp/backtesting/strategies/ml/feature_engineering.py`,
 which also held `MLPredictor` (now `ml_predictor.py` -- split out to stay
 under this repo's 500-line-per-module cap; see the Task 6 report).
 
-Two behavior-preserving trims versus the legacy module (both logged in the
-Task 6 report):
+`safe_divide` was a nested closure redefined identically inside four
+methods; it is now the single module-level `_safe_divide` below.
 
-- `safe_divide` was a nested closure redefined identically inside four
-  methods (`extract_price_features`, `extract_technical_features`,
-  `extract_statistical_features`, `extract_microstructure_features`); it is
-  now the single module-level `_safe_divide` below. Same body, same
-  call-sites, no behavior change.
-- The "manual Bollinger Bands" fallback (SMA20 +/- 2*STD20) was duplicated
-  verbatim in two branches of `extract_technical_features` (once when
-  `ta.bbands` returns `None`/empty, once when it returns a frame whose
-  columns can't be matched). It is now the single `_manual_bollinger_bands`
-  helper, called from both branches with identical results.
+2026-09-13: the technical features come from `maverick.technical.indicators`
+instead of `pandas_ta` (see `docs/design-docs/2026-09-13-pandas-ta-removal.md`).
+The pandas-ta `None`/empty fallbacks and the manual Bollinger helper are
+gone; warmup rows are NaN like every other rolling feature here.
 """
 
 import logging
 
 import numpy as np
 import pandas as pd
-import pandas_ta as ta
 from pandas import DataFrame, Series
 from sklearn.preprocessing import StandardScaler
+
+from maverick.technical import indicators
 
 logger = logging.getLogger(__name__)
 
@@ -39,28 +34,6 @@ def _safe_divide(numerator, denominator, default=0.0):
     return np.divide(
         num, den, out=np.full_like(num, default, dtype=float), where=(den != 0)
     )
-
-
-def _manual_bollinger_bands(close: Series) -> dict[str, Series]:
-    """Manually compute Bollinger Bands (SMA20 +/- 2*STD20) as a fallback.
-
-    Returns the same five keys `extract_technical_features` stores on its
-    features frame: upper/middle/lower bands, position, and squeeze.
-    """
-    sma_20 = close.rolling(20).mean()
-    std_20 = close.rolling(20).std()
-    upper = sma_20 + (std_20 * 2)
-    middle = sma_20
-    lower = sma_20 - (std_20 * 2)
-
-    bb_width = upper - lower
-    return {
-        "bb_upper": upper,
-        "bb_middle": middle,
-        "bb_lower": lower,
-        "bb_position": _safe_divide(close - lower, bb_width, 0.5),
-        "bb_squeeze": _safe_divide(bb_width, middle, 0.1),
-    }
 
 
 class FeatureExtractor:
@@ -135,6 +108,9 @@ class FeatureExtractor:
     def extract_technical_features(self, data: DataFrame) -> DataFrame:
         """Extract technical indicator features.
 
+        Every indicator comes from `maverick.technical.indicators`. Warmup
+        rows are NaN, the same as the other rolling features in this module.
+
         Args:
             data: OHLCV price data
 
@@ -151,118 +127,54 @@ class FeatureExtractor:
         # Moving averages with safe calculations
         for period in self.lookback_periods:
             if close is not None:
-                sma = ta.sma(close, length=period)
-                ema = ta.ema(close, length=period)
-
+                sma = indicators.sma(close, period)
+                ema = indicators.ema(close, period)
                 features[f"sma_{period}_ratio"] = _safe_divide(close, sma, 1.0)
                 features[f"ema_{period}_ratio"] = _safe_divide(close, ema, 1.0)
-                features[f"sma_ema_diff_{period}"] = (
-                    _safe_divide(sma - ema, close, 0.0)
-                    if sma is not None and ema is not None
-                    else 0.0
-                )
+                features[f"sma_ema_diff_{period}"] = _safe_divide(sma - ema, close, 0.0)
             else:
                 features[f"sma_{period}_ratio"] = 1.0
                 features[f"ema_{period}_ratio"] = 1.0
                 features[f"sma_ema_diff_{period}"] = 0.0
 
         # RSI
-        rsi = ta.rsi(close, length=14)
+        rsi = indicators.rsi(close, 14)
         features["rsi"] = rsi
         features["rsi_oversold"] = (rsi < 30).astype(int)
         features["rsi_overbought"] = (rsi > 70).astype(int)
 
         # MACD
-        macd = ta.macd(close)
-        if macd is not None and not macd.empty:
-            macd_cols = macd.columns
-            macd_col = [
-                col
-                for col in macd_cols
-                if "MACD" in col and "h" not in col and "s" not in col.lower()
-            ]
-            signal_col = [
-                col for col in macd_cols if "signal" in col.lower() or "MACDs" in col
-            ]
-            hist_col = [
-                col for col in macd_cols if "hist" in col.lower() or "MACDh" in col
-            ]
-
-            features["macd"] = macd[macd_col[0]] if macd_col else 0
-            features["macd_signal"] = macd[signal_col[0]] if signal_col else 0
-            features["macd_histogram"] = macd[hist_col[0]] if hist_col else 0
-
-            features["macd_bullish"] = (
-                features["macd"] > features["macd_signal"]
-            ).astype(int)
-        else:
-            features["macd"] = 0
-            features["macd_signal"] = 0
-            features["macd_histogram"] = 0
-            features["macd_bullish"] = 0
+        macd = indicators.macd(close)
+        features["macd"] = macd["macd"]
+        features["macd_signal"] = macd["signal"]
+        features["macd_histogram"] = macd["histogram"]
+        features["macd_bullish"] = (features["macd"] > features["macd_signal"]).astype(
+            int
+        )
 
         # Bollinger Bands
-        bb = ta.bbands(close, length=20)
-        if bb is not None and not bb.empty:
-            # Handle different pandas_ta versions that may have different column names
-            bb_cols = bb.columns
-            upper_col = [
-                col for col in bb_cols if "BBU" in col or "upper" in col.lower()
-            ]
-            middle_col = [
-                col for col in bb_cols if "BBM" in col or "middle" in col.lower()
-            ]
-            lower_col = [
-                col for col in bb_cols if "BBL" in col or "lower" in col.lower()
-            ]
-
-            if upper_col and middle_col and lower_col:
-                features["bb_upper"] = bb[upper_col[0]]
-                features["bb_middle"] = bb[middle_col[0]]
-                features["bb_lower"] = bb[lower_col[0]]
-
-                bb_width = features["bb_upper"] - features["bb_lower"]
-                features["bb_position"] = _safe_divide(
-                    close - features["bb_lower"], bb_width, 0.5
-                )
-                features["bb_squeeze"] = _safe_divide(
-                    bb_width, features["bb_middle"], 0.1
-                )
-            elif close is not None:
-                for col, series in _manual_bollinger_bands(close).items():
-                    features[col] = series
-            else:
-                features["bb_upper"] = 0
-                features["bb_middle"] = 0
-                features["bb_lower"] = 0
-                features["bb_position"] = 0.5
-                features["bb_squeeze"] = 0.1
-        elif close is not None:
-            for col, series in _manual_bollinger_bands(close).items():
-                features[col] = series
-        else:
-            features["bb_upper"] = 0
-            features["bb_middle"] = 0
-            features["bb_lower"] = 0
-            features["bb_position"] = 0.5
-            features["bb_squeeze"] = 0.1
+        bb = indicators.bollinger(close, length=20, std=2.0)
+        features["bb_upper"] = bb["upper"]
+        features["bb_middle"] = bb["mid"]
+        features["bb_lower"] = bb["lower"]
+        bb_width = features["bb_upper"] - features["bb_lower"]
+        features["bb_position"] = _safe_divide(
+            close - features["bb_lower"], bb_width, 0.5
+        )
+        features["bb_squeeze"] = _safe_divide(bb_width, features["bb_middle"], 0.1)
 
         # Stochastic
-        stoch = ta.stoch(high, low, close)
-        if stoch is not None and not stoch.empty:
-            stoch_cols = stoch.columns
-            k_col = [col for col in stoch_cols if "k" in col.lower()]
-            d_col = [col for col in stoch_cols if "d" in col.lower()]
-
-            features["stoch_k"] = stoch[k_col[0]] if k_col else 50
-            features["stoch_d"] = stoch[d_col[0]] if d_col else 50
+        if high is not None and low is not None and close is not None:
+            stoch = indicators.stochastic(high, low, close)
+            features["stoch_k"] = stoch["k"]
+            features["stoch_d"] = stoch["d"]
         else:
             features["stoch_k"] = 50
             features["stoch_d"] = 50
 
         # ATR (Average True Range) with safe calculation
         if high is not None and low is not None and close is not None:
-            features["atr"] = ta.atr(high, low, close)
+            features["atr"] = indicators.atr(high, low, close)
             features["atr_ratio"] = _safe_divide(
                 features["atr"], close, 0.02
             )  # Default 2% ATR ratio

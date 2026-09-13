@@ -9,17 +9,27 @@ seeding parameter was added here.
 Uses the shared `ohlcv` fixture from `tests/backtesting/conftest.py`.
 """
 
+import importlib
+import sys
+
 import numpy as np
 import pandas as pd
 import pytest
 
 pytest.importorskip("sklearn")
-pytest.importorskip("pandas_ta")
 
+import maverick.backtesting.strategies.ml.feature_engineering as feature_engineering
 from maverick.backtesting.strategies.ml.feature_engineering import (  # noqa: E402
     FeatureExtractor,
 )
 from maverick.backtesting.strategies.ml.ml_predictor import MLPredictor  # noqa: E402
+
+
+def test_module_imports_without_pandas_ta(monkeypatch):
+    # A `None` entry makes `import pandas_ta` raise ImportError.
+    monkeypatch.setitem(sys.modules, "pandas_ta", None)
+    importlib.reload(feature_engineering)
+    assert not hasattr(feature_engineering, "ta")
 
 
 class TestFeatureExtractor:
@@ -66,6 +76,40 @@ class TestFeatureExtractor:
 
     def test_extract_all_features_empty_input(self):
         assert FeatureExtractor().extract_all_features(pd.DataFrame()).empty
+
+    def test_technical_features_come_from_the_indicator_core(self, ohlcv):
+        from maverick.technical import indicators
+
+        features = FeatureExtractor().extract_technical_features(ohlcv)
+        close, high, low = ohlcv["close"], ohlcv["high"], ohlcv["low"]
+
+        pd.testing.assert_series_equal(
+            features["rsi"], indicators.rsi(close, 14), check_names=False
+        )
+        macd = indicators.macd(close)
+        pd.testing.assert_series_equal(
+            features["macd_histogram"], macd["histogram"], check_names=False
+        )
+        bb = indicators.bollinger(close, length=20, std=2.0)
+        pd.testing.assert_series_equal(
+            features["bb_middle"], bb["mid"], check_names=False
+        )
+        stoch = indicators.stochastic(high, low, close)
+        pd.testing.assert_series_equal(
+            features["stoch_k"], stoch["k"], check_names=False
+        )
+        pd.testing.assert_series_equal(
+            features["atr"], indicators.atr(high, low, close), check_names=False
+        )
+        np.testing.assert_allclose(
+            np.asarray(features["sma_20_ratio"], dtype=float),
+            (close / indicators.sma(close, 20)).to_numpy(),
+            equal_nan=True,
+        )
+        # Warmup rows are NaN, not placeholders.
+        assert np.isnan(features["macd_histogram"].iloc[0])
+        assert np.isnan(features["bb_middle"].iloc[0])
+        assert np.isnan(features["stoch_k"].iloc[0])
 
     def test_create_target_variable_exact_counts(self, ohlcv):
         """Target labeling is pure pandas comparison -- pin the exact counts
