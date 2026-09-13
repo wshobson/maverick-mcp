@@ -140,8 +140,9 @@ def read_price_range(
     if not rows:
         return _empty_price_frame()
 
-    # pandas 3 infers a coarser unit from `date` objects; pin ns so cached
-    # frames match the yfinance frames they are merged with.
+    # pandas 3 infers `s` from `date` objects; pin ns so the reader's index
+    # dtype is stable across pandas versions and independent of how a caller
+    # built the frame it compares against.
     index = pd.DatetimeIndex(
         [pd.Timestamp(row.date) for row in rows], name="Date"
     ).as_unit("ns")

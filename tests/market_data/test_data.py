@@ -125,6 +125,7 @@ def test_read_range_with_no_data_returns_empty_frame_with_right_columns(factory)
     assert frame.empty
     assert frame.index.name == "Date"
     assert isinstance(frame.index, pd.DatetimeIndex)
+    assert frame.index.unit == "ns"
 
 
 def test_cached_date_range_returns_min_max_and_none_when_empty(factory):

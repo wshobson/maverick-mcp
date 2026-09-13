@@ -1,7 +1,7 @@
 # Remove pandas-ta and unfreeze the numeric stack
 
 Status: approved by the owner on 2026-09-13. Plan:
-`docs/exec-plans/active/2026-09-13-pandas-ta-removal.md`.
+`docs/exec-plans/completed/2026-09-13-pandas-ta-removal.md`.
 
 ## Problem
 
@@ -43,8 +43,8 @@ rows back while the expected frame carries `datetime64[us]`.
    other indicators in the frame; the pandas-ta `None`/empty fallbacks and
    the manual Bollinger helper are removed.
 3. `read_price_range` returns a `DatetimeIndex` with nanosecond
-   resolution on every supported pandas version, so cached frames match
-   the yfinance frames they are merged with.
+   resolution on every supported pandas version, so the cache reader's
+   index dtype is stable across pandas versions.
 4. The fixture-recording script still runs, in an isolated environment,
    and re-recording leaves `tests/technical/fixtures/indicator_goldens.json`
    byte-identical.

@@ -14,7 +14,9 @@ No market-data API key is required: core tools (quotes, price history,
 fundamentals, technical analysis, screening) run entirely on `yfinance`.
 TA-Lib is not required either -- every indicator is computed in
 `maverick/technical/indicators.py` with pandas and numpy, so there is no
-system library to compile.
+system library to compile. The optional backtesting extra ships prebuilt
+numba and llvmlite wheels for Linux, Windows, and Apple Silicon; on an Intel
+Mac, uv builds llvmlite from source, which needs an LLVM toolchain.
 
 ## Install
 

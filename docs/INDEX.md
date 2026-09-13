@@ -42,6 +42,8 @@ rather than the whole knowledge base up front.
 - `design-docs/2026-09-05-open-items-remediation.md` - approved design for
   the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG
   research backend.
+- `design-docs/2026-09-13-pandas-ta-removal.md` - approved design for
+  removing pandas-ta and moving numpy, numba, pandas, and vectorbt.
 - `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
   execution plan.
 - `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` - Phase 1
@@ -60,6 +62,8 @@ rather than the whole knowledge base up front.
   execution plan (research extra).
 - `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` - Phase 8
   execution plan (server assembly and cutover).
+- `exec-plans/completed/2026-09-13-pandas-ta-removal.md` - execution plan
+  for the pandas-ta removal and the numeric-stack unfreeze.
 - `exec-plans/active/2026-07-20-phase-9-distribution.md` - Phase 9
   execution plan (distribution and registry rollout).
 - `exec-plans/active/2026-09-05-open-items-remediation.md` - execution plan

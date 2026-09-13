@@ -9,7 +9,6 @@ seeding parameter was added here.
 Uses the shared `ohlcv` fixture from `tests/backtesting/conftest.py`.
 """
 
-import importlib
 import sys
 
 import numpy as np
@@ -25,11 +24,9 @@ from maverick.backtesting.strategies.ml.feature_engineering import (  # noqa: E4
 from maverick.backtesting.strategies.ml.ml_predictor import MLPredictor  # noqa: E402
 
 
-def test_module_imports_without_pandas_ta(monkeypatch):
-    # A `None` entry makes `import pandas_ta` raise ImportError.
-    monkeypatch.setitem(sys.modules, "pandas_ta", None)
-    importlib.reload(feature_engineering)
+def test_module_does_not_use_pandas_ta():
     assert not hasattr(feature_engineering, "ta")
+    assert "pandas_ta" not in sys.modules
 
 
 class TestFeatureExtractor:
@@ -76,6 +73,14 @@ class TestFeatureExtractor:
 
     def test_extract_all_features_empty_input(self):
         assert FeatureExtractor().extract_all_features(pd.DataFrame()).empty
+
+    def test_short_frame_keeps_the_full_feature_width(self, ohlcv):
+        extractor = FeatureExtractor()
+        full = extractor.extract_all_features(ohlcv)
+        short = extractor.extract_all_features(ohlcv.iloc[:30])
+        assert list(short.columns) == list(full.columns)
+        # A 50-bar lookback on 30 rows is all-NaN and fills to 0.
+        assert (short["sma_50_ratio"] == 0).all()
 
     def test_technical_features_come_from_the_indicator_core(self, ohlcv):
         from maverick.technical import indicators
