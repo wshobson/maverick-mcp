@@ -46,6 +46,25 @@ _HISTORY_CONCURRENCY = 4
 # screen gets a window generous enough for the strictest of the three.
 _HISTORY_WINDOW_DAYS = 400
 
+_ScreenFn = Callable[[str, pd.DataFrame, ScreeningSettings], ScreeningResult | None]
+
+
+def _score_frames(
+    screen_fn: _ScreenFn,
+    frames: dict[str, pd.DataFrame],
+    settings: ScreeningSettings,
+) -> list[ScreeningResult]:
+    """Apply one rubric to every fetched frame and keep the qualifiers.
+
+    The rubrics are CPU-bound pandas work, so `_run_sweep` runs this through
+    `asyncio.to_thread` to keep a large universe off the event loop.
+    """
+    return [
+        result
+        for symbol, frame in frames.items()
+        if (result := screen_fn(symbol, frame, settings)) is not None
+    ]
+
 
 class ScreeningService:
     """Domain service: screen queries (thin reads over `data.py`) and screen
@@ -217,12 +236,9 @@ class ScreeningService:
 
         runs: dict[ScreenName, ScreenRun] = {}
         for screen in screens:
-            screen_fn = _SCREEN_FUNCS[screen]
-            qualifying = [
-                result
-                for symbol, frame in frames.items()
-                if (result := screen_fn(symbol, frame, self._settings)) is not None
-            ]
+            qualifying = await asyncio.to_thread(
+                _score_frames, _SCREEN_FUNCS[screen], frames, self._settings
+            )
 
             await self._persist_if_safe(screen, date_analyzed, qualifying, len(frames))
 
