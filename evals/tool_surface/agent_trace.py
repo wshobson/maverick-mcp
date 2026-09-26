@@ -118,7 +118,9 @@ def build_trace(
         "source": "claude-code-subagent",
         "model": model,
         "system_prompt": system_prompt,
-        "apiKeySource": "session login (subscription)",
+        # The subagent uses the parent session's login, which nothing here can
+        # see; the README has the reviewer confirm it before a run.
+        "apiKeySource": "unverified",
         "messages": messages,
         "final_answer": final_answer,
         "result_subtype": "success" if final_answer else "no_answer",

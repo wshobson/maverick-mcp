@@ -21,8 +21,11 @@ queries. Each case has three dimensions:
 ## Running it
 
 Traces come from a Claude Code subagent spawned in an interactive session in
-this repo. It runs on the session's Claude subscription login and plan limits,
-so a run costs nothing beyond the session and never uses an API key. The
+this repo. The subagent uses the session's own login. On a Claude
+subscription login it runs within the plan limits and costs nothing beyond
+the session. Nothing in this workflow can check which login the session
+uses, so confirm it with `/status` before a run: a session on an API key
+would bill that key. Each trace records `apiKeySource` as `unverified`. The
 subagent is defined in `agent/maverick-eval-client.md`:
 
 - It sees only the 49 Maverick tools (no built-ins, no `research_*` tools).
@@ -36,6 +39,7 @@ subagent is defined in `agent/maverick-eval-client.md`:
 Workflow, driven from a Claude Code session in this repo:
 
 ```bash
+uv sync --extra dev --extra backtesting --extra research  # the server registers only installed extras
 make eval-agent-install   # then restart Claude Code; a running session kept the old agent
 make eval-agent-case CASES=evals/tool_surface/cases_batch2.json CASE=b01
 # spawn the maverick-eval-client subagent with the case query, verbatim
