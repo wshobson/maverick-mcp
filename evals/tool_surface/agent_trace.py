@@ -12,6 +12,7 @@ lists which kinds of session context Claude Code attached instead.
 import argparse
 import json
 import subprocess
+from collections import Counter
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
@@ -19,6 +20,8 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 TOOL_PREFIX = "mcp__maverick__"
+# Claude Code's tool for delivering a subagent's report to its caller.
+HANDBACK_TOOL = "SubagentHandback"
 
 
 def _result_text(content: object) -> str:
@@ -42,10 +45,13 @@ def build_trace(
     messages: list[dict[str, Any]] = []
     calls: dict[str, dict[str, Any]] = {}
     attachments: list[str] = []
-    usage: dict[str, int] = {}
+    # One entry per model response. Claude Code writes each content block of a
+    # response as its own line and repeats the response's usage on each.
+    responses: dict[str, Mapping[str, Any]] = {}
     model: str | None = None
-    turns = 0
     stamps: list[str] = []
+    handback: str | None = None
+    handback_at = 0
     for line in lines:
         if line.get("timestamp"):
             stamps.append(str(line["timestamp"]))
@@ -57,14 +63,16 @@ def build_trace(
         message = line.get("message") or {}
         content = message.get("content")
         if kind == "assistant":
-            turns += 1
+            response = str(message.get("id") or f"line-{len(responses)}")
+            responses[response] = message.get("usage") or {}
             model = message.get("model") or model
-            for key, value in (message.get("usage") or {}).items():
-                if isinstance(value, int):
-                    usage[key] = usage.get(key, 0) + value
             for block in content if isinstance(content, list) else []:
                 if block.get("type") == "text" and block.get("text", "").strip():
                     messages.append({"type": "text", "text": block["text"]})
+                elif block.get("name") == HANDBACK_TOOL:
+                    # The report is the answer the caller gets, not a tool call.
+                    handback = str((block.get("input") or {}).get("message", ""))
+                    handback_at = len(messages)
                 elif block.get("type") == "tool_use":
                     call = {
                         "type": "tool_call",
@@ -85,8 +93,15 @@ def build_trace(
                         call["is_error"] = bool(block.get("is_error"))
     texts = [m for m in messages if m["type"] == "text"]
     final_answer = texts[-1]["text"] if texts else ""
-    if texts and messages[-1] is texts[-1]:
+    if handback is not None:
+        # Text written after the handback never reaches the caller.
+        del messages[handback_at:]
+        final_answer = handback
+    elif texts and messages[-1] is texts[-1]:
         messages.pop()
+    usage: Counter[str] = Counter()
+    for response_usage in responses.values():
+        usage.update({k: v for k, v in response_usage.items() if isinstance(v, int)})
     duration_ms = None
     if len(stamps) >= 2:
         start = datetime.fromisoformat(stamps[0].replace("Z", "+00:00"))
@@ -102,8 +117,8 @@ def build_trace(
         "final_answer": final_answer,
         "result_subtype": "success" if final_answer else "no_answer",
         "is_error": False,
-        "num_turns": turns,
-        "usage": usage,
+        "num_turns": len(responses),
+        "usage": dict(usage),
         "notional_cost_usd": None,
         "duration_ms": duration_ms,
         "injected_context": sorted(set(attachments)),

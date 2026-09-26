@@ -129,6 +129,7 @@ subagent's transcript is under
 Differences from the SDK harness: Claude Code still attaches some session
 context to a subagent (for example the date, an environment snapshot, and the
 git status). Each trace lists those kinds in `injected_context`. There is no
-per-query cost to record, and a rerun happens from a Claude Code session
+per-query cost to record. Token usage comes from the transcript, which records
+a response's usage as it starts, so output token counts run low. A rerun happens from a Claude Code session
 rather than a `make` command. Use `make eval-traces` when a run must be
 repeatable, such as checking whether a fix removed a failure mode.
