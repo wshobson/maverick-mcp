@@ -44,6 +44,13 @@ def _round_cost(value: Decimal) -> Decimal:
     return value.quantize(_COST_QUANT, rounding=ROUND_HALF_UP)
 
 
+def _too_small(label: str, places: int, added: Decimal, price: Decimal) -> ValueError:
+    return ValueError(
+        f"Position too small: {label} rounds to 0 at {places} decimal "
+        f"places (shares={added:f}, price={price:f})."
+    )
+
+
 def _require_storable(
     shares: Decimal, basis: Decimal, total_cost: Decimal, added: Decimal, price: Decimal
 ) -> None:
@@ -55,10 +62,7 @@ def _require_storable(
         ("average cost basis", basis, COST_SCALE),
     ):
         if value <= 0:
-            raise ValueError(
-                f"Position too small: {label} rounds to 0 at {places} decimal "
-                f"places (shares={added:f}, price={price:f})."
-            )
+            raise _too_small(label, places, added, price)
 
 
 def add_shares(
@@ -103,6 +107,10 @@ def add_shares(
             sector=sector,
         )
 
+    # A purchase whose own share count rounds to 0 would change the cost
+    # and basis without adding any stored shares.
+    if _round_shares(shares) <= 0:
+        raise _too_small("share count", SHARES_SCALE, shares, price)
     unrounded_shares = position.shares + shares
     unrounded_cost = position.total_cost + (shares * price)
     new_shares = _round_shares(unrounded_shares)
@@ -145,6 +153,11 @@ def remove_shares(
 
     if shares is not None:
         sold = _round_shares(shares)
+        if sold <= 0:
+            raise ValueError(
+                f"Shares to remove round to 0 at {SHARES_SCALE} decimal places, "
+                f"got {shares:f}."
+            )
         remaining = position.shares - sold
         basis = _round_cost(position.average_cost_basis)
         total_cost = _round_cost(remaining * basis)

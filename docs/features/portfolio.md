@@ -96,7 +96,11 @@ never produces a sector-concentration alert.
   rounds to 0 at 4 places, closes the position.
 - A purchase is rejected as too small when its total cost rounds to 0 at 4
   places (or its share count or average cost basis rounds to 0), for example
-  0.001 shares at 0.01.
+  0.001 shares at 0.01. A purchase added to an existing position is also
+  rejected when its own share count rounds to 0 at 8 places, because it would
+  change the cost without adding shares.
+- A sale amount that rounds to 0 at 8 places is rejected rather than treated
+  as a sale of nothing.
 - Current price may be unavailable; in that case portfolio display should
   degrade without inventing market values.
 

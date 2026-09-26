@@ -1284,3 +1284,48 @@ async def test_watchlist_operations_carry_over_against_a_preexisting_legacy_data
 
     result = await service.remove_watchlist_item(watchlist.id, "AAPL")
     assert result.removed is True
+
+
+async def test_add_position_rejects_a_merge_whose_new_shares_round_to_zero(tmp_path):
+    # 0.000000004 shares round to 0, but at 1,000,000 they would still add
+    # 0.0040 to the total cost and move the basis without adding any shares.
+    service = _service(tmp_path)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("1"), Decimal("100"), "2026-01-01"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.add_position(
+            "default",
+            "My Portfolio",
+            "AAPL",
+            Decimal("0.000000004"),
+            Decimal("1000000"),
+            "2026-01-02",
+        )
+
+    assert str(excinfo.value) == (
+        "Position too small: share count rounds to 0 at 8 decimal places "
+        "(shares=0.000000004, price=1000000)."
+    )
+    position = (await service.get_portfolio("default", "My Portfolio")).positions[0]
+    assert position.total_cost == Decimal("100")
+    assert position.average_cost_basis == Decimal("100")
+
+
+async def test_remove_position_rejects_a_sale_that_rounds_to_zero_shares(tmp_path):
+    service = _service(tmp_path)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("1"), Decimal("100"), "2026-01-01"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.remove_position(
+            "default", "My Portfolio", "AAPL", Decimal("0.000000004")
+        )
+
+    assert str(excinfo.value) == (
+        "Shares to remove round to 0 at 8 decimal places, got 0.000000004."
+    )
+    position = (await service.get_portfolio("default", "My Portfolio")).positions[0]
+    assert position.shares == Decimal("1")
