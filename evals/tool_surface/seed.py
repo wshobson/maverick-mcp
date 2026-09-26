@@ -13,6 +13,7 @@ layer; the real screener never runs.
 """
 
 import asyncio
+from collections.abc import Mapping
 from decimal import Decimal
 from pathlib import Path
 
@@ -101,7 +102,7 @@ def _result(
     close: float,
     flags: dict[str, bool],
     score: int,
-    indicators: dict[str, float | None],
+    indicators: Mapping[str, float | None],
     momentum: float | None = None,
 ) -> ScreeningResult:
     return ScreeningResult(

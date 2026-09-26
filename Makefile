@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces eval-agent-install eval-agent-case eval-review clean check setup redis-start redis-stop docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-agent-install eval-agent-case eval-review clean check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -23,7 +23,6 @@ help:
 	@echo "  make typecheck    - Run type checking"
 	@echo "  make docs-check   - Validate documentation catalog and links"
 	@echo "  make check        - Run all checks (lint + type check)"
-	@echo "  make eval-traces  - Record Claude traces on the tools (subscription, never an API key)"
 	@echo "  make eval-agent-install - Install the in-session eval client subagent"
 	@echo "  make eval-agent-case CASES=<file> CASE=<id> - Point the next eval subagent at a case"
 	@echo "  make eval-review  - Review the newest trace run in a local browser UI (port 8765)"
@@ -103,7 +102,7 @@ format:
 # CI typecheck job.
 typecheck:
 	@echo "Running type checker..."
-	@uv run --extra dev --extra backtesting --extra research ty check maverick tests
+	@uv run --extra dev --extra backtesting --extra research ty check maverick tests evals
 
 docs-check:
 	@echo "Checking documentation catalog..."
@@ -112,15 +111,9 @@ docs-check:
 check: lint typecheck
 	@echo "All checks passed!"
 
-# Tool-surface traces for error analysis; see evals/tool_surface/README.md.
-# Runs on the claude CLI's subscription login. The env -u guard keeps API keys
-# out, and the harness refuses to start if either variable is still set.
-eval-traces:
-	@env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN uv run --group evals \
-		--extra backtesting --extra research python -m evals.tool_surface.run $(ARGS)
-
-# In-session subagent traces (no Agent SDK spend): install the eval client
-# agent, then point it at one case before each spawn. See evals/tool_surface/README.md.
+# Tool-surface traces for error analysis, recorded by an in-session subagent:
+# install the eval client agent, then point it at one case before each spawn.
+# See evals/tool_surface/README.md.
 eval-agent-install:
 	@mkdir -p .claude/agents
 	@sed "s|{REPO}|$(CURDIR)|g" evals/tool_surface/agent/maverick-eval-client.md > .claude/agents/maverick-eval-client.md
@@ -132,7 +125,7 @@ eval-agent-case:
 
 # Local review UI for error analysis on the newest run (override EVAL_RUN).
 # Run folders start with a UTC timestamp, so the last one sorted is the newest.
-EVAL_RUN ?= $(lastword $(sort $(dir $(wildcard evals/tool_surface/runs/*/run.json))))
+EVAL_RUN ?= $(lastword $(sort $(dir $(wildcard evals/tool_surface/runs/*/traces))))
 eval-review:
 	@test -n "$(EVAL_RUN)" || { echo "No trace runs under evals/tool_surface/runs"; exit 1; }
 	@uv run python evals/review/server.py --run $(EVAL_RUN) $(ARGS)

@@ -21,7 +21,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 import numpy as np
 
@@ -107,7 +107,7 @@ def _require(condition: bool, message: str) -> None:
         raise ValueError(message)
 
 
-def _is_int(value: object) -> bool:
+def _is_int(value: object) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
@@ -441,7 +441,10 @@ def make_handler(app: ReviewApp) -> type[BaseHTTPRequestHandler]:
         server_version = "MaverickTraceReview/1"
 
         def _local_names(self) -> set[str]:
-            port = self.server.server_address[1]
+            # make_server() always builds a TCP server: its address is (host, port).
+            address = self.server.server_address
+            assert isinstance(address, tuple)
+            port = address[1]
             return {f"127.0.0.1:{port}", f"localhost:{port}"}
 
         def _send(self, status: int, body: bytes, content_type: str) -> None:
