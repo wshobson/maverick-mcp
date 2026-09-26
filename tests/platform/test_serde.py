@@ -1,6 +1,7 @@
 """Tests for maverick.platform.serde."""
 
 from datetime import UTC, datetime
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -56,9 +57,9 @@ def test_json_fallback_types():
 
 def test_timezone_aware_index_normalized():
     df = _ohlcv()
-    df.index = df.index.tz_localize("US/Eastern")
+    df.index = cast(pd.DatetimeIndex, df.index).tz_localize("US/Eastern")
     naive = ensure_timezone_naive(df)
-    assert naive.index.tz is None
+    assert cast(pd.DatetimeIndex, naive.index).tz is None
     round_tripped = deserialize(serialize(df))
     assert round_tripped.index.tz is None
 

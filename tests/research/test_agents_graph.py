@@ -101,6 +101,7 @@ class TestGraphReachesTerminalStateWithTypedReport:
         report = asyncio.run(
             agent.research_company_comprehensive("MSFT", session_id="s-3")
         )
+        assert report.research_topic is not None
         assert "MSFT" in report.research_topic
 
     def test_analyze_market_sentiment_selects_sentiment_branch_and_completes(

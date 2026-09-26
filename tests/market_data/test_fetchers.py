@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -44,7 +45,7 @@ async def test_history_strips_timezone_and_preserves_columns():
     fetcher = YFinanceFetcher(history_fn=fake_history)
     result = await fetcher.history("AAPL", "2026-07-13", "2026-07-16")
 
-    assert result.index.tz is None
+    assert cast(pd.DatetimeIndex, result.index).tz is None
     assert list(result.columns) == ["Open", "High", "Low", "Close", "Volume"]
     assert list(result["Close"]) == [1.2, 2.2, 3.2]
 
@@ -56,7 +57,7 @@ async def test_history_passes_through_already_naive_frame():
     fetcher = YFinanceFetcher(history_fn=lambda *a, **k: frame)
     result = await fetcher.history("AAPL", "2026-07-13", "2026-07-16")
 
-    assert result.index.tz is None
+    assert cast(pd.DatetimeIndex, result.index).tz is None
     assert list(result["Open"]) == [1.0, 2.0]
 
 
@@ -72,8 +73,8 @@ async def test_batch_history_strips_timezone_per_symbol():
     result = await fetcher.batch_history(["AAPL", "MSFT"], period="5d")
 
     assert set(result) == {"AAPL", "MSFT"}
-    assert result["AAPL"].index.tz is None
-    assert result["MSFT"].index.tz is None
+    assert cast(pd.DatetimeIndex, result["AAPL"].index).tz is None
+    assert cast(pd.DatetimeIndex, result["MSFT"].index).tz is None
     assert calls == [(("AAPL", "MSFT"), "5d")]
 
 
@@ -127,7 +128,7 @@ def _counting_sync(result):
         calls.append((kind, limit))
         return result
 
-    fn.calls = calls  # type: ignore[attr-defined]
+    fn.calls = calls  # ty: ignore[unresolved-attribute]  # function attribute
     return fn
 
 
@@ -138,7 +139,7 @@ def _raising_sync(exc: Exception):
         calls.append((kind, limit))
         raise exc
 
-    fn.calls = calls  # type: ignore[attr-defined]
+    fn.calls = calls  # ty: ignore[unresolved-attribute]  # function attribute
     return fn
 
 
@@ -256,7 +257,7 @@ def test_yfinance_tier_calls_download_fn_directly_not_batch_history():
         raise AssertionError("tier 2 must not call yf.batch_history")
 
     yf = YFinanceFetcher(download_fn=fake_download)
-    yf.batch_history = _must_not_be_called  # type: ignore[method-assign]
+    yf.batch_history = _must_not_be_called  # ty: ignore[invalid-assignment]  # instance method patch
 
     tier2 = _build_yfinance_tier(yf._download_fn)
     result = tier2("gainers", 5)
@@ -278,6 +279,7 @@ def test_build_mover_fetcher_tier2_binds_yf_download_fn_by_default():
 
     # Call tier 2's bound callable directly (not through the full tier
     # chain, which would otherwise hit the real finviz tier first).
+    assert fetcher._batch_quote_fn is not None
     result = fetcher._batch_quote_fn("losers", 3)
 
     assert result == []
@@ -300,6 +302,7 @@ def test_build_mover_fetcher_tier2_explicit_download_fn_overrides_yf_binding():
     yf = YFinanceFetcher(download_fn=yf_default_download)
     fetcher = build_mover_fetcher(yf, download_fn=override_download)
 
+    assert fetcher._batch_quote_fn is not None
     fetcher._batch_quote_fn("gainers", 5)
 
     assert override_calls == ["override"]

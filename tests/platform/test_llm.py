@@ -54,7 +54,7 @@ def _stub_chat_class():
 def stub_openai(monkeypatch):
     stub_cls = _stub_chat_class()
     module = types.ModuleType("langchain_openai")
-    module.ChatOpenAI = stub_cls
+    module.ChatOpenAI = stub_cls  # ty: ignore[unresolved-attribute]  # fake module attribute
     monkeypatch.setitem(sys.modules, "langchain_openai", module)
     return stub_cls
 
@@ -63,7 +63,7 @@ def stub_openai(monkeypatch):
 def stub_anthropic(monkeypatch):
     stub_cls = _stub_chat_class()
     module = types.ModuleType("langchain_anthropic")
-    module.ChatAnthropic = stub_cls
+    module.ChatAnthropic = stub_cls  # ty: ignore[unresolved-attribute]  # fake module attribute
     monkeypatch.setitem(sys.modules, "langchain_anthropic", module)
     return stub_cls
 
@@ -214,7 +214,7 @@ def test_module_imports_clean_without_langchain(monkeypatch):
         assert fresh.get_llm_settings().provider is None
     finally:
         sys.modules["maverick.platform.llm"] = original_module
-        platform_pkg.llm = original_module
+        platform_pkg.llm = original_module  # ty: ignore[invalid-assignment]  # sys.modules yields ModuleType
 
 
 def test_get_llm_raises_clear_import_error_when_openai_package_missing(monkeypatch):

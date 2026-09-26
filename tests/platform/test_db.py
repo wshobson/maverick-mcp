@@ -5,6 +5,7 @@ import logging
 
 import pytest
 import sqlalchemy
+import sqlalchemy.exc
 from sqlalchemy import (
     Column,
     ForeignKey,

@@ -10,6 +10,7 @@ any external network. Skipped when the `research` extra is not installed.
 import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import cast
 
 import pytest
 
@@ -48,12 +49,19 @@ def _fresh_settings(monkeypatch):
     reset_llm_settings()
 
 
+class _RecordingServer(HTTPServer):
+    """`HTTPServer` carrying the request log the handler appends to."""
+
+    requests: list[tuple[str, str]]
+
+
 class _ChatCompletionsHandler(BaseHTTPRequestHandler):
     """Answer every POST with a minimal chat completion and record the call."""
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-        self.server.requests.append((self.path, body["model"]))
+        server = cast(_RecordingServer, self.server)
+        server.requests.append((self.path, body["model"]))
         payload = json.dumps(
             {
                 "id": "chatcmpl-test",
@@ -86,7 +94,7 @@ class _ChatCompletionsHandler(BaseHTTPRequestHandler):
 
 @pytest.fixture
 def chat_server():
-    server = HTTPServer(("127.0.0.1", 0), _ChatCompletionsHandler)
+    server = _RecordingServer(("127.0.0.1", 0), _ChatCompletionsHandler)
     server.requests = []
     thread = threading.Thread(
         target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True

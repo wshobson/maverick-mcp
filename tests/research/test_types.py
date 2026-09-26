@@ -1,5 +1,7 @@
 """Tests for maverick.research.types."""
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 
@@ -69,7 +71,7 @@ def test_source_citation_published_date_and_author_are_optional():
 
 def test_source_citation_requires_url():
     with pytest.raises(ValidationError):
-        SourceCitation(
+        SourceCitation(  # ty: ignore[missing-argument]  # url omitted on purpose
             id=1,
             title="x",
             credibility_score=0.5,
@@ -153,7 +155,7 @@ def test_research_findings_round_trips_and_has_exact_fields():
 
 
 def _make_report(**overrides) -> ResearchReport:
-    fields = {
+    fields: dict[str, Any] = {
         "status": "success",
         "agent_type": "deep_research",
         "persona": "moderate",
@@ -324,7 +326,7 @@ def test_research_result_summary_round_trips_and_has_exact_fields():
 
 
 def _make_comprehensive_result(**overrides) -> ComprehensiveResearchResult:
-    fields = {
+    fields: dict[str, Any] = {
         "success": True,
         "query": "AAPL outlook",
         "research_results": _make_result_summary(),
@@ -554,4 +556,4 @@ def test_research_error_allows_arbitrary_extra_diagnostic_fields():
 
 def test_research_error_success_is_always_false():
     with pytest.raises(ValidationError):
-        ResearchError(error="x", success=True)
+        ResearchError(error="x", success=True)  # ty: ignore[invalid-argument-type]  # bad input on purpose
