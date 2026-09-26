@@ -40,6 +40,11 @@ BANNED_ENV_PREFIXES = (
     "TYPESAFE_",
 )
 SMOKE_MARGIN = 1.5
+# The SDK checks max_budget_usd between turns, so a single query can overshoot
+# it by the cost of its last turn, which nothing here bounds. Batch 2's b15
+# spent $0.77 against a $0.40 per-query cap, so the run-level check reserves
+# twice the per-query cap. That is a reservation, not a guarantee.
+PER_QUERY_OVERSHOOT = 2.0
 
 
 class HarnessAbort(RuntimeError):
@@ -149,11 +154,12 @@ def init_problems(init: Mapping[str, Any], expected_tools: Iterable[str]) -> lis
 def budget_stop_reason(
     spent: float, smoke_cost: float | None, cap: float, per_query_cap: float
 ) -> str | None:
-    """Why the next query must not start, or None. The estimate is the worst
-    case: the per-query cap, or 1.5x the smoke cost when that is larger."""
-    estimate = per_query_cap
+    """Why the next query must not start, or None. The estimate is twice the
+    per-query cap (the SDK can overshoot it within a turn), or 1.5x the smoke
+    cost when that is larger. It is a reservation, not a hard bound."""
+    estimate = PER_QUERY_OVERSHOOT * per_query_cap
     if smoke_cost is not None:
-        estimate = max(per_query_cap, SMOKE_MARGIN * smoke_cost)
+        estimate = max(estimate, SMOKE_MARGIN * smoke_cost)
     if spent + estimate > cap:
         return (
             f"budget: ${spent:.4f} spent + ${estimate:.4f} worst case for the next "
@@ -292,3 +298,17 @@ class TraceBuilder:
             "permission_denials": getattr(result, "permission_denials", None),
             "duration_ms": getattr(result, "duration_ms", None),
         }
+
+
+def ordered_cases(
+    cases: Iterable[Mapping[str, Any]], run_order: Iterable[str] | None
+) -> list[dict[str, Any]]:
+    """Cases in `run_order` (a list of ids) when given, otherwise in file order.
+
+    The first case returned is the smoke query.
+    """
+    listed = [dict(case) for case in cases]
+    if run_order is None:
+        return listed
+    by_id = {case["id"]: case for case in listed}
+    return [by_id[case_id] for case_id in run_order]

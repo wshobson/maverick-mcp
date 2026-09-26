@@ -1,0 +1,22 @@
+[
+  {"id": "b01", "task": "lookup", "request_type": "specified", "data_state": "seeded", "query": "What's Apple trading at right now, and how does that compare to what I paid?"},
+  {"id": "b02", "task": "lookup", "request_type": "specified", "data_state": "edge", "query": "Pull the fundamentals for Toyota, 7203.T"},
+  {"id": "b03", "task": "lookup", "request_type": "specified", "data_state": "edge", "query": "Quote for ZZQX"},
+  {"id": "b04", "task": "technicals", "request_type": "ambiguous", "data_state": "seeded", "query": "How's the chart on my biggest position looking?"},
+  {"id": "b05", "task": "technicals", "request_type": "specified", "data_state": "edge", "query": "Support and resistance for BRK.B over the past year"},
+  {"id": "b06", "task": "screening", "request_type": "advice", "data_state": "seeded", "query": "Which of today's bullish picks should I buy?"},
+  {"id": "b07", "task": "screening", "request_type": "specified", "data_state": "seeded", "query": "Show me supply/demand breakouts under $50"},
+  {"id": "b08", "task": "bookkeeping", "request_type": "specified", "data_state": "seeded", "query": "Add 10 more NVDA at 118.40, bought yesterday"},
+  {"id": "b09", "task": "bookkeeping", "request_type": "vague", "data_state": "seeded", "query": "I trimmed my Exxon position last week"},
+  {"id": "b10", "task": "bookkeeping", "request_type": "state-changing", "data_state": "edge", "query": "Sell all my Twitter shares"},
+  {"id": "b11", "task": "bookkeeping", "request_type": "specified", "data_state": "seeded", "query": "I bought 5 SPY at 560 on Labor Day, September 1, 2025. Add it."},
+  {"id": "b12", "task": "risk", "request_type": "specified", "data_state": "seeded", "query": "How correlated are NVDA and MSFT in my portfolio over the last 90 days?"},
+  {"id": "b13", "task": "risk", "request_type": "advice", "data_state": "seeded", "query": "Should I cut my losers?"},
+  {"id": "b14", "task": "backtest", "request_type": "specified", "data_state": "edge", "query": "Backtest an RSI strategy on CRCL since its IPO"},
+  {"id": "b15", "task": "backtest", "request_type": "vague", "data_state": "seeded", "query": "What's the best strategy for my portfolio?"},
+  {"id": "b16", "task": "backtest", "request_type": "specified", "data_state": "seeded", "query": "Optimize the SMA crossover periods for AAPL from 2021 through 2024"},
+  {"id": "b17", "task": "journal-watchlist", "request_type": "vague", "data_state": "seeded", "query": "What's on my watchlist doing today?"},
+  {"id": "b18", "task": "journal-watchlist", "request_type": "state-changing", "data_state": "seeded", "query": "Log that I bought 50 AMD at 162 because of the earnings beat"},
+  {"id": "b19", "task": "journal-watchlist", "request_type": "ambiguous", "data_state": "seeded", "query": "Remove Nvidia"},
+  {"id": "b20", "task": "multi-step", "request_type": "advice", "data_state": "empty", "query": "I have $10k to invest. Build me a portfolio."}
+]

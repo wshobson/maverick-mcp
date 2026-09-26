@@ -1,0 +1,72 @@
+{
+  "case": {
+    "id": "b02",
+    "task": "lookup",
+    "request_type": "specified",
+    "data_state": "edge",
+    "query": "Pull the fundamentals for Toyota, 7203.T"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 17.04,
+  "maverick_git_sha": "2d7c7074911401ddead17a6d7f96b146b95be1c5",
+  "timestamp": "2026-09-26T18:12:41.832061+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_013NFUQhEoJiavny3DMeWVfs",
+      "name": "mcp__maverick__market_data_get_stock_fundamentals",
+      "arguments": {
+        "ticker": "7203.T"
+      },
+      "result": "{\"symbol\":\"7203.T\",\"company\":{\"name\":\"Toyota Motor Corporation\",\"sector\":\"Consumer Cyclical\",\"industry\":\"Auto Manufacturers\",\"website\":\"https://global.toyota\",\"description\":\"Toyota Motor Corporation designs, manufactures, assembles, and sells passenger vehicles, minivans and commercial vehicles, and related parts and accessories in Japan, North America, Europe, Asia, Central and South America, Oceania, Africa, the Middle East, and internationally. The company operates through Automotive, Financial Services, and All Other segments. The company offers subcompact and compact cars; mini-vehicles; mid-size, luxury, sports, and specialty cars; recreational and sport-utility vehicles; pickup trucks; minivans; trucks; and buses. It also develops and sells battery and hybrid electric vehicles and batteries. In addition, the company provides financial services, such as retail financing and leasing, wholesale financing, insurance, and credit cards. Further, it operates GAZOO.com, a web portal for automobile information, as well as engages in telecommunications and other businesses. It offers vehicles under the Toyota and Lexus brand names. It has strategic manufacturing alliance with Joby Aviation, Inc. to establish a joint venture to realize air mobility. Toyota Motor Corporation was founded in 1933 and is headquartered in Toyota, Japan.\"},\"market_data\":{\"current_price\":2989.5,\"market_cap\":35401163079680,\"enterprise_value\":66923874222080,\"shares_outstanding\":11841833660,\"float_shares\":10918525890},\"valuation\":{\"pe_ratio\":8.510548,\"forward_pe\":9.220591,\"peg_ratio\":1.56,\"price_to_book\":0.9488681,\"price_to_sales\":0.6813547},\"financials\":{\"revenue\":51957024686080,\"profit_margin\":0.0863,\"operating_margin\":0.07863,\"roe\":0.12404,\"roa\":0.02339},\"trading\":{\"avg_volume\":28788078,\"avg_volume_10d\":26122985,\"beta\":0.337,\"week_52_high\":4000,\"week_52_low\":2686},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Toyota is trading at \u00a52,989.5, which is only about 8.5\u00d7 trailing earnings and slightly below book value. It sits about 25% below its 52-week high.\n\n**Company:** Toyota Motor Corporation, Consumer Cyclical / Auto Manufacturers. All figures are in JPY.\n\n**Market data**\n| | |\n|---|---|\n| Price | \u00a52,989.5 |\n| Market cap | \u00a535.40T |\n| Enterprise value | \u00a566.92T |\n| Shares outstanding / float | 11.84B / 10.92B |\n\n**Valuation**\n| | |\n|---|---|\n| P/E (trailing) | 8.51 |\n| P/E (forward) | 9.22 |\n| PEG | 1.56 |\n| Price/Book | 0.95 |\n| Price/Sales | 0.68 |\n\n**Financials**\n| | |\n|---|---|\n| Revenue | \u00a551.96T |\n| Profit margin | 8.63% |\n| Operating margin | 7.86% |\n| ROE | 12.4% |\n| ROA | 2.34% |\n\n**Trading**\n| | |\n|---|---|\n| 52-week range | \u00a52,686 \u2013 \u00a54,000 |\n| Avg volume (3-month / 10-day) | 28.8M / 26.1M |\n| Beta | 0.34 |\n\n**What stands out**\n- **Cheap on standard measures:** the stock trades below book value and at about 8.5\u00d7 earnings.\n- **Earnings expected to fall:** the forward P/E (9.2) is higher than the trailing P/E (8.5). That means analysts expect lower earnings ahead, which also explains why the PEG is 1.56 despite the low P/E.\n- **Near the bottom of its 52-week range:** the price is about 25% below the high and about 11% above the low.\n- **Debt from the lending arm:** enterprise value is almost twice the market cap. Most of that gap is likely borrowing by Toyota Financial Services, not the car business. The low ROA (2.3%) versus a healthy ROE (12.4%) fits the same picture: a large loan book on the balance sheet.\n- **Moves less than the market:** a beta of 0.34 means the stock has historically swung much less than the market.\n\nI can also run a technical analysis or pull price history if you want to see what's behind the drop from \u00a54,000."
+    }
+  ],
+  "final_answer": "Toyota is trading at \u00a52,989.5, which is only about 8.5\u00d7 trailing earnings and slightly below book value. It sits about 25% below its 52-week high.\n\n**Company:** Toyota Motor Corporation, Consumer Cyclical / Auto Manufacturers. All figures are in JPY.\n\n**Market data**\n| | |\n|---|---|\n| Price | \u00a52,989.5 |\n| Market cap | \u00a535.40T |\n| Enterprise value | \u00a566.92T |\n| Shares outstanding / float | 11.84B / 10.92B |\n\n**Valuation**\n| | |\n|---|---|\n| P/E (trailing) | 8.51 |\n| P/E (forward) | 9.22 |\n| PEG | 1.56 |\n| Price/Book | 0.95 |\n| Price/Sales | 0.68 |\n\n**Financials**\n| | |\n|---|---|\n| Revenue | \u00a551.96T |\n| Profit margin | 8.63% |\n| Operating margin | 7.86% |\n| ROE | 12.4% |\n| ROA | 2.34% |\n\n**Trading**\n| | |\n|---|---|\n| 52-week range | \u00a52,686 \u2013 \u00a54,000 |\n| Avg volume (3-month / 10-day) | 28.8M / 26.1M |\n| Beta | 0.34 |\n\n**What stands out**\n- **Cheap on standard measures:** the stock trades below book value and at about 8.5\u00d7 earnings.\n- **Earnings expected to fall:** the forward P/E (9.2) is higher than the trailing P/E (8.5). That means analysts expect lower earnings ahead, which also explains why the PEG is 1.56 despite the low P/E.\n- **Near the bottom of its 52-week range:** the price is about 25% below the high and about 11% above the low.\n- **Debt from the lending arm:** enterprise value is almost twice the market cap. Most of that gap is likely borrowing by Toyota Financial Services, not the car business. The low ROA (2.3%) versus a healthy ROE (12.4%) fits the same picture: a large loan book on the balance sheet.\n- **Moves less than the market:** a beta of 0.34 means the stock has historically swung much less than the market.\n\nI can also run a technical analysis or pull price history if you want to see what's behind the drop from \u00a54,000.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 1367,
+    "cache_read_input_tokens": 23605,
+    "output_tokens": 1096,
+    "output_tokens_details": {
+      "thinking_tokens": 244
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1367,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1025,
+        "cache_read_input_tokens": 12055,
+        "cache_creation_input_tokens": 862,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 862
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.038577,
+  "permission_denials": [],
+  "duration_ms": 12375
+}

@@ -102,18 +102,19 @@ class TestBudgetStop:
         assert self._stop(0.0, None) is None
         assert harness.budget_stop_reason(0.0, None, 0.30, self.PER_QUERY)
 
-    def test_cheap_smoke_still_reserves_the_per_query_cap(self) -> None:
-        # 1.5x a $0.02 smoke is $0.03, but a query can cost up to $0.40.
-        assert self._stop(5.50, 0.02) is None
-        reason = self._stop(5.61, 0.02)
-        assert reason is not None and "$0.4000 worst case" in reason
+    def test_cheap_smoke_still_reserves_twice_the_per_query_cap(self) -> None:
+        # The SDK checks max_budget_usd between turns, so one query can overshoot
+        # it (batch 2's b15 spent $0.77 against $0.40). Reserve 2x: $0.80.
+        assert self._stop(5.20, 0.02) is None
+        reason = self._stop(5.21, 0.02)
+        assert reason is not None and "$0.8000 worst case" in reason
         assert "$6.00 cap" in reason
 
     def test_expensive_smoke_raises_the_estimate(self) -> None:
-        # 1.5x a $0.30 smoke is $0.45, above the $0.40 per-query cap.
-        assert self._stop(5.50, 0.30) is None
-        reason = self._stop(5.56, 0.30)
-        assert reason is not None and "$0.4500 worst case" in reason
+        # 1.5x a $0.60 smoke is $0.90, above the $0.80 reservation.
+        assert self._stop(5.10, 0.60) is None
+        reason = self._stop(5.11, 0.60)
+        assert reason is not None and "$0.9000 worst case" in reason
 
 
 def test_trace_assembly_pairs_tool_calls_with_results() -> None:
@@ -152,3 +153,14 @@ def test_trace_assembly_pairs_tool_calls_with_results() -> None:
     assert trace["final_answer"] == "X has no quote."
     assert trace["notional_cost_usd"] == 0.0123
     assert (trace["result_subtype"], trace["num_turns"]) == ("success", 2)
+
+
+def test_ordered_cases_follows_the_run_order_when_given() -> None:
+    cases = [{"id": "q01"}, {"id": "q02"}, {"id": "q03"}]
+    ordered = harness.ordered_cases(cases, ["q03", "q01", "q02"])
+    assert [case["id"] for case in ordered] == ["q03", "q01", "q02"]
+
+
+def test_ordered_cases_keeps_file_order_without_a_run_order() -> None:
+    cases = [{"id": "b02"}, {"id": "b01"}]
+    assert [case["id"] for case in harness.ordered_cases(cases, None)] == ["b02", "b01"]

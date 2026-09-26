@@ -80,3 +80,6 @@ ta-lib-0.4.0-src.tar.gz
 .claude/
 data/
 .superpowers/
+
+# Review UI backup copies (the review server writes these next to annotations.json)
+evals/tool_surface/runs/*/*.bak

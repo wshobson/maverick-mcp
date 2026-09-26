@@ -1,0 +1,79 @@
+{
+  "case": {
+    "id": "b18",
+    "task": "journal-watchlist",
+    "request_type": "state-changing",
+    "data_state": "seeded",
+    "query": "Log that I bought 50 AMD at 162 because of the earnings beat"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 10.72,
+  "maverick_git_sha": "2d7c7074911401ddead17a6d7f96b146b95be1c5",
+  "timestamp": "2026-09-26T18:17:31.248025+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01KcQeDDeFoZ7y7kqbJyEtci",
+      "name": "mcp__maverick__portfolio_journal_add_trade",
+      "arguments": {
+        "symbol": "AMD",
+        "side": "long",
+        "entry_price": 162,
+        "shares": 50,
+        "rationale": "Earnings beat",
+        "tags": [
+          "earnings"
+        ]
+      },
+      "result": "{\"id\":5,\"symbol\":\"AMD\",\"side\":\"long\",\"entry_price\":162,\"exit_price\":null,\"shares\":50,\"entry_date\":\"2026-09-26T18:17:37.826093\",\"exit_date\":null,\"rationale\":\"Earnings beat\",\"tags\":[\"earnings\"],\"pnl\":null,\"r_multiple\":null,\"notes\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I logged the trade in your journal as **entry #5**.\n\n| Field | Value |\n|---|---|\n| Symbol | AMD |\n| Side | Long |\n| Shares | 50 |\n| Entry price | $162.00 |\n| Cost basis | $8,100 |\n| Rationale | Earnings beat |\n| Tag | `earnings` |\n| Entry date | 2026-09-26 (today) |\n\n- **Entry date:** The journal can't record an earlier date, so if you actually bought on a different day, the entry date will be wrong.\n- **Tag:** I added the `earnings` tag so you can track how your earnings trades perform over time. Tell me if you'd prefer a different tag.\n- **Portfolio:** I only logged this in the journal. Your \"My Portfolio\" holdings haven't changed, so tell me if you want AMD added there too.\n\nWhen you sell, give me the exit price and I'll close entry #5, which will calculate your profit or loss."
+    }
+  ],
+  "final_answer": "I logged the trade in your journal as **entry #5**.\n\n| Field | Value |\n|---|---|\n| Symbol | AMD |\n| Side | Long |\n| Shares | 50 |\n| Entry price | $162.00 |\n| Cost basis | $8,100 |\n| Rationale | Earnings beat |\n| Tag | `earnings` |\n| Entry date | 2026-09-26 (today) |\n\n- **Entry date:** The journal can't record an earlier date, so if you actually bought on a different day, the entry date will be wrong.\n- **Tag:** I added the `earnings` tag so you can track how your earnings trades perform over time. Tell me if you'd prefer a different tag.\n- **Portfolio:** I only logged this in the journal. Your \"My Portfolio\" holdings haven't changed, so tell me if you want AMD added there too.\n\nWhen you sell, give me the exit price and I'll close entry #5, which will calculate your profit or loss.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 925,
+    "cache_read_input_tokens": 23609,
+    "output_tokens": 575,
+    "output_tokens_details": {
+      "thinking_tokens": 69
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 925,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 341,
+        "cache_read_input_tokens": 12059,
+        "cache_creation_input_tokens": 416,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 416
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.0246168,
+  "permission_denials": [],
+  "duration_ms": 6454
+}
