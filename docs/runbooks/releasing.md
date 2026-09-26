@@ -149,7 +149,7 @@ The Dockerfile must carry the
 before this step (Phase 9, Task 2). Verify the image runs:
 
 ```bash
-docker run --rm ghcr.io/wshobson/maverick-mcp:1.1.0 --help
+docker run --rm ghcr.io/wshobson/maverick-mcp:1.1.0 python -m maverick.server --help
 ```
 
 ### Follow-up: add the Docker package entry to server.json

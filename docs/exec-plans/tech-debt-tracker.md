@@ -5,7 +5,6 @@ One line per item. Remove the line in the same change that removes the debt.
 | Item | Where | Phase to fix |
 | --- | --- | --- |
 | `server.json` declares only remote transports and no package installs | repo root | distribution |
-| Dockerfile is single-stage and ships build toolchain in the final image | `Dockerfile` | distribution |
 | MCP Apps chart rendering | new server | deferred |
 | Tasks extension for long-running backtests | new server | deferred |
 | `ty check` clean over `maverick/` but ~147 diagnostics under `tests/`; tests are outside the gate | `tests/` | deferred |
