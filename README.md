@@ -628,9 +628,11 @@ docker run -p 8003:8000 --env-file .env maverick-mcp-server
 docker-compose up -d
 ```
 
-**Note**: The Dockerfile uses `uv` for fast dependency installation. The
-image ships the `[backtesting]` and `[research]` extras by default; drop
-`--extra backtesting --extra research` from the `uv sync` line in the
+**Note**: The Dockerfile installs dependencies with `uv` in a builder stage
+and copies only the finished virtual environment into the runtime image, so
+the image carries no `uv` or build toolchain. The image ships the
+`[backtesting]` and `[research]` extras by default; drop
+`--extra backtesting --extra research` from both `uv sync` lines in the
 Dockerfile for a smaller, core-only image. There is no HTTP `/health`
 endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
 

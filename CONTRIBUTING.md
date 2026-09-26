@@ -77,7 +77,6 @@ Pre-commit hooks will automatically run on every commit and include:
 
 - Code formatting (ruff)
 - Linting (ruff)
-- Security scanning (bandit, safety)
 - Custom financial domain validations
 
 **Note**: Pre-commit hooks are optional for contributors but recommended for maintainers.
