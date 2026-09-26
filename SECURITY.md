@@ -35,8 +35,7 @@ deleted at the v1.0.0 cutover and receives no fixes.
   untrusted input and is returned to the client labeled as data.
 - Tool annotations such as `readOnlyHint` are hints for clients, not
   security guarantees.
-- Dependencies are kept current through Dependabot, and `safety` is part of
-  the dev extra.
+- Dependencies are kept current through Dependabot.
 
 ## Security checklist for pull requests
 

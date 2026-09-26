@@ -16,8 +16,8 @@ analysis and should always communicate uncertainty, cite sources where
 applicable, and avoid presenting generated conclusions as financial advice.
 
 The research surface lives behind the optional `[research]` dependency
-extra (`langchain`, `langchain-anthropic`, `langchain-community`,
-`langchain-openai`, `langgraph`, `exa-py`). On a base install with the extra
+extra (`langchain-anthropic`, `langchain-core`, `langchain-openai`,
+`langgraph`, `exa-py`). On a base install with the extra
 absent, the server still boots cleanly and registers **zero** `research_*`
 tools -- see [Installation](#installation) below.
 

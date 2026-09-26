@@ -1,6 +1,6 @@
 """Public API of the research domain, gated behind the optional
-`[research]` extra (langchain, langchain-anthropic, langchain-community,
-langchain-openai, langgraph, exa-py).
+`[research]` extra (langchain-anthropic, langchain-core, langchain-openai,
+langgraph, exa-py).
 
 **The base-install contract.** `import maverick.research` must always
 succeed, with no extra installed, and never print a traceback -- mirroring
