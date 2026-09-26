@@ -194,5 +194,15 @@
 
 ## Close-out
 
-- [ ] Move this plan to `docs/exec-plans/completed/` and update its `docs/CATALOG.md` row.
-- [ ] Confirm the tracker holds only the kept lines: `server.json`, MCP Apps, Tasks extension, Macro port, screening change-history.
+- [x] Move this plan to `docs/exec-plans/completed/` and update its `docs/CATALOG.md` row.
+- [x] Confirm the tracker holds only the kept lines: `server.json`, MCP Apps, Tasks extension, Macro port, screening change-history.
+
+## Outcome (2026-09-26)
+
+Merged: #283 (Claude workflows on Opus 5.5, this plan), #284 (Tasks 3 and 4), #285 (Tasks 7 and 8), #286 (Tasks 1 and 2), #287 (Tasks 5 and 6), #288 (Task 9). Deviations found during execution:
+
+- `pytest-timeout` stayed, because CI passes `--timeout=60` (the audit row is corrected above).
+- Task 6 changed approach after review. The ledger now rounds positions to the column scales (shares 8, money 4) instead of widening the Postgres column, so both backends store what the ledger computed. Reviews also added: sale amounts rounded before subtracting, one-line errors for positions too small to store, and rejection of purchases or sales whose share amount rounds to 0.
+- Task 7: `RegimeAwareStrategy.generate_signals` deliberately does not refit a fitted detector, because refitting on the traded data leaks the test period in a train/test backtest (CodeRabbit on #285). Retrying the requested method goes through `fit_regime_detector`.
+- Task 2 also ships bytecode (`UV_COMPILE_BYTECODE=1`): the image is 1.2 GB (was 2.27 GB), and `build_server()` takes about 2.7 s instead of 8 s.
+- Task 9: 48 targeted `# ty: ignore[...]` comments remain, each with a reason. The CI job is renamed `Type check (ty)`.
