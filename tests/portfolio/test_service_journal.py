@@ -258,6 +258,7 @@ async def test_review_trade_long_computes_pnl_pct(tmp_path):
 
     review = await service.review_trade(entry.id)
 
+    assert review is not None
     assert review.pnl_pct == 20.0  # (120-100)/100*100
 
 
@@ -270,6 +271,7 @@ async def test_review_trade_short_computes_pnl_pct(tmp_path):
 
     review = await service.review_trade(entry.id)
 
+    assert review is not None
     assert review.pnl_pct == 10.0  # (300-270)/300*100
 
 
@@ -281,6 +283,7 @@ async def test_review_trade_open_trade_has_no_pnl_pct(tmp_path):
 
     review = await service.review_trade(entry.id)
 
+    assert review is not None
     assert review.pnl_pct is None
 
 
@@ -366,6 +369,7 @@ async def test_strategy_performance_all_wins_gives_infinite_profit_factor(tmp_pa
 
     perf = await service.get_strategy_performance("solo")
 
+    assert perf is not None
     assert perf.profit_factor == float("inf")
 
 
@@ -509,6 +513,7 @@ async def test_journal_operations_carry_over_against_a_preexisting_legacy_databa
     assert isinstance(trades[0], JournalEntryPayload)
 
     review = await service.review_trade(entry.id)
+    assert review is not None
     assert review.pnl_pct == 20.0
 
     perf = await service.get_strategy_performance("momentum")

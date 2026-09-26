@@ -504,14 +504,14 @@ class StubService:
 @pytest.fixture
 def stub_service() -> Any:
     stub = StubService()
-    tools.configure(stub)
+    tools.configure(stub)  # ty: ignore[invalid-argument-type]  # duck-typed stub
     yield stub
 
 
 @pytest.fixture
 def stub_journal_service(stub_service) -> Any:
     stub = StubJournalService()
-    tools.configure(stub_service, stub)
+    tools.configure(stub_service, stub)  # ty: ignore[invalid-argument-type]  # duck-typed stub
     yield stub
 
 
@@ -521,7 +521,7 @@ def stub_journal_service(stub_service) -> Any:
 
 
 async def test_unconfigured_service_returns_configure_error_payload():
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     result = await tools.portfolio_get_my_portfolio()
 
@@ -1259,6 +1259,7 @@ async def test_register_marks_reads_read_only(stub_service):
 
     for name in _READ_ONLY_NAMES:
         tool = await mcp.get_tool(name)
+        assert tool is not None
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
 
@@ -1269,6 +1270,7 @@ async def test_register_marks_add_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_add_position")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False
@@ -1281,6 +1283,7 @@ async def test_register_marks_remove_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_remove_position")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is True
@@ -1293,6 +1296,7 @@ async def test_register_marks_clear_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_clear_portfolio")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is True
@@ -1305,6 +1309,7 @@ async def test_register_marks_watchlist_create_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_watchlist_create")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False
@@ -1317,6 +1322,7 @@ async def test_register_marks_watchlist_add_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_watchlist_add")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False
@@ -1329,6 +1335,7 @@ async def test_register_marks_watchlist_remove_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_watchlist_remove")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is True
@@ -1341,6 +1348,7 @@ async def test_register_marks_journal_add_trade_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_journal_add_trade")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False
@@ -1353,6 +1361,7 @@ async def test_register_marks_journal_close_trade_honestly(stub_service):
 
     tool = await mcp.get_tool("portfolio_journal_close_trade")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False
