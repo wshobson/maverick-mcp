@@ -98,6 +98,9 @@ def validate_catalog(paths: list[Path]) -> list[str]:
             if catalog_key not in catalog_entries:
                 errors.append(f"{path_str} is missing from docs/CATALOG.md")
             continue
+        # A doc outside docs/ is approved by a catalog entry relative to docs/.
+        if f"../{path_str}" in catalog_entries:
+            continue
         errors.append(f"{path_str} is a tracked doc outside approved locations")
 
     return errors

@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -23,6 +23,7 @@ help:
 	@echo "  make typecheck    - Run type checking"
 	@echo "  make docs-check   - Validate documentation catalog and links"
 	@echo "  make check        - Run all checks (lint + type check)"
+	@echo "  make eval-traces  - Record Claude traces on the tools (subscription, never an API key)"
 	@echo ""
 	@echo "  make tail-log     - Follow backend logs"
 	@echo ""
@@ -109,6 +110,13 @@ docs-check:
 
 check: lint typecheck
 	@echo "All checks passed!"
+
+# Tool-surface traces for error analysis; see evals/tool_surface/README.md.
+# Runs on the claude CLI's subscription login. The env -u guard keeps API keys
+# out, and the harness refuses to start if either variable is still set.
+eval-traces:
+	@env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN uv run --group evals \
+		--extra backtesting --extra research python -m evals.tool_surface.run $(ARGS)
 
 # Utility commands
 tail-log:

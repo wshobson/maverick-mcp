@@ -150,6 +150,9 @@ line-ending = "auto"
 dev = [
     "import-linter>=2.13",
 ]
+# evals/tool_surface/ trace harness only. Drives the Claude Code CLI on a
+# subscription login; never installed by CI or the published package.
+evals = ["claude-agent-sdk>=0.2.160"]
 
 [tool.importlinter]
 root_packages = ["maverick"]
