@@ -269,3 +269,25 @@ class TestRegimeAwareStrategy:
         analysis = strategy.get_regime_analysis()
         assert analysis["total_switches"] == strategy.regime_switches
         assert sum(analysis["regime_counts"].values()) == len(ohlcv)
+
+    def test_generate_signals_refits_a_detector_that_fell_back(self, ohlcv):
+        """A detector that fell back to `threshold` on a short window must
+        retry its requested method when the strategy later sees enough data,
+        without an explicit `fit_regime_detector` call."""
+        detector = MarketRegimeDetector(
+            method="kmeans", n_regimes=3, lookback_period=50, random_state=0
+        )
+        strategy = RegimeAwareStrategy(
+            regime_strategies={
+                0: SilentStrategy("Bear"),
+                1: SilentStrategy("Side"),
+                2: SilentStrategy("Bull"),
+            },
+            regime_detector=detector,
+        )
+        strategy.generate_signals(ohlcv.iloc[:80])
+        assert detector.method == "threshold"
+
+        strategy.generate_signals(ohlcv)
+
+        assert detector.method == "kmeans"

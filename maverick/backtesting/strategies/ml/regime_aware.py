@@ -184,8 +184,11 @@ class RegimeAwareStrategy(Strategy):
                     False, index=data.index
                 )
 
-            # Fit regime detector if not already done
-            if not self.regime_detector.is_fitted:
+            # Fit the regime detector if it is not fitted yet, or if its last
+            # fit fell back to `threshold` and this data may fit the
+            # requested method.
+            detector = self.regime_detector
+            if not detector.is_fitted or detector.method != detector.requested_method:
                 try:
                     self.fit_regime_detector(data)
                 except Exception as e:
