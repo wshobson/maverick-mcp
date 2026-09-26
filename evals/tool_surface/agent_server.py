@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import tempfile
+from collections.abc import Mapping
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -20,6 +21,16 @@ POINTER = HERE / ".agent_case.json"
 
 def _server_environ() -> dict[str, str]:
     return {name: os.environ[name] for name in ("PATH", "HOME") if name in os.environ}
+
+
+def server_env(
+    environ: Mapping[str, str], database: Path, cache: Path
+) -> dict[str, str]:
+    """The Maverick server's env: PATH, HOME, and the case's SQLite files."""
+    env = {name: environ[name] for name in ("PATH", "HOME") if name in environ}
+    env["DATABASE_URL"] = f"sqlite:///{database}"
+    env["CACHE_SQLITE_PATH"] = str(cache)
+    return env
 
 
 def main() -> None:
@@ -32,13 +43,13 @@ def main() -> None:
     os.environ.clear()
     os.environ.update(kept)
 
-    from evals.tool_surface import harness, seed
+    from evals.tool_surface import seed
 
     scratch = Path(
         tempfile.mkdtemp(prefix="maverick-agent-eval-", dir=scratch_root)
     ).resolve()
     database = seed.build(case["data_state"], scratch / f"{case['data_state']}.db")
-    env = harness.server_env(kept, database, scratch / "cache.db")
+    env = server_env(kept, database, scratch / "cache.db")
     print(
         f"agent_server: case {case['id']} ({case['data_state']}) using {scratch}",
         file=sys.stderr,

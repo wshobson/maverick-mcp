@@ -1,9 +1,9 @@
 """Turn a `maverick-eval-client` subagent transcript into a trace file.
 
-The trace has the same shape as the SDK harness's traces, so the review UI
-reads both. Subagent runs happen inside an interactive Claude Code session on
-the Claude subscription, so there is no per-query cost to record; the trace
-lists which kinds of session context Claude Code attached instead.
+The review UI reads these traces, and the earlier Agent SDK runs under `runs/`
+have the same shape. Subagent runs happen inside an interactive Claude Code
+session on the Claude subscription, so there is no per-query cost to record;
+the trace lists which kinds of session context Claude Code attached instead.
 
     python -m evals.tool_surface.agent_trace --transcript <agent-*.jsonl> \\
         --cases evals/tool_surface/cases_batch2.json --case-id b01 --run <dir>
@@ -19,9 +19,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from evals.tool_surface.harness import EXCLUDED_PREFIX, TOOL_PREFIX
-
 HERE = Path(__file__).resolve().parent
+SERVER_NAME = "maverick"
+TOOL_PREFIX = f"mcp__{SERVER_NAME}__"
+# The subagent never gets the research tools (they need live web search and an
+# LLM key), so a call to one means the agent file's setup leaked.
+EXCLUDED_PREFIX = "research_"
 # Claude Code's tool for delivering a subagent's report to its caller.
 HANDBACK_TOOL = "SubagentHandback"
 
@@ -115,7 +118,9 @@ def build_trace(
         "source": "claude-code-subagent",
         "model": model,
         "system_prompt": system_prompt,
-        "apiKeySource": "session login (subscription)",
+        # The subagent uses the parent session's login, which nothing here can
+        # see; the README has the reviewer confirm it before a run.
+        "apiKeySource": "unverified",
         "messages": messages,
         "final_answer": final_answer,
         "result_subtype": "success" if final_answer else "no_answer",
@@ -131,7 +136,7 @@ def build_trace(
 
 
 def unexpected_tools(trace: Mapping[str, Any]) -> list[str]:
-    """Calls outside the SDK harness's tool surface: non-Maverick or research tools."""
+    """Calls outside the eval tool surface: non-Maverick or research tools."""
     names = {
         str(message.get("name"))
         for message in trace["messages"]
