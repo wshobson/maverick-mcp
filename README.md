@@ -53,8 +53,8 @@ extras add more: `[backtesting]` (VectorBT-powered strategy backtesting) and
   strategy templates plus 8 ML strategy classes, optimization, walk-forward
   analysis, and Monte Carlo simulation.
 - **Research** (`[research]` extra): LangGraph-based deep research over
-  companies, sectors, and market sentiment, backed by Exa web search and a
-  bring-your-own LLM.
+  companies, sectors, and market sentiment, backed by Exa (or self-hosted
+  SearXNG) web search and a bring-your-own LLM.
 - **Multi-Transport Support**: STDIO and Streamable HTTP, so any MCP client
   can connect.
 
@@ -101,6 +101,9 @@ uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --
 uvx --from "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio
 ```
 
+Drop `[backtesting,research]` for a smaller, core-only install (37 tools,
+no backtesting/research tools registered).
+
 #### Option 2: Docker image (GHCR)
 
 ```bash
@@ -108,9 +111,6 @@ uvx --from "maverick-mcp-server[backtesting,research] @ git+https://github.com/w
 # --env-file is optional (core tools need no keys)
 docker run --rm -p 8003:8000 --env-file .env ghcr.io/wshobson/maverick-mcp:1.1.0
 ```
-
-Drop `[backtesting,research]` for a smaller, core-only install (37 tools,
-no backtesting/research tools registered).
 
 #### Option 3: From source with uv (for development)
 
@@ -166,7 +166,7 @@ Streamable HTTP when several clients should share a single server process.
 
 | Client | STDIO | HTTP | Config location |
 | --- | --- | --- | --- |
-| Claude Desktop | Yes (incl. `.mcpb`) | Via `mcp-remote` | `claude_desktop_config.json` |
+| Claude Desktop | Yes | Via `mcp-remote` | `claude_desktop_config.json` |
 | Claude Code | Yes | Yes | `claude mcp add` |
 | VS Code (Copilot) | Yes | Yes | `.vscode/mcp.json` |
 | GitHub Copilot CLI | Yes | Yes | `~/.copilot/mcp-config.json` |
@@ -237,7 +237,9 @@ Always fully quit and restart Claude Desktop after making configuration changes.
 > Do **not** paste `http://localhost:8003/mcp` into Claude Desktop's "custom
 > connector" dialog. Custom connectors are brokered from Anthropic's cloud
 > rather than from your machine, so they cannot reach your localhost. For
-> Claude Desktop, local means STDIO or a `.mcpb` bundle (`make bundle`).
+> Claude Desktop, local means STDIO. The `.mcpb` bundle (`make bundle`)
+> launches the PyPI package, so it waits on the PyPI name transfer noted
+> under [Installation](#installation).
 
 Claude Desktop's config file cannot express an HTTP server directly. To use the
 HTTP transport there, bridge it with `mcp-remote`
@@ -469,7 +471,7 @@ method and precision rules.
 | `backtesting_list_strategies` | List every rule-based strategy template with default parameters. |
 | `backtesting_backtest_portfolio` | Backtest one strategy across multiple symbols. |
 | `backtesting_parse_strategy` | Parse a natural-language description into a strategy + parameters (BYOK LLM). |
-| `backtesting_run_ml_strategy_backtest` | Backtest an ML-enhanced strategy (adaptive, ensemble, regime-aware). |
+| `backtesting_run_ml_strategy_backtest` | Backtest an ML-enhanced strategy (ML predictor, adaptive, ensemble, regime-aware). |
 | `backtesting_train_ml_predictor` | Train a random-forest ML predictor for trading signals. |
 | `backtesting_analyze_market_regimes` | Detect bear/sideways/bull regimes for a symbol. |
 | `backtesting_create_strategy_ensemble` | Backtest a weighted ensemble of base strategies. |
@@ -537,7 +539,7 @@ Migrating an older `.env` (legacy `OPENROUTER_API_KEY`-style auto-detection,
 
 ## Usage Examples
 
-Once connected to Claude Desktop, use natural language:
+Once connected to your MCP client, use natural language:
 
 ### Technical Analysis
 
@@ -594,7 +596,7 @@ make test-all           # All tests, including integration/slow/external
 make test-specific TEST=test_name
 make test-watch         # Auto-run tests on file changes
 
-make lint         # ruff check + lint-imports
+make lint         # ruff check + ruff format --check + lint-imports
 make format       # ruff format + ruff check --fix
 make typecheck     # ty (Astral), same gate as CI
 make check          # lint + typecheck
@@ -605,7 +607,7 @@ make docs-check      # validate the documentation catalog
 # Using uv directly
 uv run pytest                 # Unit tests only
 uv run pytest --cov=maverick  # With coverage
-uv run pytest -m ""           # All tests (requires PostgreSQL/Redis for some)
+uv run pytest -m ""           # All tests, no marker filter
 
 uv run ruff check .    # Linting
 uv run ruff format .   # Formatting
@@ -652,7 +654,8 @@ endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
 **Research Tool Timeouts:**
 - Research tools have adaptive timeouts (120s-600s) based on requested depth
 - Deep research may take several minutes depending on complexity
-- Monitor progress in server logs with `make tail-log`
+- Monitor progress in the server's log output on stderr (the `make dev`
+  terminal)
 
 **Research Tools Not Available:**
 - Ensure the `research` extra is installed: `pip install "maverick-mcp-server[research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`
@@ -669,7 +672,6 @@ endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
 
 ```bash
 # Common development issues
-make tail-log          # View server logs
 make stop              # Stop services if ports are in use
 make clean             # Clean up cache files
 

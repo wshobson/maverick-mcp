@@ -27,14 +27,16 @@ A concise description of what this PR accomplishes.
 ## 🎯 Component Areas
 
 **Primary areas affected:**
-- [ ] Data fetching (Tiingo, Yahoo Finance, FRED)
+- [ ] Data fetching (Yahoo Finance, finviz)
 - [ ] Technical analysis calculations
 - [ ] Stock screening strategies  
 - [ ] Portfolio analysis and optimization
+- [ ] Backtesting (`[backtesting]` extra)
+- [ ] Research (`[research]` extra)
 - [ ] MCP server/tools implementation
 - [ ] Database operations and models
 - [ ] Caching (Redis/in-memory)
-- [ ] Claude Desktop integration
+- [ ] MCP client integration (Claude Desktop, Claude Code, Cursor, etc.)
 - [ ] Development tools and setup
 - [ ] Documentation and examples
 
@@ -62,7 +64,7 @@ Describe the technical approach and any architectural decisions.
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated  
 - [ ] Manual testing completed
-- [ ] Tested with Claude Desktop
+- [ ] Tested with an MCP client (Claude Desktop, Claude Code, Cursor, etc.)
 - [ ] Tested with different data sources
 - [ ] Performance testing completed
 
@@ -78,7 +80,7 @@ Describe the technical approach and any architectural decisions.
 ```bash
 # Commands used for testing
 make test
-make test-integration
+make check
 # etc.
 ```
 
@@ -120,12 +122,12 @@ make test-integration
 - [ ] API documentation updated
 - [ ] Examples/tutorials added
 - [ ] Financial disclaimers included where appropriate
+- [ ] `docs/CATALOG.md` updated and `make docs-check` passes (if docs were added, moved, or deleted)
 
 **Breaking changes documentation:**
 - [ ] No breaking changes
 - [ ] Breaking changes documented in PR description
 - [ ] Migration guide provided
-- [ ] CHANGELOG.md updated
 
 ## ✅ Pre-submission Checklist
 
@@ -181,12 +183,12 @@ print(result)
 **Environment considerations:**
 - [ ] No environment changes required
 - [ ] New environment variables needed (documented)
-- [ ] Database migrations required
+- [ ] Database schema changes required (additive only; `ensure_schema` applies them, no migration framework)
 - [ ] Cache invalidation needed
 
 **Rollback plan:**
 - [ ] Changes are fully backward compatible
-- [ ] Database migrations are reversible
+- [ ] Database schema changes are backward compatible with the previous release
 - [ ] Rollback steps documented below
 
 **Rollback steps (if needed):**

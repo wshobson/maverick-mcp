@@ -70,7 +70,7 @@ portfolio and trade journal.
 | Zed, LM Studio, Goose, Cline, Continue | Yes | Varies | Client-specific |
 
 Ordered roughly by developer adoption (JetBrains Developer Ecosystem Survey,
-May-July 2026). Clients not listed still work.
+May-July 2026).
 
 Clients not listed here still work. Give them either the STDIO command or the
 HTTP endpoint in whatever shape their config expects.
@@ -78,7 +78,10 @@ HTTP endpoint in whatever shape their config expects.
 ## Claude Desktop
 
 Claude Desktop's `claude_desktop_config.json` launches **local STDIO servers
-only**. Use `uvx` to run the published package with no checkout:
+only**. Use `uvx` to run the v1.1.0 release tag with no checkout. The package
+is not on PyPI: the name `maverick-mcp-server` there belongs to an unrelated
+project until a name transfer completes (see `releasing.md`), so do not point
+`uvx` at the bare name.
 
 ```json
 {
@@ -87,7 +90,7 @@ only**. Use `uvx` to run the published package with no checkout:
       "command": "uvx",
       "args": [
         "--from",
-        "maverick-mcp-server",
+        "git+https://github.com/wshobson/maverick-mcp@v1.1.0",
         "maverick-mcp",
         "--transport",
         "stdio"
@@ -138,7 +141,8 @@ startup.
 `make bundle` builds `dist/maverick-mcp.mcpb`, a one-click installable bundle
 (Settings -> Extensions). It launches the PyPI-published package via `uvx`, so
 it requires `uv` on the machine and only works once the package is published.
-See `docs/runbooks/releasing.md`.
+It is not published yet, and no release carries the bundle; see
+`docs/runbooks/releasing.md`.
 
 ### Streamable HTTP Via `mcp-remote`
 
@@ -352,7 +356,7 @@ STDIO:
 ```
 
 Or via the CLI, which writes the same file. Flags must precede the server name,
-and `--` is required before a command that starts with `-`:
+and `--` is required before a command or arguments that start with `-`:
 
 ```bash
 agy mcp add maverick-mcp http://localhost:8003/mcp
@@ -469,16 +473,15 @@ the model's context, so enable only the servers you need.
 
 > [!NOTE]
 > **Version:** this section targets stable OpenCode 1.x, verified against
-> `1.18.21` (the published `latest`) on 2026-08-22 --
+> `1.18.32` (the published `latest`) on 2026-09-26 --
 > [stable MCP docs](https://opencode.ai/docs/mcp-servers).
 >
-> OpenCode 2.0 is in beta and its migration guide refers to it as `opencode2`
-> -- [v2 MCP docs](https://opencode.ai/v2/docs/mcp-servers),
+> OpenCode 2.0 is in beta -- [v2 MCP docs](https://opencode.ai/v2/docs/mcp-servers),
 > [migration guide](https://opencode.ai/v2/docs/migrate-v1). The v2 schema
 > differs: servers nest under `mcp.servers`, and `enabled` is replaced by
-> `disabled`. Stable 1.18.21 rejects the `mcp.servers` form with a config
-> validation error, so use the schema above unless you are running the 2.0
-> beta.
+> `disabled`. Stable 1.x reads that form too from 1.18.24 on; 1.18.23 and
+> earlier reject it with a config validation error. The schema above is the
+> one the stable docs describe, so use it unless you are running the 2.0 beta.
 
 ## Any Other Client
 
@@ -486,9 +489,9 @@ There is nothing client-specific to configure. Supply one of:
 
 - **STDIO**: command `uv`, args
   `["run", "python", "-m", "maverick.server", "--transport", "stdio"]`, with the
-  working directory set to your checkout. For the published package, command
-  `uvx` with args
-  `["--from", "maverick-mcp-server", "maverick-mcp", "--transport", "stdio"]`.
+  working directory set to your checkout. With no checkout, command `uvx`
+  with args
+  `["--from", "git+https://github.com/wshobson/maverick-mcp@v1.1.0", "maverick-mcp", "--transport", "stdio"]`.
 - **Streamable HTTP**: `http://localhost:8003/mcp` after `make dev`.
 
 ## Troubleshooting
@@ -505,7 +508,8 @@ wrong working directory. Use an absolute path in `cwd`, or `uv run --directory
 /absolute/path` for clients that have no `cwd` field.
 
 **Nothing on port 8003.** `make dev` may have failed to bind. Run `make stop`,
-then `make dev`, and check `make tail-log`.
+then `make dev`, and read the error it prints: the server logs to stderr, not
+to a file.
 
 **Connection refused from another machine.** The HTTP transport binds
 `127.0.0.1`. Restart with `--host 0.0.0.0`, and read the warning in

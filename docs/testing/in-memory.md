@@ -6,7 +6,7 @@ opening ports, or managing a server lifecycle.
 ## Use Cases
 
 - Tool registration.
-- Router isolation.
+- One domain in isolation (its `register()` on a bare `FastMCP("test")`).
 - Input validation.
 - Error handling.
 - Mocked provider behavior.
@@ -30,6 +30,8 @@ async with Client(mcp) as client:
 ## Guidelines
 
 - Mock yfinance, Redis, external research providers, and network calls.
-- Use in-memory SQLite when a database is needed.
+- Use a tmp-file SQLite database (`sqlite:///{tmp_path}/test.db`) when a
+  database is needed. The engine uses `NullPool` for SQLite, so
+  `sqlite:///:memory:` loses its schema between connections.
 - Assert both success and failure behavior.
 - Keep tests deterministic and independent.

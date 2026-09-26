@@ -14,7 +14,7 @@ services:
       # - EXA_API_KEY=your_key_here
       # - LLM_PROVIDER=anthropic
       # - LLM_API_KEY=your_key_here
-      # - LLM_MODEL=claude-sonnet-4-5
+      # - LLM_MODEL=claude-sonnet-4-6
 
       # Performance tuning
       - CACHE_ENABLED=true

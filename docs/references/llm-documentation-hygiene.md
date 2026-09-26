@@ -18,4 +18,5 @@ MaverickMCP follows an agent-legible documentation pattern inspired by OpenAI's
 - `make docs-check` validates tracked Markdown/text docs against the catalog and
   checks relative Markdown links.
 - `docs/CATALOG.md` records deleted and consolidated artifacts.
-- Root agent files are intentionally short.
+- Root agent files are intentionally short; `make docs-check` fails if
+  `AGENTS.md` (which `CLAUDE.md` symlinks to) exceeds 220 lines.

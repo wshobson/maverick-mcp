@@ -43,9 +43,11 @@ Any alternative solutions or features you've thought about.
 - [ ] Technical analysis (new indicators, calculations)
 - [ ] Stock screening (new strategies, filters)
 - [ ] Portfolio analysis (risk metrics, optimization)
+- [ ] Backtesting (`[backtesting]` extra: strategies, optimization)
+- [ ] Research (`[research]` extra: search, LLM synthesis)
 - [ ] MCP tools (new tools, tool improvements)
 - [ ] Database/Caching (performance, storage)
-- [ ] Claude Desktop integration
+- [ ] MCP client integration (Claude Desktop, Claude Code, Cursor, etc.)
 - [ ] Developer experience (setup, debugging)
 - [ ] Documentation and examples
 

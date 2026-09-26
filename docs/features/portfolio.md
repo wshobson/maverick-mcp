@@ -80,8 +80,9 @@ never produces a sector-concentration alert.
 
 - Use `Decimal` for financial calculations.
 - Shares support fractional quantities.
-- Persist shares with up to 8 decimal places where supported.
-- Persist prices and total cost with fixed decimal precision.
+- Persist shares rounded half-up to 8 decimal places.
+- Persist average cost basis and total cost rounded half-up to 4 decimal
+  places.
 - Round only at storage or display boundaries.
 - Do not use float math for cost-basis calculations.
 

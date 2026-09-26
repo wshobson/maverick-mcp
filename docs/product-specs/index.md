@@ -1,4 +1,4 @@
 # Product specs
 
-No product specs exist yet. Add one file per user-facing behavior when the
-new server's tool surface is curated, and list it here.
+No product specs exist yet. The tool surface was curated at v1.0.0; add one
+file per user-facing behavior when a spec is written, and list it here.

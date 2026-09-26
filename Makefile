@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces eval-agent-install eval-agent-case eval-review clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces eval-agent-install eval-agent-case eval-review clean check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -27,8 +27,6 @@ help:
 	@echo "  make eval-agent-install - Install the in-session eval client subagent"
 	@echo "  make eval-agent-case CASES=<file> CASE=<id> - Point the next eval subagent at a case"
 	@echo "  make eval-review  - Review the newest trace run in a local browser UI (port 8765)"
-	@echo ""
-	@echo "  make tail-log     - Follow backend logs"
 	@echo ""
 	@echo "  make clean        - Clean up generated files"
 	@echo ""
@@ -140,10 +138,6 @@ eval-review:
 	@uv run python evals/review/server.py --run $(EVAL_RUN) $(ARGS)
 
 # Utility commands
-tail-log:
-	@echo "Following backend logs (Ctrl+C to stop)..."
-	@tail -f backend.log
-
 setup:
 	@echo "Setting up Maverick-MCP..."
 	@if [ ! -f .env ]; then \

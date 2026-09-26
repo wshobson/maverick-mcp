@@ -1,8 +1,10 @@
 <!--
-HOW TO SUBMIT: install the Glama GitHub App on the wshobson/maverick-mcp
-repo (or connect it via https://glama.ai's submission UI) so Glama indexes
-the repo directly — no separate form fields to fill in for a GitHub-hosted
-server. See https://glama.ai/mcp/faq for the current flow.
+HOW TO SUBMIT: Glama has already indexed the repo (see Status below), so
+claim the listing at https://glama.ai/mcp/servers/@wshobson/maverick-mcp.
+The documented path for a repo Glama has not indexed is to install the Glama
+GitHub App on it (or connect it via https://glama.ai's submission UI) — no
+separate form fields to fill in for a GitHub-hosted server. See
+https://glama.ai/mcp/faq for the current flow.
 -->
 
 # Glama submission draft
@@ -11,6 +13,11 @@ Sourced from Glama's own site (`glama.ai`, `glama.ai/mcp/faq`) via web
 search, fetched July 2026; the exact submission UI copy was not directly
 fetchable (JS-rendered pages), so **verify the current flow at
 https://glama.ai at submit time**.
+
+**Status (2026-09-26):** Glama already lists the repo, unclaimed, at
+<https://glama.ai/mcp/servers/@wshobson/maverick-mcp>, with the git-tag `uvx`
+install command and a stale "100+ tools" description. The owner step is to
+claim that listing rather than submit a new one.
 
 ## Submission path
 
@@ -35,8 +42,10 @@ Glama documents two ways to list a server:
   cost-basis P&L, plus optional backtesting and deep-research extras. Not
   financial advice.
 - **Repo URL**: https://github.com/wshobson/maverick-mcp
-- **Install command**: `uvx maverick-mcp-server` (stdio; once published to
-  PyPI) or `pip install "maverick-mcp-server[backtesting,research]"`
+- **Install command**: `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio`
+  or `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`.
+  Not the bare PyPI name: it belongs to an unrelated project until the name
+  transfer completes (see `docs/runbooks/releasing.md`).
 - **Transports**: stdio, streamable HTTP
 - **Categories/tags**: finance, stocks, market-data, technical-analysis,
   portfolio, backtesting, research
@@ -45,7 +54,7 @@ Glama documents two ways to list a server:
 ## Open questions (verify at submit time)
 
 - Whether the GitHub App requires PyPI publication first, or will index a
-  source-only repo (maverick-mcp-server is not yet on PyPI as of this
-  draft — Phase 9 Task 4).
+  source-only repo. Answered: the existing listing was indexed without a
+  PyPI release.
 - Whether Glama's indexer needs `server.json` at the repo root (it already
   exists, Phase 9 Task 0) or has its own manifest expectations.

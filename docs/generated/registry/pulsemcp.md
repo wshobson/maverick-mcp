@@ -1,4 +1,9 @@
 <!--
+UPDATE 2026-09-26: https://www.pulsemcp.com/submit says PulseMCP is not
+accepting new MCP server submissions and points maintainers to the official
+MCP Registry, and PulseMCP already lists this repo from its own crawl (see
+Status below). There is nothing to submit here. The July 2026 note follows.
+
 HOW TO SUBMIT: mechanism UNCONFIRMED. https://www.pulsemcp.com/use-cases/submit
 was the only submission-shaped page found and it states PulseMCP is "no
 longer accepting new use case submissions" -- that specific page appears to
@@ -21,6 +26,14 @@ manual submissions — this is a plausible explanation for the missing form,
 not a confirmed fact. **Do not treat any URL below as authoritative; none
 was verified as a live submission endpoint.**
 
+**Status (2026-09-26):** PulseMCP lists the repo at
+<https://www.pulsemcp.com/servers/wshobson-maverick-financial-analysis>
+("Maverick Financial Analysis"), with a pre-v1.0 description that still
+mentions Tiingo. The page says PulseMCP manages a `server.json` for the repo
+until the maintainer publishes one to the official MCP Registry, so the fix
+for the stale listing is Step 2 of `docs/runbooks/releasing.md`, which waits
+on the PyPI publish.
+
 ## Metadata to use if/when a submission path is found
 
 - **Name**: Maverick MCP
@@ -30,8 +43,10 @@ was verified as a live submission endpoint.**
   cost-basis P&L, plus optional backtesting and deep-research extras. Not
   financial advice.
 - **Repo URL**: https://github.com/wshobson/maverick-mcp
-- **Install command**: `uvx maverick-mcp-server` (stdio; once published to
-  PyPI) or `pip install "maverick-mcp-server[backtesting,research]"`
+- **Install command**: `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio`
+  or `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`.
+  Not the bare PyPI name: it belongs to an unrelated project until the name
+  transfer completes (see `docs/runbooks/releasing.md`).
 - **Transports**: stdio, streamable HTTP
 - **Categories/tags**: finance, stocks, market-data, technical-analysis,
   portfolio, backtesting, research
@@ -39,7 +54,7 @@ was verified as a live submission endpoint.**
 
 ## Recommended next step at submit time
 
-Check https://www.pulsemcp.com directly for a current "Submit a server" or
-"Add a server" link (site navigation, footer), and/or check whether
-PyPI/GitHub publication alone (Phase 9 Task 4) is sufficient for PulseMCP's
-crawler to pick up the listing without manual submission.
+Check https://www.pulsemcp.com/submit in case submissions have reopened.
+Otherwise nothing is needed: the crawler already picked up the GitHub repo
+without a PyPI release, and publishing to the official MCP Registry is the
+path PulseMCP points to.

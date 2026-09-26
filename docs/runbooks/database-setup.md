@@ -9,7 +9,8 @@ hosted SaaS setup.
 There is no separate setup script. Every domain that owns tables calls
 `maverick.platform.db.ensure_schema` the first time its service is used,
 which creates missing tables idempotently (`CREATE TABLE IF NOT EXISTS`
-semantics via SQLAlchemy `create_all`). Just start the server:
+semantics via SQLAlchemy `create_all`) and adds missing nullable columns to
+existing tables. Just start the server:
 
 ```bash
 uv sync --extra dev
@@ -53,8 +54,9 @@ pre-seeded universe:
 
 - Market data (quotes, price history, fundamentals) comes from `yfinance` on
   demand, with no API key required. Calling `market_data_get_price_history`
-  or `market_data_get_quote` for a ticker registers that symbol in the local
-  `md_stocks` table as a side effect.
+  or `market_data_get_price_history_batch` for a ticker registers that symbol
+  in the local `md_stocks` table as a side effect. `market_data_get_quote`
+  does not.
 - The screening domain (`screening_run_screens`) computes its Maverick
   bullish/bearish/supply-demand screens over whatever symbols are already
   known locally (the same `md_stocks` table). Fetch price history for the
