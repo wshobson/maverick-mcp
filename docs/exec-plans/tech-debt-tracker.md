@@ -13,9 +13,6 @@ One line per item. Remove the line in the same change that removes the debt.
 | Tasks extension for long-running backtests | new server | deferred |
 | `ty check` clean over `maverick/` but ~147 diagnostics under `tests/`; tests are outside the gate | `tests/` | deferred |
 | Macro (FRED) port deferred; zero live consumers today; no macro domain exists yet | not ported | macro port |
-| Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |
-| Capital Companion tier uses `request_with_retry` without breaker and creates a client per call; align with `request_resilient` at server assembly | `maverick/market_data/fetchers.py` | cutover |
-| `get_quotes` is untested-in-production surface (no tool consumes it) | `maverick/market_data/service.py` | cutover |
 | screening change-history (legacy pipeline) not ported; revisit if wanted | new server | deferred |
 | run_screen executes rubrics on the event loop; wrap in to_thread if universe_max grows | `maverick/screening/service.py` | deferred |
 | `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |

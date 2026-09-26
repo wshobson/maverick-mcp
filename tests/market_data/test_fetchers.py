@@ -3,18 +3,14 @@
 import asyncio
 import sys
 
-import httpx
 import pandas as pd
 import pytest
-from pydantic import SecretStr
 
-from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.fetchers import (
     MoverFetcher,
     YFinanceFetcher,
     _build_yfinance_tier,
     build_mover_fetcher,
-    fetch_capital_companion,
 )
 from maverick.platform.config import HttpSettings
 from maverick.platform.http import CircuitOpenError, get_breaker, reset_breakers
@@ -146,34 +142,15 @@ def _raising_sync(exc: Exception):
     return fn
 
 
-def _counting_async(result):
-    calls: list[tuple[str, int]] = []
-
-    async def fn(kind: str, limit: int):
-        calls.append((kind, limit))
-        return result
-
-    fn.calls = calls  # type: ignore[attr-defined]
-    return fn
-
-
-async def test_mover_no_key_skips_external_tier_uses_finviz():
-    external = _counting_async([{"symbol": "SHOULD_NOT_APPEAR"}])
+async def test_mover_finviz_result_skips_yfinance_tier():
     finviz = _counting_sync([{"symbol": "AAPL"}])
-    batch = _counting_sync([{"symbol": "SHOULD_NOT_APPEAR_2"}])
+    batch = _counting_sync([{"symbol": "SHOULD_NOT_APPEAR"}])
 
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    fetcher = MoverFetcher(
-        external_client=external,
-        finviz_fn=finviz,
-        batch_quote_fn=batch,
-        settings=settings,
-    )
+    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch)
 
     result = await fetcher.gainers(5)
 
     assert result == [{"symbol": "AAPL"}]
-    assert external.calls == []
     assert finviz.calls == [("gainers", 5)]
     assert batch.calls == []
 
@@ -182,8 +159,7 @@ async def test_mover_finviz_raises_falls_through_to_yfinance_tier():
     finviz = _raising_sync(RuntimeError("finviz down"))
     batch = _counting_sync([{"symbol": "MSFT"}])
 
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch, settings=settings)
+    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch)
 
     result = await fetcher.losers(3)
 
@@ -192,68 +168,47 @@ async def test_mover_finviz_raises_falls_through_to_yfinance_tier():
     assert batch.calls == [("losers", 3)]
 
 
+async def test_mover_finviz_empty_falls_through_to_yfinance_tier():
+    finviz = _counting_sync([])
+    batch = _counting_sync([{"symbol": "MSFT"}])
+
+    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch)
+
+    result = await fetcher.gainers(4)
+
+    assert result == [{"symbol": "MSFT"}]
+    assert finviz.calls == [("gainers", 4)]
+    assert batch.calls == [("gainers", 4)]
+
+
+async def test_mover_all_tiers_empty_returns_empty_list():
+    finviz = _counting_sync([])
+    batch = _counting_sync([])
+
+    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch)
+
+    result = await fetcher.most_active(3)
+
+    assert result == []
+    assert finviz.calls == [("most_active", 3)]
+    assert batch.calls == [("most_active", 3)]
+
+
 async def test_mover_all_tiers_fail_returns_empty_list():
-    external = _counting_async([])
     finviz = _raising_sync(RuntimeError("finviz down"))
     batch = _raising_sync(RuntimeError("yfinance down"))
 
-    settings = MarketDataSettings(capital_companion_api_key=SecretStr("key"))
-    fetcher = MoverFetcher(
-        external_client=external,
-        finviz_fn=finviz,
-        batch_quote_fn=batch,
-        settings=settings,
-    )
+    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch)
 
     result = await fetcher.most_active(10)
 
     assert result == []
-    assert external.calls == [("most_active", 10)]
     assert finviz.calls == [("most_active", 10)]
     assert batch.calls == [("most_active", 10)]
 
 
-async def test_mover_tier_order_respected_when_key_present():
-    external = _counting_async([{"symbol": "EXTERNAL"}])
-    finviz = _counting_sync([{"symbol": "SHOULD_NOT_APPEAR"}])
-    batch = _counting_sync([{"symbol": "SHOULD_NOT_APPEAR_2"}])
-
-    settings = MarketDataSettings(capital_companion_api_key=SecretStr("key"))
-    fetcher = MoverFetcher(
-        external_client=external,
-        finviz_fn=finviz,
-        batch_quote_fn=batch,
-        settings=settings,
-    )
-
-    result = await fetcher.gainers(7)
-
-    assert result == [{"symbol": "EXTERNAL"}]
-    assert external.calls == [("gainers", 7)]
-    assert finviz.calls == []
-    assert batch.calls == []
-
-
-async def test_mover_external_raises_falls_through_even_with_key_present():
-    async def failing_external(kind: str, limit: int):
-        raise RuntimeError("external down")
-
-    finviz = _counting_sync([{"symbol": "FINVIZ"}])
-
-    settings = MarketDataSettings(capital_companion_api_key=SecretStr("key"))
-    fetcher = MoverFetcher(
-        external_client=failing_external, finviz_fn=finviz, settings=settings
-    )
-
-    result = await fetcher.gainers(4)
-
-    assert result == [{"symbol": "FINVIZ"}]
-    assert finviz.calls == [("gainers", 4)]
-
-
 async def test_mover_no_fns_injected_returns_empty_list():
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    fetcher = MoverFetcher(settings=settings)
+    fetcher = MoverFetcher()
 
     assert await fetcher.gainers(5) == []
     assert await fetcher.losers(5) == []
@@ -261,91 +216,29 @@ async def test_mover_no_fns_injected_returns_empty_list():
 
 
 # ---------------------------------------------------------------------------
-# fetch_capital_companion
-# ---------------------------------------------------------------------------
-
-
-async def test_fetch_capital_companion_returns_list_on_200():
-    seen_headers = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen_headers.update(request.headers)
-        return httpx.Response(200, json=[{"symbol": "AAPL"}, {"symbol": "MSFT"}])
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await fetch_capital_companion(
-            client, "https://capitalcompanion.ai/gainers", "secret-key"
-        )
-
-    assert result == [{"symbol": "AAPL"}, {"symbol": "MSFT"}]
-    assert seen_headers.get("x-api-key") == "secret-key"
-
-
-async def test_fetch_capital_companion_retries_500_then_200():
-    calls = 0
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal calls
-        calls += 1
-        if calls == 1:
-            return httpx.Response(500)
-        return httpx.Response(200, json=[{"symbol": "GME"}])
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await fetch_capital_companion(
-            client, "https://capitalcompanion.ai/losers", "secret-key"
-        )
-
-    assert result == [{"symbol": "GME"}]
-    assert calls == 2
-
-
-async def test_fetch_capital_companion_non_list_json_returns_empty():
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"unexpected": "shape"})
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        result = await fetch_capital_companion(
-            client, "https://capitalcompanion.ai/most-active", "secret-key"
-        )
-
-    assert result == []
-
-
-# ---------------------------------------------------------------------------
 # build_mover_fetcher
 # ---------------------------------------------------------------------------
 
 
-def test_build_mover_fetcher_tier1_none_without_key():
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    fetcher = build_mover_fetcher(settings, YFinanceFetcher())
+def test_build_mover_fetcher_binds_both_tiers():
+    fetcher = build_mover_fetcher(YFinanceFetcher())
 
     assert isinstance(fetcher, MoverFetcher)
-    assert fetcher._external_client is None
     assert fetcher._finviz_fn is not None
     assert fetcher._batch_quote_fn is not None
-
-
-def test_build_mover_fetcher_tier1_set_with_key():
-    settings = MarketDataSettings(capital_companion_api_key=SecretStr("secret-key"))
-    fetcher = build_mover_fetcher(settings, YFinanceFetcher())
-
-    assert fetcher._external_client is not None
 
 
 def test_build_mover_fetcher_never_imports_finvizfinance_at_construction():
     sys.modules.pop("finvizfinance", None)
     sys.modules.pop("finvizfinance.screener.overview", None)
 
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    build_mover_fetcher(settings, YFinanceFetcher())
+    build_mover_fetcher(YFinanceFetcher())
 
     assert "finvizfinance" not in sys.modules
 
 
 def test_yfinance_tier_calls_download_fn_directly_not_batch_history():
-    """Tier 3's closure calls the raw sync download_fn -- never `yf.batch_history`.
+    """Tier 2's closure calls the raw sync download_fn -- never `yf.batch_history`.
 
     Regression coverage for the nested-event-loop deadlock: the old
     implementation ran `asyncio.run(yf.batch_history(...))` inside this
@@ -360,20 +253,20 @@ def test_yfinance_tier_calls_download_fn_directly_not_batch_history():
         return {}
 
     async def _must_not_be_called(*args, **kwargs):
-        raise AssertionError("tier 3 must not call yf.batch_history")
+        raise AssertionError("tier 2 must not call yf.batch_history")
 
     yf = YFinanceFetcher(download_fn=fake_download)
     yf.batch_history = _must_not_be_called  # type: ignore[method-assign]
 
-    tier3 = _build_yfinance_tier(yf._download_fn)
-    result = tier3("gainers", 5)
+    tier2 = _build_yfinance_tier(yf._download_fn)
+    result = tier2("gainers", 5)
 
     assert result == []
     assert len(download_calls) == 1
     assert download_calls[0][1] == "2d"
 
 
-def test_build_mover_fetcher_tier3_binds_yf_download_fn_by_default():
+def test_build_mover_fetcher_tier2_binds_yf_download_fn_by_default():
     download_calls: list[str] = []
 
     def fake_download(symbols, period="1d"):
@@ -381,10 +274,9 @@ def test_build_mover_fetcher_tier3_binds_yf_download_fn_by_default():
         return {}
 
     yf = YFinanceFetcher(download_fn=fake_download)
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    fetcher = build_mover_fetcher(settings, yf)
+    fetcher = build_mover_fetcher(yf)
 
-    # Call tier 3's bound callable directly (not through the full tier
+    # Call tier 2's bound callable directly (not through the full tier
     # chain, which would otherwise hit the real finviz tier first).
     result = fetcher._batch_quote_fn("losers", 3)
 
@@ -392,7 +284,7 @@ def test_build_mover_fetcher_tier3_binds_yf_download_fn_by_default():
     assert download_calls == ["2d"]
 
 
-def test_build_mover_fetcher_tier3_explicit_download_fn_overrides_yf_binding():
+def test_build_mover_fetcher_tier2_explicit_download_fn_overrides_yf_binding():
     yf_calls: list[str] = []
 
     def yf_default_download(symbols, period="1d"):
@@ -406,8 +298,7 @@ def test_build_mover_fetcher_tier3_explicit_download_fn_overrides_yf_binding():
         return {}
 
     yf = YFinanceFetcher(download_fn=yf_default_download)
-    settings = MarketDataSettings(capital_companion_api_key=None)
-    fetcher = build_mover_fetcher(settings, yf, download_fn=override_download)
+    fetcher = build_mover_fetcher(yf, download_fn=override_download)
 
     fetcher._batch_quote_fn("gainers", 5)
 
@@ -416,7 +307,7 @@ def test_build_mover_fetcher_tier3_explicit_download_fn_overrides_yf_binding():
 
 
 async def test_yfinance_tier_completes_while_yfinance_breaker_lock_is_held():
-    """Regression test for the tier-3 nested-event-loop deadlock.
+    """Regression test for the tier-2 nested-event-loop deadlock.
 
     Before the fix, `_build_yfinance_tier`'s closure ran `asyncio.run(yf.
     batch_history(...))` inside the worker thread `MoverFetcher.
@@ -426,11 +317,11 @@ async def test_yfinance_tier_completes_while_yfinance_breaker_lock_is_held():
     would hang forever: an `asyncio.Lock`'s waiter `Future` binds to
     whichever loop first hits its contended `acquire()` path, and a
     `Future` resolved from a different thread's loop doesn't wake a
-    selector blocked in that other thread. Post-fix, tier 3 never touches
+    selector blocked in that other thread. Post-fix, tier 2 never touches
     the breaker at all, so this completes immediately regardless of the
     held lock.
     """
-    breaker_name = "test-yfinance-breaker-tier3-deadlock"
+    breaker_name = "test-yfinance-breaker-tier2-deadlock"
     reset_breakers()
     breaker = get_breaker(breaker_name)
     await breaker._lock.acquire()
@@ -440,10 +331,10 @@ async def test_yfinance_tier_completes_while_yfinance_breaker_lock_is_held():
             return {}
 
         yf = YFinanceFetcher(download_fn=fake_download, breaker_name=breaker_name)
-        tier3 = _build_yfinance_tier(yf._download_fn)
+        tier2 = _build_yfinance_tier(yf._download_fn)
 
         result = await asyncio.wait_for(
-            asyncio.to_thread(tier3, "most_active", 5), timeout=5.0
+            asyncio.to_thread(tier2, "most_active", 5), timeout=5.0
         )
 
         assert result == []

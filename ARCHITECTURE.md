@@ -58,8 +58,8 @@ Each domain follows the same forward-only layer order: `types.py` ->
 enter only through `platform/`.
 
 - `market_data/`: quote/history/fundamentals/market-overview reads, backed
-  by `yfinance` (no API key required) with an optional Capital Companion
-  tier and a finviz fallback for market movers.
+  by `yfinance` (no API key required). Market movers come from finviz,
+  falling back to a `yfinance` batch scan.
 - `technical/`: RSI, MACD, support/resistance, and full technical analysis
   built on `market_data`'s price history.
 - `screening/`: Maverick bullish, bearish, and supply/demand screens;

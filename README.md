@@ -21,16 +21,6 @@ Core tools need no API key: market data comes from `yfinance`. Two optional
 extras add more: `[backtesting]` (VectorBT-powered strategy backtesting) and
 `[research]` (LangGraph-based deep research, bring-your-own LLM key).
 
-## Skip the setup — hosted version
-
-Self-hosting MaverickMCP means Python, uv, and MCP client config (Redis and a
-research LLM key are optional). If you just want the analysis, [Capital Companion](https://capitalcompanion.ai)
-is the hosted product built on the same engine: AI technical analysis, trade-plan
-review sheets with outcome tracking, and price alerts. **25 free analyses,
-no credit card.**
-
-Self-hosting instructions continue below.
-
 ## Why MaverickMCP?
 
 **Key Benefits:**
@@ -751,7 +741,7 @@ Built for traders and investors. Happy Trading!
 
 <sub>**No Professional Advice**: This tool provides data analysis, not investment recommendations. Always consult with a qualified financial advisor before making investment decisions. The developers are not licensed financial advisors or investment professionals. Nothing in this software constitutes professional financial, investment, legal, or tax advice.</sub>
 
-<sub>**Data and Accuracy**: Market data provided by third-party sources (Yahoo Finance, and optionally Capital Companion/finviz for market movers). Data may contain errors, delays, or omissions. Technical indicators are mathematical calculations based on historical data. No warranty is made regarding data accuracy or completeness.</sub>
+<sub>**Data and Accuracy**: Market data provided by third-party sources (Yahoo Finance, and finviz for market movers). Data may contain errors, delays, or omissions. Technical indicators are mathematical calculations based on historical data. No warranty is made regarding data accuracy or completeness.</sub>
 
 <sub>**Regulatory Compliance**: US Users - This software is not registered with the SEC, CFTC, or other regulatory bodies. International Users - Check local financial software regulations before use. Users are responsible for compliance with all applicable laws and regulations. Some features may not be available in certain jurisdictions.</sub>
 

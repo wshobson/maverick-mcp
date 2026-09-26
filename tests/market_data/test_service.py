@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.data import METADATA, write_price_bars
 from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher
 from maverick.market_data.service import MarketDataService
@@ -229,43 +228,6 @@ async def test_get_quote_caches_and_calls_yf_info_once(tmp_path):
     assert info_calls == ["AAPL"]
 
 
-async def test_get_quotes_happy_path_over_two_symbols(tmp_path):
-    engine = _engine(tmp_path)
-    info_by_symbol = {
-        "AAPL": {"currentPrice": 190.5, "previousClose": 188.0, "volume": 1_000},
-        "MSFT": {"currentPrice": 300.0, "previousClose": 295.0, "volume": 2_000},
-    }
-
-    def fake_info(symbol):
-        return info_by_symbol[symbol]
-
-    service = MarketDataService(
-        engine, _cache(tmp_path), YFinanceFetcher(info_fn=fake_info), MoverFetcher()
-    )
-
-    result = await service.get_quotes(["AAPL", "MSFT"])
-
-    assert set(result) == {"AAPL", "MSFT"}
-    assert result["AAPL"].price == 190.5
-    assert result["MSFT"].price == 300.0
-
-
-async def test_get_quotes_fails_fast_when_one_symbol_raises(tmp_path):
-    engine = _engine(tmp_path)
-
-    def fake_info(symbol):
-        if symbol == "BAD":
-            raise RuntimeError("no such ticker")
-        return {"currentPrice": 1.0, "previousClose": 1.0, "volume": 1}
-
-    service = MarketDataService(
-        engine, _cache(tmp_path), YFinanceFetcher(info_fn=fake_info), MoverFetcher()
-    )
-
-    with pytest.raises(RuntimeError, match="no such ticker"):
-        await service.get_quotes(["AAPL", "BAD"])
-
-
 # ---------------------------------------------------------------------------
 # get_fundamentals
 # ---------------------------------------------------------------------------
@@ -474,10 +436,7 @@ async def test_get_movers_maps_dicts_to_mover_models(tmp_path):
             }
         ]
 
-    movers = MoverFetcher(
-        finviz_fn=fake_finviz,
-        settings=MarketDataSettings(capital_companion_api_key=None),
-    )
+    movers = MoverFetcher(finviz_fn=fake_finviz)
     service = MarketDataService(engine, _cache(tmp_path), YFinanceFetcher(), movers)
 
     result = await service.get_movers("gainers", 5)
