@@ -27,7 +27,17 @@ an API key: the run refuses to start when `ANTHROPIC_API_KEY` or
 uv sync --group evals --extra dev --extra backtesting --extra research
 make eval-traces                              # $6.00 cap by default
 make eval-traces ARGS="--budget-usd 3 --model claude-opus-5-5"
+make eval-traces ARGS="--cases evals/tool_surface/cases_batch2.json --budget-usd 2.50"
 ```
+
+`--cases` picks the case file. `cases.json` (batch 1) runs in a fixed priority
+order; any other file runs in file order, and its first case is the smoke query.
+
+The budget cap is checked before each query starts. Each query also has a
+$0.40 SDK budget, but the SDK checks it between turns, so one query can
+overshoot it (batch 2's b15 spent $0.77). The cap check therefore reserves
+twice the per-query budget, or 1.5 times the smoke query's cost if that is
+larger.
 
 Before each prompt is sent, the harness connects the CLI and checks the
 session. No API key may be in use, the login must be a Claude subscription,

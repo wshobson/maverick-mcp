@@ -40,6 +40,10 @@ BANNED_ENV_PREFIXES = (
     "TYPESAFE_",
 )
 SMOKE_MARGIN = 1.5
+# The SDK checks max_budget_usd between turns, so a single query can overshoot
+# it; batch 2's b15 spent $0.77 against a $0.40 per-query cap. The run-level
+# check therefore reserves twice the per-query cap for each query.
+PER_QUERY_OVERSHOOT = 2.0
 
 
 class HarnessAbort(RuntimeError):
@@ -150,10 +154,11 @@ def budget_stop_reason(
     spent: float, smoke_cost: float | None, cap: float, per_query_cap: float
 ) -> str | None:
     """Why the next query must not start, or None. The estimate is the worst
-    case: the per-query cap, or 1.5x the smoke cost when that is larger."""
-    estimate = per_query_cap
+    case: twice the per-query cap (the SDK can overshoot it within a turn), or
+    1.5x the smoke cost when that is larger."""
+    estimate = PER_QUERY_OVERSHOOT * per_query_cap
     if smoke_cost is not None:
-        estimate = max(per_query_cap, SMOKE_MARGIN * smoke_cost)
+        estimate = max(estimate, SMOKE_MARGIN * smoke_cost)
     if spent + estimate > cap:
         return (
             f"budget: ${spent:.4f} spent + ${estimate:.4f} worst case for the next "
