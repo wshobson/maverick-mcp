@@ -86,6 +86,8 @@ reviewer sets a verdict (pass, fail, or defer), writes a trace note, and
 selects text to attach span notes. The app saves `annotations.json` on every
 change, writing through a temp file and a rename and keeping the previous
 version as `annotations.json.bak`. Only the browser app writes this file.
+The server reads the run's traces when it starts, so restart it to see
+traces converted after that.
 
 An agent may later write `patterns.json` in the same folder: a DRAFT grouping
 of the reviewer's notes into failure modes, which the app shows on its
