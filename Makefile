@@ -101,7 +101,7 @@ format:
 # CI typecheck job.
 typecheck:
 	@echo "Running type checker..."
-	@uv run --extra dev --extra backtesting --extra research ty check maverick
+	@uv run --extra dev --extra backtesting --extra research ty check maverick tests
 
 docs-check:
 	@echo "Checking documentation catalog..."

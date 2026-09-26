@@ -158,7 +158,7 @@ def _service(
     engine = _engine(tmp_path)
     return ScreeningService(
         engine,
-        market_data if market_data is not None else _market_data(),
+        market_data if market_data is not None else _market_data(),  # ty: ignore[invalid-argument-type]  # duck-typed stub
         settings=settings,
         universe_fn=lambda: universe if universe is not None else list(_UNIVERSE),
     )
@@ -187,7 +187,10 @@ def _seeded_service(tmp_path, n_bullish_rows: int, settings=None) -> ScreeningSe
     with session_scope(sessionmaker(bind=engine)) as session:
         replace_screen_snapshot(session, "bullish", date.today().isoformat(), rows)
     return ScreeningService(
-        engine, StubMarketData(frames={}), settings=settings, universe_fn=lambda: []
+        engine,
+        StubMarketData(frames={}),  # ty: ignore[invalid-argument-type]  # duck-typed stub
+        settings=settings,
+        universe_fn=lambda: [],
     )
 
 
@@ -279,7 +282,7 @@ async def test_run_screen_unknown_screen_raises_value_error(tmp_path):
     service = _service(tmp_path)
 
     with pytest.raises(ValueError, match="bogus"):
-        await service.run_screen("bogus")  # type: ignore[arg-type]
+        await service.run_screen("bogus")  # ty: ignore[invalid-argument-type]  # bad input on purpose
 
 
 async def test_rerun_same_day_replaces_not_duplicates(tmp_path):
@@ -353,7 +356,7 @@ async def test_zero_successful_fetches_preserves_prior_snapshot(tmp_path, caplog
     always_failing_market_data = StubMarketData(frames={}, errors=set(_UNIVERSE))
     service = ScreeningService(
         engine,
-        always_failing_market_data,
+        always_failing_market_data,  # ty: ignore[invalid-argument-type]  # duck-typed stub
         universe_fn=lambda: list(_UNIVERSE),
     )
 
@@ -482,7 +485,7 @@ async def test_default_universe_fn_reads_market_data_symbols(tmp_path):
         md_data.write_price_bars(session, "ZZZZ", bars)
 
     market_data = StubMarketData(frames={"ZZZZ": _short_frame()})
-    service = ScreeningService(engine, market_data)
+    service = ScreeningService(engine, market_data)  # ty: ignore[invalid-argument-type]  # duck-typed stub
 
     run = await service.run_screen("bullish")
 

@@ -1,5 +1,7 @@
 """Tests for maverick.backtesting.types."""
 
+from typing import Any
+
 import pytest
 from pydantic import ValidationError
 
@@ -153,7 +155,7 @@ def test_simple_backtest_metrics_round_trips_and_has_exact_fields():
 
 
 def _make_backtest_result(**overrides) -> BacktestResult:
-    fields = {
+    fields: dict[str, Any] = {
         "symbol": "AAPL",
         "strategy": "sma_cross",
         "parameters": {"fast_period": 10, "slow_period": 20},

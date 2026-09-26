@@ -69,6 +69,7 @@ class TestMarketRegimeDetector:
         )
         det.fit_regimes(ohlcv)
         assert det.is_fitted
+        assert det.model is not None
         assert det.model.random_state == 123
         # Determinism still holds for the overridden seed.
         assert det.detect_current_regime(ohlcv) == det.detect_current_regime(ohlcv)
@@ -221,7 +222,7 @@ class TestRegimeProbabilities:
         def _boom(_features):
             raise RuntimeError("simulated scaler failure")
 
-        det.scaler.transform = _boom
+        det.scaler.transform = _boom  # ty: ignore[invalid-assignment]  # raising stub patch
         window = data.iloc[-51:]
         regime = det.detect_current_regime(window)
         probs = det.get_regime_probabilities(window)

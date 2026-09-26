@@ -7,15 +7,20 @@ from fastmcp import Client, FastMCP
 
 from maverick.screening import tools
 from maverick.screening.config import ScreeningSettings
-from maverick.screening.types import ScreeningCriteria, ScreeningResult, ScreenRun
+from maverick.screening.types import (
+    ScreeningCriteria,
+    ScreeningResult,
+    ScreenName,
+    ScreenRun,
+)
 
 
 def _result(
-    symbol: str, screen: str = "bullish", combined_score: int = 90
+    symbol: str, screen: ScreenName = "bullish", combined_score: int = 90
 ) -> ScreeningResult:
     return ScreeningResult(
         symbol=symbol,
-        screen=screen,  # type: ignore[arg-type]
+        screen=screen,
         date_analyzed="2026-07-19",
         close=190.5,
         combined_score=combined_score,
@@ -27,10 +32,10 @@ def _result(
 
 
 def _run(
-    screen: str, screened: int = 4, qualified: int = 1, failed: int = 0
+    screen: ScreenName, screened: int = 4, qualified: int = 1, failed: int = 0
 ) -> ScreenRun:
     return ScreenRun(
-        screen=screen,  # type: ignore[arg-type]
+        screen=screen,
         symbols_screened=screened,
         symbols_qualified=qualified,
         symbols_failed=failed,
@@ -116,7 +121,7 @@ class StubService:
 @pytest.fixture
 def stub_service() -> Any:
     stub = StubService()
-    tools.configure(stub)
+    tools.configure(stub)  # ty: ignore[invalid-argument-type]  # duck-typed stub
     yield stub
 
 
@@ -126,7 +131,7 @@ def stub_service() -> Any:
 
 
 async def test_unconfigured_service_returns_configure_error_payload():
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     result = await tools.screening_get_bullish()
 
@@ -309,6 +314,7 @@ async def test_register_marks_all_but_run_screens_read_only(stub_service):
 
     for name in _EXPECTED_TOOL_NAMES - {"screening_run_screens"}:
         tool = await mcp.get_tool(name)
+        assert tool is not None
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
 
@@ -319,6 +325,7 @@ async def test_register_marks_run_screens_honestly_non_read_only(stub_service):
 
     tool = await mcp.get_tool("screening_run_screens")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False

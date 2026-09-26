@@ -143,7 +143,7 @@ class StubService:
 @pytest.fixture(autouse=True)
 def stub_service() -> Any:
     stub = StubService()
-    tools.configure(stub)
+    tools.configure(stub)  # ty: ignore[invalid-argument-type]  # duck-typed stub
     yield stub
 
 
@@ -158,7 +158,7 @@ async def test_unconfigured_service_returns_configure_error_payload(stub_service
     The next test's autouse fixture reconfigures a fresh stub, so no
     explicit restore is needed here.
     """
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     result = await tools.get_quote("AAPL")
 
@@ -433,6 +433,7 @@ async def test_register_marks_all_but_clear_cache_read_only(stub_service):
 
     for name in _EXPECTED_TOOL_NAMES - {"market_data_clear_market_cache"}:
         tool = await mcp.get_tool(name)
+        assert tool is not None
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
 
@@ -443,6 +444,7 @@ async def test_register_marks_clear_cache_honestly_non_read_only(stub_service):
 
     tool = await mcp.get_tool("market_data_clear_market_cache")
 
+    assert tool is not None
     assert tool.annotations is not None
     assert tool.annotations.read_only_hint is False
     assert tool.annotations.destructive_hint is False

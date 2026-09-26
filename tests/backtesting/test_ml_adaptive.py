@@ -10,6 +10,8 @@ Uses the shared `ohlcv` fixture and `MockStrategy` from
 `tests/backtesting/conftest.py`.
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -130,7 +132,7 @@ class TestOnlineLearningStrategy:
     """
 
     def test_generate_signals_is_deterministic(self, ohlcv):
-        kwargs = {
+        kwargs: dict[str, Any] = {
             "update_frequency": 10,
             "feature_window": 10,
             "min_training_samples": 20,

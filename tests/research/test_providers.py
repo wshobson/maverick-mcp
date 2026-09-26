@@ -42,7 +42,7 @@ def _install_fake_exa_py(
         async def search(self, **kwargs: Any) -> Any:
             return await search_impl(**kwargs)
 
-    fake_module.AsyncExa = FakeAsyncExa  # type: ignore[attr-defined]
+    fake_module.AsyncExa = FakeAsyncExa  # ty: ignore[unresolved-attribute]  # fake module attribute
     monkeypatch.setitem(sys.modules, "exa_py", fake_module)
 
 
@@ -360,7 +360,7 @@ async def test_search_timeout_raises_web_search_error():
 
     provider = ExaSearchProvider("test-key")
     # Force a tiny per-search timeout instead of the ~30s formula floor.
-    provider._calculate_timeout = lambda *args, **kwargs: 0.01  # type: ignore[method-assign]
+    provider._calculate_timeout = lambda *args, **kwargs: 0.01  # ty: ignore[invalid-assignment]  # instance method patch
 
     with pytest.MonkeyPatch.context() as mp:
         _install_fake_exa_py(mp, fake_search)

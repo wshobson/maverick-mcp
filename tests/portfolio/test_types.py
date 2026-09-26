@@ -1,6 +1,7 @@
 """Tests for maverick.portfolio.types."""
 
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -33,7 +34,7 @@ from maverick.portfolio.types import (
 
 
 def _make_position(**overrides) -> PositionPayload:
-    fields = {
+    fields: dict[str, Any] = {
         "ticker": "AAPL",
         "shares": Decimal("10.0001"),
         "average_cost_basis": Decimal("150.25"),

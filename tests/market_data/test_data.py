@@ -1,6 +1,7 @@
 """Tests for maverick.market_data.data."""
 
 from datetime import date
+from typing import cast
 
 import pandas as pd
 import pytest
@@ -72,7 +73,7 @@ def test_read_price_range_index_is_nanosecond_resolution(factory):
     with session_scope(factory) as session:
         frame = read_price_range(session, "NVDA", dates[0].date(), dates[-1].date())
 
-    assert frame.index.unit == "ns"
+    assert cast(pd.DatetimeIndex, frame.index).unit == "ns"
 
 
 def test_overlapping_write_dedupes_and_returns_new_count(factory):

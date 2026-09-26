@@ -115,7 +115,7 @@ SETTINGS = TechnicalSettings()
 
 
 def _service(frame: pd.DataFrame, settings: TechnicalSettings | None = None):
-    return TechnicalService(StubMarketData(frame), settings=settings)
+    return TechnicalService(StubMarketData(frame), settings=settings)  # ty: ignore[invalid-argument-type]  # duck-typed stub
 
 
 # ---------------------------------------------------------------------------
@@ -212,32 +212,35 @@ async def test_get_full_analysis_bullish_frame():
 
 async def test_default_fetch_window_is_at_least_400_calendar_days():
     market_data = StubMarketData(_bullish_frame())
-    service = TechnicalService(market_data)
+    service = TechnicalService(market_data)  # ty: ignore[invalid-argument-type]  # duck-typed stub
 
     await service.get_rsi("AAPL")
 
     assert len(market_data.calls) == 1
     _, start, end = market_data.calls[0]
+    assert start is not None and end is not None
     assert (end - start).days >= 400
 
 
 async def test_small_days_override_is_floored_at_400_calendar_days():
     market_data = StubMarketData(_bullish_frame())
-    service = TechnicalService(market_data)
+    service = TechnicalService(market_data)  # ty: ignore[invalid-argument-type]  # duck-typed stub
 
     await service.get_rsi("AAPL", days=10)
 
     _, start, end = market_data.calls[0]
+    assert start is not None and end is not None
     assert (end - start).days >= 400
 
 
 async def test_large_days_override_extends_the_window():
     market_data = StubMarketData(_bullish_frame())
-    service = TechnicalService(market_data)
+    service = TechnicalService(market_data)  # ty: ignore[invalid-argument-type]  # duck-typed stub
 
     await service.get_rsi("AAPL", days=900)
 
     _, start, end = market_data.calls[0]
+    assert start is not None and end is not None
     assert (end - start).days >= 900
 
 
@@ -319,7 +322,8 @@ async def test_every_method_raises_on_nan_tail_close(method: str):
 async def test_slow_fetch_raises_value_error_not_hang():
     market_data = StubMarketData(_bullish_frame(), delay=0.2)
     service = TechnicalService(
-        market_data, settings=TechnicalSettings(analysis_timeout_seconds=0.01)
+        market_data,  # ty: ignore[invalid-argument-type]  # duck-typed stub
+        settings=TechnicalSettings(analysis_timeout_seconds=0.01),
     )
 
     with pytest.raises(ValueError, match="timed out"):

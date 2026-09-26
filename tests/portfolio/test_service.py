@@ -144,7 +144,7 @@ def _service(tmp_path, market_data=None, settings=None) -> PortfolioService:
     engine = _engine(tmp_path)
     return PortfolioService(
         engine,
-        market_data if market_data is not None else StubMarketData(),
+        market_data if market_data is not None else StubMarketData(),  # ty: ignore[invalid-argument-type]  # duck-typed stub
         settings=settings,
     )
 
@@ -1272,7 +1272,7 @@ async def test_watchlist_operations_carry_over_against_a_preexisting_legacy_data
     legacy_metadata.create_all(engine, tables=[watchlists_table, watchlist_items_table])
 
     market_data = StubMarketData(quotes={"AAPL": 175.50})
-    service = PortfolioService(engine, market_data)
+    service = PortfolioService(engine, market_data)  # ty: ignore[invalid-argument-type]  # duck-typed stub
 
     watchlist = await service.create_watchlist("Legacy Carry-Over", None)
     item = await service.add_watchlist_item(watchlist.id, "aapl", "note")

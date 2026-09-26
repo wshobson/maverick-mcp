@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Python 3.12 or later. Ruff formatting and linting with line length 88. Domain layering `types -> config -> data -> service -> tools`; run `uv run lint-imports` after touching imports.
-- The full gate for any code change is `make check` (ruff check, ruff format check, import contracts, `ty check maverick`) followed by `uv run pytest --timeout=60`. The suite includes `tests/structure`, which enforces a 500-line cap on every file under `maverick/`, forbids `os.getenv`/`os.environ` outside `config.py` files and `maverick/platform/`, and requires snake_case module names.
+- The full gate for any code change is `make check` (ruff check, ruff format check, import contracts, `ty check maverick tests`) followed by `uv run pytest --timeout=60`. The suite includes `tests/structure`, which enforces a 500-line cap on every file under `maverick/`, forbids `os.getenv`/`os.environ` outside `config.py` files and `maverick/platform/`, and requires snake_case module names.
 - `make docs-check` after adding, moving, or deleting any Markdown or text doc; every new doc needs a row in `docs/CATALOG.md`.
 - No live network calls in unit tests.
 - `Decimal` for financial arithmetic (nothing in this plan changes financial arithmetic).

@@ -97,7 +97,7 @@ def test_create_watchlist_not_null_violation_is_not_mislabeled_as_duplicate(fact
     is NOT NULL), so the guard falls through and re-raises."""
     with pytest.raises(IntegrityError):
         with session_scope(factory) as session:
-            create_watchlist(session, None, "desc")  # type: ignore[arg-type]
+            create_watchlist(session, None, "desc")  # ty: ignore[invalid-argument-type]  # bad input on purpose
 
 
 # -- created_at/updated_at: legacy TimestampMixin carry-over --------------

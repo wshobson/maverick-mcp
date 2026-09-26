@@ -8,6 +8,7 @@ SQLite database per test (via `platform.db.create_engine_from_settings` +
 import uuid
 from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from sqlalchemy import Numeric, func, insert, select
@@ -46,7 +47,7 @@ def factory(tmp_path):
 
 
 def _position(**overrides) -> PositionPayload:
-    fields = {
+    fields: dict[str, Any] = {
         "ticker": "AAPL",
         "shares": Decimal("10.12345678"),
         "average_cost_basis": Decimal("105.0001"),
