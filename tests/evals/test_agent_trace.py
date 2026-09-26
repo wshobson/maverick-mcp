@@ -1,5 +1,7 @@
 """The subagent transcript converter (no Claude Code, no network)."""
 
+import json
+from pathlib import Path
 from typing import Any
 
 from evals.tool_surface import agent_trace
@@ -81,11 +83,33 @@ def test_build_trace_pairs_calls_with_results_and_splits_the_final_answer() -> N
     assert trace["notional_cost_usd"] is None
 
 
-def test_unexpected_tools_flags_non_maverick_calls() -> None:
+def test_unexpected_tools_flags_non_maverick_and_research_calls() -> None:
     trace = agent_trace.build_trace(_lines(), CASE, "", "")
     assert agent_trace.unexpected_tools(trace) == []
+    research = "mcp__maverick__research_run_comprehensive"
     trace["messages"].append({"type": "tool_call", "name": "Bash"})
-    assert agent_trace.unexpected_tools(trace) == ["Bash"]
+    trace["messages"].append({"type": "tool_call", "name": research})
+    assert agent_trace.unexpected_tools(trace) == ["Bash", research]
+
+
+def test_a_run_that_stops_on_a_tool_call_has_no_answer() -> None:
+    # A turn limit or an interruption ends the run before any answer; the
+    # text before the last tool call is not one.
+    trace = agent_trace.build_trace(_lines()[:-1], CASE, "", "")
+    assert trace["final_answer"] == ""
+    assert trace["result_subtype"] == "no_answer"
+    assert [m["type"] for m in trace["messages"]] == ["text", "tool_call"]
+
+
+def test_main_refuses_a_transcript_for_another_case(tmp_path: Path) -> None:
+    transcript = tmp_path / "agent.jsonl"
+    transcript.write_text("\n".join(json.dumps(line) for line in _lines()))
+    cases = tmp_path / "cases.json"
+    cases.write_text(json.dumps([{**CASE, "query": "Quote for AAPL"}]))
+    argv = ["--transcript", str(transcript), "--cases", str(cases)]
+    argv += ["--case-id", "b01", "--run", str(tmp_path / "run")]
+    assert agent_trace.main(argv) == 2
+    assert not (tmp_path / "run").exists()
 
 
 def _assistant(*content: dict[str, Any]) -> dict[str, Any]:

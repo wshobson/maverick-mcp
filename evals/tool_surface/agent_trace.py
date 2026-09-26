@@ -12,14 +12,16 @@ lists which kinds of session context Claude Code attached instead.
 import argparse
 import json
 import subprocess
+import sys
 from collections import Counter
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from evals.tool_surface.harness import EXCLUDED_PREFIX, TOOL_PREFIX
+
 HERE = Path(__file__).resolve().parent
-TOOL_PREFIX = "mcp__maverick__"
 # Claude Code's tool for delivering a subagent's report to its caller.
 HANDBACK_TOOL = "SubagentHandback"
 
@@ -91,14 +93,15 @@ def build_trace(
                     if call is not None:
                         call["result"] = _result_text(block.get("content"))
                         call["is_error"] = bool(block.get("is_error"))
-    texts = [m for m in messages if m["type"] == "text"]
-    final_answer = texts[-1]["text"] if texts else ""
     if handback is not None:
         # Text written after the handback never reaches the caller.
         del messages[handback_at:]
         final_answer = handback
-    elif texts and messages[-1] is texts[-1]:
-        messages.pop()
+    elif messages and messages[-1]["type"] == "text":
+        final_answer = messages.pop()["text"]
+    else:
+        # The run stopped on a tool call (turn limit, interruption): no answer.
+        final_answer = ""
     usage: Counter[str] = Counter()
     for response_usage in responses.values():
         usage.update({k: v for k, v in response_usage.items() if isinstance(v, int)})
@@ -128,15 +131,24 @@ def build_trace(
 
 
 def unexpected_tools(trace: Mapping[str, Any]) -> list[str]:
-    """Tool calls that are not Maverick tools (the agent file should prevent these)."""
+    """Calls outside the SDK harness's tool surface: non-Maverick or research tools."""
+    names = {
+        str(message.get("name"))
+        for message in trace["messages"]
+        if message.get("type") == "tool_call"
+    }
+    excluded = TOOL_PREFIX + EXCLUDED_PREFIX
     return sorted(
-        {
-            str(message.get("name"))
-            for message in trace["messages"]
-            if message.get("type") == "tool_call"
-            and not str(message.get("name", "")).startswith(TOOL_PREFIX)
-        }
+        n for n in names if not n.startswith(TOOL_PREFIX) or n.startswith(excluded)
     )
+
+
+def first_prompt(lines: Iterable[Mapping[str, Any]]) -> str:
+    """The request the subagent was given: its transcript's first user message."""
+    for line in lines:
+        if line.get("type") == "user":
+            return _result_text((line.get("message") or {}).get("content")).strip()
+    return ""
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -148,12 +160,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     cases = {case["id"]: case for case in json.loads(args.cases.read_text())}
     lines = [json.loads(raw) for raw in args.transcript.read_text().splitlines() if raw]
+    case = cases[args.case_id]
+    if first_prompt(lines) != case["query"].strip():
+        print(
+            f"{args.case_id}: the transcript's request is not this case's query; "
+            "wrong transcript or case id?",
+            file=sys.stderr,
+        )
+        return 2
     agent_file = HERE / "agent" / "maverick-eval-client.md"
     system_prompt = agent_file.read_text().split("---", 2)[2].strip()
     sha = subprocess.run(
         ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=False
     ).stdout.strip()
-    trace = build_trace(lines, cases[args.case_id], system_prompt, sha)
+    trace = build_trace(lines, case, system_prompt, sha)
     stray = unexpected_tools(trace)
     folder = args.run / "traces"
     folder.mkdir(parents=True, exist_ok=True)
