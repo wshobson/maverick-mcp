@@ -2,7 +2,9 @@
 projection. Pure functions and a ReviewApp over a temp run folder; no server
 is started and nothing touches the network."""
 
+import http.client
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -343,3 +345,28 @@ class TestKmeans:
         assert graph["clusters"] == 4
         assert {p["cluster"] for p in graph["points"]} == {0, 1, 2, 3}
         assert len(graph["loadings"]) == 2
+
+
+class TestContentLength:
+    @pytest.mark.parametrize("value", ["abc", "-1"])
+    def test_bad_content_length_gets_a_400(self, tmp_path: Path, value: str) -> None:
+        httpd = server.make_server(
+            server.ReviewApp(_run_dir(tmp_path, [_trace("q01")])), port=0
+        )
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        try:
+            port = httpd.server_address[1]
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.putrequest("POST", "/api/annotations", skip_host=True)
+            conn.putheader("Host", f"127.0.0.1:{port}")
+            conn.putheader("Content-Type", "application/json")
+            conn.putheader("Content-Length", value)
+            conn.endheaders()
+            response = conn.getresponse()
+            assert response.status == 400
+            assert json.loads(response.read()) == {"error": "bad Content-Length"}
+            conn.close()
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
