@@ -1,6 +1,6 @@
 {
   "status": "draft",
-  "generated_from": "carried over from batch 1 (Seth's notes on q01-q20); batch-2 notes not yet reviewed",
+  "generated_from": "batch 1 modes carried over; all 20 batch-2 notes grouped (Seth's words only)",
   "failure_modes": [
     {
       "name": "Tool reports success on a failed lookup",
@@ -10,7 +10,16 @@
     {
       "name": "Market data stale or missing",
       "description": "The answer's method is sound, but the market data behind it is stale or does not reach back far enough, so a figure is wrong or the question cannot be answered properly until the data is backfilled.",
-      "notes": []
+      "notes": [
+        {
+          "trace_id": "b06",
+          "span_id": null
+        },
+        {
+          "trace_id": "b15",
+          "span_id": null
+        }
+      ]
     },
     {
       "name": "Answerable request goes unanswered",
@@ -25,7 +34,26 @@
     {
       "name": "Answers without asking for missing information",
       "description": "The request leaves out something the answer depends on (for example which stock), and the assistant answers anyway instead of asking.",
-      "notes": []
+      "notes": [
+        {
+          "trace_id": "b18",
+          "span_id": null
+        },
+        {
+          "trace_id": "b20",
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "name": "Tool call fails",
+      "description": "A tool call fails (b05: the support and resistance tool).",
+      "notes": [
+        {
+          "trace_id": "b05",
+          "span_id": null
+        }
+      ]
     }
   ]
 }

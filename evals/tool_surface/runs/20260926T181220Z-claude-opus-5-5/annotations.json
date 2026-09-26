@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "traces": {
+    "b01": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:09:47.856Z"
+    },
+    "b02": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:10:05.095Z"
+    },
+    "b03": {
+      "verdict": "pass",
+      "trace_note": "ok, there is no data, which is true",
+      "spans": [],
+      "updated": "2026-09-26T19:10:31.630Z"
+    },
+    "b04": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:10:54.091Z"
+    },
+    "b05": {
+      "verdict": "fail",
+      "trace_note": "The technicals get support resistance tool call failed.",
+      "spans": [],
+      "updated": "2026-09-26T19:11:35.834Z"
+    },
+    "b06": {
+      "verdict": "fail",
+      "trace_note": "This is a true statement. The output from the agent or from the MCP tool call shows that data and live prices do not agree. Which is correct? The data in the database is stale. I'm still flagging it as a fail because that data needs to be updated.",
+      "spans": [],
+      "updated": "2026-09-26T19:12:31.128Z"
+    },
+    "b07": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:12:43.467Z"
+    },
+    "b08": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:12:59.252Z"
+    },
+    "b09": {
+      "verdict": "pass",
+      "trace_note": "This is good because the agent is trying to infer that the user's question is ambiguous.",
+      "spans": [],
+      "updated": "2026-09-26T19:13:45.321Z"
+    },
+    "b10": {
+      "verdict": "pass",
+      "trace_note": "This is good because if there are no Twitter shares, there's nothing to sell.",
+      "spans": [],
+      "updated": "2026-09-26T19:13:59.089Z"
+    },
+    "b11": {
+      "verdict": "pass",
+      "trace_note": "That's good. It should actually prompt the user back and ask what the user meant, not take actions on things it does not know, even if it doesn't occur on a holiday.",
+      "spans": [],
+      "updated": "2026-09-26T19:14:49.243Z"
+    },
+    "b12": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:15:04.666Z"
+    },
+    "b13": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:15:30.180Z"
+    },
+    "b14": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:15:46.673Z"
+    },
+    "b15": {
+      "verdict": "fail",
+      "trace_note": "Not enough info in the data",
+      "spans": [],
+      "updated": "2026-09-26T19:17:25.094Z"
+    },
+    "b16": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:17:44.494Z"
+    },
+    "b17": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:17:56.969Z"
+    },
+    "b18": {
+      "verdict": "fail",
+      "trace_note": "The date wasn't specified in the request. Ambiguous request.",
+      "spans": [],
+      "updated": "2026-09-26T19:18:35.521Z"
+    },
+    "b19": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T19:18:44.822Z"
+    },
+    "b20": {
+      "verdict": "fail",
+      "trace_note": "The agent needs to ask the user more specific questions due to ambiguity. You don't know the risk tolerance, among many things.",
+      "spans": [],
+      "updated": "2026-09-26T19:19:59.039Z"
+    }
+  }
+}
