@@ -290,6 +290,84 @@ class TestRemoveShares:
         assert updated.notes == "keep me"
 
 
+class TestRoundsToStorageScale:
+    """Every position the ledger returns is already at the storage scale:
+    8-place shares, 4-place basis and total cost, ROUND_HALF_UP. Inputs are
+    unbounded because the tools build them with `Decimal(str(float))`."""
+
+    def test_new_position_from_unbounded_inputs(self):
+        # 0.3333333333333333 * 123.45678 = 41.152259999999995884774
+        pos = add_shares(
+            None,
+            "AAPL",
+            Decimal("0.3333333333333333"),
+            Decimal("123.45678"),
+            "2026-01-01",
+        )
+
+        assert str(pos.shares) == "0.33333333"
+        assert str(pos.average_cost_basis) == "123.4568"
+        assert str(pos.total_cost) == "41.1523"
+
+    def test_new_position_rounds_ties_half_up_not_half_even(self):
+        # Exact ties. ROUND_HALF_EVEN would give 2.00000000, 0.6000, and 3.0002.
+        shares_tie = add_shares(
+            None, "AAPL", Decimal("2.000000005"), Decimal("1"), "2026-01-01"
+        )
+        cost_tie = add_shares(
+            None, "AAPL", Decimal("5"), Decimal("0.60005"), "2026-01-01"
+        )
+
+        assert str(shares_tie.shares) == "2.00000001"
+        assert str(cost_tie.average_cost_basis) == "0.6001"
+        assert str(cost_tie.total_cost) == "3.0003"  # 5 * 0.60005 = 3.00025
+
+    def test_merge_with_unbounded_inputs(self):
+        pos = _position(
+            shares="0.33333333", average_cost_basis="123.4568", total_cost="41.1523"
+        )
+
+        # shares 0.9999999966666667; total 106.995920000000003292181
+        pos = add_shares(
+            pos,
+            "AAPL",
+            Decimal("0.6666666666666667"),
+            Decimal("98.76543"),
+            "2026-01-02",
+        )
+
+        assert str(pos.shares) == "1.00000000"
+        assert str(pos.average_cost_basis) == "106.9959"
+        assert str(pos.total_cost) == "106.9959"
+
+    def test_partial_sale_with_unbounded_inputs(self):
+        pos = _position(
+            shares="1.00000000", average_cost_basis="106.9959", total_cost="106.9959"
+        )
+
+        # remaining 0.6666666666666667; 0.66666667 * 106.9959 = 71.330600356653
+        updated, result = remove_shares(pos, Decimal("0.3333333333333333"))
+
+        assert updated is not None
+        assert str(updated.shares) == "0.66666667"
+        assert str(updated.average_cost_basis) == "106.9959"
+        assert str(updated.total_cost) == "71.3306"
+        assert str(result.shares_removed) == "0.33333333"
+        assert result.position_fully_closed is False
+
+    def test_partial_sale_leaving_less_than_the_share_scale_closes_position(self):
+        pos = _position(
+            shares="1", average_cost_basis="150.0000", total_cost="150.0000"
+        )
+
+        # 1 - 0.999999999 = 0.000000001, which rounds to 0.00000000.
+        updated, result = remove_shares(pos, Decimal("0.999999999"))
+
+        assert updated is None
+        assert result.shares_removed == Decimal("1")
+        assert result.position_fully_closed is True
+
+
 class TestPositionValue:
     def test_current_value_with_gain(self):
         pos = _position(shares="20", average_cost_basis="160.00", total_cost="3200.00")

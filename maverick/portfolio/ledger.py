@@ -4,24 +4,42 @@
 It is parsed with `datetime.fromisoformat` only transiently, to compare two
 dates for earliest-date-wins; the winning date is returned as its original
 string (never reformatted), so callers' formatting is preserved verbatim.
+
+Every position `add_shares` and `remove_shares` return is rounded
+ROUND_HALF_UP to the storage scales in `types.py`: `shares` to
+`SHARES_SCALE` places, `average_cost_basis` and `total_cost` to `COST_SCALE`.
+Inputs arrive with any number of places (the tools build them with
+`Decimal(str(float))`), and `data.py`'s columns declare the same scales, so
+what the ledger returns is exactly what the database stores.
 """
 
 from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from maverick.portfolio.types import (
+    COST_SCALE,
+    SHARES_SCALE,
     PortfolioMetrics,
     PositionPayload,
     PositionWithPrice,
     RemoveResult,
 )
 
-_BASIS_QUANT = Decimal("0.0001")
+_SHARES_QUANT = Decimal(1).scaleb(-SHARES_SCALE)
+_COST_QUANT = Decimal(1).scaleb(-COST_SCALE)
 _MONEY_QUANT = Decimal("0.01")
 
 
 def _parse_date(value: str) -> datetime:
     return datetime.fromisoformat(value)
+
+
+def _round_shares(value: Decimal) -> Decimal:
+    return value.quantize(_SHARES_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _round_cost(value: Decimal) -> Decimal:
+    return value.quantize(_COST_QUANT, rounding=ROUND_HALF_UP)
 
 
 def add_shares(
@@ -36,8 +54,9 @@ def add_shares(
     """Add shares to `position` (or create one if `position` is None).
 
     Average-cost formula: new average = (stored total_cost + shares * price)
-    / new total shares, quantized to 0.0001 with ROUND_HALF_UP. total_cost
-    itself is never quantized or recomputed from shares * basis. On merge
+    / new total shares. total_cost is the stored total_cost plus
+    shares * price, never recomputed from shares * basis. All three are
+    rounded to the storage scales (see the module docstring). On merge
     into an existing position, `notes` is ignored (legacy behavior: notes
     are only captured for brand-new positions) and the earlier of the two
     purchase dates wins.
@@ -52,9 +71,9 @@ def add_shares(
     if position is None:
         return PositionPayload(
             ticker=ticker,
-            shares=shares,
-            average_cost_basis=price,
-            total_cost=shares * price,
+            shares=_round_shares(shares),
+            average_cost_basis=_round_cost(price),
+            total_cost=_round_cost(shares * price),
             purchase_date=purchase_date,
             notes=notes,
             sector=sector,
@@ -62,9 +81,6 @@ def add_shares(
 
     new_total_shares = position.shares + shares
     new_total_cost = position.total_cost + (shares * price)
-    new_avg_cost = (new_total_cost / new_total_shares).quantize(
-        _BASIS_QUANT, rounding=ROUND_HALF_UP
-    )
     earliest_date = (
         purchase_date
         if _parse_date(purchase_date) < _parse_date(position.purchase_date)
@@ -73,9 +89,9 @@ def add_shares(
 
     return PositionPayload(
         ticker=position.ticker,
-        shares=new_total_shares,
-        average_cost_basis=new_avg_cost,
-        total_cost=new_total_cost,
+        shares=_round_shares(new_total_shares),
+        average_cost_basis=_round_cost(new_total_cost / new_total_shares),
+        total_cost=_round_cost(new_total_cost),
         purchase_date=earliest_date,
         notes=position.notes,
         sector=position.sector or sector,
@@ -87,35 +103,37 @@ def remove_shares(
 ) -> tuple[PositionPayload | None, RemoveResult]:
     """Remove shares from `position`.
 
-    `shares=None` or `shares >= position.shares` fully closes the position
-    (returns None plus a RemoveResult reporting the actually-held shares as
-    removed). Otherwise the position survives with the same average cost
-    basis (average cost does not change on partial sales) and
-    total_cost = remaining shares * basis.
+    `shares=None`, or a sale that leaves no shares once the remainder is
+    rounded to the share scale, fully closes the position (returns None plus
+    a RemoveResult reporting the actually-held shares as removed). Otherwise
+    the position survives with the same average cost basis (average cost
+    does not change on partial sales) and total_cost = remaining shares *
+    basis, rounded to the storage scales like `add_shares`.
     """
     if shares is not None and shares <= 0:
         raise ValueError(f"Shares to remove must be positive, got {shares}")
 
-    if shares is None or shares >= position.shares:
+    remaining = None if shares is None else _round_shares(position.shares - shares)
+    if remaining is None or remaining <= 0:
         return None, RemoveResult(
             ticker=position.ticker,
             shares_removed=position.shares,
             position_fully_closed=True,
         )
 
-    new_shares = position.shares - shares
+    basis = _round_cost(position.average_cost_basis)
     updated = PositionPayload(
         ticker=position.ticker,
-        shares=new_shares,
-        average_cost_basis=position.average_cost_basis,
-        total_cost=new_shares * position.average_cost_basis,
+        shares=remaining,
+        average_cost_basis=basis,
+        total_cost=_round_cost(remaining * basis),
         purchase_date=position.purchase_date,
         notes=position.notes,
         sector=position.sector,
     )
     return updated, RemoveResult(
         ticker=position.ticker,
-        shares_removed=shares,
+        shares_removed=position.shares - remaining,
         position_fully_closed=False,
     )
 
