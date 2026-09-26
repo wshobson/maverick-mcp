@@ -184,11 +184,12 @@ class RegimeAwareStrategy(Strategy):
                     False, index=data.index
                 )
 
-            # Fit the regime detector if it is not fitted yet, or if its last
-            # fit fell back to `threshold` and this data may fit the
-            # requested method.
-            detector = self.regime_detector
-            if not detector.is_fitted or detector.method != detector.requested_method:
+            # Fit only an unfitted detector here. A detector fitted on
+            # training data (even one that fell back to `threshold`) must
+            # not be refit on the data being traded, or a train/test
+            # backtest leaks the test period. Retry through
+            # `fit_regime_detector` with more training history instead.
+            if not self.regime_detector.is_fitted:
                 try:
                     self.fit_regime_detector(data)
                 except Exception as e:
