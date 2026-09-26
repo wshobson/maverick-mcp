@@ -71,12 +71,12 @@ jobs:
         # installed even though they never import eagerly at module load
         # time on a base install.
         run: uv sync --extra dev --extra backtesting --extra research --frozen
-      # Strict-zone run over the maverick/ package. Legacy maverick_mcp/
-      # was deleted at the Phase 8 cutover, so this is now the whole
-      # codebase's type-check gate; any diagnostic in this scope fails
-      # the job.
-      - name: ty check, strict zone (maverick/)
-        run: uv run ty check maverick
+      # Runs over the maverick/ package and the tests/ suite. Legacy
+      # maverick_mcp/ was deleted at the Phase 8 cutover, so this is the
+      # whole codebase's type-check gate; any diagnostic in either tree
+      # fails the job.
+      - name: ty check (maverick/ and tests/)
+        run: uv run ty check maverick tests
 
   test-unit:
     name: Unit tests (pytest)

@@ -609,7 +609,7 @@ uv run pytest -m ""           # All tests (requires PostgreSQL/Redis for some)
 
 uv run ruff check .    # Linting
 uv run ruff format .   # Formatting
-uv run ty check maverick   # Type checking (Astral's ty); same scope as CI
+uv run ty check maverick tests   # Type checking (Astral's ty); same scope as CI
 ```
 
 ## Docker (Optional)
