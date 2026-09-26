@@ -281,7 +281,8 @@ def project_2d(matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     Features go through log1p (sizes and costs are skewed) and a z-score
     (a constant column stays zero). Returns the n x 2 coordinates, the share
     of variance each component explains, and the 2 x f loadings. Each
-    component's sign is fixed so its largest loading is positive.
+    component's sign is fixed so its largest loading (the first, on a
+    tie) is positive.
     """
     data = np.log1p(np.asarray(matrix, dtype=float))
     rows, cols = data.shape
@@ -294,7 +295,12 @@ def project_2d(matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     loadings = np.zeros((2, cols))
     loadings[: min(2, len(components))] = components[:2]
     for row in loadings:
-        if row[np.argmax(np.abs(row))] < 0:
+        # Take the first loading within float noise of the largest, so a tie
+        # (for example two loadings at +/-0.7071) resolves the same way on
+        # every BLAS build.
+        magnitudes = np.abs(row)
+        lead = int(np.flatnonzero(magnitudes >= magnitudes.max() - 1e-9)[0])
+        if row[lead] < 0:
             row *= -1
     variance = singular**2
     explained = np.zeros(2)

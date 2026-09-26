@@ -296,7 +296,9 @@ class TestProjection:
         second = server.project_2d(matrix[::-1].copy())
         assert np.allclose(first[2], second[2])
         for row in first[2]:
-            assert row[np.argmax(np.abs(row))] > 0
+            magnitudes = np.abs(row)
+            lead = int(np.flatnonzero(magnitudes >= magnitudes.max() - 1e-9)[0])
+            assert row[lead] > 0
 
     def test_single_row(self) -> None:
         coords, explained, _ = server.project_2d(np.ones((1, 6)))
