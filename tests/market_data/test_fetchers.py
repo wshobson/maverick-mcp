@@ -181,6 +181,19 @@ async def test_mover_finviz_empty_falls_through_to_yfinance_tier():
     assert batch.calls == [("gainers", 4)]
 
 
+async def test_mover_all_tiers_empty_returns_empty_list():
+    finviz = _counting_sync([])
+    batch = _counting_sync([])
+
+    fetcher = MoverFetcher(finviz_fn=finviz, batch_quote_fn=batch)
+
+    result = await fetcher.most_active(3)
+
+    assert result == []
+    assert finviz.calls == [("most_active", 3)]
+    assert batch.calls == [("most_active", 3)]
+
+
 async def test_mover_all_tiers_fail_returns_empty_list():
     finviz = _raising_sync(RuntimeError("finviz down"))
     batch = _raising_sync(RuntimeError("yfinance down"))

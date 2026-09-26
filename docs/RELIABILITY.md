@@ -34,6 +34,7 @@ v1.0.0. Update when behavior changes.
 - No persistent alerting or scheduled background jobs (the legacy signal
   engine did not port; see `docs/runbooks/migrating-to-v1.md`). A stdio- or
   request-scoped MCP server has no long-running daemon to host one.
-- The tier-3 market-mover fallback (a small liquid-stock scan) runs without
-  breaker/retry protection; documented as a last-resort trade-off in
-  `maverick/market_data/fetchers.py`.
+- The yfinance market-mover fallback (tier 2, a small liquid-stock scan)
+  runs without breaker/retry protection by design. Routing it through the
+  breaker from a worker thread deadlocked; `_build_yfinance_tier` in
+  `maverick/market_data/fetchers.py` records why.
