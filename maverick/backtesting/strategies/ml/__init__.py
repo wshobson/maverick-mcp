@@ -13,11 +13,16 @@ responsibility -- see the Task 6 report for the full rationale per split:
 - `adaptive.py` (`AdaptiveStrategy`) / `online_learning.py`
   (`OnlineLearningStrategy`) / `hybrid_adaptive.py`
   (`HybridAdaptiveStrategy`), all split out of the legacy `adaptive.py`.
+  `online_features.py` (`_OnlineFeaturesMixin`, the feature and target
+  methods of `OnlineLearningStrategy`) was split out of `online_learning.py`
+  later, to stay under the line cap.
 - `regime_features.py` (module-level `extract_regime_features`, pulled out
   of `MarketRegimeDetector` because it never referenced `self`) /
   `regime_detector.py` (`MarketRegimeDetector`) / `regime_aware.py`
   (`RegimeAwareStrategy`), all split out of the legacy `regime_aware.py`.
-- `ensemble.py` (`StrategyEnsemble`) needed no split.
+- `ensemble.py` (`StrategyEnsemble`) / `ensemble_voting.py` (module-level
+  `combine_weighted_signals`, behind `StrategyEnsemble.combine_signals`),
+  split later to stay under the line cap.
 
 Two legacy classes are not ported at all -- `RiskAdjustedEnsemble` and
 `AdaptiveRegimeStrategy` were dead code with zero callers anywhere outside

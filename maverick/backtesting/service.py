@@ -5,10 +5,11 @@ strategies, config, and types.
 async methods. It owns price-history fetch via the injected `MarketDataService`; everything below
 `service`/`tools` in the layer contract (`engine`, `analysis`, `optimization`,
 `strategies.signals`/`strategies.templates`/`strategies.ml.*`) is pure compute, never fetching.
-Methods 3 (`walk_forward_analysis`) and 8-11 (the ML-strategy tools) live on
-`_ExtendedBacktestingMixin` in `service_ml.py`, and shared pure helpers live in
-`service_support.py` -- both split out to keep every file under the repo's 500-line-per-file cap
-while `BacktestingService` (this class) remains the one place all 11 methods are callable from.
+Methods 8-11 (the ML-strategy tools) live on `_ExtendedBacktestingMixin` in `service_ml.py`,
+method 3 (`walk_forward_analysis`) on its `_WalkForwardMixin` base in `service_walk_forward.py`,
+and shared pure helpers live in `service_support.py` -- all split out to keep every file under
+the repo's 500-line-per-file cap while `BacktestingService` (this class) remains the one place
+all 11 methods are callable from.
 
 Design notes (see the exec plan / task report for full rationale):
 

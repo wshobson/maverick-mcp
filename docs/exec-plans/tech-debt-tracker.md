@@ -16,6 +16,5 @@ One line per item. Remove the line in the same change that removes the debt.
 | screening change-history (legacy pipeline) not ported; revisit if wanted | new server | deferred |
 | run_screen executes rubrics on the event loop; wrap in to_thread if universe_max grows | `maverick/screening/service.py` | deferred |
 | `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |
-| service_ml.py, ensemble.py, and online_learning.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py`, `maverick/backtesting/strategies/ml/online_learning.py` | deferred |
 | Lock carries pandas 3.0.5 / numpy 2.5.3 / vectorbt 1.1.0 while the floors stay at pandas>=2.3.3 / numpy>=2.2.6 / vectorbt>=1.0.0 and CI installs --frozen, so the floor combination never runs; a floor install also resurfaces numpy's generic-timedelta DeprecationWarning through vectorbt 1.0 | `pyproject.toml` | dependencies |
 | Core `openai` and `anthropic` dependencies have no importer in `maverick/`; only `[research]` packages use them (langchain-openai, langchain-anthropic, exa-py), so a base install carries both SDKs for nothing | `pyproject.toml` | dependencies |

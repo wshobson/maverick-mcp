@@ -6,6 +6,8 @@ outside its own package's unused `__all__` re-export (`grep -rn
 "RiskAdjustedEnsemble" maverick_mcp tests` matches only the definition and
 that export). `StrategyEnsemble` is live -- the backtesting router constructs
 and calls it directly. No randomness in this module; no seeding seam needed.
+The weighted voting behind `combine_signals` lives in `ensemble_voting.py`
+(split out to stay under the 500-line cap; no behavior change).
 """
 
 import logging
@@ -16,6 +18,8 @@ import pandas as pd
 from pandas import DataFrame, Series
 
 from maverick.backtesting.strategies.base import Strategy
+
+from .ensemble_voting import combine_weighted_signals
 
 logger = logging.getLogger(__name__)
 
@@ -262,98 +266,11 @@ class StrategyEnsemble(Strategy):
     ) -> tuple[Series, Series]:
         """Combine individual strategy signals using enhanced weighted voting.
 
-        Args:
-            individual_signals: Dictionary of individual strategy signals
-
-        Returns:
-            Tuple of combined (entry_signals, exit_signals)
+        Delegates to `ensemble_voting.combine_weighted_signals`.
         """
-        if not individual_signals:
-            empty_index = pd.Index([])
-            return pd.Series(False, index=empty_index), pd.Series(
-                False, index=empty_index
-            )
-
-        # Get data index from first strategy
-        first_signals = next(iter(individual_signals.values()))
-        data_index = first_signals[0].index
-
-        # Initialize voting arrays
-        entry_votes = np.zeros(len(data_index))
-        exit_votes = np.zeros(len(data_index))
-        total_weights = 0
-
-        # Collect votes with weights and confidence scores
-        valid_strategies = 0
-
-        for i, (entry_signals, exit_signals) in individual_signals.items():
-            weight = self.weights[i] if i < len(self.weights) else 0
-
-            if weight > 0:
-                # Add weighted votes
-                entry_votes += weight * entry_signals.astype(float)
-                exit_votes += weight * exit_signals.astype(float)
-                total_weights += weight
-                valid_strategies += 1
-
-        if total_weights == 0 or valid_strategies == 0:
-            logger.warning("No valid strategies with positive weights")
-            return pd.Series(False, index=data_index), pd.Series(
-                False, index=data_index
-            )
-
-        # Normalize votes by total weights
-        entry_votes = entry_votes / total_weights
-        exit_votes = exit_votes / total_weights
-
-        # Enhanced voting mechanisms
-        voting_method = self.parameters.get("voting_method", "weighted")
-
-        if voting_method == "majority":
-            # Simple majority vote (more than half of strategies agree)
-            entry_threshold = 0.5
-            exit_threshold = 0.5
-        elif voting_method == "supermajority":
-            # Require 2/3 agreement
-            entry_threshold = 0.67
-            exit_threshold = 0.67
-        elif voting_method == "consensus":
-            # Require near-unanimous agreement
-            entry_threshold = 0.8
-            exit_threshold = 0.8
-        else:  # weighted (default)
-            entry_threshold = self.parameters.get("entry_threshold", 0.5)
-            exit_threshold = self.parameters.get("exit_threshold", 0.5)
-
-        # Anti-conflict mechanism: don't signal entry and exit simultaneously
-        combined_entry = entry_votes > entry_threshold
-        combined_exit = exit_votes > exit_threshold
-
-        # Resolve conflicts (simultaneous entry and exit signals)
-        conflicts = combined_entry & combined_exit
-        if conflicts.size > 0 and np.any(conflicts):
-            logger.debug(f"Resolving {conflicts.sum()} signal conflicts")
-            entry_strength = entry_votes[conflicts]
-            exit_strength = exit_votes[conflicts]
-
-            stronger_entry = entry_strength > exit_strength
-            combined_entry[conflicts] = stronger_entry
-            combined_exit[conflicts] = ~stronger_entry
-
-        # Quality filter: require minimum signal strength
-        min_signal_strength = self.parameters.get("min_signal_strength", 0.1)
-        weak_entry_signals = (combined_entry) & (entry_votes < min_signal_strength)
-        weak_exit_signals = (combined_exit) & (exit_votes < min_signal_strength)
-
-        if weak_entry_signals.size > 0:
-            combined_entry[weak_entry_signals] = False
-        if weak_exit_signals.size > 0:
-            combined_exit[weak_exit_signals] = False
-
-        combined_entry = pd.Series(combined_entry, index=data_index)
-        combined_exit = pd.Series(combined_exit, index=data_index)
-
-        return combined_entry, combined_exit
+        return combine_weighted_signals(
+            individual_signals, self.weights, self.parameters
+        )
 
     def generate_signals(self, data: DataFrame) -> tuple[Series, Series]:
         """Generate ensemble trading signals.
