@@ -180,15 +180,27 @@ async def run_all(run: Run, cases: list[dict[str, Any]]) -> dict[str, Any]:
     return {"cases_run": ran, "cases_skipped": skipped, "aborted": aborted}
 
 
-def _ordered_cases() -> list[dict[str, Any]]:
-    by_id = {case["id"]: case for case in json.loads((HERE / "cases.json").read_text())}
-    return [by_id[f"q{number:02d}"] for number in RUN_ORDER]
+DEFAULT_CASES = HERE / "cases.json"
+
+
+def _ordered_cases(path: Path) -> list[dict[str, Any]]:
+    """Batch 1 (`cases.json`) runs in RUN_ORDER; any other file in file order."""
+    cases = json.loads(path.read_text())
+    is_default = path.resolve() == DEFAULT_CASES.resolve()
+    order = [f"q{number:02d}" for number in RUN_ORDER] if is_default else None
+    return harness.ordered_cases(cases, order)
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--budget-usd", type=float, default=6.00)
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--cases",
+        type=Path,
+        default=DEFAULT_CASES,
+        help="case file; any file but cases.json runs in file order",
+    )
     args = parser.parse_args(argv)
     try:
         cli_env = harness.cli_env(os.environ)
@@ -219,11 +231,12 @@ def main(argv: list[str] | None = None) -> int:
         traces=folder / "traces",
     )
     run.traces.mkdir(parents=True)
-    summary = asyncio.run(run_all(run, _ordered_cases()))
+    summary = asyncio.run(run_all(run, _ordered_cases(args.cases)))
     _write_json(
         folder / "run.json",
         {
             "model": run.model,
+            "cases_file": args.cases.name,
             "maverick_git_sha": run.sha,
             "apiKeySource": run.init.get("apiKeySource"),
             "tools_advertised": run.init.get("tools"),

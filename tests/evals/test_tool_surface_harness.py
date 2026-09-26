@@ -152,3 +152,14 @@ def test_trace_assembly_pairs_tool_calls_with_results() -> None:
     assert trace["final_answer"] == "X has no quote."
     assert trace["notional_cost_usd"] == 0.0123
     assert (trace["result_subtype"], trace["num_turns"]) == ("success", 2)
+
+
+def test_ordered_cases_follows_the_run_order_when_given() -> None:
+    cases = [{"id": "q01"}, {"id": "q02"}, {"id": "q03"}]
+    ordered = harness.ordered_cases(cases, ["q03", "q01", "q02"])
+    assert [case["id"] for case in ordered] == ["q03", "q01", "q02"]
+
+
+def test_ordered_cases_keeps_file_order_without_a_run_order() -> None:
+    cases = [{"id": "b02"}, {"id": "b01"}]
+    assert [case["id"] for case in harness.ordered_cases(cases, None)] == ["b02", "b01"]

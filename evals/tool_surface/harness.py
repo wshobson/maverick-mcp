@@ -292,3 +292,17 @@ class TraceBuilder:
             "permission_denials": getattr(result, "permission_denials", None),
             "duration_ms": getattr(result, "duration_ms", None),
         }
+
+
+def ordered_cases(
+    cases: Iterable[Mapping[str, Any]], run_order: Iterable[str] | None
+) -> list[dict[str, Any]]:
+    """Cases in `run_order` (a list of ids) when given, otherwise in file order.
+
+    The first case returned is the smoke query.
+    """
+    listed = [dict(case) for case in cases]
+    if run_order is None:
+        return listed
+    by_id = {case["id"]: case for case in listed}
+    return [by_id[case_id] for case_id in run_order]
