@@ -1,0 +1,105 @@
+{
+  "case": {
+    "id": "q18",
+    "task": "journal-watchlist",
+    "request_type": "specified",
+    "data_state": "empty",
+    "query": "Start a watchlist called AI chips with NVDA, AMD, AVGO"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 9.89,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:03:56.705664+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01RxCsv1KwAC877ox1qg9Vpo",
+      "name": "mcp__maverick__portfolio_watchlist_create",
+      "arguments": {
+        "name": "AI chips"
+      },
+      "result": "{\"id\":1,\"name\":\"AI chips\",\"description\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01ADW5sHmmodSroXSagbHKyi",
+      "name": "mcp__maverick__portfolio_watchlist_add",
+      "arguments": {
+        "watchlist_id": 1,
+        "symbol": "NVDA"
+      },
+      "result": "{\"id\":1,\"watchlist_id\":1,\"symbol\":\"NVDA\",\"added_at\":\"2026-09-26T15:04:03.704049+00:00\",\"notes\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01Dv6VzeF9bk9YGgCUH8wqdi",
+      "name": "mcp__maverick__portfolio_watchlist_add",
+      "arguments": {
+        "watchlist_id": 1,
+        "symbol": "AMD"
+      },
+      "result": "{\"id\":2,\"watchlist_id\":1,\"symbol\":\"AMD\",\"added_at\":\"2026-09-26T15:04:04.251395+00:00\",\"notes\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01XoWNyhHxcgfm8WioTDaUQB",
+      "name": "mcp__maverick__portfolio_watchlist_add",
+      "arguments": {
+        "watchlist_id": 1,
+        "symbol": "AVGO"
+      },
+      "result": "{\"id\":3,\"watchlist_id\":1,\"symbol\":\"AVGO\",\"added_at\":\"2026-09-26T15:04:04.625749+00:00\",\"notes\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I created the **AI chips** watchlist (ID 1) and added three tickers to it:\n\n- NVDA\n- AMD\n- AVGO\n\nI can pull a brief with current prices for all three if you'd like."
+    }
+  ],
+  "final_answer": "I created the **AI chips** watchlist (ID 1) and added three tickers to it:\n\n- NVDA\n- AMD\n- AVGO\n\nI can pull a brief with current prices for all three if you'd like.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 5,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 1310,
+    "cache_read_input_tokens": 35825,
+    "output_tokens": 409,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1310,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 68,
+        "cache_read_input_tokens": 12213,
+        "cache_creation_input_tokens": 647,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 647
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.026813,
+  "permission_denials": [],
+  "duration_ms": 5795
+}

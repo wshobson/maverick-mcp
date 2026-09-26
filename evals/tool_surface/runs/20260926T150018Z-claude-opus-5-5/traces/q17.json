@@ -1,0 +1,70 @@
+{
+  "case": {
+    "id": "q17",
+    "task": "backtest",
+    "request_type": "unsupported",
+    "data_state": "seeded",
+    "query": "Backtest a covered-call strategy on AAPL"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 15.93,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:02:04.969096+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01UkeWH9AofiynFUvX4Yz2zj",
+      "name": "mcp__maverick__backtesting_list_strategies",
+      "arguments": {},
+      "result": "{\"available_strategies\":{\"sma_cross\":{\"type\":\"sma_cross\",\"name\":\"SMA Crossover\",\"description\":\"Buy when fast SMA crosses above slow SMA, sell when it crosses below\",\"default_parameters\":{\"fast_period\":10,\"slow_period\":20},\"optimization_ranges\":{\"fast_period\":[5,10,15,20],\"slow_period\":[20,30,50,100]}},\"rsi\":{\"type\":\"rsi\",\"name\":\"RSI Mean Reversion\",\"description\":\"Buy oversold (RSI < 30), sell overbought (RSI > 70)\",\"default_parameters\":{\"period\":14,\"oversold\":30,\"overbought\":70},\"optimization_ranges\":{\"period\":[7,14,21],\"oversold\":[20,25,30,35],\"overbought\":[65,70,75,80]}},\"macd\":{\"type\":\"macd\",\"name\":\"MACD Signal\",\"description\":\"Buy when MACD crosses above signal line, sell when crosses below\",\"default_parameters\":{\"fast_period\":12,\"slow_period\":26,\"signal_period\":9},\"optimization_ranges\":{\"fast_period\":[8,10,12,14],\"slow_period\":[21,24,26,30],\"signal_period\":[7,9,11]}},\"bollinger\":{\"type\":\"bollinger\",\"name\":\"Bollinger Bands\",\"description\":\"Buy at lower band (oversold), sell at upper band (overbought)\",\"default_parameters\":{\"period\":20,\"std_dev\":2},\"optimization_ranges\":{\"period\":[10,15,20,25],\"std_dev\":[1.5,2,2.5,3]}},\"momentum\":{\"type\":\"momentum\",\"name\":\"Momentum\",\"description\":\"Buy strong momentum, sell weak momentum based on returns threshold\",\"default_parameters\":{\"lookback\":20,\"threshold\":0.05},\"optimization_ranges\":{\"lookback\":[10,15,20,25,30],\"threshold\":[0.02,0.03,0.05,0.07,0.1]}},\"ema_cross\":{\"type\":\"ema_cross\",\"name\":\"EMA Crossover\",\"description\":\"Exponential moving average crossover with faster response than SMA\",\"default_parameters\":{\"fast_period\":12,\"slow_period\":26},\"optimization_ranges\":{\"fast_period\":[8,12,16,20],\"slow_period\":[20,26,35,50]}},\"mean_reversion\":{\"type\":\"mean_reversion\",\"name\":\"Mean Reversion\",\"description\":\"Buy when price is below moving average by threshold\",\"default_parameters\":{\"ma_period\":20,\"entry_threshold\":0.02,\"exit_threshold\":0.01},\"optimization_ranges\":{\"ma_period\":[15,20,30,50],\"entry_threshold\":[0.01,0.02,0.03,0.05],\"exit_threshold\":[0,0.01,0.02]}},\"breakout\":{\"type\":\"breakout\",\"name\":\"Channel Breakout\",\"description\":\"Buy on breakout above rolling high, sell on breakdown below rolling low\",\"default_parameters\":{\"lookback\":20,\"exit_lookback\":10},\"optimization_ranges\":{\"lookback\":[10,20,30,50],\"exit_lookback\":[5,10,15,20]}},\"volume_momentum\":{\"type\":\"volume_momentum\",\"name\":\"Volume-Weighted Momentum\",\"description\":\"Momentum strategy filtered by volume surge\",\"default_parameters\":{\"momentum_period\":20,\"volume_period\":20,\"momentum_threshold\":0.05,\"volume_multiplier\":1.5},\"optimization_ranges\":{\"momentum_period\":[10,20,30],\"volume_period\":[10,20,30],\"momentum_threshold\":[0.03,0.05,0.07],\"volume_multiplier\":[1.2,1.5,2]}},\"online_learning\":{\"type\":\"online_learning\",\"name\":\"Online Learning Strategy\",\"description\":\"Adaptive strategy using online learning to predict price movements\",\"default_parameters\":{\"lookback\":20,\"learning_rate\":0.01,\"update_frequency\":5},\"optimization_ranges\":{\"lookback\":[10,20,30,50],\"learning_rate\":[0.001,0.01,0.1],\"update_frequency\":[1,5,10,20]}},\"regime_aware\":{\"type\":\"regime_aware\",\"name\":\"Regime-Aware Strategy\",\"description\":\"Adapts strategy based on detected market regime (trending/ranging)\",\"default_parameters\":{\"regime_window\":50,\"threshold\":0.02,\"trend_strategy\":\"momentum\",\"range_strategy\":\"mean_reversion\"},\"optimization_ranges\":{\"regime_window\":[20,50,100],\"threshold\":[0.01,0.02,0.05]}},\"ensemble\":{\"type\":\"ensemble\",\"name\":\"Ensemble Strategy\",\"description\":\"Combines multiple strategies with weighted voting\",\"default_parameters\":{\"fast_period\":10,\"slow_period\":20,\"rsi_period\":14,\"weight_method\":\"equal\"},\"optimization_ranges\":{\"fast_period\":[5,10,15],\"slow_period\":[20,30,50],\"rsi_period\":[7,14,21]}}},\"total_count\":12,\"categories\":{\"trend_following\":[\"sma_cross\",\"ema_cross\",\"macd\",\"breakout\"],\"mean_reversion\":[\"rsi\",\"bollinger\",\"mean_reversion\"],\"momentum\":[\"momentum\",\"volume_momentum\"]},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I can't run a real covered-call backtest with this toolset. The backtester only has 12 stock strategies: SMA/EMA crossover, MACD, RSI, Bollinger Bands, mean reversion, breakout, momentum, volume momentum, online learning, regime-aware and ensemble. None of them involve options. I also have no options data: no historical option prices, implied volatility, Greeks or expirations.\n\nA covered call's returns come from the premiums you collect and from your upside being capped at the strike. Neither can be modelled without option prices, so any stock-only strategy I ran and called a \"covered call\" would give you misleading numbers.\n\n**What I can do instead:**\n\n1. **A rough covered-call estimate from AAPL's price history.** I'd pull daily prices and simulate selling a monthly call about 5% out of the money. Premiums would be estimated with a standard pricing formula (Black-Scholes) using AAPL's recent actual volatility as a stand-in for implied volatility. Then I'd compare the result with just holding the stock. This is only an estimate: real implied volatility is usually above actual volatility, so it would probably understate premiums, and it ignores bid/ask spreads and early assignment. I don't have a code tool here, so I'd have to do the math by hand, which only works for a short period or at a coarse level.\n2. **Stock backtests on AAPL that behave a bit like a covered call.** Mean-reversion strategies like Bollinger Bands or RSI sell into strength, which is loosely similar to capping your upside. I can compare them against buy-and-hold. They don't collect premium, though, so the comparison only goes so far.\n3. **Setup analysis for writing calls now.** I can pull AAPL's current technicals, resistance levels and volatility to help you pick a strike and expiration.\n\nFor an accurate backtest you'd need historical options data, from sources like OptionMetrics, CBOE DataShop, ORATS or Polygon options. For a quick benchmark, CBOE's BXM index tracks a covered-call strategy on the S&P 500, though not on AAPL.\n\nWhich of these do you want, and over what period?"
+    }
+  ],
+  "final_answer": "I can't run a real covered-call backtest with this toolset. The backtester only has 12 stock strategies: SMA/EMA crossover, MACD, RSI, Bollinger Bands, mean reversion, breakout, momentum, volume momentum, online learning, regime-aware and ensemble. None of them involve options. I also have no options data: no historical option prices, implied volatility, Greeks or expirations.\n\nA covered call's returns come from the premiums you collect and from your upside being capped at the strike. Neither can be modelled without option prices, so any stock-only strategy I ran and called a \"covered call\" would give you misleading numbers.\n\n**What I can do instead:**\n\n1. **A rough covered-call estimate from AAPL's price history.** I'd pull daily prices and simulate selling a monthly call about 5% out of the money. Premiums would be estimated with a standard pricing formula (Black-Scholes) using AAPL's recent actual volatility as a stand-in for implied volatility. Then I'd compare the result with just holding the stock. This is only an estimate: real implied volatility is usually above actual volatility, so it would probably understate premiums, and it ignores bid/ask spreads and early assignment. I don't have a code tool here, so I'd have to do the math by hand, which only works for a short period or at a coarse level.\n2. **Stock backtests on AAPL that behave a bit like a covered call.** Mean-reversion strategies like Bollinger Bands or RSI sell into strength, which is loosely similar to capping your upside. I can compare them against buy-and-hold. They don't collect premium, though, so the comparison only goes so far.\n3. **Setup analysis for writing calls now.** I can pull AAPL's current technicals, resistance levels and volatility to help you pick a strike and expiration.\n\nFor an accurate backtest you'd need historical options data, from sources like OptionMetrics, CBOE DataShop, ORATS or Polygon options. For a quick benchmark, CBOE's BXM index tracks a covered-call strategy on the S&P 500, though not on AAPL.\n\nWhich of these do you want, and over what period?",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 2390,
+    "cache_read_input_tokens": 23603,
+    "output_tokens": 942,
+    "output_tokens_details": {
+      "thinking_tokens": 198
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 2390,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 879,
+        "cache_read_input_tokens": 12053,
+        "cache_creation_input_tokens": 1887,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1887
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.0436916,
+  "permission_denials": [],
+  "duration_ms": 11937
+}
