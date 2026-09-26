@@ -54,5 +54,33 @@ usage credits, and it stops when they run out if reload is off.
 A run writes `runs/<UTC timestamp>-<model>/traces/<id>.json`, one per query,
 and `run.json` with the spend, the tools, and the cases run and skipped.
 
-An `annotations.csv` in a run folder holds only the reviewer's own words.
+An `annotations.json` in a run folder holds only the reviewer's own words.
 Agents never write verdicts or notes there.
+
+## Reviewing
+
+```bash
+make eval-review                                  # newest run, port 8765
+make eval-review EVAL_RUN=evals/tool_surface/runs/<run> ARGS="--port 8800"
+```
+
+This serves `evals/review/app.html` on 127.0.0.1 only. It calls no model or
+API; the page loads marked.js and DOMPurify from cdnjs. For each trace the
+reviewer sets a verdict (pass, fail, or defer), writes a trace note, and
+selects text to attach span notes. The app saves `annotations.json` on every
+change, writing through a temp file and a rename and keeping the previous
+version as `annotations.json.bak`. Only the browser app writes this file.
+
+An agent may later write `patterns.json` in the same folder: a DRAFT grouping
+of the reviewer's notes into failure modes, which the app shows on its
+Progress view for the reviewer to accept or edit. It names each mode and
+points at notes by reference, never copying or rewording them:
+
+```json
+{"status": "draft", "created": "<ISO time>", "failure_modes": [
+  {"name": "...", "description": "...",
+   "notes": [{"trace_id": "q02", "span_id": "s-..."},
+             {"trace_id": "q08", "span_id": null}]}]}
+```
+
+A `null` `span_id` points at that trace's trace note.

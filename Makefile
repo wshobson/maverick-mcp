@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces eval-review clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -24,6 +24,7 @@ help:
 	@echo "  make docs-check   - Validate documentation catalog and links"
 	@echo "  make check        - Run all checks (lint + type check)"
 	@echo "  make eval-traces  - Record Claude traces on the tools (subscription, never an API key)"
+	@echo "  make eval-review  - Review the newest trace run in a local browser UI (port 8765)"
 	@echo ""
 	@echo "  make tail-log     - Follow backend logs"
 	@echo ""
@@ -117,6 +118,13 @@ check: lint typecheck
 eval-traces:
 	@env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN uv run --group evals \
 		--extra backtesting --extra research python -m evals.tool_surface.run $(ARGS)
+
+# Local review UI for error analysis on the newest run (override EVAL_RUN).
+# Run folders start with a UTC timestamp, so the last one sorted is the newest.
+EVAL_RUN ?= $(lastword $(sort $(dir $(wildcard evals/tool_surface/runs/*/run.json))))
+eval-review:
+	@test -n "$(EVAL_RUN)" || { echo "No trace runs under evals/tool_surface/runs"; exit 1; }
+	@uv run python evals/review/server.py --run $(EVAL_RUN) $(ARGS)
 
 # Utility commands
 tail-log:

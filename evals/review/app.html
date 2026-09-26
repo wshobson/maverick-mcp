@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trace review</title>
+<!-- Markdown for assistant text and final answers, sanitized before use. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/18.0.14/lib/marked.umd.min.js"
+        integrity="sha384-J1VD5X/E72gORmmXiADelqS192/84qho9IALLC3d5oxjp1RgEN3He4ANyjqXyz10"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.4.16/purify.min.js"
+        integrity="sha384-a7SzOxErzJ3ZpQz0zJ32d67dSitNzPcbfybc/ykU9KJhMgZkwqfSxlhhdJRS+XGL"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<style>
+  :root {
+    --ink: #1b1f24;
+    --ink-2: #4a525c;
+    --line: #d9dee4;
+    --page: #f6f7f9;
+    --card: #ffffff;
+    --user: #2458c6;      --user-bg: #eaf1fe;
+    --asst: #6a3fc2;      --asst-bg: #f3eefd;
+    --tool: #a35f00;      --tool-bg: #fff4de;
+    --final: #17784a;     --final-bg: #e7f5ed;
+    --err: #c62828;
+    --pass: #17784a; --fail: #c62828; --defer: #a35f00;
+    --hl: #ffe27a;        --hl-strong: #ffc933;
+    --pending: #b9dcff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    background: var(--page);
+  }
+  button { font: inherit; cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* Top bar */
+  #topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+    padding: 8px 16px; background: var(--card); border-bottom: 1px solid var(--line);
+  }
+  .brand { font-weight: 650; }
+  .brand small { font-weight: 400; color: var(--ink-2); margin-left: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+  .seg button { border: 0; background: var(--card); padding: 4px 12px; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.active { background: var(--ink); color: #fff; }
+  .navgroup { display: inline-flex; align-items: center; gap: 6px; }
+  .navgroup button { border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 3px 10px; }
+  .navgroup button:disabled { opacity: .45; cursor: default; }
+  #picker { max-width: 360px; font: inherit; padding: 3px 6px; border-radius: 6px; border: 1px solid var(--line); }
+  #save-status { margin-left: auto; font-size: 13px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); }
+  #save-status.ok { color: var(--pass); }
+  #save-status.saving { color: var(--ink-2); }
+  #save-status.failed { color: #fff; background: var(--err); border-color: var(--err); cursor: pointer; }
+  .keys { font-size: 12px; color: var(--ink-2); }
+
+  main { padding: 18px 16px 80px; }
+  .view { max-width: 1060px; margin: 0 auto; }
+
+  /* Trace header */
+  .trace-header { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; }
+  .hdr-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .case-id { font: 700 15px var(--mono); }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: #eef0f3; border: 1px solid var(--line); }
+  .badge.task { background: #e9f0ff; border-color: #c8d8fb; }
+  .badge.rtype { background: #f4ecff; border-color: #dccbfa; }
+  .badge.state-empty { background: #f1f1f1; }
+  .badge.state-seeded { background: #e7f5ed; border-color: #bfe3cf; }
+  .badge.state-edge { background: #fff0e0; border-color: #f4d3a8; }
+  .query-large { font-size: 22px; line-height: 1.3; font-weight: 600; margin: 10px 0 8px; }
+  .hdr-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 14px; color: var(--ink-2); }
+  .hdr-stats b { color: var(--ink); font-weight: 600; }
+  .verdicts { margin-left: auto; display: inline-flex; gap: 6px; }
+  .verdicts button { border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 2px 10px; font-size: 13px; }
+  .verdicts button.on[data-v="pass"] { background: var(--pass); border-color: var(--pass); color: #fff; }
+  .verdicts button.on[data-v="fail"] { background: var(--fail); border-color: var(--fail); color: #fff; }
+  .verdicts button.on[data-v="defer"] { background: var(--defer); border-color: var(--defer); color: #fff; }
+  .outliers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .outlier { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: #fff3cd; border: 1px solid #f1d27a; }
+  .trace-note-box { margin: 12px 0 0; }
+  .trace-note-box label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); margin-bottom: 3px; }
+  #trace-note { width: 100%; min-height: 58px; resize: vertical; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
+
+  /* Conversation + margin */
+  .trace-body { display: flex; gap: 22px; align-items: stretch; margin-top: 16px; }
+  .content { flex: 1; max-width: 760px; min-width: 0; }
+  .margin { flex: 0 0 260px; width: 260px; position: relative; }
+  .block { border-left: 4px solid; border-radius: 7px; padding: 9px 14px 11px; margin: 0 0 14px; }
+  .block .role { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 3px; }
+  .block .role .idx { font-weight: 400; letter-spacing: 0; text-transform: none; margin-left: 6px; }
+  .block.user { background: var(--user-bg); border-color: var(--user); }
+  .block.user .role { color: var(--user); }
+  .block.asst { background: var(--asst-bg); border-color: var(--asst); }
+  .block.asst .role { color: var(--asst); }
+  .block.tool { background: var(--tool-bg); border-color: var(--tool); }
+  .block.tool .role { color: var(--tool); }
+  .block.tool.err { border-color: var(--err); }
+  .block.final { background: var(--final-bg); border-color: var(--final); }
+  .block.final .role { color: var(--final); }
+  .tool-name { font: 650 15.5px var(--mono); word-break: break-all; }
+  .tool-prefix { font: 12px var(--mono); }
+  .tool details { margin-top: 4px; }
+  .tool details + details { margin-top: 4px; }
+  .tool summary { cursor: pointer; font-size: 13px; user-select: none; }
+  .tool summary .err-flag { color: var(--err); font-weight: 700; }
+  pre.region {
+    font: 12.5px/1.45 var(--mono); white-space: pre-wrap; word-break: break-word;
+    background: var(--card); border: 1px solid #ecd9b3; border-radius: 5px;
+    padding: 7px 10px; margin: 3px 0 0;
+  }
+  .region.plain { white-space: pre-wrap; }
+  .region.md > :first-child { margin-top: 0; }
+  .region.md > :last-child { margin-bottom: 0; }
+  .region.md p, .region.md ul, .region.md ol { margin: 0 0 .6em; }
+  .region.md table { border-collapse: collapse; margin: .4em 0 .8em; font-size: 14px; }
+  .region.md th, .region.md td { border: 1px solid #c9d6ce; padding: 3px 8px; text-align: left; vertical-align: top; }
+  .region.md code { font: 13px var(--mono); }
+  .region.md h1, .region.md h2, .region.md h3 { font-size: 16px; margin: .8em 0 .4em; }
+  details.system { margin: 0 0 14px; color: #8a9199; font-size: 13px; }
+  details.system summary { cursor: pointer; }
+  details.system div { margin-top: 4px; padding: 6px 10px; border: 1px dashed #d4d8dd; border-radius: 6px; }
+  .no-final { font-style: italic; }
+
+  /* Highlights */
+  .pending-highlight { background: var(--pending); border-radius: 2px; }
+  .hl { background: var(--hl); border-radius: 2px; cursor: pointer; }
+  .hl.linked, .hl.flash { background: var(--hl-strong); outline: 2px solid #e09b00; }
+
+  /* Margin notes */
+  .note-card {
+    position: absolute; left: 0; right: 0;
+    background: var(--card); border: 1px solid var(--line); border-left: 3px solid #e0b300;
+    border-radius: 7px; padding: 7px 9px; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  }
+  .note-card.linked { outline: 2px solid #e09b00; }
+  .note-card.unanchored { border-left-color: var(--err); }
+  .note-flag { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--err); border-radius: 4px; padding: 0 5px; margin-bottom: 3px; }
+  .note-where { font-size: 11px; color: var(--ink-2); }
+  .note-quote { font-style: italic; color: var(--ink-2); overflow-wrap: anywhere; max-height: 3.9em; overflow: hidden; }
+  .note-text { margin-top: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .note-actions { display: none; gap: 6px; margin-top: 5px; }
+  .note-card:hover .note-actions { display: flex; }
+  .note-actions button { font-size: 12px; border: 1px solid var(--line); background: #fafafa; border-radius: 5px; padding: 1px 8px; }
+  .note-card textarea { width: 100%; font: inherit; margin-top: 3px; }
+
+  /* Popover */
+  #popover {
+    position: absolute; z-index: 40; width: 340px; max-width: calc(100vw - 16px);
+    background: var(--card); border: 1px solid #9fb4d0; border-radius: 8px; padding: 8px;
+    box-shadow: 0 6px 22px rgba(0,0,0,.16);
+  }
+  #popover input { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  #popover .hint { font-size: 11.5px; color: var(--ink-2); margin-top: 4px; }
+
+  /* Map */
+  .map-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .map-wrap svg { display: block; width: 100%; height: auto; }
+  .map-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin-top: 8px; }
+  .map-legend svg { width: 16px; height: 16px; vertical-align: -3px; display: inline; }
+  .map-note { font-size: 13px; color: var(--ink-2); margin: 6px 0 0; }
+  .pt { cursor: pointer; }
+  #tooltip {
+    position: fixed; z-index: 50; max-width: 320px; pointer-events: none;
+    background: #1f2328; color: #fff; font-size: 13px; padding: 7px 9px; border-radius: 6px;
+  }
+
+  /* Progress */
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; }
+  .panel h2, .panel h3 { margin: 0 0 8px; font-size: 17px; }
+  .counts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 15px; }
+  .counts b { font-size: 20px; margin-right: 4px; }
+  .bar { display: flex; height: 10px; border-radius: 99px; overflow: hidden; background: #eceef1; margin-top: 10px; }
+  .bar span { display: block; height: 100%; }
+  .pg-trace { border-top: 1px solid var(--line); padding: 8px 0; }
+  .pg-trace:first-of-type { border-top: 0; }
+  .pg-head { cursor: pointer; font-weight: 600; }
+  .pg-head:hover { text-decoration: underline; }
+  .pg-head .vchip { font-size: 12px; font-weight: 600; padding: 0 7px; border-radius: 99px; color: #fff; margin-left: 6px; }
+  .pg-list { list-style: none; margin: 4px 0 0; padding: 0 0 0 14px; }
+  .pg-list li { cursor: pointer; padding: 3px 6px; border-radius: 5px; }
+  .pg-list li:hover { background: #f2f4f7; }
+  .pg-quote { font-style: italic; color: var(--ink-2); }
+  .pg-kind { font-size: 11px; font-weight: 700; color: var(--ink-2); text-transform: uppercase; margin-right: 6px; }
+  .draft { border: 2px dashed #d08a00; background: #fffaf0; }
+  .draft-banner { font-size: 13.5px; background: #fff0cc; border-radius: 6px; padding: 7px 10px; margin: 0 0 10px; }
+  .draft-banner b { color: #8a5a00; }
+  .treemap { position: relative; width: 100%; height: 520px; }
+  .tm-block { position: absolute; overflow: auto; padding: 6px 8px; border: 2px solid #fff; border-radius: 6px; font-size: 12.5px; }
+  .tm-block h4 { margin: 0 0 2px; font-size: 13.5px; }
+  .tm-block .tm-desc { color: var(--ink-2); margin-bottom: 4px; }
+  .tm-block ul { list-style: none; margin: 0; padding: 0; }
+  .tm-block li { cursor: pointer; padding: 2px 4px; border-radius: 4px; background: rgba(255,255,255,.7); margin-bottom: 2px; }
+  .tm-block li:hover { background: #fff; }
+  .muted-empty { color: var(--ink-2); font-style: italic; }
+
+  /* Toasts */
+  #toasts { position: fixed; right: 16px; bottom: 16px; z-index: 60; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: #1f2328; color: #fff; padding: 9px 13px; border-radius: 8px; font-size: 14px; max-width: 380px; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+  .toast.error { background: var(--err); }
+
+  @media (max-width: 900px) {
+    .trace-body { gap: 12px; }
+    .margin { flex-basis: 200px; width: 200px; }
+  }
+</style>
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">Trace review<small id="run-name"></small></div>
+  <div class="seg" id="view-toggle">
+    <button data-view="trace" class="active">Trace</button>
+    <button data-view="map">Map</button>
+    <button data-view="progress">Progress</button>
+  </div>
+  <div class="navgroup">
+    <button id="prev" title="Previous trace (k)">&lsaquo; Prev</button>
+    <select id="picker" aria-label="Trace"></select>
+    <button id="next" title="Next trace (j)">Next &rsaquo;</button>
+  </div>
+  <span class="keys">j/k next/prev &middot; 1/2/3 pass/fail/defer &middot; select text to note</span>
+  <div id="save-status" class="ok" title="Annotations are saved to annotations.json in the run folder">Saved</div>
+</header>
+
+<main>
+  <section id="view-trace" class="view"></section>
+  <section id="view-map" class="view" hidden></section>
+  <section id="view-progress" class="view" hidden></section>
+</main>
+
+<div id="popover" hidden>
+  <input id="popover-input" type="text" autocomplete="off" placeholder="Your note on the highlighted text">
+  <div class="hint">Enter saves &middot; Esc or a click outside cancels</div>
+</div>
+<div id="tooltip" hidden></div>
+<div id="toasts"></div>
+
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// State and small helpers
+// ---------------------------------------------------------------------------
+
+const VERDICTS = ['pass', 'fail', 'defer'];
+const COLLAPSE_OVER = 1500;         // result characters
+const NOTE_GAP = 8;                 // px between stacked margin notes
+const SAVE_DELAY = 300;             // ms debounce per trace
+const POLL_MS = 10000;
+const CLUSTER_COLORS = ['#2f6fdb', '#d9822b', '#2a9d6f', '#9b4dca', '#c2410c', '#0e7490'];
+
+const state = {
+  run: '',
+  samples: [],          // [{id, trace, stats}]
+  indexById: new Map(),
+  index: 0,
+  view: 'trace',
+  annotations: {},      // trace id -> {verdict, trace_note, spans, updated}
+  outliers: new Map(),  // trace id -> [label]
+  graph: null,
+  patterns: null,
+  patternsText: null,
+  pending: null,        // a selection waiting for its note
+  unanchored: new Set(),
+  saveTimers: new Map(),
+  saving: 0,
+  failed: new Set(),
+  lastSaved: null,
+  chain: Promise.resolve(),
+};
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value === undefined || value === null || value === false) continue;
+    if (key === 'class') node.className = value;
+    else if (key === 'text') node.textContent = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2), value);
+    else node.setAttribute(key, value === true ? '' : value);
+  }
+  for (const child of children.flat()) {
+    if (child === null || child === undefined || child === false) continue;
+    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  }
+  return node;
+}
+
+function svgEl(tag, attrs = {}) {
+  const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value);
+  return node;
+}
+
+const nowIso = () => new Date().toISOString();
+const newId = () => 's-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+const current = () => state.samples[state.index];
+const truncate = (text, n) => (text.length > n ? text.slice(0, n - 1) + '…' : text);
+const msgKind = (m) => m.type || m.kind;
+
+function fmtSize(chars) {
+  return chars < 1000 ? `${chars} chars` : `${(chars / 1024).toFixed(1)} KB`;
+}
+
+function toast(message, kind = '') {
+  const node = el('div', { class: `toast ${kind}`, text: message });
+  $('#toasts').append(node);
+  setTimeout(() => node.remove(), kind === 'error' ? 8000 : 4500);
+}
+
+async function getJSON(url) {
+  const res = await fetch(url, { cache: 'no-store' });
+  const body = await res.json();
+  if (!res.ok) throw new Error(body && body.error ? body.error : `HTTP ${res.status}`);
+  return body;
+}
+
+// ---------------------------------------------------------------------------
+// Annotations: state, auto-save, browser backup
+// ---------------------------------------------------------------------------
+
+function blankAnnotation() {
+  return { verdict: 'unset', trace_note: '', spans: [], updated: '' };
+}
+
+function ann(id) {
+  if (!state.annotations[id]) state.annotations[id] = blankAnnotation();
+  return state.annotations[id];
+}
+
+function noteCount(id) {
+  const a = state.annotations[id];
+  if (!a) return 0;
+  return a.spans.length + (a.trace_note.trim() ? 1 : 0);
+}
+
+const backupKey = () => `trace-review:${state.run}`;
+
+function backupRead() {
+  try {
+    const raw = localStorage.getItem(backupKey());
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (parsed && typeof parsed === 'object') return { traces: parsed.traces || {}, unsynced: parsed.unsynced || [] };
+  } catch (err) { /* storage unavailable: the server copy still stands */ }
+  return { traces: {}, unsynced: [] };
+}
+
+function backupWrite(id, unsynced) {
+  try {
+    const backup = backupRead();
+    backup.traces[id] = state.annotations[id];
+    const set = new Set(backup.unsynced);
+    if (unsynced) set.add(id); else set.delete(id);
+    backup.unsynced = Array.from(set);
+    localStorage.setItem(backupKey(), JSON.stringify(backup));
+  } catch (err) { /* ignore */ }
+}
+
+function backupMirrorAll() {
+  try {
+    const backup = backupRead();
+    for (const [id, a] of Object.entries(state.annotations)) {
+      if (!backup.unsynced.includes(id)) backup.traces[id] = a;
+    }
+    localStorage.setItem(backupKey(), JSON.stringify(backup));
+  } catch (err) { /* ignore */ }
+}
+
+// Call after every change Seth makes to trace `id`.
+function touch(id) {
+  ann(id).updated = nowIso();
+  backupWrite(id, true);
+  clearTimeout(state.saveTimers.get(id));
+  state.saveTimers.set(id, setTimeout(() => queueSave(id), SAVE_DELAY));
+  updateSaveStatus();
+  refreshPicker();
+}
+
+function queueSave(id) {
+  state.saveTimers.delete(id);
+  state.saving += 1;
+  updateSaveStatus();
+  // One request at a time, so an older save never lands after a newer one.
+  state.chain = state.chain.then(() => saveNow(id));
+}
+
+async function saveNow(id) {
+  const annotation = JSON.parse(JSON.stringify(ann(id)));
+  try {
+    const res = await fetch('/api/annotations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trace_id: id, annotation }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    state.failed.delete(id);
+    state.lastSaved = new Date();
+    if (ann(id).updated === annotation.updated) backupWrite(id, false);
+  } catch (err) {
+    if (!state.failed.has(id)) toast(`Could not save ${id}: ${err.message}. The change is kept in this browser's backup.`, 'error');
+    state.failed.add(id);
+  } finally {
+    state.saving -= 1;
+    updateSaveStatus();
+  }
+}
+
+function updateSaveStatus() {
+  const node = $('#save-status');
+  if (state.failed.size) {
+    node.className = 'failed';
+    node.textContent = `Not saved: ${Array.from(state.failed).join(', ')} (click to retry)`;
+  } else if (state.saving || state.saveTimers.size) {
+    node.className = 'saving';
+    node.textContent = 'Saving…';
+  } else {
+    node.className = 'ok';
+    node.textContent = state.lastSaved ? `Saved ${state.lastSaved.toLocaleTimeString()}` : 'Saved';
+  }
+}
+
+function retryFailed() {
+  for (const id of Array.from(state.failed)) queueSave(id);
+}
+
+// On load, re-send any change the server never confirmed.
+function restoreBackup() {
+  const backup = backupRead();
+  const restored = [];
+  for (const id of backup.unsynced) {
+    const local = backup.traces[id];
+    if (!local || !state.indexById.has(id)) continue;
+    const server = state.annotations[id];
+    if (!server || (local.updated || '') > (server.updated || '')) {
+      state.annotations[id] = local;
+      restored.push(id);
+      queueSave(id);
+    } else {
+      backupWrite(id, false);
+    }
+  }
+  if (restored.length) toast(`Restored unsaved notes for ${restored.join(', ')} from this browser's backup.`);
+  backupMirrorAll();
+}
+
+// ---------------------------------------------------------------------------
+// Outlier badges (only values beyond Q3 + 1.5 IQR across all traces)
+// ---------------------------------------------------------------------------
+
+function quantile(sorted, q) {
+  const pos = (sorted.length - 1) * q;
+  const lo = Math.floor(pos);
+  const hi = Math.ceil(pos);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+}
+
+function computeOutliers() {
+  const n = state.samples.length;
+  const metrics = [
+    ['turns', (v) => `${v} turns`, 'most'],
+    ['tool_calls', (v) => `${v} tool calls`, 'most'],
+    ['tool_errors', (v) => `${v} tool error${v === 1 ? '' : 's'}`, 'most'],
+    ['max_tool_result_chars', (v) => `${fmtSize(v)} tool result`, 'largest'],
+    ['cost_usd', (v) => `$${v.toFixed(3)} cost`, 'highest'],
+    ['duration_ms', (v) => `${(v / 1000).toFixed(1)} s`, 'longest'],
+  ];
+  for (const s of state.samples) state.outliers.set(s.id, []);
+  if (n < 4) return;
+  for (const [key, label, most] of metrics) {
+    const values = state.samples.map((s) => s.stats[key]);
+    const sorted = [...values].sort((a, b) => a - b);
+    const q1 = quantile(sorted, 0.25);
+    const q3 = quantile(sorted, 0.75);
+    const limit = q3 + 1.5 * (q3 - q1);
+    const max = sorted[n - 1];
+    const atMax = values.filter((v) => v === max).length;
+    state.samples.forEach((s, i) => {
+      const v = values[i];
+      if (!(v > limit && v > 0)) return;
+      let where = `high for the ${n}`;
+      if (v === max) where = atMax > 1 ? `tied for ${most} of the ${n}` : `${most} of the ${n}`;
+      state.outliers.get(s.id).push(`${label(v)}, ${where}`);
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Text rendering
+// ---------------------------------------------------------------------------
+
+let markdownWarned = false;
+
+function markdownHtml(text) {
+  if (window.marked && window.DOMPurify) {
+    return window.DOMPurify.sanitize(window.marked.parse(text || '', { async: false }));
+  }
+  if (!markdownWarned) {
+    markdownWarned = true;
+    toast('marked.js did not load, so markdown shows as plain text. Notes made now may not re-anchor once it loads.', 'error');
+  }
+  return null;
+}
+
+// JSON with objects indented and arrays of plain values kept on one line.
+function prettyJson(value, indent = '') {
+  if (Array.isArray(value)) {
+    if (!value.length) return '[]';
+    if (value.every((v) => v === null || typeof v !== 'object')) {
+      return '[' + value.map((v) => JSON.stringify(v)).join(', ') + ']';
+    }
+    const inner = indent + '  ';
+    return '[\n' + value.map((v) => inner + prettyJson(v, inner)).join(',\n') + '\n' + indent + ']';
+  }
+  if (value && typeof value === 'object') {
+    const keys = Object.keys(value);
+    if (!keys.length) return '{}';
+    const inner = indent + '  ';
+    return '{\n' + keys.map((k) => `${inner}${JSON.stringify(k)}: ${prettyJson(value[k], inner)}`).join(',\n') + '\n' + indent + '}';
+  }
+  return JSON.stringify(value);
+}
+
+function parseResult(raw) {
+  const text = typeof raw === 'string' ? raw : raw == null ? '' : JSON.stringify(raw);
+  try {
+    const value = JSON.parse(text);
+    if (value && typeof value === 'object') return { raw: text, display: prettyJson(value), json: value };
+  } catch (err) { /* not JSON */ }
+  return { raw: text, display: text, json: null };
+}
+
+// A region is one annotatable field. Span offsets index its textContent.
+function region(anchor, text, mode) {
+  const node = el(mode === 'code' ? 'pre' : 'div', { class: `region ${mode}` });
+  node.dataset.msg = anchor.msg === null ? '' : String(anchor.msg);
+  node.dataset.field = anchor.field;
+  if (mode === 'md') {
+    const html = markdownHtml(text);
+    if (html === null) { node.classList.replace('md', 'plain'); node.textContent = text; } else node.innerHTML = html;
+  } else {
+    node.textContent = text;
+  }
+  return node;
+}
+
+function regionFor(anchor) {
+  const msg = anchor.msg === null || anchor.msg === undefined ? '' : String(anchor.msg);
+  return $$('#content .region').find((r) => r.dataset.msg === msg && r.dataset.field === anchor.field) || null;
+}
+
+function anchorOf(regionNode) {
+  const msg = regionNode.dataset.msg;
+  return { msg: msg === '' ? null : Number(msg), field: regionNode.dataset.field };
+}
+
+// ---------------------------------------------------------------------------
+// Trace view
+// ---------------------------------------------------------------------------
+
+let resizeObserver = null;
+
+function renderTrace() {
+  const sample = current();
+  const trace = sample.trace;
+  const a = ann(sample.id);
+  const root = $('#view-trace');
+  root.replaceChildren();
+  state.unanchored = new Set();
+
+  root.append(renderHeader(sample, a), renderTraceNote(sample, a));
+
+  const content = el('div', { class: 'content', id: 'content' });
+  const margin = el('div', { class: 'margin', id: 'margin' });
+  root.append(el('div', { class: 'trace-body' }, content, margin));
+
+  content.append(el('details', { class: 'system' },
+    el('summary', { text: 'System prompt (the same in every trace)' }),
+    el('div', { text: trace.system_prompt || '(none)' })));
+
+  content.append(el('div', { class: 'block user' },
+    el('div', { class: 'role', text: 'User' }),
+    region({ msg: null, field: 'query' }, trace.case.query, 'plain')));
+
+  const messages = trace.messages || [];
+  messages.forEach((m, i) => {
+    const isLast = i === messages.length - 1;
+    if (msgKind(m) === 'text') {
+      // The final answer repeats the last text block; show it once, below.
+      if (isLast && m.text === trace.final_answer) return;
+      content.append(el('div', { class: 'block asst' },
+        el('div', { class: 'role' }, 'Assistant', el('span', { class: 'idx', text: `#${i}` })),
+        region({ msg: i, field: 'text' }, m.text || '', 'md')));
+    } else if (msgKind(m) === 'tool_call') {
+      content.append(renderToolCall(m, i));
+    }
+  });
+
+  const final = el('div', { class: 'block final' }, el('div', { class: 'role', text: 'Final answer' }));
+  if (trace.final_answer) final.append(region({ msg: null, field: 'final_answer' }, trace.final_answer, 'md'));
+  else final.append(el('div', { class: 'no-final', text: `No final answer (result_subtype: ${trace.result_subtype})` }));
+  content.append(final);
+
+  applySpans(sample.id);
+  renderNotes(sample.id);
+  if (resizeObserver) resizeObserver.disconnect();
+  resizeObserver = new ResizeObserver(() => requestAnimationFrame(layoutNotes));
+  resizeObserver.observe(content);
+  layoutNotes();
+}
+
+function renderHeader(sample, a) {
+  const t = sample.trace;
+  const c = t.case;
+  const calls = (t.messages || []).filter((m) => msgKind(m) === 'tool_call').length;
+  const verdictButtons = VERDICTS.map((v) => el('button', {
+    'data-v': v,
+    class: a.verdict === v ? 'on' : '',
+    title: `${v} (${VERDICTS.indexOf(v) + 1})`,
+    text: v[0].toUpperCase() + v.slice(1),
+    onclick: () => setVerdict(a.verdict === v ? 'unset' : v),
+  }));
+  const outliers = state.outliers.get(sample.id) || [];
+  return el('div', { class: 'trace-header' },
+    el('div', { class: 'hdr-top' },
+      el('span', { class: 'case-id', text: c.id }),
+      el('span', { class: 'badge task', text: c.task }),
+      el('span', { class: 'badge rtype', text: c.request_type }),
+      el('span', { class: `badge state-${c.data_state}`, text: `data: ${c.data_state}` })),
+    el('div', { class: 'query-large', text: c.query }),
+    el('div', { class: 'hdr-stats' },
+      el('span', {}, el('b', { text: t.num_turns }), ' turns'),
+      el('span', {}, el('b', { text: calls }), ' tool calls'),
+      el('span', {}, el('b', { text: `$${(t.notional_cost_usd || 0).toFixed(4)}` }), ' notional'),
+      el('span', {}, el('b', { text: `${((t.duration_ms || 0) / 1000).toFixed(1)} s` })),
+      el('span', {}, 'result: ', el('b', { text: t.result_subtype })),
+      el('span', { class: 'verdicts' }, verdictButtons)),
+    outliers.length ? el('div', { class: 'outliers' }, outliers.map((o) => el('span', { class: 'outlier', text: o }))) : null);
+}
+
+function renderTraceNote(sample, a) {
+  const box = el('textarea', {
+    id: 'trace-note',
+    placeholder: 'Your note on this whole trace',
+    oninput: (e) => { ann(sample.id).trace_note = e.target.value; touch(sample.id); },
+  });
+  box.value = a.trace_note;
+  return el('div', { class: 'trace-note-box' }, el('label', { for: 'trace-note', text: 'Trace note' }), box);
+}
+
+function renderToolCall(m, i) {
+  const name = m.name || '';
+  const match = name.match(/^(mcp__.+?__)(.+)$/);
+  const prefix = match ? match[1] : '';
+  const short = match ? match[2] : name;
+  const result = parseResult(m.result);
+  const status = result.json && typeof result.json.status === 'string' ? result.json.status : null;
+  const failed = Boolean(m.is_error) || status === 'error';
+  const summary = el('summary', {},
+    `Result · ${fmtSize(result.raw.length)}`,
+    status ? ` · status: ${status}` : (result.json ? '' : ' · text'),
+    ' · ',
+    el('span', { class: m.is_error ? 'err-flag' : '', text: `is_error: ${Boolean(m.is_error)}` }));
+  return el('div', { class: `block tool${failed ? ' err' : ''}` },
+    el('div', { class: 'role' }, 'Tool call', el('span', { class: 'idx', text: `#${i}` })),
+    el('div', {}, el('span', { class: 'tool-prefix', text: prefix }), el('span', { class: 'tool-name', text: short })),
+    el('details', { class: 'args', open: true },
+      el('summary', { text: 'Arguments' }),
+      region({ msg: i, field: 'tool_args' }, prettyJson(m.arguments ?? {}), 'code')),
+    el('details', { class: 'result', open: result.raw.length <= COLLAPSE_OVER },
+      summary,
+      region({ msg: i, field: 'tool_result' }, result.display, 'code')));
+}
+
+function setVerdict(verdict) {
+  const sample = current();
+  ann(sample.id).verdict = verdict;
+  $$('.verdicts button').forEach((b) => b.classList.toggle('on', b.dataset.v === verdict));
+  touch(sample.id);
+}
+
+// ---------------------------------------------------------------------------
+// Spans: offsets, wrapping, popover
+// ---------------------------------------------------------------------------
+
+function textNodes(root) {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  return nodes;
+}
+
+function offsetIn(root, node, offset) {
+  const range = document.createRange();
+  range.selectNodeContents(root);
+  range.setEnd(node, offset);
+  return range.toString().length;
+}
+
+// Wrap [start, end) of root's text in elements from makeWrapper(), one per text node.
+function wrapOffsets(root, start, end, makeWrapper) {
+  const wrappers = [];
+  let pos = 0;
+  for (const node of textNodes(root)) {
+    const len = node.data.length;
+    const from = Math.max(start, pos);
+    const to = Math.min(end, pos + len);
+    if (from < to && node.data.slice(from - pos, to - pos).trim()) {
+      let target = node;
+      if (from > pos) target = target.splitText(from - pos);
+      if (to < pos + len) target.splitText(to - from);
+      const wrapper = makeWrapper();
+      target.parentNode.insertBefore(wrapper, target);
+      wrapper.append(target);
+      wrappers.push(wrapper);
+    }
+    pos += len;
+    if (pos >= end) break;
+  }
+  return wrappers;
+}
+
+function unwrap(node) {
+  const parent = node.parentNode;
+  if (!parent) return;
+  while (node.firstChild) parent.insertBefore(node.firstChild, node);
+  parent.removeChild(node);
+  parent.normalize();
+}
+
+function highlightNode(spanId) {
+  const node = el('span', { class: 'hl' });
+  node.dataset.span = spanId;
+  return node;
+}
+
+function applySpans(id) {
+  for (const span of ann(id).spans) {
+    const target = regionFor(span.anchor);
+    const text = target ? target.textContent : '';
+    if (target && text.slice(span.start, span.end) === span.quote) {
+      wrapOffsets(target, span.start, span.end, () => highlightNode(span.id));
+    } else {
+      state.unanchored.add(span.id);
+    }
+  }
+}
+
+function highlightsOf(spanId) {
+  return $$('#content .hl').filter((n) => n.dataset.span === spanId);
+}
+
+function closestRegion(node) {
+  const elNode = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+  const found = elNode ? elNode.closest('.region') : null;
+  return found && found.closest('#content') ? found : null;
+}
+
+function handleSelection() {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+  const range = sel.getRangeAt(0);
+  const target = closestRegion(range.startContainer);
+  if (!target) return;
+  if (target !== closestRegion(range.endContainer)) {
+    toast('Select text inside one block to add a note.');
+    return;
+  }
+  const text = target.textContent;
+  let start = offsetIn(target, range.startContainer, range.startOffset);
+  let end = offsetIn(target, range.endContainer, range.endOffset);
+  while (start < end && /\s/.test(text[start])) start += 1;
+  while (end > start && /\s/.test(text[end - 1])) end -= 1;
+  if (end <= start) return;
+  sel.removeAllRanges();
+  // Highlight first, then focus the input, so the selection stays visible.
+  const marks = wrapOffsets(target, start, end, () => el('span', { class: 'pending-highlight' }));
+  if (!marks.length) return;
+  state.pending = { anchor: anchorOf(target), start, end, quote: text.slice(start, end), marks };
+  showPopover(marks[marks.length - 1]);
+}
+
+function showPopover(mark) {
+  const pop = $('#popover');
+  const input = $('#popover-input');
+  const rect = mark.getBoundingClientRect();
+  pop.hidden = false;
+  const left = Math.min(rect.left + window.scrollX, window.scrollX + document.documentElement.clientWidth - pop.offsetWidth - 8);
+  pop.style.left = `${Math.max(8, left)}px`;
+  pop.style.top = `${rect.bottom + window.scrollY + 6}px`;
+  input.value = '';
+  input.focus();
+}
+
+function hidePopover() {
+  $('#popover').hidden = true;
+}
+
+function cancelPending() {
+  if (!state.pending) return;
+  state.pending.marks.forEach(unwrap);
+  state.pending = null;
+  hidePopover();
+}
+
+function commitPending() {
+  const pending = state.pending;
+  const note = $('#popover-input').value.trim();
+  if (!pending) return;
+  if (!note) { cancelPending(); return; }
+  const id = current().id;
+  const stamp = nowIso();
+  const span = {
+    id: newId(), anchor: pending.anchor, start: pending.start, end: pending.end,
+    quote: pending.quote, note, created: stamp, updated: stamp,
+  };
+  pending.marks.forEach((m) => { m.className = 'hl'; m.dataset.span = span.id; });
+  ann(id).spans.push(span);
+  state.pending = null;
+  hidePopover();
+  touch(id);
+  renderNotes(id);
+  layoutNotes();
+}
+
+// ---------------------------------------------------------------------------
+// Margin notes
+// ---------------------------------------------------------------------------
+
+function renderNotes(id) {
+  const margin = $('#margin');
+  if (!margin) return;
+  margin.replaceChildren();
+  for (const span of ann(id).spans) margin.append(noteCard(id, span));
+}
+
+function noteCard(id, span) {
+  const unanchored = state.unanchored.has(span.id);
+  const text = el('div', { class: 'note-text', text: span.note });
+  const card = el('div', { class: `note-card${unanchored ? ' unanchored' : ''}` },
+    unanchored ? el('div', { class: 'note-flag', text: 'unanchored', title: 'The quoted text no longer matches this trace at the saved offsets.' }) : null,
+    el('div', { class: 'note-where' }),
+    el('div', { class: 'note-quote', text: `“${truncate(span.quote, 160)}”` }),
+    text,
+    el('div', { class: 'note-actions' },
+      el('button', { text: 'Edit', onclick: (e) => { e.stopPropagation(); editNote(id, span, card, text); } }),
+      el('button', { text: 'Delete', onclick: (e) => { e.stopPropagation(); deleteNote(id, span); } })));
+  card.dataset.span = span.id;
+  card.addEventListener('mouseenter', () => highlightsOf(span.id).forEach((h) => h.classList.add('linked')));
+  card.addEventListener('mouseleave', () => highlightsOf(span.id).forEach((h) => h.classList.remove('linked')));
+  card.addEventListener('click', (e) => {
+    if (e.target.closest('button, textarea')) return;
+    revealSpan(span.id);
+  });
+  return card;
+}
+
+function editNote(id, span, card, textNode) {
+  if (card.querySelector('textarea')) return;
+  const box = el('textarea', { rows: 3 });
+  box.value = span.note;
+  textNode.replaceWith(box);
+  box.focus();
+  let done = false;
+  const finish = (save) => {
+    if (done) return;
+    done = true;
+    const value = box.value.trim();
+    if (save && value && value !== span.note) {
+      span.note = value;
+      span.updated = nowIso();
+      textNode.textContent = value;
+      touch(id);
+    }
+    box.replaceWith(textNode);
+    layoutNotes();
+  };
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finish(true); }
+    if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  box.addEventListener('blur', () => finish(true));
+  layoutNotes();
+}
+
+function deleteNote(id, span) {
+  if (!window.confirm('Delete this note?')) return;
+  const a = ann(id);
+  a.spans = a.spans.filter((s) => s.id !== span.id);
+  highlightsOf(span.id).forEach(unwrap);
+  touch(id);
+  renderNotes(id);
+  layoutNotes();
+}
+
+// Top of each note = its highlight's top relative to the margin column.
+// Both rects are viewport-relative, so scrolling cancels out (no scrollTop).
+function layoutNotes() {
+  const margin = $('#margin');
+  if (!margin || state.view !== 'trace') return;
+  const base = margin.getBoundingClientRect();
+  const items = $$('.note-card', margin).map((card) => {
+    const spanId = card.dataset.span;
+    const marks = highlightsOf(spanId);
+    let rect = null;
+    let where = '';
+    if (marks.length) {
+      // Chrome still reports geometry inside a closed <details>, so test for one.
+      const closed = marks[0].closest('details:not([open])');
+      if (closed) {
+        rect = closed.querySelector('summary').getBoundingClientRect();
+        where = 'in a collapsed block (click to open)';
+      } else {
+        rect = marks[0].getBoundingClientRect();
+      }
+    } else {
+      const span = ann(current().id).spans.find((s) => s.id === spanId);
+      const target = span ? regionFor(span.anchor) : null;
+      if (target) rect = target.getBoundingClientRect();
+    }
+    $('.note-where', card).textContent = where;
+    return { card, top: rect ? rect.top - base.top : 0 };
+  });
+  items.sort((x, y) => x.top - y.top);
+  let floor = -Infinity;
+  for (const item of items) {
+    const top = Math.max(item.top, floor + NOTE_GAP);
+    item.card.style.top = `${top}px`;
+    floor = top + item.card.offsetHeight;
+  }
+  margin.style.minHeight = items.length ? `${Math.max(0, floor)}px` : '';
+}
+
+function revealSpan(spanId) {
+  const marks = highlightsOf(spanId);
+  if (!marks.length) return;
+  for (let d = marks[0].closest('details'); d; d = d.parentElement.closest('details')) d.open = true;
+  marks[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  marks.forEach((m) => m.classList.add('flash'));
+  setTimeout(() => marks.forEach((m) => m.classList.remove('flash')), 1400);
+  requestAnimationFrame(layoutNotes);
+}
+
+// ---------------------------------------------------------------------------
+// Map view
+// ---------------------------------------------------------------------------
+
+function convexHull(points) {
+  const pts = points.map((p) => [p[0], p[1]]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (pts.length < 3) return pts;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper = [];
+  for (const p of [...pts].reverse()) {
+    while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  return lower.slice(0, -1).concat(upper.slice(0, -1));
+}
+
+function markerShape(dataState, x, y, r) {
+  if (dataState === 'empty') return svgEl('rect', { x: x - r, y: y - r, width: 2 * r, height: 2 * r, rx: 2 });
+  if (dataState === 'edge') {
+    const h = r * 1.25;
+    return svgEl('polygon', { points: `${x},${y - h} ${x + h},${y + h * 0.8} ${x - h},${y + h * 0.8}` });
+  }
+  return svgEl('circle', { cx: x, cy: y, r });
+}
+
+function markerStroke(id) {
+  const a = state.annotations[id];
+  if (a && a.verdict !== 'unset') return { stroke: '#111', 'stroke-width': 3 };
+  if (noteCount(id)) return { stroke: '#e0245e', 'stroke-width': 3 };
+  return { stroke: '#fff', 'stroke-width': 1.5 };
+}
+
+function renderMap() {
+  const root = $('#view-map');
+  root.replaceChildren();
+  const graph = state.graph;
+  if (!graph) { root.append(el('p', { text: 'Loading the projection…' })); return; }
+  const W = 960; const H = 560; const pad = 56;
+  const xs = graph.points.map((p) => p.x);
+  const ys = graph.points.map((p) => p.y);
+  const [x0, x1] = [Math.min(...xs), Math.max(...xs)];
+  const [y0, y1] = [Math.min(...ys), Math.max(...ys)];
+  const sx = (x) => pad + ((x - x0) / (x1 - x0 || 1)) * (W - 2 * pad);
+  const sy = (y) => H - pad - ((y - y0) / (y1 - y0 || 1)) * (H - 2 * pad);
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Trace map' });
+
+  // Cluster backgrounds: the hull, padded by a thick rounded stroke.
+  for (let c = 0; c < graph.clusters; c += 1) {
+    const color = CLUSTER_COLORS[c % CLUSTER_COLORS.length];
+    const members = graph.points.filter((p) => p.cluster === c).map((p) => [sx(p.x), sy(p.y)]);
+    if (!members.length) continue;
+    const hull = convexHull(members);
+    // Group opacity composites fill and stroke as one layer, so no darker seam.
+    const layer = svgEl('g', { opacity: 0.12 });
+    layer.append(hull.length === 1
+      ? svgEl('circle', { cx: hull[0][0], cy: hull[0][1], r: 24, fill: color })
+      : svgEl('polygon', { points: hull.map((p) => p.join(',')).join(' '), fill: color, stroke: color, 'stroke-width': 44, 'stroke-linejoin': 'round' }));
+    svg.append(layer);
+  }
+
+  // Axes labels.
+  const [ev1, ev2] = graph.explained_variance.map((v) => Math.round(v * 100));
+  svg.append(Object.assign(svgEl('text', { x: W / 2, y: H - 14, 'text-anchor': 'middle', 'font-size': 13, fill: '#4a525c' }), { textContent: `PC1 (${ev1}% of variance): ${topLoadings(graph.loadings[0])}` }));
+  svg.append(Object.assign(svgEl('text', { x: 16, y: H / 2, 'font-size': 13, fill: '#4a525c', transform: `rotate(-90 16 ${H / 2})`, 'text-anchor': 'middle' }), { textContent: `PC2 (${ev2}%): ${topLoadings(graph.loadings[1])}` }));
+
+  const tip = $('#tooltip');
+  for (const p of graph.points) {
+    const x = sx(p.x); const y = sy(p.y);
+    const g = svgEl('g', { class: 'pt' });
+    const mark = markerShape(p.data_state, x, y, 8);
+    for (const [k, v] of Object.entries({ fill: CLUSTER_COLORS[p.cluster % CLUSTER_COLORS.length], ...markerStroke(p.id) })) mark.setAttribute(k, v);
+    g.append(mark);
+    g.append(Object.assign(svgEl('text', { x: x + 12, y: y + 4, 'font-size': 12, fill: '#1b1f24' }), { textContent: p.id }));
+    g.addEventListener('mouseenter', () => {
+      const a = state.annotations[p.id];
+      const verdict = a && a.verdict !== 'unset' ? a.verdict : 'none';
+      tip.replaceChildren(
+        el('div', {}, el('b', { text: p.id }), ` · ${p.task} · ${p.data_state}`),
+        el('div', { text: p.query }),
+        el('div', { text: `${noteCount(p.id)} notes · verdict: ${verdict}` }));
+      tip.hidden = false;
+    });
+    g.addEventListener('mousemove', (e) => {
+      tip.style.left = `${Math.min(e.clientX + 14, window.innerWidth - 330)}px`;
+      tip.style.top = `${e.clientY + 14}px`;
+    });
+    g.addEventListener('mouseleave', () => { tip.hidden = true; });
+    g.addEventListener('click', () => { tip.hidden = true; openTrace(state.indexById.get(p.id)); });
+    svg.append(g);
+  }
+
+  const legendShape = (dataState) => {
+    const s = svgEl('svg', { viewBox: '0 0 20 20' });
+    const m = markerShape(dataState, 10, 10, 6);
+    m.setAttribute('fill', '#8a929c');
+    s.append(m);
+    return s;
+  };
+  const legendRing = (stroke) => {
+    const s = svgEl('svg', { viewBox: '0 0 20 20' });
+    s.append(svgEl('circle', { cx: 10, cy: 10, r: 6, fill: '#c9ced4', stroke, 'stroke-width': 3 }));
+    return s;
+  };
+  root.append(el('div', { class: 'map-wrap' },
+    svg,
+    el('div', { class: 'map-legend' },
+      Array.from({ length: graph.clusters }, (_, c) => el('span', {}, el('span', { style: `display:inline-block;width:12px;height:12px;border-radius:3px;background:${CLUSTER_COLORS[c % CLUSTER_COLORS.length]};vertical-align:-1px` }), ` cluster ${c + 1}`)),
+      el('span', {}, legendShape('seeded'), ' seeded'),
+      el('span', {}, legendShape('empty'), ' empty'),
+      el('span', {}, legendShape('edge'), ' edge'),
+      el('span', {}, legendRing('#e0245e'), ' has notes'),
+      el('span', {}, legendRing('#111'), ' has a verdict')),
+    el('p', { class: 'map-note', text: `PCA of ${graph.features.join(', ')} (log1p, then z-scored); colors are k-means clusters (k=${graph.clusters}) on the 2-D projection. Click a point to open its trace.` })));
+}
+
+function topLoadings(loadings) {
+  return Object.entries(loadings)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 3)
+    .map(([name, w]) => `${name.replace(/_/g, ' ')} ${w >= 0 ? '+' : '−'}`)
+    .join(', ');
+}
+
+// ---------------------------------------------------------------------------
+// Progress view
+// ---------------------------------------------------------------------------
+
+function renderProgress() {
+  const root = $('#view-progress');
+  root.replaceChildren();
+  const n = state.samples.length;
+  const tally = { pass: 0, fail: 0, defer: 0 };
+  let spanNotes = 0;
+  let traceNotes = 0;
+  for (const s of state.samples) {
+    const a = state.annotations[s.id];
+    if (!a) continue;
+    if (a.verdict in tally) tally[a.verdict] += 1;
+    spanNotes += a.spans.length;
+    if (a.trace_note.trim()) traceNotes += 1;
+  }
+  const withVerdict = tally.pass + tally.fail + tally.defer;
+  const seg = (count, color) => el('span', { style: `width:${(100 * count) / (n || 1)}%;background:${color}` });
+  root.append(el('div', { class: 'panel' },
+    el('h2', { text: 'Progress' }),
+    el('div', { class: 'counts' },
+      el('span', {}, el('b', { text: `${withVerdict}/${n}` }), 'traces with a verdict'),
+      el('span', {}, el('b', { text: tally.pass }), 'pass'),
+      el('span', {}, el('b', { text: tally.fail }), 'fail'),
+      el('span', {}, el('b', { text: tally.defer }), 'defer'),
+      el('span', {}, el('b', { text: spanNotes }), 'span notes'),
+      el('span', {}, el('b', { text: traceNotes }), 'trace notes')),
+    el('div', { class: 'bar' }, seg(tally.pass, 'var(--pass)'), seg(tally.fail, 'var(--fail)'), seg(tally.defer, 'var(--defer)'))));
+
+  if (state.patterns && Array.isArray(state.patterns.failure_modes)) root.append(renderPatterns(state.patterns));
+
+  const list = el('div', { class: 'panel' }, el('h3', { text: 'Your notes, by trace' }));
+  let any = false;
+  for (const s of state.samples) {
+    const a = state.annotations[s.id];
+    if (!a || (!a.spans.length && !a.trace_note.trim() && a.verdict === 'unset')) continue;
+    any = true;
+    const items = [];
+    if (a.trace_note.trim()) {
+      items.push(el('li', { onclick: () => jumpTo(s.id, null) }, el('span', { class: 'pg-kind', text: 'trace' }), a.trace_note));
+    }
+    for (const span of a.spans) {
+      items.push(el('li', { onclick: () => jumpTo(s.id, span.id) },
+        el('span', { class: 'pg-kind', text: span.anchor.field.replace('_', ' ') }),
+        el('span', { class: 'pg-quote', text: `“${truncate(span.quote, 90)}” ` }),
+        span.note));
+    }
+    list.append(el('div', { class: 'pg-trace' },
+      el('div', { class: 'pg-head', onclick: () => jumpTo(s.id, null) },
+        `${s.id} · ${s.trace.case.query}`,
+        a.verdict !== 'unset' ? el('span', { class: 'vchip', style: `background:var(--${a.verdict})`, text: a.verdict }) : null),
+      items.length ? el('ul', { class: 'pg-list' }, items) : null));
+  }
+  if (!any) list.append(el('p', { class: 'muted-empty', text: 'No notes yet. Open a trace and select text to add one.' }));
+  root.append(list);
+}
+
+function resolveRef(ref) {
+  const a = state.annotations[ref.trace_id];
+  if (!a) return null;
+  if (!ref.span_id) return a.trace_note.trim() ? { quote: '', note: a.trace_note } : null;
+  const span = a.spans.find((s) => s.id === ref.span_id);
+  return span ? { quote: span.quote, note: span.note } : null;
+}
+
+function renderPatterns(patterns) {
+  const modes = patterns.failure_modes.map((m) => ({ ...m, notes: Array.isArray(m.notes) ? m.notes : [] }));
+  modes.sort((a, b) => b.notes.length - a.notes.length);
+  const box = el('div', { class: 'treemap' });
+  const rects = squarify(modes.map((m) => Math.max(m.notes.length, 0.5)), 0, 0, 100, 100);
+  modes.forEach((mode, i) => {
+    const r = rects[i];
+    const color = CLUSTER_COLORS[i % CLUSTER_COLORS.length];
+    const items = mode.notes.map((ref) => {
+      const found = resolveRef(ref);
+      const label = found ? found.note : '(this note no longer exists)';
+      return el('li', { onclick: () => jumpTo(ref.trace_id, ref.span_id || null), title: found && found.quote ? found.quote : '' },
+        el('b', { text: `${ref.trace_id} ` }), label);
+    });
+    box.append(el('div', {
+      class: 'tm-block',
+      style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%;background:${color}22;border-color:#fff;outline:1px solid ${color}66`,
+    },
+    el('h4', { text: `${mode.name} (${mode.notes.length})` }),
+    mode.description ? el('div', { class: 'tm-desc', text: mode.description }) : null,
+    el('ul', {}, items)));
+  });
+  const when = patterns.created || patterns.updated || '';
+  return el('div', { class: 'panel draft' },
+    el('h3', { text: 'Failure modes: agent DRAFT' }),
+    el('p', { class: 'draft-banner' },
+      el('b', { text: 'Draft, not accepted. ' }),
+      'An agent grouped your notes into these failure modes for you to accept or edit. ',
+      'The mode names and descriptions are the agent’s words; the listed notes are yours. ',
+      'Blocks are sized by note count.',
+      when ? ` Written ${when}.` : ''),
+    modes.length ? box : el('p', { class: 'muted-empty', text: 'The draft has no failure modes yet.' }));
+}
+
+// Squarified treemap in a w x h box; values sorted descending.
+function squarify(values, x, y, w, h) {
+  const total = values.reduce((s, v) => s + v, 0) || 1;
+  const areas = values.map((v) => (v * w * h) / total);
+  const rects = [];
+  const worst = (row, side) => {
+    const sum = row.reduce((s, v) => s + v, 0);
+    return Math.max(...row.map((a) => Math.max((side * side * a) / (sum * sum), (sum * sum) / (side * side * a))));
+  };
+  let i = 0;
+  while (i < areas.length) {
+    const side = Math.min(w, h);
+    const row = [areas[i]];
+    let j = i + 1;
+    while (j < areas.length && worst([...row, areas[j]], side) <= worst(row, side)) { row.push(areas[j]); j += 1; }
+    const sum = row.reduce((s, v) => s + v, 0);
+    if (w >= h) {
+      const rw = sum / h;
+      let yy = y;
+      for (const a of row) { rects.push({ x, y: yy, w: rw, h: a / rw }); yy += a / rw; }
+      x += rw; w -= rw;
+    } else {
+      const rh = sum / w;
+      let xx = x;
+      for (const a of row) { rects.push({ x: xx, y, w: a / rh, h: rh }); xx += a / rh; }
+      y += rh; h -= rh;
+    }
+    i = j;
+  }
+  return rects;
+}
+
+async function pollPatterns() {
+  try {
+    const res = await fetch('/api/patterns', { cache: 'no-store' });
+    if (!res.ok) return;
+    const text = await res.text();
+    if (text === state.patternsText) return;
+    const first = state.patternsText === null;
+    state.patternsText = text;
+    state.patterns = JSON.parse(text);
+    if (!first) toast('The agent DRAFT failure-mode taxonomy changed. See Progress.');
+    if (state.view === 'progress') renderProgress();
+  } catch (err) { /* try again next tick */ }
+}
+
+// ---------------------------------------------------------------------------
+// Navigation
+// ---------------------------------------------------------------------------
+
+function refreshPicker() {
+  const picker = $('#picker');
+  state.samples.forEach((s, i) => {
+    const a = state.annotations[s.id];
+    const verdict = a && a.verdict !== 'unset' ? ` [${a.verdict}]` : '';
+    const notes = noteCount(s.id) ? ` (${noteCount(s.id)})` : '';
+    picker.options[i].textContent = `${s.id}${verdict}${notes} · ${truncate(s.trace.case.query, 48)}`;
+  });
+  picker.selectedIndex = state.index;
+  $('#prev').disabled = state.index <= 0;
+  $('#next').disabled = state.index >= state.samples.length - 1;
+}
+
+function setView(view) {
+  cancelPending();
+  state.view = view;
+  for (const name of ['trace', 'map', 'progress']) $(`#view-${name}`).hidden = name !== view;
+  $$('#view-toggle button').forEach((b) => b.classList.toggle('active', b.dataset.view === view));
+  $('#tooltip').hidden = true;
+  if (view === 'trace') renderTrace();
+  if (view === 'map') renderMap();
+  if (view === 'progress') renderProgress();
+  history.replaceState(null, '', view === 'trace' ? `#${current().id}` : `#${view}`);
+}
+
+function openTrace(index) {
+  if (index === undefined || index < 0 || index >= state.samples.length) return;
+  state.index = index;
+  refreshPicker();
+  setView('trace');
+  window.scrollTo(0, 0);
+}
+
+function jumpTo(traceId, spanId) {
+  if (!state.indexById.has(traceId)) return;
+  openTrace(state.indexById.get(traceId));
+  requestAnimationFrame(() => {
+    if (spanId) {
+      if (highlightsOf(spanId).length) { revealSpan(spanId); return; }
+      const card = $$('.note-card').find((c) => c.dataset.span === spanId);
+      if (card) { card.scrollIntoView({ block: 'center' }); card.classList.add('linked'); }
+    } else {
+      const box = $('#trace-note');
+      box.scrollIntoView({ block: 'center' });
+      box.focus();
+    }
+  });
+}
+
+function routeFromHash() {
+  const hash = decodeURIComponent(location.hash.slice(1));
+  if (state.indexById.has(hash)) { openTrace(state.indexById.get(hash)); return; }
+  if (hash === 'map' || hash === 'progress') { refreshPicker(); setView(hash); return; }
+  openTrace(0);
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+function wireEvents() {
+  $$('#view-toggle button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('#prev').addEventListener('click', () => openTrace(state.index - 1));
+  $('#next').addEventListener('click', () => openTrace(state.index + 1));
+  $('#picker').addEventListener('change', (e) => openTrace(e.target.selectedIndex));
+  $('#save-status').addEventListener('click', retryFailed);
+
+  const input = $('#popover-input');
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitPending(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelPending(); }
+  });
+
+  // Any mousedown outside the popover cancels a pending note.
+  document.addEventListener('mousedown', (e) => {
+    if (state.pending && !e.target.closest('#popover')) cancelPending();
+  });
+  document.addEventListener('mouseup', (e) => {
+    if (state.view !== 'trace' || state.pending) return;
+    if (e.target.closest('#popover, .note-card, summary')) return;
+    setTimeout(handleSelection, 0);
+  });
+
+  // Hovering a highlight outlines its note.
+  document.addEventListener('mouseover', (e) => {
+    const mark = e.target.closest && e.target.closest('.hl');
+    $$('.note-card.linked').forEach((c) => c.classList.remove('linked'));
+    if (!mark) return;
+    const card = $$('.note-card').find((c) => c.dataset.span === mark.dataset.span);
+    if (card) card.classList.add('linked');
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey || e.altKey || state.pending) return;
+    const tag = e.target.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.target.isContentEditable) return;
+    if (e.key === 'j') openTrace(state.index + 1);
+    else if (e.key === 'k') openTrace(state.index - 1);
+    else if (state.view === 'trace' && ['1', '2', '3'].includes(e.key)) setVerdict(VERDICTS[Number(e.key) - 1]);
+  });
+
+  window.addEventListener('hashchange', routeFromHash);
+  window.addEventListener('resize', () => requestAnimationFrame(layoutNotes));
+  window.addEventListener('beforeunload', (e) => {
+    if (state.saveTimers.size || state.saving) e.preventDefault();
+  });
+}
+
+async function init() {
+  wireEvents();
+  try {
+    const [samples, annotations] = await Promise.all([getJSON('/api/samples'), getJSON('/api/annotations')]);
+    state.run = samples.run;
+    state.samples = samples.samples;
+    state.samples.forEach((s, i) => state.indexById.set(s.id, i));
+    state.annotations = (annotations && annotations.traces) || {};
+  } catch (err) {
+    $('#view-trace').replaceChildren(el('p', { text: `Could not load the run: ${err.message}` }));
+    return;
+  }
+  $('#run-name').textContent = state.run;
+  document.title = `Trace review · ${state.run}`;
+  $('#picker').replaceChildren(...state.samples.map((s) => el('option', { value: s.id, text: s.id })));
+  restoreBackup();
+  computeOutliers();
+  routeFromHash();
+  getJSON('/api/graph').then((graph) => {
+    state.graph = graph;
+    if (state.view === 'map') renderMap();
+  }).catch((err) => toast(`Could not load the map: ${err.message}`, 'error'));
+  pollPatterns();
+  setInterval(pollPatterns, POLL_MS);
+  if (document.fonts) document.fonts.ready.then(() => requestAnimationFrame(layoutNotes));
+}
+
+init();
+</script>
+</body>
+</html>
