@@ -731,29 +731,36 @@ not env-configurable -- only initial capital, fees, and slippage read
 ### MCP client usage
 
 ```python
+import asyncio
+
 from fastmcp import Client
 
-# `make dev` serves Streamable HTTP here (no trailing slash).
-async with Client("http://localhost:8003/mcp") as client:
-    # Run a backtest
-    result = await client.call_tool("backtesting_run_backtest", {
-        "symbol": "AAPL",
-        "strategy": "sma_cross",
-        "fast_period": 10,
-        "slow_period": 20,
-        "initial_capital": 50000,
-    })
 
-    # Optimize a strategy
-    optimization = await client.call_tool("backtesting_optimize_strategy", {
-        "symbol": "TSLA",
-        "strategy": "rsi",
-        "optimization_level": "medium",
-        "optimization_metric": "sharpe_ratio",
-    })
+async def main():
+    # `make dev` serves Streamable HTTP here (no trailing slash).
+    async with Client("http://localhost:8003/mcp") as client:
+        # Run a backtest
+        result = await client.call_tool("backtesting_run_backtest", {
+            "symbol": "AAPL",
+            "strategy": "sma_cross",
+            "fast_period": 10,
+            "slow_period": 20,
+            "initial_capital": 50000,
+        })
 
-    # List the strategy catalog
-    catalog = await client.call_tool("backtesting_list_strategies", {})
+        # Optimize a strategy
+        optimization = await client.call_tool("backtesting_optimize_strategy", {
+            "symbol": "TSLA",
+            "strategy": "rsi",
+            "optimization_level": "medium",
+            "optimization_metric": "sharpe_ratio",
+        })
+
+        # List the strategy catalog
+        catalog = await client.call_tool("backtesting_list_strategies", {})
+
+
+asyncio.run(main())
 ```
 
 ## Best Practices

@@ -45,7 +45,9 @@ v1.0.0. Update when behavior changes.
   `maverick/market_data/fetchers.py` records why.
 - A circuit breaker whose half-open probe is cancelled (for example by an
   `asyncio.wait_for` timeout) stays half-open, so every later call through
-  that breaker fails with `CircuitOpenError` until the server restarts.
+  that breaker fails with `CircuitOpenError` until the server restarts
+  (`CircuitBreaker.reset()` and `reset_breakers()` exist, but only tests
+  call them).
   `CircuitBreaker.call` in `maverick/platform/http.py` catches `Exception`,
   which does not include `asyncio.CancelledError`. A call admitted before the
   breaker opened can also close it when it completes late. Open as #272;
