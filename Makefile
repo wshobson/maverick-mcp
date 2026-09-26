@@ -126,7 +126,7 @@ eval-traces:
 eval-agent-install:
 	@mkdir -p .claude/agents
 	@sed "s|{REPO}|$(CURDIR)|g" evals/tool_surface/agent/maverick-eval-client.md > .claude/agents/maverick-eval-client.md
-	@echo "Installed .claude/agents/maverick-eval-client.md (restart Claude Code if .claude/agents is new)"
+	@echo "Installed .claude/agents/maverick-eval-client.md (restart Claude Code to load it)"
 
 eval-agent-case:
 	@uv run python -c "import json,sys; cases={c['id']:c for c in json.load(open('$(CASES)'))}; json.dump(cases['$(CASE)'], open('evals/tool_surface/.agent_case.json','w'))"

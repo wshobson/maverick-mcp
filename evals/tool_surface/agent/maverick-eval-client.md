@@ -55,12 +55,16 @@ tools:
   - mcp__maverick__technical_get_macd_analysis
   - mcp__maverick__technical_get_rsi_analysis
   - mcp__maverick__technical_get_support_resistance
+disallowedTools:
+  - mcp__maverick__research_analyze_company
+  - mcp__maverick__research_analyze_sentiment
+  - mcp__maverick__research_run_comprehensive
 mcpServers:
-  maverick:
-    type: stdio
-    command: {REPO}/.venv/bin/python
-    args: ["-m", "evals.tool_surface.agent_server"]
-    env:
-      PYTHONPATH: {REPO}
+  - maverick:
+      type: stdio
+      command: {REPO}/.venv/bin/python
+      args: ["-m", "evals.tool_surface.agent_server"]
+      env:
+        PYTHONPATH: {REPO}
 ---
 You are connected to the Maverick MCP server, which provides stock analysis tools.

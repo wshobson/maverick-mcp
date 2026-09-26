@@ -115,7 +115,7 @@ limits instead of the Agent SDK credit. The subagent is defined in
 Workflow, driven from a Claude Code session in this repo:
 
 ```bash
-make eval-agent-install   # once; restart Claude Code if .claude/agents is new
+make eval-agent-install   # then restart Claude Code; a running session kept the old agent
 make eval-agent-case CASES=evals/tool_surface/cases_batch2.json CASE=b01
 # spawn the maverick-eval-client subagent with the case query, verbatim
 uv run python -m evals.tool_surface.agent_trace --transcript <agent-*.jsonl> \
