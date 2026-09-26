@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient, SystemMessage
+from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from fastmcp import Client
 from fastmcp.client.transports import StdioTransport
 
@@ -110,19 +110,6 @@ def _options(
     )
 
 
-async def _wait_for_server(client: ClaudeSDKClient) -> None:
-    deadline = time.monotonic() + SERVER_WAIT_SECONDS
-    while True:
-        servers = (await client.get_mcp_status())["mcpServers"]
-        states = {server["name"]: server["status"] for server in servers}
-        state = states.get(harness.SERVER_NAME)
-        if state == "connected":
-            return
-        if state != "pending" or time.monotonic() > deadline:
-            raise HarnessAbort(f"maverick MCP server did not connect: {states}")
-        await asyncio.sleep(0.5)
-
-
 async def run_case(run: Run, case: dict[str, Any]) -> tuple[dict[str, Any], str | None]:
     """Run one query once. Returns its trace and a reason to stop, if any."""
     workdir = run.scratch / case["id"]
@@ -140,14 +127,10 @@ async def run_case(run: Run, case: dict[str, Any]) -> tuple[dict[str, Any], str 
             asyncio.timeout(QUERY_TIMEOUT_SECONDS),
             ClaudeSDKClient(_options(run, workdir, server_env, stderr)) as client,
         ):
-            await _wait_for_server(client)
-            await client.query(case["query"])
-            async for message in client.receive_response():
-                builder.add(message)
-                if isinstance(message, SystemMessage) and message.subtype == "init":
-                    if problems := harness.init_problems(message.data, run.allowed):
-                        abort = "init check failed: " + "; ".join(problems)
-                        break
+            # Checks auth, servers, and tools before the prompt goes out.
+            abort = await harness.converse(
+                client, case["query"], run.allowed, builder, SERVER_WAIT_SECONDS
+            )
     except Exception as exc:  # recorded in the trace and run.json, never retried
         abort = f"{type(exc).__name__}: {exc}"
     result = builder.result

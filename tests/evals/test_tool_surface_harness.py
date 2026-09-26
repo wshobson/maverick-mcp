@@ -1,9 +1,7 @@
-"""The pure pieces of evals/tool_surface: the env guard, the tool-list check,
-the budget stop, and message-to-trace assembly. No SDK and no network: the
-stand-in classes below carry the SDK's class and field names, which is all
-`harness.TraceBuilder` matches on."""
+"""The pure pieces of evals/tool_surface: the env guard, the post-prompt
+init check, the budget stop, and message-to-trace assembly. No SDK and no
+network; `_fakes` holds the SDK stand-ins."""
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -11,62 +9,19 @@ import pytest
 
 from evals.tool_surface import harness
 
-P = harness.TOOL_PREFIX
-
-
-@dataclass
-class SystemMessage:
-    subtype: str
-    data: dict[str, Any]
-
-
-@dataclass
-class TextBlock:
-    text: str
-
-
-@dataclass
-class ThinkingBlock:
-    thinking: str
-    signature: str = ""
-
-
-@dataclass
-class ToolUseBlock:
-    id: str
-    name: str
-    input: dict[str, Any]
-
-
-@dataclass
-class ToolResultBlock:
-    tool_use_id: str
-    content: str | list[dict[str, Any]] | None = None
-    is_error: bool | None = None
-
-
-@dataclass
-class AssistantMessage:
-    content: list[Any]
-    model: str = "claude-opus-5-5"
-    error: str | None = None
-
-
-@dataclass
-class UserMessage:
-    content: str | list[Any]
-
-
-@dataclass
-class ResultMessage:
-    subtype: str
-    duration_ms: int
-    is_error: bool
-    num_turns: int
-    total_cost_usd: float | None
-    result: str | None
-    usage: dict[str, Any] = field(default_factory=dict)
-    permission_denials: list[Any] = field(default_factory=list)
+from ._fakes import (
+    ALLOWED,
+    AssistantMessage,
+    P,
+    ResultMessage,
+    SystemMessage,
+    TextBlock,
+    ThinkingBlock,
+    ToolResultBlock,
+    ToolUseBlock,
+    UserMessage,
+    init_data,
+)
 
 
 class TestEnvGuard:
@@ -100,16 +55,9 @@ class TestEnvGuard:
         assert found == ["REDIS_HOST", "TIINGO_API_KEY"]
 
 
-class TestToolListCheck:
-    ALLOWED = [f"{P}market_data_get_quote", f"{P}portfolio_get_my_portfolio"]
-
+class TestInitCheck:
     def _init(self, **overrides: Any) -> dict[str, Any]:
-        init: dict[str, Any] = {
-            "apiKeySource": "none",
-            "tools": list(self.ALLOWED),
-            "mcp_servers": [{"name": "maverick", "status": "connected"}],
-        }
-        return init | overrides
+        return init_data(**overrides)
 
     def test_split_excludes_research_tools(self) -> None:
         allowed, excluded = harness.split_server_tools(
@@ -119,17 +67,17 @@ class TestToolListCheck:
         assert excluded == [f"{P}research_analyze_company"]
 
     def test_clean_init_passes(self) -> None:
-        assert harness.init_problems(self._init(), self.ALLOWED) == []
+        assert harness.init_problems(self._init(), ALLOWED) == []
 
     @pytest.mark.parametrize("source", ["ANTHROPIC_API_KEY", "apiKeyHelper", None])
     def test_any_api_key_source_fails(self, source: str | None) -> None:
-        problems = harness.init_problems(self._init(apiKeySource=source), self.ALLOWED)
+        problems = harness.init_problems(self._init(apiKeySource=source), ALLOWED)
         assert problems and "apiKeySource" in problems[0]
 
     @pytest.mark.parametrize("extra", ["Bash", f"{P}research_run_comprehensive"])
     def test_built_in_or_research_tool_fails(self, extra: str) -> None:
-        init = self._init(tools=[*self.ALLOWED, extra])
-        assert harness.init_problems(init, self.ALLOWED) == [
+        init = self._init(tools=[*ALLOWED, extra])
+        assert harness.init_problems(init, ALLOWED) == [
             f"unexpected tools advertised: ['{extra}']"
         ]
 
@@ -138,21 +86,34 @@ class TestToolListCheck:
             {"name": "maverick", "status": "connected"},
             {"name": "other", "status": "connected"},
         ]
-        init = self._init(tools=self.ALLOWED[:1], mcp_servers=servers)
-        problems = harness.init_problems(init, self.ALLOWED)
+        init = self._init(tools=ALLOWED[:1], mcp_servers=servers)
+        problems = harness.init_problems(init, ALLOWED)
         assert len(problems) == 2
         assert "missing" in problems[0] and "MCP servers" in problems[1]
 
 
 class TestBudgetStop:
-    def test_smoke_runs_under_the_per_query_cap(self) -> None:
-        assert harness.budget_stop_reason(0.0, None, 6.0, 0.40) is None
-        assert harness.budget_stop_reason(0.0, None, 0.30, 0.40) is not None
+    CAP, PER_QUERY = 6.0, 0.40
 
-    def test_stops_when_spend_plus_one_and_a_half_smoke_passes_the_cap(self) -> None:
-        assert harness.budget_stop_reason(5.70, 0.20, 6.0, 0.40) is None
-        reason = harness.budget_stop_reason(5.71, 0.20, 6.0, 0.40)
-        assert reason is not None and "$6.00 cap" in reason
+    def _stop(self, spent: float, smoke_cost: float | None) -> str | None:
+        return harness.budget_stop_reason(spent, smoke_cost, self.CAP, self.PER_QUERY)
+
+    def test_smoke_query_needs_room_for_the_per_query_cap(self) -> None:
+        assert self._stop(0.0, None) is None
+        assert harness.budget_stop_reason(0.0, None, 0.30, self.PER_QUERY)
+
+    def test_cheap_smoke_still_reserves_the_per_query_cap(self) -> None:
+        # 1.5x a $0.02 smoke is $0.03, but a query can cost up to $0.40.
+        assert self._stop(5.50, 0.02) is None
+        reason = self._stop(5.61, 0.02)
+        assert reason is not None and "$0.4000 worst case" in reason
+        assert "$6.00 cap" in reason
+
+    def test_expensive_smoke_raises_the_estimate(self) -> None:
+        # 1.5x a $0.30 smoke is $0.45, above the $0.40 per-query cap.
+        assert self._stop(5.50, 0.30) is None
+        reason = self._stop(5.56, 0.30)
+        assert reason is not None and "$0.4500 worst case" in reason
 
 
 def test_trace_assembly_pairs_tool_calls_with_results() -> None:

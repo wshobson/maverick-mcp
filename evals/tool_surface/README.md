@@ -29,12 +29,18 @@ make eval-traces                              # $6.00 cap by default
 make eval-traces ARGS="--budget-usd 3 --model claude-opus-5-5"
 ```
 
-The run starts with one smoke query (q01). It stops unless the init message
-reports `apiKeySource` as `none`, advertises exactly the Maverick tools (no
-built-ins and no `research_*` tools), and the query reports a cost. The other
-queries then run one at a time. A query does not start when the spend so far
-plus 1.5 times the smoke cost would pass the cap, and each query has its own
-$0.40 limit. No query is retried.
+Before each prompt is sent, the harness connects the CLI and checks the
+session. No API key may be in use, the login must be a Claude subscription,
+only the `maverick` server may be connected, and the model must see exactly
+the Maverick tools (no built-ins and no `research_*` tools). If any check
+fails, the run stops and no prompt is sent. After the prompt, the init message
+is checked again, and it must report `apiKeySource` as `none`.
+
+The run starts with one smoke query (q01), which must also report a cost. The
+other queries then run one at a time. Each query has its own $0.40 limit. A
+query does not start when the spend so far plus its worst case would pass the
+cap. The worst case is $0.40, or 1.5 times the smoke cost if that is larger.
+No query is retried.
 
 Each query gets a fresh copy of its seeded database in a temporary directory
 outside the repository, and the server gets only `PATH`, `HOME`,

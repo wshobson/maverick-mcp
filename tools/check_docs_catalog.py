@@ -35,6 +35,10 @@ CONCISE_LIMITS = {
 
 LINK_RE = re.compile(r"!?\[[^\]]+\]\(([^)]+)\)")
 CATALOG_TOKEN_RE = re.compile(r"`([^`]+)`")
+# The Path cell of a catalog table row that points outside docs/.
+OUTSIDE_PATH_CELL_RE = re.compile(r"^\|\s*`\.\./([^`]+)`\s*\|")
+# Only these catalog sections approve a doc that lives outside docs/.
+APPROVING_SECTIONS = ("## Current", "## Historical")
 EXTERNAL_SCHEMES = (
     "http://",
     "https://",
@@ -83,11 +87,26 @@ def is_allowlisted(path: Path) -> bool:
     )
 
 
+def approved_outside_docs(catalog: str) -> set[str]:
+    """Paths outside docs/ listed as `../<path>` in a Current or Historical row."""
+    approved: set[str] = set()
+    section = ""
+    for line in catalog.splitlines():
+        if line.startswith("## "):
+            section = line.strip()
+        elif section in APPROVING_SECTIONS and (
+            match := OUTSIDE_PATH_CELL_RE.match(line)
+        ):
+            approved.add(match.group(1))
+    return approved
+
+
 def validate_catalog(paths: list[Path]) -> list[str]:
     """Validate that tracked docs are allowlisted or cataloged exactly."""
     errors: list[str] = []
     catalog = CATALOG_PATH.read_text(encoding="utf-8")
     catalog_entries = set(CATALOG_TOKEN_RE.findall(catalog))
+    approved_outside = approved_outside_docs(catalog)
 
     for path in paths:
         path_str = path.as_posix()
@@ -98,8 +117,7 @@ def validate_catalog(paths: list[Path]) -> list[str]:
             if catalog_key not in catalog_entries:
                 errors.append(f"{path_str} is missing from docs/CATALOG.md")
             continue
-        # A doc outside docs/ is approved by a catalog entry relative to docs/.
-        if f"../{path_str}" in catalog_entries:
+        if path_str in approved_outside:
             continue
         errors.append(f"{path_str} is a tracked doc outside approved locations")
 

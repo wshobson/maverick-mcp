@@ -1,14 +1,16 @@
 """Pure pieces of the tool-surface trace harness: the auth guard, the explicit
-environments, the init-message checks, the budget stop, and trace assembly.
+environments, the session checks, the budget stop, and trace assembly.
 
 Nothing here imports `claude_agent_sdk`, so `tests/evals` can run it without
 the `evals` dependency group. SDK messages and content blocks are therefore
 matched by class name (`AssistantMessage`, `ToolUseBlock`, ...).
 """
 
-from collections.abc import Iterable, Mapping
+import asyncio
+import time
+from collections.abc import AsyncIterator, Iterable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 SERVER_NAME = "maverick"
 TOOL_PREFIX = f"mcp__{SERVER_NAME}__"
@@ -83,35 +85,135 @@ def split_server_tools(names: Iterable[str]) -> tuple[list[str], list[str]]:
     return [n for n in prefixed if n not in excluded], excluded
 
 
-def init_problems(init: Mapping[str, Any], expected_tools: Iterable[str]) -> list[str]:
-    """Everything wrong with the CLI's init message; empty means safe to run."""
+def _tool_problems(tools: Iterable[str], expected_tools: Iterable[str]) -> list[str]:
+    tools, expected = set(tools), set(expected_tools)
     problems = []
-    source = init.get("apiKeySource")
-    if source != SUBSCRIPTION_KEY_SOURCE:
-        problems.append(f"apiKeySource is {source!r}, expected 'none' (subscription)")
-    tools, expected = set(init.get("tools", [])), set(expected_tools)
     if extra := sorted(tools - expected):
         problems.append(f"unexpected tools advertised: {extra}")
     if missing := sorted(expected - tools):
         problems.append(f"expected tools missing: {missing}")
-    servers = {s.get("name"): s.get("status") for s in init.get("mcp_servers", [])}
-    if servers != {SERVER_NAME: "connected"}:
-        problems.append(f"MCP servers are {servers}, expected only maverick connected")
     return problems
+
+
+def _server_problems(servers: Iterable[Mapping[str, Any]]) -> list[str]:
+    states = {server.get("name"): server.get("status") for server in servers}
+    if states != {SERVER_NAME: "connected"}:
+        return [f"MCP servers are {states}, expected only maverick connected"]
+    return []
+
+
+def handshake_problems(
+    info: Mapping[str, Any] | None,
+    servers: Iterable[Mapping[str, Any]],
+    usage: Mapping[str, Any],
+    expected_tools: Iterable[str],
+) -> list[str]:
+    """Everything wrong with a connected session, found before any prompt.
+
+    `info` is the CLI's initialize response. Its `account` carries
+    `apiKeySource` only when an API key is in use, so that key must be absent,
+    and a subscription login reports a first-party `subscriptionType`. `usage`
+    is the context breakdown, which lists the built-in and MCP tools the model
+    would see."""
+    account = (info or {}).get("account") or {}
+    problems = []
+    if (source := account.get("apiKeySource")) is not None:
+        problems.append(f"an API key is in use (apiKeySource {source!r})")
+    provider, plan = account.get("apiProvider"), account.get("subscriptionType")
+    if provider != "firstParty" or not plan:
+        problems.append(
+            f"no subscription login (apiProvider {provider!r}, plan {plan!r})"
+        )
+    builtins = [
+        tool.get("name")
+        for key in ("systemTools", "deferredBuiltinTools")
+        for tool in usage.get(key, [])
+    ]
+    if builtins:
+        problems.append(f"built-in tools advertised: {builtins}")
+    mcp_tools = [tool.get("name", "") for tool in usage.get("mcpTools", [])]
+    problems += _tool_problems(mcp_tools, expected_tools)
+    return problems + _server_problems(servers)
+
+
+def init_problems(init: Mapping[str, Any], expected_tools: Iterable[str]) -> list[str]:
+    """Everything wrong with the CLI's post-prompt init message (second check)."""
+    problems = []
+    source = init.get("apiKeySource")
+    if source != SUBSCRIPTION_KEY_SOURCE:
+        problems.append(f"apiKeySource is {source!r}, expected 'none' (subscription)")
+    problems += _tool_problems(init.get("tools", []), expected_tools)
+    return problems + _server_problems(init.get("mcp_servers", []))
 
 
 def budget_stop_reason(
     spent: float, smoke_cost: float | None, cap: float, per_query_cap: float
 ) -> str | None:
-    """Why the next query must not start, or None. Before the smoke query the
-    per-query cap stands in for the estimate; after it, 1.5x the smoke cost."""
-    estimate = per_query_cap if smoke_cost is None else SMOKE_MARGIN * smoke_cost
+    """Why the next query must not start, or None. The estimate is the worst
+    case: the per-query cap, or 1.5x the smoke cost when that is larger."""
+    estimate = per_query_cap
+    if smoke_cost is not None:
+        estimate = max(per_query_cap, SMOKE_MARGIN * smoke_cost)
     if spent + estimate > cap:
         return (
-            f"budget: ${spent:.4f} spent + ${estimate:.4f} estimated for the next "
+            f"budget: ${spent:.4f} spent + ${estimate:.4f} worst case for the next "
             f"query exceeds the ${cap:.2f} cap"
         )
     return None
+
+
+class SessionClient(Protocol):
+    """The parts of `ClaudeSDKClient` the session protocol below uses."""
+
+    async def get_server_info(self) -> dict[str, Any] | None: ...
+    async def get_mcp_status(self) -> Any: ...
+    async def get_context_usage(self) -> Any: ...
+    async def query(self, prompt: str) -> None: ...
+    def receive_response(self) -> AsyncIterator[Any]: ...
+
+
+async def wait_for_server(
+    client: SessionClient, timeout_seconds: float
+) -> list[dict[str, Any]]:
+    """Poll the MCP status until maverick is no longer pending, or time out."""
+    deadline = time.monotonic() + timeout_seconds
+    while True:
+        servers = (await client.get_mcp_status())["mcpServers"]
+        state = next((s["status"] for s in servers if s["name"] == SERVER_NAME), None)
+        if state != "pending" or time.monotonic() > deadline:
+            return servers
+        await asyncio.sleep(0.5)
+
+
+async def converse(
+    client: SessionClient,
+    prompt: str,
+    expected_tools: list[str],
+    builder: "TraceBuilder",
+    server_wait_seconds: float,
+) -> str | None:
+    """Check the connected session, and only then send `prompt` and collect
+    the reply into `builder`. Returns a reason to stop the run, or None.
+
+    When the pre-prompt check fails, no prompt is ever sent, so nothing is
+    billed. The init message that follows the prompt is checked again."""
+    servers = await wait_for_server(client, server_wait_seconds)
+    info = await client.get_server_info()
+    usage = await client.get_context_usage()
+    if problems := handshake_problems(info, servers, usage, expected_tools):
+        return "session check failed before any prompt: " + "; ".join(problems)
+    await client.query(prompt)
+    async for message in client.receive_response():
+        builder.add(message)
+        if _is_init(message) and (
+            problems := init_problems(message.data, expected_tools)
+        ):
+            return "init check failed: " + "; ".join(problems)
+    return None
+
+
+def _is_init(message: Any) -> bool:
+    return type(message).__name__ == "SystemMessage" and message.subtype == "init"
 
 
 def _result_text(content: Any) -> str:
@@ -138,7 +240,7 @@ class TraceBuilder:
 
     def add(self, message: Any) -> None:
         kind = type(message).__name__
-        if kind == "SystemMessage" and message.subtype == "init":
+        if _is_init(message):
             self.init = message.data
         elif kind == "AssistantMessage":
             if message.error:
