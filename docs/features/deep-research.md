@@ -154,12 +154,10 @@ LLM_TEMPERATURE=0.0             # optional, defaults to 0.0
   three speak the OpenAI wire protocol) is imported lazily inside
   `get_llm()`, so `maverick.platform` stays importable with no `langchain*`
   package installed.
-- `get_llm()` always sends `LLM_TEMPERATURE` (default `0.0`), and
-  `langchain-anthropic` drops it only for `claude-fable-5*` models. Claude
-  Sonnet 5 rejects any non-default value with a 400 but accepts `1.0`, so
-  set `LLM_TEMPERATURE=1.0` to use it. Claude Opus 4.7 and later reject the
-  parameter at any value, so they cannot back these tools until
-  `platform/llm.py` omits it for them.
+- `get_llm()` always sends `LLM_TEMPERATURE` (default `0.0`). Claude models
+  released after Claude Opus 4.6 (Claude Sonnet 5, Claude Opus 4.7 and
+  later) accept only `temperature=1.0` and reject any other value with a
+  400, so set `LLM_TEMPERATURE=1.0` when `LLM_MODEL` names one of them.
 
 BYOK settings design adapted from PR #132 by ne0ark (credit preserved in
 `maverick/platform/llm.py`'s module docstring).
