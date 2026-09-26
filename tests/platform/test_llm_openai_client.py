@@ -27,7 +27,9 @@ _ENV_VARS = (
     # shell must not redirect the tests.
     "OPENAI_BASE_URL",
     "OPENAI_API_BASE",
-    # The loopback request must not be routed through a proxy.
+    # The loopback request must not be routed through a proxy. ChatOpenAI
+    # also reads its own OPENAI_PROXY.
+    "OPENAI_PROXY",
     "HTTP_PROXY",
     "HTTPS_PROXY",
     "ALL_PROXY",
