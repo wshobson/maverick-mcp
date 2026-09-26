@@ -2,9 +2,9 @@
 
 from functools import lru_cache
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field
 
-from maverick.platform.config import _clean_env, _env_int
+from maverick.platform.config import _env_int
 
 _DEFAULT_INDICES: dict[str, str] = {
     "^GSPC": "S&P 500",
@@ -30,15 +30,7 @@ _DEFAULT_SECTOR_ETFS: dict[str, str] = {
 }
 
 
-def _resolve_capital_companion_api_key() -> SecretStr | None:
-    value = _clean_env("CAPITAL_COMPANION_API_KEY")
-    return SecretStr(value) if value is not None else None
-
-
 class MarketDataSettings(BaseModel):
-    capital_companion_api_key: SecretStr | None = Field(
-        default_factory=_resolve_capital_companion_api_key
-    )
     quote_ttl_seconds: int = Field(
         default_factory=lambda: _env_int("MD_QUOTE_TTL_SECONDS", 60)
     )

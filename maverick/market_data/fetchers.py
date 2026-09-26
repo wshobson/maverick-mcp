@@ -1,24 +1,20 @@
-"""External market data fetchers. Third layer: imports config and types."""
+"""External market data fetchers. Third layer: imports only the platform."""
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Callable
 from typing import Any
 
-import httpx
 import pandas as pd
 
-from maverick.market_data.config import MarketDataSettings, get_market_data_settings
 from maverick.platform.config import HttpSettings
-from maverick.platform.http import create_client, get_breaker, request_with_retry
+from maverick.platform.http import get_breaker
 
 _YFINANCE_RETRIES = 2
-_CAPITAL_COMPANION_RETRIES = 2
 
 HistoryFn = Callable[..., pd.DataFrame]
 InfoFn = Callable[[str], dict[str, Any]]
 DownloadFn = Callable[..., dict[str, pd.DataFrame]]
 MoverTierFn = Callable[[str, int], list[dict[str, Any]]]
-ExternalClientFn = Callable[[str, int], Awaitable[list[dict[str, Any]]]]
 
 
 def _default_history_fn(
@@ -121,37 +117,20 @@ class YFinanceFetcher:
 
 
 class MoverFetcher:
-    """Three-tier mover lookup: Capital Companion -> finviz -> yfinance batch.
+    """Two-tier mover lookup: finviz -> yfinance batch.
 
     Each tier is an injected callable. A raised exception or an empty result
-    from a tier falls through to the next one; exhausting all tiers (or
-    having none configured) returns `[]`. The Capital Companion tier is only
-    attempted when both `external_client` is injected and the settings key
-    is configured.
+    from a tier falls through to the next one; exhausting both tiers (or
+    having none configured) returns `[]`.
     """
 
     def __init__(
         self,
-        external_client: ExternalClientFn | None = None,
         finviz_fn: MoverTierFn | None = None,
         batch_quote_fn: MoverTierFn | None = None,
-        *,
-        settings: MarketDataSettings | None = None,
     ) -> None:
-        self._external_client = external_client
         self._finviz_fn = finviz_fn
         self._batch_quote_fn = batch_quote_fn
-        self._settings = settings or get_market_data_settings()
-
-    async def _from_external(self, kind: str, limit: int) -> list[dict[str, Any]]:
-        if self._external_client is None:
-            return []
-        if self._settings.capital_companion_api_key is None:
-            return []
-        try:
-            return await self._external_client(kind, limit)
-        except Exception:
-            return []
 
     async def _from_finviz(self, kind: str, limit: int) -> list[dict[str, Any]]:
         if self._finviz_fn is None:
@@ -170,7 +149,7 @@ class MoverFetcher:
             return []
 
     async def _movers(self, kind: str, limit: int) -> list[dict[str, Any]]:
-        for tier in (self._from_external, self._from_finviz, self._from_batch_quote):
+        for tier in (self._from_finviz, self._from_batch_quote):
             result = await tier(kind, limit)
             if result:
                 return result
@@ -186,33 +165,9 @@ class MoverFetcher:
         return await self._movers("most_active", limit)
 
 
-async def fetch_capital_companion(
-    client: httpx.AsyncClient, endpoint: str, api_key: str
-) -> list[dict[str, Any]]:
-    """Fetch a list payload from the Capital Companion API, retrying transient failures."""
-    response = await request_with_retry(
-        client,
-        "GET",
-        endpoint,
-        retries=_CAPITAL_COMPANION_RETRIES,
-        backoff_base=0.0,
-        headers={"X-API-KEY": api_key},
-    )
-    response.raise_for_status()
-    data = response.json()
-    return data if isinstance(data, list) else []
-
-
 # ---------------------------------------------------------------------------
 # Production MoverFetcher wiring
 # ---------------------------------------------------------------------------
-
-_CAPITAL_COMPANION_BASE_URL = "https://capitalcompanion.ai"
-_CAPITAL_COMPANION_ENDPOINTS = {
-    "gainers": "gainers",
-    "losers": "losers",
-    "most_active": "most-active",
-}
 
 _FINVIZ_FILTERS = {
     "gainers": {"Change": "Up 5%", "Average Volume": "Over 1M", "Price": "Over $5"},
@@ -222,7 +177,7 @@ _FINVIZ_FILTERS = {
 
 # Small, liquid last-resort universe for the yfinance tier -- yfinance has no
 # screener API, so this tier can only re-rank a fixed candidate list rather
-# than discover movers the way Capital Companion and finviz do.
+# than discover movers the way finviz does.
 _YFINANCE_TIER_SYMBOLS = (
     "AAPL",
     "MSFT",
@@ -240,20 +195,6 @@ _YFINANCE_TIER_SYMBOLS = (
     "MA",
     "DIS",
 )
-
-
-def _build_capital_companion_tier(api_key: str) -> ExternalClientFn:
-    """Bind an async Capital Companion tier callable for the given API key."""
-
-    async def _call(kind: str, limit: int) -> list[dict[str, Any]]:
-        endpoint = _CAPITAL_COMPANION_ENDPOINTS.get(kind)
-        if endpoint is None:
-            return []
-        url = f"{_CAPITAL_COMPANION_BASE_URL}/{endpoint}"
-        async with create_client() as client:
-            return await fetch_capital_companion(client, url, api_key)
-
-    return _call
 
 
 def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
@@ -283,7 +224,7 @@ def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
 
 
 def _build_yfinance_tier(download_fn: DownloadFn) -> MoverTierFn:
-    """Bind the sync tier-3 callable `MoverFetcher` runs via `asyncio.to_thread`.
+    """Bind the sync tier-2 callable `MoverFetcher` runs via `asyncio.to_thread`.
 
     Calls the raw sync `download_fn` binding directly -- no breaker, no
     retry, no nested event loop -- because `MoverFetcher._from_batch_quote`
@@ -328,16 +269,13 @@ def _build_yfinance_tier(download_fn: DownloadFn) -> MoverTierFn:
 
 
 def build_mover_fetcher(
-    settings: MarketDataSettings,
     yf: YFinanceFetcher,
     download_fn: DownloadFn | None = None,
 ) -> MoverFetcher:
-    """Production factory: wire the three-tier mover fallback chain.
+    """Production factory: wire the two-tier mover fallback chain.
 
-    Tier 1 (Capital Companion) is bound only when an API key is configured,
-    so its absence is visible at construction time, not just at call time.
-    Tier 2 (finviz) is bound unconditionally but never imports
-    `finvizfinance` until the tier actually runs. Tier 3 falls back to a
+    Tier 1 (finviz) is bound unconditionally but never imports
+    `finvizfinance` until the tier actually runs. Tier 2 falls back to a
     small liquid-stock scan using a raw sync download callable, called
     directly (never through `yf.batch_history`'s async/breaker path -- see
     `_build_yfinance_tier`). Defaults to reusing `yf`'s own resolved
@@ -345,15 +283,7 @@ def build_mover_fetcher(
     or whatever a test injected into `yf`); pass `download_fn` explicitly
     to override it independently of `yf`.
     """
-    api_key = settings.capital_companion_api_key
-    external_client = (
-        _build_capital_companion_tier(api_key.get_secret_value())
-        if api_key is not None
-        else None
-    )
     return MoverFetcher(
-        external_client=external_client,
         finviz_fn=_finviz_tier,
         batch_quote_fn=_build_yfinance_tier(download_fn or yf.download_fn),
-        settings=settings,
     )

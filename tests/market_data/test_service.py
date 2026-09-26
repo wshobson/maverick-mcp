@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.data import METADATA, write_price_bars
 from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher
 from maverick.market_data.service import MarketDataService
@@ -474,10 +473,7 @@ async def test_get_movers_maps_dicts_to_mover_models(tmp_path):
             }
         ]
 
-    movers = MoverFetcher(
-        finviz_fn=fake_finviz,
-        settings=MarketDataSettings(capital_companion_api_key=None),
-    )
+    movers = MoverFetcher(finviz_fn=fake_finviz)
     service = MarketDataService(engine, _cache(tmp_path), YFinanceFetcher(), movers)
 
     result = await service.get_movers("gainers", 5)

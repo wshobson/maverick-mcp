@@ -34,11 +34,7 @@ _ELEVEN_SECTOR_ETFS = {
 
 @pytest.fixture(autouse=True)
 def _fresh_settings(monkeypatch):
-    for var in (
-        "CAPITAL_COMPANION_API_KEY",
-        "MD_QUOTE_TTL_SECONDS",
-        "MD_OVERVIEW_TTL_SECONDS",
-    ):
+    for var in ("MD_QUOTE_TTL_SECONDS", "MD_OVERVIEW_TTL_SECONDS"):
         monkeypatch.delenv(var, raising=False)
     reset_market_data_settings()
     yield
@@ -47,7 +43,6 @@ def _fresh_settings(monkeypatch):
 
 def test_defaults_are_zero_config(monkeypatch):
     s = MarketDataSettings()
-    assert s.capital_companion_api_key is None
     assert s.quote_ttl_seconds == 60
     assert s.overview_ttl_seconds == 300
     assert s.mover_limit_default == 10
@@ -64,11 +59,12 @@ def test_env_overrides(monkeypatch):
     assert s.overview_ttl_seconds == 120
 
 
-def test_capital_companion_api_key_is_secret(monkeypatch):
-    monkeypatch.setenv("CAPITAL_COMPANION_API_KEY", "supersecret")
-    s = MarketDataSettings()
-    assert "supersecret" not in repr(s)
-    assert s.capital_companion_api_key.get_secret_value() == "supersecret"
+def test_settings_ignore_a_leftover_capital_companion_key(monkeypatch):
+    monkeypatch.setenv("CAPITAL_COMPANION_API_KEY", "left-over-from-an-old-env")
+    with_key = MarketDataSettings()
+    monkeypatch.delenv("CAPITAL_COMPANION_API_KEY")
+
+    assert with_key == MarketDataSettings()
 
 
 def test_singleton_and_reset(monkeypatch):
