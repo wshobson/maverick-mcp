@@ -91,6 +91,12 @@ never produces a sector-concentration alert.
 - Shares added or removed must be positive.
 - Purchase price must be positive.
 - Removing more shares than owned closes the position.
+- A sale amount is rounded to 8 places before it is subtracted. A sale whose
+  remaining shares round to 0 at 8 places, or whose remaining total cost
+  rounds to 0 at 4 places, closes the position.
+- A purchase is rejected as too small when its total cost rounds to 0 at 4
+  places (or its share count or average cost basis rounds to 0), for example
+  0.001 shares at 0.01.
 - Current price may be unavailable; in that case portfolio display should
   degrade without inventing market values.
 

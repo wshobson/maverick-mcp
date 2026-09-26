@@ -343,6 +343,63 @@ async def test_add_position_rejects_price_over_settings_max(tmp_path):
         )
 
 
+@pytest.mark.parametrize(
+    ("shares", "price", "reason"),
+    [
+        ("0.001", "0.01", "total cost rounds to 0 at 4"),
+        ("0.000000004", "100", "total cost rounds to 0 at 4"),
+        ("1", "0.00004", "total cost rounds to 0 at 4"),
+        ("0.000000004", "20000", "share count rounds to 0 at 8"),
+        ("10", "0.00004", "average cost basis rounds to 0 at 4"),
+    ],
+)
+async def test_add_position_rejects_a_position_too_small_to_store(
+    tmp_path, shares, price, reason
+):
+    service = _service(tmp_path)
+
+    with pytest.raises(ValueError) as excinfo:
+        await service.add_position(
+            "default",
+            "My Portfolio",
+            "AAPL",
+            Decimal(shares),
+            Decimal(price),
+            "2026-01-01",
+        )
+
+    assert str(excinfo.value) == (
+        f"Position too small: {reason} decimal places (shares={shares}, price={price})."
+    )
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+    assert snapshot.positions == []
+
+
+async def test_add_position_rejects_a_merge_whose_basis_rounds_to_zero(tmp_path):
+    service = _service(tmp_path)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("1"), Decimal("0.0001"), "2026-01-01"
+    )
+
+    # (0.0001 + 10 * 0.00001) / 11 = 0.0000181..., which rounds to 0.0000.
+    with pytest.raises(ValueError) as excinfo:
+        await service.add_position(
+            "default",
+            "My Portfolio",
+            "AAPL",
+            Decimal("10"),
+            Decimal("0.00001"),
+            "2026-01-02",
+        )
+
+    assert str(excinfo.value) == (
+        "Position too small: average cost basis rounds to 0 at 4 decimal places "
+        "(shares=10, price=0.00001)."
+    )
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+    assert snapshot.positions[0].shares == Decimal("1")
+
+
 async def test_add_position_defaults_purchase_date_to_today(tmp_path):
     service = _service(tmp_path)
 
@@ -385,6 +442,72 @@ async def test_remove_position_full_close_removes_row(tmp_path):
 
     assert result.position_fully_closed is True
     assert result.shares_removed == Decimal("10")
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+    assert snapshot.positions == []
+
+
+@pytest.mark.parametrize("price", ["100", "6000"], ids=["error", "dust"])
+async def test_selling_exactly_the_shares_bought_closes_the_position(tmp_path, price):
+    # The tools build Decimals with Decimal(str(float)). The purchase stores
+    # 0.12345679 shares. Subtracting the unrounded sale left 0.00000001:
+    # at 100 its cost rounded to 0 (a validation error), at 6000 it stayed
+    # behind as dust.
+    service = _service(tmp_path)
+    await service.add_position(
+        "default",
+        "My Portfolio",
+        "AAPL",
+        Decimal(str(0.123456785)),
+        Decimal(price),
+        "2026-01-01",
+    )
+
+    result = await service.remove_position(
+        "default", "My Portfolio", "AAPL", Decimal(str(0.123456785))
+    )
+
+    assert result.position_fully_closed is True
+    assert result.shares_removed == Decimal("0.12345679")
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+    assert snapshot.positions == []
+
+
+async def test_partial_sale_rounds_the_sale_amount_before_subtracting(tmp_path):
+    service = _service(tmp_path)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal("1"), Decimal("100"), "2026-01-01"
+    )
+
+    result = await service.remove_position(
+        "default", "My Portfolio", "AAPL", Decimal("0.123456785")
+    )
+
+    assert result.position_fully_closed is False
+    assert result.shares_removed == Decimal("0.12345679")
+    snapshot = await service.get_portfolio("default", "My Portfolio")
+    assert snapshot.positions[0].shares == Decimal("0.87654321")
+    assert snapshot.positions[0].total_cost == Decimal("87.6543")
+
+
+@pytest.mark.parametrize(
+    ("held", "price", "sold"),
+    [("1", "100", "0.99999999"), ("100", "0.01", "99.999")],
+)
+async def test_partial_sale_leaving_a_zero_cost_remainder_closes_the_position(
+    tmp_path, held, price, sold
+):
+    # 0.00000001 * 100 and 0.001 * 0.01 both round to 0.0000.
+    service = _service(tmp_path)
+    await service.add_position(
+        "default", "My Portfolio", "AAPL", Decimal(held), Decimal(price), "2026-01-01"
+    )
+
+    result = await service.remove_position(
+        "default", "My Portfolio", "AAPL", Decimal(sold)
+    )
+
+    assert result.position_fully_closed is True
+    assert result.shares_removed == Decimal(held)
     snapshot = await service.get_portfolio("default", "My Portfolio")
     assert snapshot.positions == []
 
