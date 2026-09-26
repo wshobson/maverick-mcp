@@ -1,0 +1,80 @@
+{
+  "case": {
+    "id": "b01",
+    "task": "lookup",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "What's Apple trading at right now, and how does that compare to what I paid?"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 14.67,
+  "maverick_git_sha": "2d7c7074911401ddead17a6d7f96b146b95be1c5",
+  "timestamp": "2026-09-26T18:12:27.161651+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01DyE2xkjPMaFeqM9FM92KXP",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "AAPL"
+      },
+      "result": "{\"symbol\":\"AAPL\",\"price\":341.07,\"change\":5.149999999999977,\"change_percent\":1.5331031197904195,\"volume\":29649787,\"timestamp\":\"2026-09-26T18:12:38.218425+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_0158HTbXDLnAMqcr3DaUewQm",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[{\"ticker\":\"AAPL\",\"shares\":\"50.00000000\",\"average_cost_basis\":\"198.4000\",\"total_cost\":\"9920.0000\",\"purchase_date\":\"2025-11-14T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":341.07,\"current_value\":17053.5,\"unrealized_pnl\":7133.5,\"unrealized_pnl_percent\":71.91},{\"ticker\":\"JPM\",\"shares\":\"40.00000000\",\"average_cost_basis\":\"244.6000\",\"total_cost\":\"9784.0000\",\"purchase_date\":\"2026-02-10T00:00:00+00:00\",\"notes\":null,\"sector\":\"Financial Services\",\"current_price\":343.06,\"current_value\":13722.4,\"unrealized_pnl\":3938.4,\"unrealized_pnl_percent\":40.25},{\"ticker\":\"MSFT\",\"shares\":\"30.00000000\",\"average_cost_basis\":\"412.1000\",\"total_cost\":\"12363.0000\",\"purchase_date\":\"2025-12-03T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":516.17,\"current_value\":15485.1,\"unrealized_pnl\":3122.1,\"unrealized_pnl_percent\":25.25},{\"ticker\":\"NVDA\",\"shares\":\"120.00000000\",\"average_cost_basis\":\"131.7500\",\"total_cost\":\"15810.0000\",\"purchase_date\":\"2025-10-21T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":225.07,\"current_value\":27008.4,\"unrealized_pnl\":11198.4,\"unrealized_pnl_percent\":70.83},{\"ticker\":\"XOM\",\"shares\":\"60.00000000\",\"average_cost_basis\":\"112.3000\",\"total_cost\":\"6738.0000\",\"purchase_date\":\"2026-03-18T00:00:00+00:00\",\"notes\":null,\"sector\":\"Energy\",\"current_price\":160.59,\"current_value\":9635.4,\"unrealized_pnl\":2897.4,\"unrealized_pnl_percent\":43}],\"metrics\":{\"total_invested\":\"54615.0000\",\"total_value\":82904.8,\"total_pnl\":28289.8,\"total_pnl_percent\":51.8,\"position_count\":5},\"sector_exposure\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"as_of\":\"2026-09-26T18:12:38.338803+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Apple (AAPL) is trading at **$341.07**, up $5.15 (+1.53%) today as of 18:12 UTC. You paid an average of $198.40 a share, so each share is up $142.67 (**+71.9%**).\n\n| | Per share | Total (50 shares) |\n|---|---|---|\n| What you paid (bought Nov 14, 2025) | $198.40 | $9,920.00 |\n| Worth now | $341.07 | $17,053.50 |\n| **Unrealized gain** | **+$142.67** | **+$7,133.50 (+71.9%)** |\n\nAAPL is now about 21% of your portfolio's $82,905 total value. Its percentage gain is the highest of your five holdings, just ahead of NVDA at +70.8%. NVDA is still the bigger gain in dollars at $11,198."
+    }
+  ],
+  "final_answer": "Apple (AAPL) is trading at **$341.07**, up $5.15 (+1.53%) today as of 18:12 UTC. You paid an average of $198.40 a share, so each share is up $142.67 (**+71.9%**).\n\n| | Per share | Total (50 shares) |\n|---|---|---|\n| What you paid (bought Nov 14, 2025) | $198.40 | $9,920.00 |\n| Worth now | $341.07 | $17,053.50 |\n| **Unrealized gain** | **+$142.67** | **+$7,133.50 (+71.9%)** |\n\nAAPL is now about 21% of your portfolio's $82,905 total value. Its percentage gain is the highest of your five holdings, just ahead of NVDA at +70.8%. NVDA is still the bigger gain in dollars at $11,198.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 13226,
+    "cache_read_input_tokens": 12058,
+    "output_tokens": 385,
+    "output_tokens_details": {
+      "thinking_tokens": 0
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 13226,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 279,
+        "cache_read_input_tokens": 12058,
+        "cache_creation_input_tokens": 1168,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1168
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.1169056,
+  "permission_denials": [],
+  "duration_ms": 6052
+}

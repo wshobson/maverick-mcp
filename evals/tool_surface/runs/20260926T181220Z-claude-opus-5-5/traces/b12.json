@@ -1,0 +1,84 @@
+{
+  "case": {
+    "id": "b12",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "How correlated are NVDA and MSFT in my portfolio over the last 90 days?"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 15.47,
+  "maverick_git_sha": "2d7c7074911401ddead17a6d7f96b146b95be1c5",
+  "timestamp": "2026-09-26T18:15:20.632118+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01DaozYmabv9gUhwvzB8tLeK",
+      "name": "mcp__maverick__portfolio_correlation_analysis",
+      "arguments": {
+        "tickers": [
+          "NVDA",
+          "MSFT"
+        ],
+        "days": 90
+      },
+      "result": "{\"matrix\":{\"NVDA\":{\"NVDA\":1,\"MSFT\":0.14355588505648262},\"MSFT\":{\"NVDA\":0.14355588505648262,\"MSFT\":1}},\"high_correlation_pairs\":[],\"hedges\":[],\"average_correlation\":0.144,\"diversification_score\":85.6,\"recommendation\":\"Well diversified\",\"period_days\":90,\"data_points\":89,\"portfolio_context\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01Nf9RzYJWeeXh76kG3qUd9W",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[{\"ticker\":\"AAPL\",\"shares\":\"50.00000000\",\"average_cost_basis\":\"198.4000\",\"total_cost\":\"9920.0000\",\"purchase_date\":\"2025-11-14T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":341.07,\"current_value\":17053.5,\"unrealized_pnl\":7133.5,\"unrealized_pnl_percent\":71.91},{\"ticker\":\"JPM\",\"shares\":\"40.00000000\",\"average_cost_basis\":\"244.6000\",\"total_cost\":\"9784.0000\",\"purchase_date\":\"2026-02-10T00:00:00+00:00\",\"notes\":null,\"sector\":\"Financial Services\",\"current_price\":343.06,\"current_value\":13722.4,\"unrealized_pnl\":3938.4,\"unrealized_pnl_percent\":40.25},{\"ticker\":\"MSFT\",\"shares\":\"30.00000000\",\"average_cost_basis\":\"412.1000\",\"total_cost\":\"12363.0000\",\"purchase_date\":\"2025-12-03T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":516.17,\"current_value\":15485.1,\"unrealized_pnl\":3122.1,\"unrealized_pnl_percent\":25.25},{\"ticker\":\"NVDA\",\"shares\":\"120.00000000\",\"average_cost_basis\":\"131.7500\",\"total_cost\":\"15810.0000\",\"purchase_date\":\"2025-10-21T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":225.07,\"current_value\":27008.4,\"unrealized_pnl\":11198.4,\"unrealized_pnl_percent\":70.83},{\"ticker\":\"XOM\",\"shares\":\"60.00000000\",\"average_cost_basis\":\"112.3000\",\"total_cost\":\"6738.0000\",\"purchase_date\":\"2026-03-18T00:00:00+00:00\",\"notes\":null,\"sector\":\"Energy\",\"current_price\":160.59,\"current_value\":9635.4,\"unrealized_pnl\":2897.4,\"unrealized_pnl_percent\":43}],\"metrics\":{\"total_invested\":\"54615.0000\",\"total_value\":82904.8,\"total_pnl\":28289.8,\"total_pnl_percent\":51.8,\"position_count\":5},\"sector_exposure\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"as_of\":\"2026-09-26T18:15:27.711495+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "**Over the last 90 days, NVDA and MSFT have a correlation of 0.14, which is low.** Their daily moves have had little relationship to each other. The figure comes from 89 daily data points.\n\n**What it means for your portfolio**\n\nYou hold both:\n\n| Position | Value | Share of portfolio |\n|---|---|---|\n| NVDA (120 shares) | $27,008 | 32.6% |\n| MSFT (30 shares) | $15,485 | 18.7% |\n| **Combined** | **$42,493** | **51.3%** |\n\nRecently, the two haven't moved together much, so holding both has spread your risk more than you might expect from two big tech stocks.\n\n**Caveats**\n\n- **This is unusually low for these two.** Both are mega-cap AI names and have usually moved together much more closely. So this 90-day reading probably reflects things specific to each company lately, not a lasting split.\n- **Correlations often jump in a broad selloff.** When the market or tech sector sells off, stocks like these tend to fall together, which is when you'd most want them not to. Don't count on the low number to protect you in a drawdown.\n- **You're still heavily concentrated in tech.** 71.8% of your portfolio is in technology (NVDA, MSFT and AAPL). NVDA alone is almost a third of the portfolio. The tool's \"well diversified\" label applies only to this pair, not your whole portfolio.\n\nI can also run the correlation across all five of your holdings, or check a longer window like 1 year to see whether this low reading lasts."
+    }
+  ],
+  "final_answer": "**Over the last 90 days, NVDA and MSFT have a correlation of 0.14, which is low.** Their daily moves have had little relationship to each other. The figure comes from 89 daily data points.\n\n**What it means for your portfolio**\n\nYou hold both:\n\n| Position | Value | Share of portfolio |\n|---|---|---|\n| NVDA (120 shares) | $27,008 | 32.6% |\n| MSFT (30 shares) | $15,485 | 18.7% |\n| **Combined** | **$42,493** | **51.3%** |\n\nRecently, the two haven't moved together much, so holding both has spread your risk more than you might expect from two big tech stocks.\n\n**Caveats**\n\n- **This is unusually low for these two.** Both are mega-cap AI names and have usually moved together much more closely. So this 90-day reading probably reflects things specific to each company lately, not a lasting split.\n- **Correlations often jump in a broad selloff.** When the market or tech sector sells off, stocks like these tend to fall together, which is when you'd most want them not to. Don't count on the low number to protect you in a drawdown.\n- **You're still heavily concentrated in tech.** 71.8% of your portfolio is in technology (NVDA, MSFT and AAPL). NVDA alone is almost a third of the portfolio. The tool's \"well diversified\" label applies only to this pair, not your whole portfolio.\n\nI can also run the correlation across all five of your holdings, or check a longer window like 1 year to see whether this low reading lasts.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 1787,
+    "cache_read_input_tokens": 23613,
+    "output_tokens": 805,
+    "output_tokens_details": {
+      "thinking_tokens": 161
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1787,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 665,
+        "cache_read_input_tokens": 12063,
+        "cache_creation_input_tokens": 1274,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1274
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.036133599999999995,
+  "permission_denials": [],
+  "duration_ms": 11071
+}

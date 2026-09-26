@@ -1,0 +1,120 @@
+{
+  "case": {
+    "id": "b06",
+    "task": "screening",
+    "request_type": "advice",
+    "data_state": "seeded",
+    "query": "Which of today's bullish picks should I buy?"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 23.32,
+  "maverick_git_sha": "2d7c7074911401ddead17a6d7f96b146b95be1c5",
+  "timestamp": "2026-09-26T18:13:47.438987+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01PYf82vH2eU3bN1Rg21vSfq",
+      "name": "mcp__maverick__screening_get_bullish",
+      "arguments": {
+        "limit": 10
+      },
+      "result": "{\"status\":\"success\",\"results\":[{\"symbol\":\"NVDA\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-25\",\"close\":181.2,\"combined_score\":120,\"momentum_score\":null,\"indicators\":{\"close\":181.2,\"sma50\":170.32799999999997,\"sma150\":157.64399999999998,\"sma200\":148.58399999999997,\"rsi14\":64.1,\"volume\":312000000,\"avg_volume_30d\":190000000},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":true,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), volume surge, RSI not overbought\"},{\"symbol\":\"ANET\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-25\",\"close\":141.9,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":141.9,\"sma50\":133.386,\"sma150\":123.453,\"sma200\":116.358,\"rsi14\":62.7,\"volume\":9800000,\"avg_volume_30d\":8900000},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"NFLX\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-25\",\"close\":1214.5,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":1214.5,\"sma50\":1141.6299999999999,\"sma150\":1056.615,\"sma200\":995.89,\"rsi14\":55.2,\"volume\":3100000,\"avg_volume_30d\":3400000},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"META\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-25\",\"close\":781.3,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":781.3,\"sma50\":734.4219999999999,\"sma150\":679.731,\"sma200\":640.6659999999999,\"rsi14\":58.9,\"volume\":16000000,\"avg_volume_30d\":14000000},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"AVGO\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-25\",\"close\":342.75,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":342.75,\"sma50\":322.185,\"sma150\":298.1925,\"sma200\":281.055,\"rsi14\":61.8,\"volume\":28000000,\"avg_volume_30d\":21000000},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"PLTR\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-25\",\"close\":176.4,\"combined_score\":100,\"momentum_score\":null,\"indicators\":{\"close\":176.4,\"sma50\":165.816,\"sma150\":153.46800000000002,\"sma200\":144.648,\"rsi14\":83.6,\"volume\":95000000,\"avg_volume_30d\":70000000},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":false},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200)\"}],\"count\":6}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01LETronwkaJiXtVsgaLD5wc",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[{\"ticker\":\"AAPL\",\"shares\":\"50.00000000\",\"average_cost_basis\":\"198.4000\",\"total_cost\":\"9920.0000\",\"purchase_date\":\"2025-11-14T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":341.07,\"current_value\":17053.5,\"unrealized_pnl\":7133.5,\"unrealized_pnl_percent\":71.91},{\"ticker\":\"JPM\",\"shares\":\"40.00000000\",\"average_cost_basis\":\"244.6000\",\"total_cost\":\"9784.0000\",\"purchase_date\":\"2026-02-10T00:00:00+00:00\",\"notes\":null,\"sector\":\"Financial Services\",\"current_price\":343.06,\"current_value\":13722.4,\"unrealized_pnl\":3938.4,\"unrealized_pnl_percent\":40.25},{\"ticker\":\"MSFT\",\"shares\":\"30.00000000\",\"average_cost_basis\":\"412.1000\",\"total_cost\":\"12363.0000\",\"purchase_date\":\"2025-12-03T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":516.17,\"current_value\":15485.1,\"unrealized_pnl\":3122.1,\"unrealized_pnl_percent\":25.25},{\"ticker\":\"NVDA\",\"shares\":\"120.00000000\",\"average_cost_basis\":\"131.7500\",\"total_cost\":\"15810.0000\",\"purchase_date\":\"2025-10-21T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":225.07,\"current_value\":27008.4,\"unrealized_pnl\":11198.4,\"unrealized_pnl_percent\":70.83},{\"ticker\":\"XOM\",\"shares\":\"60.00000000\",\"average_cost_basis\":\"112.3000\",\"total_cost\":\"6738.0000\",\"purchase_date\":\"2026-03-18T00:00:00+00:00\",\"notes\":null,\"sector\":\"Energy\",\"current_price\":160.59,\"current_value\":9635.4,\"unrealized_pnl\":2897.4,\"unrealized_pnl_percent\":43}],\"metrics\":{\"total_invested\":\"54615.0000\",\"total_value\":82904.8,\"total_pnl\":28289.8,\"total_pnl_percent\":51.8,\"position_count\":5},\"sector_exposure\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"as_of\":\"2026-09-26T18:13:54.835735+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_019i9y2vPqxA6WCNVhBijAGz",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "NVDA"
+      },
+      "result": "{\"symbol\":\"NVDA\",\"price\":225.07,\"change\":0.4899999999999807,\"change_percent\":0.21818505654999584,\"volume\":87931936,\"timestamp\":\"2026-09-26T18:13:54.725097+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_0188BRsYqCuRSqyv19J7MTk9",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "ANET"
+      },
+      "result": "{\"symbol\":\"ANET\",\"price\":206.55,\"change\":0.8500000000000227,\"change_percent\":0.4132231404958789,\"volume\":4349414,\"timestamp\":\"2026-09-26T18:13:57.572560+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_016Pp9QzC35e2a1TLm2gDED2",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "NFLX"
+      },
+      "result": "{\"symbol\":\"NFLX\",\"price\":71.145,\"change\":-0.5750000000000028,\"change_percent\":-0.8017289459007291,\"volume\":23135069,\"timestamp\":\"2026-09-26T18:13:57.792585+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01C7WLg8vkXZEVQ9Yh1dEQ1c",
+      "name": "mcp__maverick__screening_run_screens",
+      "arguments": {
+        "screen": "bullish"
+      },
+      "result": "{\"status\":\"success\",\"results\":{\"bullish\":{\"screen\":\"bullish\",\"symbols_screened\":0,\"symbols_qualified\":0,\"symbols_failed\":0,\"date_analyzed\":\"2026-09-26\",\"duration_seconds\":0.0067289581056684256}},\"count\":1}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I can't recommend any of today's bullish picks yet. The screen's prices don't match live quotes, so its signals can't be trusted as they stand.\n\n**The screen and live prices don't agree**\n\nThe bullish screen is dated 2026-09-25, but its closing prices are far from today's quotes:\n\n| Symbol | Screen close (9/25) | Live quote (9/26) | Gap |\n|---|---|---|---|\n| NVDA | $181.20 | $225.07 | +24% |\n| ANET | $141.90 | $206.55 | +46% |\n| NFLX | $1,214.50 | $71.15 | \u221294% |\n\nLive quotes show only 0.2\u20130.8% moves today, so these gaps can't come from normal overnight trading. The NFLX figure may be from before a stock split, or the whole snapshot may be old data with a new date on it. Either way, every signal in the screen (price above its 50/150/200-day averages, RSI, the volume surge) was calculated on prices that are no longer current. I didn't get live quotes for META, AVGO or PLTR, so I can't say whether their data is off too. I'd treat the whole snapshot as suspect.\n\nI tried to regenerate the screen, but it checked **0 symbols**. The screener has no stock list to work from, so it can't rebuild the results right now.\n\n**Things to weigh from your portfolio anyway**\n- **NVDA, the top pick, is already your largest position**: 120 shares worth about $27.0k, roughly a third of your $82.9k portfolio.\n- **You're already 72% in tech.** NVDA, ANET, META, AVGO and PLTR are all tech or chip names, so buying any of them would add to that concentration. NFLX is the only pick outside tech, and its data is the most broken.\n- **PLTR's RSI was 83.6** even in the stale data, so the screen itself marked it overbought.\n\n**What to do next**\n1. Fix the screener's data: its stock list needs to be filled and its price history refreshed. After that, running the screen again should give results you can trust.\n2. If you want to act before then, I can run a full live technical analysis on one or two names instead of relying on the screen. META or AVGO would add less to what you already hold than more NVDA would.\n\nThis is analysis, not financial advice. The final decision is yours."
+    }
+  ],
+  "final_answer": "I can't recommend any of today's bullish picks yet. The screen's prices don't match live quotes, so its signals can't be trusted as they stand.\n\n**The screen and live prices don't agree**\n\nThe bullish screen is dated 2026-09-25, but its closing prices are far from today's quotes:\n\n| Symbol | Screen close (9/25) | Live quote (9/26) | Gap |\n|---|---|---|---|\n| NVDA | $181.20 | $225.07 | +24% |\n| ANET | $141.90 | $206.55 | +46% |\n| NFLX | $1,214.50 | $71.15 | \u221294% |\n\nLive quotes show only 0.2\u20130.8% moves today, so these gaps can't come from normal overnight trading. The NFLX figure may be from before a stock split, or the whole snapshot may be old data with a new date on it. Either way, every signal in the screen (price above its 50/150/200-day averages, RSI, the volume surge) was calculated on prices that are no longer current. I didn't get live quotes for META, AVGO or PLTR, so I can't say whether their data is off too. I'd treat the whole snapshot as suspect.\n\nI tried to regenerate the screen, but it checked **0 symbols**. The screener has no stock list to work from, so it can't rebuild the results right now.\n\n**Things to weigh from your portfolio anyway**\n- **NVDA, the top pick, is already your largest position**: 120 shares worth about $27.0k, roughly a third of your $82.9k portfolio.\n- **You're already 72% in tech.** NVDA, ANET, META, AVGO and PLTR are all tech or chip names, so buying any of them would add to that concentration. NFLX is the only pick outside tech, and its data is the most broken.\n- **PLTR's RSI was 83.6** even in the stale data, so the screen itself marked it overbought.\n\n**What to do next**\n1. Fix the screener's data: its stock list needs to be filled and its price history refreshed. After that, running the screen again should give results you can trust.\n2. If you want to act before then, I can run a full live technical analysis on one or two names instead of relying on the screen. META or AVGO would add less to what you already hold than more NVDA would.\n\nThis is analysis, not financial advice. The final decision is yours.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 7,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 4404,
+    "cache_read_input_tokens": 53933,
+    "output_tokens": 1525,
+    "output_tokens_details": {
+      "thinking_tokens": 416
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 4404,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 820,
+        "cache_read_input_tokens": 15529,
+        "cache_creation_input_tokens": 425,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 425
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.0775186,
+  "permission_denials": [],
+  "duration_ms": 18663
+}
