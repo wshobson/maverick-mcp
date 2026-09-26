@@ -1,0 +1,72 @@
+{
+  "case": {
+    "id": "q02",
+    "task": "lookup",
+    "request_type": "specified",
+    "data_state": "edge",
+    "query": "Get me a quote on TWTR"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 10.11,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:02:20.896176+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01CH7XdRmHEwQSo9F8P6X1dH",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "TWTR"
+      },
+      "result": "{\"symbol\":\"TWTR\",\"price\":0,\"change\":0,\"change_percent\":0,\"volume\":0,\"timestamp\":\"2026-09-26T15:02:27.095123+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I couldn't get a quote for TWTR because the ticker no longer trades. The lookup came back \"successful,\" but price, change and volume were all $0 / 0. That means there's no data, not that the stock is worth nothing.\n\nTwitter was taken private when Elon Musk bought it in October 2022, and it was delisted from the NYSE then. The company is now called X, and after it merged with xAI in 2025 it has no public stock. The last trading price was about $53.70 per share, which was the $54.20 buyout price.\n\nIf you want to track something related, I can pull quotes for:\n- **TSLA**: the main public stock tied to Musk\n- **Other public social media companies**: META, SNAP, PINS or RDDT\n\nWant me to get any of those?"
+    }
+  ],
+  "final_answer": "I couldn't get a quote for TWTR because the ticker no longer trades. The lookup came back \"successful,\" but price, change and volume were all $0 / 0. That means there's no data, not that the stock is worth nothing.\n\nTwitter was taken private when Elon Musk bought it in October 2022, and it was delisted from the NYSE then. The company is now called X, and after it merged with xAI in 2025 it has no public stock. The last trading price was about $53.70 per share, which was the $54.20 buyout price.\n\nIf you want to track something related, I can pull quotes for:\n- **TSLA**: the main public stock tied to Musk\n- **Other public social media companies**: META, SNAP, PINS or RDDT\n\nWant me to get any of those?",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 720,
+    "cache_read_input_tokens": 23597,
+    "output_tokens": 342,
+    "output_tokens_details": {
+      "thinking_tokens": 34
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 720,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 242,
+        "cache_read_input_tokens": 12047,
+        "cache_creation_input_tokens": 223,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 223
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.018290400000000002,
+  "permission_denials": [],
+  "duration_ms": 6032
+}

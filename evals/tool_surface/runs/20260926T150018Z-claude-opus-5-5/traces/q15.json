@@ -1,0 +1,99 @@
+{
+  "case": {
+    "id": "q15",
+    "task": "backtest",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "Backtest a 20/50 SMA cross on SPY, 2020 to 2024"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 22.74,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:03:33.960896+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01EkpD6tkmU1jwafY849uK3h",
+      "name": "mcp__maverick__backtesting_run_backtest",
+      "arguments": {
+        "symbol": "SPY",
+        "strategy": "sma_cross",
+        "fast_period": 20,
+        "slow_period": 50,
+        "start_date": "2020-01-01",
+        "end_date": "2024-12-31"
+      },
+      "result": "Error: result (105,464 characters) exceeds maximum allowed tokens. Output has been saved to /Users/wshobson/.claude/projects/-private-var-folders-9r-7vxqhcsx7-g355c7pglf23w00000gn-T-maverick-evals-edeqrf7n-q15/4a63d8cf-5cc0-43c7-bd9f-653d38657809/tool-results/mcp-maverick-backtesting_run_backtest-1790435023356.txt.\nFormat: JSON with schema: {symbol: string, strategy: string, parameters: {fast_period: number, slow_period: number}, metrics: {total_return: number, annual_return: number, sharpe_ratio: number, sortino_ratio: number, calmar_ratio: number, max_drawdown: number, win_rate: number, profit_factor: number, expectancy: number, total_trades: number, ...}, trades: [{...}], equity_curve: {2020-01-02 00:00:00: number, 2020-01-03 00:00:00: number, 2020-01-06 00:00:00: number, 2020-01-07 00:00:00: number, 2020-01-08 00:00:00: number, 2020-01-09 00:00:00: number, 2020-01-10 00:00:00: number, 2020-01-13 00:00:00: number, 2020-01-14 00:00:00: number, 2020-01-15 00:00:00: number, ...}, drawdown_series: {2020-01-02 00:00:00: number, 2020-01-03 00:00:00: number, 2020-01-06 00:00:00: number, 2020-01-07 00:00:00: number, 2020-01-08 00:00:00: number, 2020-01-09 00:00:00: number, 2020-01-10 00:00:00: number, 2020-01-13 00:00:00: number, 2020-01-14 00:00:00: number, 2020-01-15 00:00:00: number, ...}, start_date: string, end_date: string, initial_capital: number, ...}\nUse offset and limit parameters to read specific portions of the file, search within it for specific content, and jq to make structured queries.\nREQUIREMENTS FOR SUMMARIZATION/ANALYSIS/REVIEW:\n- You MUST read the content from the file at /Users/wshobson/.claude/projects/-private-var-folders-9r-7vxqhcsx7-g355c7pglf23w00000gn-T-maverick-evals-edeqrf7n-q15/4a63d8cf-5cc0-43c7-bd9f-653d38657809/tool-results/mcp-maverick-backtesting_run_backtest-1790435023356.txt in sequential chunks until 100% of the content has been read.\n- If you receive truncation warnings when reading the file, reduce the chunk size until you have read 100% of the content without truncation.\n- Before producing ANY summary or analysis, you MUST explicitly describe what portion of the content you have read. ***If you did not read the entire content, you MUST explicitly state this.***\n- If after a few attempts you cannot read the file (file not found, lines too long for Read's offset/limit, no shell access), STOP retrying. Summarize what you were able to read, explicitly state which portion you could not read and why, and proceed.\n",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I can't open the saved full output because I don't have a file-reading tool here. I'll try a smaller-output route to get the metrics."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_012JznsNQt7sKN91gyd3Uf6g",
+      "name": "mcp__maverick__backtesting_backtest_portfolio",
+      "arguments": {
+        "symbols": [
+          "SPY"
+        ],
+        "strategy": "sma_cross",
+        "fast_period": 20,
+        "slow_period": 50,
+        "start_date": "2020-01-01",
+        "end_date": "2024-12-31",
+        "position_size": 1
+      },
+      "result": "Error: result (104,640 characters) exceeds maximum allowed tokens. Output has been saved to /Users/wshobson/.claude/projects/-private-var-folders-9r-7vxqhcsx7-g355c7pglf23w00000gn-T-maverick-evals-edeqrf7n-q15/4a63d8cf-5cc0-43c7-bd9f-653d38657809/tool-results/mcp-maverick-backtesting_backtest_portfolio-1790435028471.txt.\nFormat: JSON with schema: {portfolio_metrics: {symbols_tested: number, total_return: number, average_sharpe: number, max_drawdown: number, total_trades: number}, individual_results: [{...}], summary: string, status: string}\nUse offset and limit parameters to read specific portions of the file, search within it for specific content, and jq to make structured queries.\nREQUIREMENTS FOR SUMMARIZATION/ANALYSIS/REVIEW:\n- You MUST read the content from the file at /Users/wshobson/.claude/projects/-private-var-folders-9r-7vxqhcsx7-g355c7pglf23w00000gn-T-maverick-evals-edeqrf7n-q15/4a63d8cf-5cc0-43c7-bd9f-653d38657809/tool-results/mcp-maverick-backtesting_backtest_portfolio-1790435028471.txt in sequential chunks until 100% of the content has been read.\n- If you receive truncation warnings when reading the file, reduce the chunk size until you have read 100% of the content without truncation.\n- Before producing ANY summary or analysis, you MUST explicitly describe what portion of the content you have read. ***If you did not read the entire content, you MUST explicitly state this.***\n- If after a few attempts you cannot read the file (file not found, lines too long for Read's offset/limit, no shell access), STOP retrying. Summarize what you were able to read, explicitly state which portion you could not read and why, and proceed.\n",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "I ran the backtest, but I can't give you any results. I haven't read any of the output.\n\n**What I ran:** SMA crossover with a 20-day fast and 50-day slow average on SPY, from 2020-01-01 to 2024-12-31, starting with $10,000 (the default).\n\n**Why there are no numbers:** The backtest finished, but the result was about 105K characters. Most of that is the day-by-day equity curve and drawdown series. That was too big to show me, so it was saved to a file. I don't have a tool here that can read local files, so I read 0% of it.\n\nI also tried running it as a one-symbol portfolio backtest, hoping for a shorter summary. That output was about 105K characters too and was saved to a file I couldn't open either, so I stopped trying.\n\n**The two result files:**\n- `.../tool-results/mcp-maverick-backtesting_run_backtest-1790435023356.txt`\n- `.../tool-results/mcp-maverick-backtesting_backtest_portfolio-1790435028471.txt`\n\nBoth are in `/Users/wshobson/.claude/projects/-private-var-folders-9r-7vxqhcsx7-g355c7pglf23w00000gn-T-maverick-evals-edeqrf7n-q15/4a63d8cf-5cc0-43c7-bd9f-653d38657809/`.\n\n**Getting the metrics:** You can pull the headline numbers straight from the file:\n```bash\njq '.metrics' <path>/mcp-maverick-backtesting_run_backtest-1790435023356.txt\n```\nThat returns total and annual return, Sharpe, Sortino, Calmar, max drawdown, win rate, profit factor, expectancy and trade count. Adding `'.trades'` lists every trade.\n\nOr, if you run me somewhere I can read files or use a shell, I can read it and summarise the results."
+    }
+  ],
+  "final_answer": "I ran the backtest, but I can't give you any results. I haven't read any of the output.\n\n**What I ran:** SMA crossover with a 20-day fast and 50-day slow average on SPY, from 2020-01-01 to 2024-12-31, starting with $10,000 (the default).\n\n**Why there are no numbers:** The backtest finished, but the result was about 105K characters. Most of that is the day-by-day equity curve and drawdown series. That was too big to show me, so it was saved to a file. I don't have a tool here that can read local files, so I read 0% of it.\n\nI also tried running it as a one-symbol portfolio backtest, hoping for a shorter summary. That output was about 105K characters too and was saved to a file I couldn't open either, so I stopped trying.\n\n**The two result files:**\n- `.../tool-results/mcp-maverick-backtesting_run_backtest-1790435023356.txt`\n- `.../tool-results/mcp-maverick-backtesting_backtest_portfolio-1790435028471.txt`\n\nBoth are in `/Users/wshobson/.claude/projects/-private-var-folders-9r-7vxqhcsx7-g355c7pglf23w00000gn-T-maverick-evals-edeqrf7n-q15/4a63d8cf-5cc0-43c7-bd9f-653d38657809/`.\n\n**Getting the metrics:** You can pull the headline numbers straight from the file:\n```bash\njq '.metrics' <path>/mcp-maverick-backtesting_run_backtest-1790435023356.txt\n```\nThat returns total and annual return, Sharpe, Sortino, Calmar, max drawdown, win rate, profit factor, expectancy and trade count. Adding `'.trades'` lists every trade.\n\nOr, if you run me somewhere I can read files or use a shell, I can read it and summarise the results.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 3084,
+    "cache_read_input_tokens": 37020,
+    "output_tokens": 1364,
+    "output_tokens_details": {
+      "thinking_tokens": 279
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 3084,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 665,
+        "cache_read_input_tokens": 13406,
+        "cache_creation_input_tokens": 1228,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1228
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.06039599999999999,
+  "permission_denials": [],
+  "duration_ms": 18788
+}

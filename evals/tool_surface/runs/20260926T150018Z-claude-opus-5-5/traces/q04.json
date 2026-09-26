@@ -1,0 +1,85 @@
+{
+  "case": {
+    "id": "q04",
+    "task": "technicals",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "RSI(14) and MACD on AMD, last 6 months"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 13.46,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:04:54.938288+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01DvKRbbcBUKD89vBcNyHirQ",
+      "name": "mcp__maverick__technical_get_rsi_analysis",
+      "arguments": {
+        "ticker": "AMD",
+        "period": 14,
+        "days": 180
+      },
+      "result": "{\"current\":73,\"period\":14,\"signal\":\"overbought\",\"description\":\"RSI is currently at 73.0, indicating overbought conditions.\",\"ticker\":\"AMD\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01QuAotQQDn2HKmz42PqUDbe",
+      "name": "mcp__maverick__technical_get_macd_analysis",
+      "arguments": {
+        "ticker": "AMD",
+        "days": 180
+      },
+      "result": "{\"macd\":36.48,\"signal_line\":22.28,\"histogram\":14.2,\"indicator_signal\":\"bullish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bullish with no recent crossover.\",\"ticker\":\"AMD\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "AMD's momentum is strong, but the RSI says the stock is overbought. Both readings use about 180 days of data (roughly 6 months). The tools only return the latest values, not a history over the period.\n\n**RSI (14): 73.0, overbought**\n- Anything above 70 is considered overbought, so this is only a little past that line.\n- It shows strong recent buying, and also a higher chance of a pause or pullback.\n\n**MACD (12/26/9, standard settings): bullish**\n| Component | Value |\n|---|---|\n| MACD line | 36.48 |\n| Signal line | 22.28 |\n| Histogram | +14.20 |\n| Crossover | None recently |\n\n- The MACD line is well above its signal line, and the histogram is large and positive, so the uptrend is well established.\n- There was no recent crossover, so this is an uptrend already under way rather than a new signal.\n- A MACD value that high points to a large price move over the past several weeks.\n\n**Reading them together:** The trend is clearly up, but you'd be buying after a big run. Stocks in strong trends often stay above an RSI of 70 for weeks, so overbought alone isn't a sell signal. Two things would warn that the trend is weakening:\n- the MACD histogram starting to shrink\n- the RSI falling back below 70\n\nIf you want to enter, a pullback toward support would give a better entry than buying now. I can pull support and resistance levels, or a full technical analysis, to check that."
+    }
+  ],
+  "final_answer": "AMD's momentum is strong, but the RSI says the stock is overbought. Both readings use about 180 days of data (roughly 6 months). The tools only return the latest values, not a history over the period.\n\n**RSI (14): 73.0, overbought**\n- Anything above 70 is considered overbought, so this is only a little past that line.\n- It shows strong recent buying, and also a higher chance of a pause or pullback.\n\n**MACD (12/26/9, standard settings): bullish**\n| Component | Value |\n|---|---|\n| MACD line | 36.48 |\n| Signal line | 22.28 |\n| Histogram | +14.20 |\n| Crossover | None recently |\n\n- The MACD line is well above its signal line, and the histogram is large and positive, so the uptrend is well established.\n- There was no recent crossover, so this is an uptrend already under way rather than a new signal.\n- A MACD value that high points to a large price move over the past several weeks.\n\n**Reading them together:** The trend is clearly up, but you'd be buying after a big run. Stocks in strong trends often stay above an RSI of 70 for weeks, so overbought alone isn't a sell signal. Two things would warn that the trend is weakening:\n- the MACD histogram starting to shrink\n- the RSI falling back below 70\n\nIf you want to enter, a pullback toward support would give a better entry than buying now. I can pull support and resistance levels, or a full technical analysis, to check that.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 1015,
+    "cache_read_input_tokens": 23606,
+    "output_tokens": 739,
+    "output_tokens_details": {
+      "thinking_tokens": 69
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1015,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 521,
+        "cache_read_input_tokens": 12056,
+        "cache_creation_input_tokens": 509,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 509
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.028626199999999997,
+  "permission_denials": [],
+  "duration_ms": 9414
+}

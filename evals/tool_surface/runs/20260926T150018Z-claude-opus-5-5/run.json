@@ -1,0 +1,193 @@
+{
+  "model": "claude-opus-5-5",
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "apiKeySource": "none",
+  "tools_advertised": [
+    "mcp__maverick__backtesting_analyze_market_regimes",
+    "mcp__maverick__backtesting_backtest_portfolio",
+    "mcp__maverick__backtesting_compare_strategies",
+    "mcp__maverick__backtesting_create_strategy_ensemble",
+    "mcp__maverick__backtesting_list_strategies",
+    "mcp__maverick__backtesting_monte_carlo_simulation",
+    "mcp__maverick__backtesting_optimize_strategy",
+    "mcp__maverick__backtesting_parse_strategy",
+    "mcp__maverick__backtesting_run_backtest",
+    "mcp__maverick__backtesting_run_ml_strategy_backtest",
+    "mcp__maverick__backtesting_train_ml_predictor",
+    "mcp__maverick__backtesting_walk_forward_analysis",
+    "mcp__maverick__market_data_clear_market_cache",
+    "mcp__maverick__market_data_get_chart_links",
+    "mcp__maverick__market_data_get_market_overview",
+    "mcp__maverick__market_data_get_price_history",
+    "mcp__maverick__market_data_get_price_history_batch",
+    "mcp__maverick__market_data_get_quote",
+    "mcp__maverick__market_data_get_stock_fundamentals",
+    "mcp__maverick__portfolio_add_position",
+    "mcp__maverick__portfolio_check_position_risk",
+    "mcp__maverick__portfolio_clear_portfolio",
+    "mcp__maverick__portfolio_compare_tickers",
+    "mcp__maverick__portfolio_correlation_analysis",
+    "mcp__maverick__portfolio_get_my_portfolio",
+    "mcp__maverick__portfolio_get_regime_adjusted_sizing",
+    "mcp__maverick__portfolio_get_risk_alerts",
+    "mcp__maverick__portfolio_get_risk_dashboard",
+    "mcp__maverick__portfolio_get_strategy_performance",
+    "mcp__maverick__portfolio_journal_add_trade",
+    "mcp__maverick__portfolio_journal_close_trade",
+    "mcp__maverick__portfolio_journal_list_trades",
+    "mcp__maverick__portfolio_journal_review",
+    "mcp__maverick__portfolio_remove_position",
+    "mcp__maverick__portfolio_risk_adjusted_analysis",
+    "mcp__maverick__portfolio_watchlist_add",
+    "mcp__maverick__portfolio_watchlist_brief",
+    "mcp__maverick__portfolio_watchlist_create",
+    "mcp__maverick__portfolio_watchlist_remove",
+    "mcp__maverick__screening_get_all",
+    "mcp__maverick__screening_get_bearish",
+    "mcp__maverick__screening_get_bullish",
+    "mcp__maverick__screening_get_by_criteria",
+    "mcp__maverick__screening_get_supply_demand",
+    "mcp__maverick__screening_run_screens",
+    "mcp__maverick__technical_get_full_technical_analysis",
+    "mcp__maverick__technical_get_macd_analysis",
+    "mcp__maverick__technical_get_rsi_analysis",
+    "mcp__maverick__technical_get_support_resistance"
+  ],
+  "tools_excluded": [
+    "mcp__maverick__research_analyze_company",
+    "mcp__maverick__research_analyze_sentiment",
+    "mcp__maverick__research_run_comprehensive"
+  ],
+  "redis_enabled": false,
+  "budget_cap_usd": 6.0,
+  "per_query_budget_usd": 0.4,
+  "smoke_cost_usd": 0.10968119999999999,
+  "total_notional_cost_usd": 1.350139,
+  "cases_run": [
+    {
+      "id": "q01",
+      "notional_cost_usd": 0.10968119999999999,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q07",
+      "notional_cost_usd": 0.03143,
+      "num_turns": 4,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q11",
+      "notional_cost_usd": 0.0425116,
+      "num_turns": 4,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q19",
+      "notional_cost_usd": 0.0218196,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q10",
+      "notional_cost_usd": 0.024937,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q13",
+      "notional_cost_usd": 0.043434799999999996,
+      "num_turns": 3,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q16",
+      "notional_cost_usd": 0.1450536,
+      "num_turns": 4,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q17",
+      "notional_cost_usd": 0.0436916,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q02",
+      "notional_cost_usd": 0.018290400000000002,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q03",
+      "notional_cost_usd": 0.0997336,
+      "num_turns": 5,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q06",
+      "notional_cost_usd": 0.0458194,
+      "num_turns": 3,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q12",
+      "notional_cost_usd": 0.0606212,
+      "num_turns": 5,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q15",
+      "notional_cost_usd": 0.06039599999999999,
+      "num_turns": 3,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q18",
+      "notional_cost_usd": 0.026813,
+      "num_turns": 5,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q09",
+      "notional_cost_usd": 0.018541800000000004,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q14",
+      "notional_cost_usd": 0.021929200000000003,
+      "num_turns": 2,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q08",
+      "notional_cost_usd": 0.13891779999999998,
+      "num_turns": 11,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q04",
+      "notional_cost_usd": 0.028626199999999997,
+      "num_turns": 3,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q05",
+      "notional_cost_usd": 0.24471020000000002,
+      "num_turns": 3,
+      "result_subtype": "success"
+    },
+    {
+      "id": "q20",
+      "notional_cost_usd": 0.12318100000000001,
+      "num_turns": 11,
+      "result_subtype": "success"
+    }
+  ],
+  "cases_skipped": [],
+  "aborted": null,
+  "started_at": "2026-09-26T15:00:18.321119+00:00",
+  "wall_seconds": 358.7,
+  "scratch_dir": "/private/var/folders/9r/7vxqhcsx7_g355c7pglf23w00000gn/T/maverick-evals-edeqrf7n"
+}
