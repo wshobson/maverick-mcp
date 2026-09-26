@@ -22,6 +22,7 @@ Status labels:
 | `CATALOG.md` | current | docs | Inventory and cleanup state. |
 | `../ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. Root-level entry point alongside `AGENTS.md`. |
 | `../evals/tool_surface/README.md` | current | engineering | Tool-surface trace harness: Claude traces on the Maverick tools for error analysis, no scoring. |
+| `../evals/tool_surface/agent/maverick-eval-client.md` | current | engineering | Claude Code subagent definition for in-session eval traces; `make eval-agent-install` copies it into `.claude/agents/`. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
 | `design-docs/2026-09-05-open-items-remediation.md` | current | engineering | Approved design for the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG research backend. |
 | `design-docs/2026-09-13-pandas-ta-removal.md` | current | engineering | Approved design for removing pandas-ta and moving numpy, numba, pandas, and vectorbt. |

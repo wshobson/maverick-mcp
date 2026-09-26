@@ -96,3 +96,40 @@ points at notes by reference, never copying or rewording them:
 ```
 
 A `null` `span_id` points at that trace's trace note.
+
+## In-session subagent traces (no Agent SDK spend)
+
+Traces can also come from a Claude Code subagent spawned in an interactive
+session, which runs on the session's subscription login and interactive plan
+limits instead of the Agent SDK credit. The subagent is defined in
+`agent/maverick-eval-client.md`:
+
+- It sees only the 49 Maverick tools (no built-ins, no `research_*` tools).
+- It runs `claude-opus-5-5` with `maxTurns: 8` and `omitClaudeMd: true`, and
+  its system prompt is the same one line the SDK harness uses.
+- Its own Maverick server (`agent_server.py`) starts when the subagent starts.
+  The server reads the case from `.agent_case.json`, seeds a fresh database for
+  the case's data state under `$TMPDIR`, keeps only PATH and HOME, and stops
+  when the subagent finishes.
+
+Workflow, driven from a Claude Code session in this repo:
+
+```bash
+make eval-agent-install   # then restart Claude Code; a running session kept the old agent
+make eval-agent-case CASES=evals/tool_surface/cases_batch2.json CASE=b01
+# spawn the maverick-eval-client subagent with the case query, verbatim
+uv run python -m evals.tool_surface.agent_trace --transcript <agent-*.jsonl> \
+    --cases evals/tool_surface/cases_batch2.json --case-id b01 --run <run dir>
+```
+
+Run one case at a time, because the pointer file names a single case. The
+subagent's transcript is under
+`~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl`.
+
+Differences from the SDK harness: Claude Code still attaches some session
+context to a subagent (for example the date, an environment snapshot, and the
+git status). Each trace lists those kinds in `injected_context`. There is no
+per-query cost to record. Token usage comes from the transcript, which records
+a response's usage as it starts, so output token counts run low. A rerun happens from a Claude Code session
+rather than a `make` command. Use `make eval-traces` when a run must be
+repeatable, such as checking whether a fix removed a failure mode.
