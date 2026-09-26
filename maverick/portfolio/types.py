@@ -5,6 +5,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+# Decimal places of the stored `PositionPayload` fields: `shares`, then
+# `average_cost_basis` and `total_cost`. The ledger rounds to these
+# (ROUND_HALF_UP) and `data.py`'s columns declare them, so every backend
+# stores exactly what the ledger computed.
+SHARES_SCALE = 8
+COST_SCALE = 4
+
 
 class PositionPayload(BaseModel):
     ticker: str

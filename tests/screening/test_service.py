@@ -6,6 +6,7 @@ the real rubric functions while designing this fixture set) so the exact
 qualifying counts below are known ground truth, not guesses.
 """
 
+import threading
 from datetime import date
 
 import numpy as np
@@ -14,6 +15,7 @@ import pytest
 from sqlalchemy.orm import sessionmaker
 
 import maverick.market_data.data as md_data
+import maverick.screening.service as screening_service
 from maverick.platform.config import DatabaseSettings
 from maverick.platform.db import (
     create_engine_from_settings,
@@ -246,6 +248,31 @@ async def test_run_screen_single_screen_only_touches_that_screen(tmp_path):
     # bearish and supply_demand were never run: their tables stay empty.
     assert await service.get_bearish() == []
     assert await service.get_supply_demand() == []
+
+
+async def test_run_screen_scores_rubrics_off_the_event_loop_thread(
+    tmp_path, monkeypatch
+):
+    """Rubric scoring is CPU-bound pandas work; it runs in a worker thread
+    so a large universe does not block the event loop."""
+    scoring_threads: list[int] = []
+    real_score_bullish = screening_service._SCREEN_FUNCS["bullish"]
+
+    def _recording_score_bullish(symbol, frame, settings):
+        scoring_threads.append(threading.get_ident())
+        return real_score_bullish(symbol, frame, settings)
+
+    monkeypatch.setitem(
+        screening_service._SCREEN_FUNCS, "bullish", _recording_score_bullish
+    )
+    service = _service(tmp_path)
+
+    run = await service.run_screen("bullish")
+
+    assert run.symbols_qualified == 1
+    # One call per successfully fetched frame (BULL, BEAR, SHORT).
+    assert len(scoring_threads) == 3
+    assert threading.get_ident() not in scoring_threads
 
 
 async def test_run_screen_unknown_screen_raises_value_error(tmp_path):
