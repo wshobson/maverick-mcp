@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces eval-review clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-traces eval-agent-install eval-agent-case eval-review clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -24,6 +24,8 @@ help:
 	@echo "  make docs-check   - Validate documentation catalog and links"
 	@echo "  make check        - Run all checks (lint + type check)"
 	@echo "  make eval-traces  - Record Claude traces on the tools (subscription, never an API key)"
+	@echo "  make eval-agent-install - Install the in-session eval client subagent"
+	@echo "  make eval-agent-case CASES=<file> CASE=<id> - Point the next eval subagent at a case"
 	@echo "  make eval-review  - Review the newest trace run in a local browser UI (port 8765)"
 	@echo ""
 	@echo "  make tail-log     - Follow backend logs"
@@ -118,6 +120,17 @@ check: lint typecheck
 eval-traces:
 	@env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN uv run --group evals \
 		--extra backtesting --extra research python -m evals.tool_surface.run $(ARGS)
+
+# In-session subagent traces (no Agent SDK spend): install the eval client
+# agent, then point it at one case before each spawn. See evals/tool_surface/README.md.
+eval-agent-install:
+	@mkdir -p .claude/agents
+	@sed "s|{REPO}|$(CURDIR)|g" evals/tool_surface/agent/maverick-eval-client.md > .claude/agents/maverick-eval-client.md
+	@echo "Installed .claude/agents/maverick-eval-client.md (restart Claude Code if .claude/agents is new)"
+
+eval-agent-case:
+	@uv run python -c "import json,sys; cases={c['id']:c for c in json.load(open('$(CASES)'))}; json.dump(cases['$(CASE)'], open('evals/tool_surface/.agent_case.json','w'))"
+	@echo "Next maverick-eval-client spawn runs case $(CASE) from $(CASES)"
 
 # Local review UI for error analysis on the newest run (override EVAL_RUN).
 # Run folders start with a UTC timestamp, so the last one sorted is the newest.
