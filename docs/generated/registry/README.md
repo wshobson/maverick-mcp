@@ -2,10 +2,12 @@
 
 Ready-to-paste submission content for MCP registries that accept a
 maintainer-filed PR/CLI-push/form, prepared ahead of time so Phase 9 Task 7
-(publish) is "paste and submit," not "write from scratch." Nothing in this
-directory has been submitted anywhere — see
-[`docs/runbooks/releasing.md`](../../runbooks/releasing.md) for the full
-publish sequence and its authorization gates.
+(publish) is "paste and submit," not "write from scratch." Only the Docker
+MCP Catalog draft has been used: it was filed as
+[docker/mcp-registry#4490](https://github.com/docker/mcp-registry/pull/4490)
+on 2026-07-20, which is still open. The others have not been submitted —
+see [`docs/runbooks/releasing.md`](../../runbooks/releasing.md) for the full
+publish sequence, its authorization gates, and current status.
 
 Every draft uses the canonical server identity `io.github.wshobson/maverick-mcp`
 (repo: <https://github.com/wshobson/maverick-mcp>, owner: `wshobson`).
@@ -16,8 +18,8 @@ Every draft uses the canonical server identity `io.github.wshobson/maverick-mcp`
 | --- | --- | --- |
 | `docker-mcp-catalog.md` | Docker MCP Catalog | GitHub PR against `docker/mcp-registry` adding `servers/maverick-mcp/server.yaml` |
 | `smithery.yaml` | Smithery | `smithery` CLI push/deploy of the config at repo root |
-| `glama.md` | Glama | GitHub App repo connection (or web form) |
-| `pulsemcp.md` | PulseMCP | Web submission (mechanism unconfirmed — see file) |
+| `glama.md` | Glama | Already indexed from GitHub; claim the listing |
+| `pulsemcp.md` | PulseMCP | Crawled; submissions paused (see file) |
 | `mcp-so.md` | mcp.so | Web submission form or GitHub issue |
 
 Each `.md` file opens with a one-line "how to submit" note. `smithery.yaml`

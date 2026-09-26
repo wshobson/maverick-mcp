@@ -33,8 +33,14 @@ config or a database forward from a pre-v1.0 install, read
 - `maverick/server/`: FastMCP assembly (`assembly.py`), the CLI entry point
   (`app.py`), and prompts (`prompts.py`). Nothing imports `maverick.server`.
 - `tests/`: primary pytest suite, mirroring the domain tree plus
-  `tests/structure` (layering/naming checks) and `tests/server`.
-- `scripts/`: local utility scripts (currently just indicator fixtures).
+  `tests/structure` (file-size, env-access, naming, and dependency rules),
+  `tests/server`, and `tests/evals`.
+- `scripts/`: local utility scripts (the `.mcpb` bundle builder and the
+  indicator golden-fixture recorder).
+- `tools/`: `check_docs_catalog.py`, the checker behind `make docs-check`.
+- `evals/`: tool-surface trace harness and local review UI for error
+  analysis. Read `evals/tool_surface/README.md` before any `make eval-*`
+  target.
 - `docs/`: canonical project documentation and catalog.
 
 ## Documentation Map

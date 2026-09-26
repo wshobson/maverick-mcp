@@ -14,6 +14,21 @@ Sourced from `docker/mcp-registry`'s `CONTRIBUTING.md` and `add_mcp_server.md`
 requirements and the `task wizard` flow can change without notice, and
 several fields below are best-effort inferences flagged individually.
 
+**Status (2026-09-26):** filed as
+[docker/mcp-registry#4490](https://github.com/docker/mcp-registry/pull/4490)
+on 2026-07-20; still open, with no activity since. The filed
+`server.yaml` differs from the draft below: it pins commit
+`3ae3b1ac11be37f426da78f720f51302a36d0e8d` (`main` on 2026-07-20, after the
+v1.0.0 tag), omits `source.directory`, titles the server `Maverick`, drops
+the `backtesting` and `research` tags, uses the avatar URL
+`https://avatars.githubusercontent.com/u/553618?v=4`, and adds a `run.command`
+of `uv run python -m maverick.server --transport stdio`. That override is
+required, because the image's default command starts the HTTP transport. When
+the PR is moved to a newer commit, the override must match that commit's
+Dockerfile: up to v1.1.0 the image runs through `uv run`; from #286 on, the
+runtime stage has no `uv`, so the command is
+`python -m maverick.server --transport stdio`. Edit the PR, not this draft.
+
 ## PR title
 
 ```
@@ -97,11 +112,11 @@ source:
   confirm the actual enum (if one exists) by checking `meta.category` values
   used by other `servers/*/server.yaml` entries in the registry before
   filing.
-- The Dockerfile does not yet carry the
+- The Dockerfile carries the
   `io.modelcontextprotocol.server.name=io.github.wshobson/maverick-mcp`
-  LABEL (Phase 9 Task 2, not yet landed as of this draft). Docker's catalog
-  submission may or may not require that label; check `add_mcp_server.md`
-  again once Task 2 lands.
+  LABEL (Phase 9 Task 2, landed 2026-07-20). Docker's catalog submission may
+  or may not require that label; the filed PR reports `task validate`
+  passing with it.
 - The registry's own `task wizard` (for local servers) is described as "the
   easiest way to create your `server.yaml`" — running it against the real
   repo at submit time may produce a materially different file than this

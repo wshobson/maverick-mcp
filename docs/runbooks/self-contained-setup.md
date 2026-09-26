@@ -33,7 +33,7 @@ unset to run without them):
 ```bash
 LLM_PROVIDER=anthropic
 LLM_API_KEY=your_provider_key
-LLM_MODEL=claude-sonnet-4-5
+LLM_MODEL=claude-sonnet-4-6
 ```
 
 Optional research search key:

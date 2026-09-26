@@ -38,16 +38,17 @@ If applicable, add screenshots to help explain your problem.
 **Desktop/Server:**
  - OS: [e.g. macOS, Ubuntu, Windows]
  - Python Version: [e.g. 3.12.0]
- - MaverickMCP Version: [e.g. 0.1.0]
- - Installation Method: [e.g. pip, uv, git clone]
+ - MaverickMCP Version: [e.g. 1.1.0]
+ - Installation Method: [e.g. uvx from release tag, Docker (GHCR), git clone]
+ - Extras installed: [none, backtesting, research]
 
-**Claude Desktop (if applicable):**
- - Claude Desktop Version: [e.g. 1.0.0]
- - mcp-remote Version: [if using Claude Desktop]
+**MCP Client:**
+ - Client and Version: [e.g. Claude Desktop, Claude Code, Cursor]
+ - Transport: [STDIO, Streamable HTTP]
+ - mcp-remote Version: [if bridging HTTP through mcp-remote]
 
 **Dependencies:**
- - FastMCP Version: [e.g. 2.7.0]
- - FastAPI Version: [e.g. 0.115.0]
+ - FastMCP Version: [e.g. 4.0.3]
  - Database: [SQLite, PostgreSQL]
  - Redis: [Yes/No, version if yes]
 
@@ -55,7 +56,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Environment Variables (remove sensitive data):**
 ```
-TIINGO_API_KEY=***
+LLM_PROVIDER=***
 DATABASE_URL=***
 REDIS_HOST=***
 # ... other relevant config
@@ -109,13 +110,16 @@ Paste terminal output here
 - [ ] Low (minor issue, workaround available)
 
 **Component:**
-- [ ] Data fetching (Tiingo, Yahoo Finance)
+- [ ] Data fetching (Yahoo Finance, finviz)
 - [ ] Technical analysis calculations
 - [ ] Stock screening
+- [ ] Portfolio, watchlists, or trade journal
+- [ ] Backtesting (`[backtesting]` extra)
+- [ ] Research (`[research]` extra)
 - [ ] Database operations
 - [ ] Caching (Redis)
 - [ ] MCP server/tools
-- [ ] Claude Desktop integration
+- [ ] MCP client integration (Claude Desktop, Claude Code, Cursor, etc.)
 - [ ] Installation/Setup
 
 **Additional Labels:**

@@ -8,8 +8,10 @@ pre-v1.0 `.env` file or database forward.
 
 ## Package And Install
 
-- PyPI package renamed to `maverick-mcp-server` (console script:
-  `maverick-mcp`, entry point `maverick.server.app:main`).
+- Package renamed from `maverick_mcp` to `maverick-mcp-server` (console
+  script: `maverick-mcp`, entry point `maverick.server.app:main`). It is not
+  on PyPI: the name there belongs to an unrelated project until a transfer
+  request completes, so install from the release tag.
 - New install: `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"` or
   `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio`.
 - Run invocation changed from `python -m maverick_mcp.api.server` to
@@ -30,12 +32,14 @@ per-vendor keys was set (`OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`,
 | N/A | `LLM_TEMPERATURE` (default `0.0`) |
 
 Set all three of `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL` together, or leave
-all unset to run without LLM-backed tools (`research_*` and
-`backtesting_parse_strategy` register but return a clear "not configured"
-error; every other tool is unaffected).
+all unset to run without LLM-backed tools (`research_*` tools register but
+return a clear "not configured" error, and `backtesting_parse_strategy` falls
+back to keyword parsing; every other tool is unaffected).
 
 `EXA_API_KEY` is unchanged -- it still gates web search for the research
-domain and is independent of the LLM seam above.
+domain and is independent of the LLM seam above. Since v1.1.0, a self-hosted
+SearXNG instance can replace Exa (`RESEARCH_SEARCH_BACKEND=searxng` plus
+`SEARXNG_BASE_URL`, no key).
 
 ## Dead Environment Variables
 
@@ -49,7 +53,7 @@ Remove these from your `.env`; nothing in `maverick/` reads them:
 - `FRED_API_KEY` -- the macro/FRED data provider was not ported (zero live
   consumers in the legacy code); there is currently no macro domain.
 - `TAVILY_API_KEY` -- `TavilySearchProvider` was legacy dead code (never
-  actually instantiated); Exa is the only search provider.
+  actually instantiated); the search providers are Exa and SearXNG.
 - Auth/billing remnants: `AUTH_ENABLED`, `API_KEY_*`, `JWT_*`, session/OAuth
   variables, `SENTRY_DSN`, `ALLOWED_ORIGINS`, `RATE_LIMIT_PER_IP`,
   `MAINTENANCE_MODE`. The server has no authentication, billing, CORS
@@ -146,7 +150,9 @@ for the full rationale on each):
 3. Rewrite your `.env` against the current `.env.example`: drop dead vars,
    add `LLM_PROVIDER`/`LLM_API_KEY`/`LLM_MODEL` if you use research tools.
 4. Point `DATABASE_URL` at your existing database if you want to keep
-   watchlists, journal entries, and cached market data; re-add portfolio
-   positions manually since those tables did not carry over automatically.
+   watchlists and journal entries; re-add portfolio positions manually since
+   those tables did not carry over automatically. Legacy cached market data
+   (`mcp_stocks`, `mcp_price_cache`) is not read either; price history is
+   fetched again on demand into the new `md_*` tables.
 5. Start the server once (`make dev-stdio` or the equivalent client
    command) to let `ensure_schema` create the new tables.

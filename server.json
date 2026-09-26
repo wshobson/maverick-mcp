@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.wshobson/maverick-mcp",
-  "description": "Stock analysis MCP server with S&P 500 data, technical indicators, and AI research tools.",
+  "description": "Stock analysis MCP server with market data, technical indicators, and AI research tools.",
   "status": "active",
   "repository": {
     "url": "https://github.com/wshobson/maverick-mcp",

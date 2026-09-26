@@ -1,31 +1,38 @@
 # Exa And Research Provider Testing
 
-Research-provider tests validate Exa/Tavily integration, timeout handling,
-circuit breakers, and MCP research tool behavior.
+Research-provider tests validate the Exa and SearXNG search providers,
+source scoring, timeout handling, circuit breakers, and MCP research tool
+behavior. They live in `tests/research/` and are fully mocked.
 
 ## Main Coverage
 
-- Provider initialization with and without API keys.
-- Search timeout and failure handling.
-- Research-agent orchestration across query depths.
+- Provider behavior with and without `exa_py` installed, and SearXNG
+  requests answered by an `httpx.MockTransport` (`test_providers.py`,
+  `test_searxng.py`).
+- Search timeout and failure handling, including the provider health gate
+  and open circuit breakers.
+- Research-agent graph runs: the comprehensive, company, and sentiment entry
+  points, persona prompts, and provider or LLM failures
+  (`test_agents_graph.py`).
 - Specialized research paths for fundamental, technical, sentiment, and
-  competitive analysis.
-- MCP research tool responses.
-- Performance and timeout budgets.
+  competitive analysis (`test_agents_subagents.py`).
+- Configuration errors for a missing search backend or LLM, and typed
+  timeout errors (`test_service.py`).
+- MCP research tool responses and the extra-absent registration path
+  (`test_tools.py`, `test_tools_availability.py`).
 
 ## Commands
 
 Mocked/default tests:
 
 ```bash
-uv run pytest tests/test_exa_research_integration.py -v
+uv run pytest tests/research -v
 ```
 
-Real provider tests require API keys and should be run explicitly:
-
-```bash
-EXA_API_KEY=... uv run pytest -m external tests/test_exa_research_integration.py -v
-```
+There are no real-provider tests. `tests/research/conftest.py` scrubs
+`EXA_API_KEY`, `RESEARCH_SEARCH_BACKEND`, `SEARXNG_BASE_URL`, and the `LLM_*`
+variables before every test, so a shell with real keys cannot make these
+tests call Exa or an LLM.
 
 ## Provider Policy
 

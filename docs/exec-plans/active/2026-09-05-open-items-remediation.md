@@ -2675,6 +2675,8 @@ Deviations and lessons from executing Tasks 1 to 21 inline in one session.
 
 Merged this session: #255, #256, #242, #243, #244, #248, #250, #251, #252, #253, #257, #258, #259, #260, #261, #262, #263. Closed: #241, #254, #245, #246, #247, #186, #249. Open by design: #235 (upstream tracker). Owner-gated and not started: Tasks 22 and 23.
 
+2026-09-26 (status addendum): #235 closed on 2026-09-26, so it is no longer open by design. Task 22 is partly done, as item 13 records: the tag, the GitHub release, and the GHCR image exist, and the PyPI step waits on pypi/support#12150, which has had no action since 2026-09-05. Task 23 has not started (the Docker catalog draft still pins the v1.0.0 commit). Since this session, #272 (circuit breaker stuck half-open after a cancelled probe) and its draft fix PR #273 have opened, so Task 25's exit criteria do not hold yet. The plan stays active.
+
 ## Spec coverage
 
 | Spec section | Tasks |

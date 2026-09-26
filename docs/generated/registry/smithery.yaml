@@ -13,10 +13,10 @@
 #   (b) `smithery mcp publish <url-or-.mcpb>` in the current CLI docs, which
 #       publishes from a public MCP URL or a local `.mcpb` bundle and does
 #       not obviously reference `smithery.yaml` at all.
-# maverick-mcp is a local stdio server (no public MCP URL) and does not yet
-# have a `.mcpb` bundle built (Phase 9 Task 2, not yet landed as of this
-# draft) or a hosted HTTP deployment, so path (b) may not be usable until
-# Task 2 lands. This file targets path (a). VERIFY the current mechanism
+# maverick-mcp is a local stdio server (no public MCP URL) and has no usable
+# `.mcpb` bundle (`make bundle` builds one, but it launches the PyPI package,
+# so it waits on the PyPI publish) or a hosted HTTP deployment, so path (b)
+# is not usable yet. This file targets path (a). VERIFY the current mechanism
 # against https://smithery.ai/docs/build/project-config/smithery.yaml and
 # https://smithery.ai/docs/concepts/cli at submit time before assuming
 # either path is still current.
@@ -48,6 +48,16 @@ startCommand:
         description: >-
           Optional API key for the configured LLM_PROVIDER. Required only
           when LLM_PROVIDER is set.
+      LLM_MODEL:
+        type: string
+        description: >-
+          Optional model name for the configured LLM_PROVIDER. Required only
+          when LLM_PROVIDER is set.
+      LLM_BASE_URL:
+        type: string
+        description: >-
+          Optional base URL override, required when
+          LLM_PROVIDER=openai_compatible.
       EXA_API_KEY:
         type: string
         description: >-
@@ -56,20 +66,23 @@ startCommand:
   # UNCONFIRMED: commandFunction is the field name observed in several
   # real-world Python-server smithery.yaml files (e.g. adhikasp/mcp-twikit),
   # but those examples assume the package's console script is already on
-  # PATH inside Smithery's build environment. maverick-mcp is not yet
-  # published to PyPI, so `uvx --from maverick-mcp-server maverick-mcp` will
-  # not resolve until Phase 9 Task 4 (PyPI publish) lands. Verify Smithery's
+  # PATH inside Smithery's build environment. maverick-mcp is not on PyPI:
+  # the name `maverick-mcp-server` belongs to an unrelated project until the
+  # PEP 541 transfer completes, so this launches the v1.1.0 git tag instead
+  # of the bare PyPI name. Verify Smithery's
   # current expectations for Python/uv-based servers (their docs primarily
   # show Node/TypeScript examples) before relying on this verbatim.
   commandFunction: |-
     (config) => ({
       command: 'uvx',
-      args: ['--from', 'maverick-mcp-server', 'maverick-mcp', '--transport', 'stdio'],
+      args: ['--from', 'git+https://github.com/wshobson/maverick-mcp@v1.1.0', 'maverick-mcp', '--transport', 'stdio'],
       env: {
         ...(config.DATABASE_URL ? { DATABASE_URL: config.DATABASE_URL } : {}),
         ...(config.REDIS_HOST ? { REDIS_HOST: config.REDIS_HOST } : {}),
         ...(config.LLM_PROVIDER ? { LLM_PROVIDER: config.LLM_PROVIDER } : {}),
         ...(config.LLM_API_KEY ? { LLM_API_KEY: config.LLM_API_KEY } : {}),
+        ...(config.LLM_MODEL ? { LLM_MODEL: config.LLM_MODEL } : {}),
+        ...(config.LLM_BASE_URL ? { LLM_BASE_URL: config.LLM_BASE_URL } : {}),
         ...(config.EXA_API_KEY ? { EXA_API_KEY: config.EXA_API_KEY } : {})
       }
     })

@@ -39,7 +39,7 @@ def build_server() -> FastMCP:
        that is easy to forget at assembly time.
     3. `ScreeningService`/`PortfolioService`/`TechnicalService` each inject
        that one `MarketDataService` instance.
-    4. `JournalService` is portfolio's standalone sibling service (own
+    4. `JournalService` is portfolio's standalone sibling service (shared
        engine, own schema); it is wired into `portfolio.tools.configure`'s
        optional `journal_service` parameter rather than composed inside
        `PortfolioService`.

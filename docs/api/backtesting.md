@@ -60,7 +60,7 @@ The core install has no backtesting tools. Install the extra to enable all
 uv sync --extra backtesting
 ```
 
-or, from a published wheel:
+or, from the release tag:
 
 ```bash
 pip install "maverick-mcp-server[backtesting] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"
@@ -115,14 +115,14 @@ Run a single-strategy backtest and return metrics, trades, and analysis.
     "max_drawdown": -0.08,
     "win_rate": 0.58,
     "profit_factor": 1.45,
-    "expectancy": 0.02,
+    "expectancy": 152.4,
     "total_trades": 24,
     "winning_trades": 14,
     "losing_trades": 10,
-    "avg_win": 0.04,
-    "avg_loss": -0.02,
-    "best_trade": 0.12,
-    "worst_trade": -0.06,
+    "avg_win": 412.0,
+    "avg_loss": -206.0,
+    "best_trade": 1180.0,
+    "worst_trade": -590.0,
     "avg_duration": 8.5,
     "kelly_criterion": 0.18,
     "recovery_factor": 1.9,
@@ -130,45 +130,60 @@ Run a single-strategy backtest and return metrics, trades, and analysis.
   },
   "trades": [
     {
-      "entry_date": "2023-01-15",
-      "exit_date": "2023-02-10",
+      "entry_date": "2023-01-15 00:00:00",
+      "exit_date": "2023-02-10 00:00:00",
       "entry_price": 150.0,
       "exit_price": 158.5,
       "size": 66.0,
       "pnl": 561.0,
       "return": 0.057,
-      "duration": "26 days"
+      "duration": ""
     }
   ],
-  "equity_curve": {"2023-01-01": 10000.0, "2023-01-02": 10012.5},
-  "drawdown_series": {"2023-01-01": 0.0, "2023-01-02": -0.01},
-  "start_date": "2023-01-01",
-  "end_date": "2024-01-01",
+  "equity_curve": {"2023-01-03 00:00:00": 10000.0, "2023-01-04 00:00:00": 10012.5},
+  "drawdown_series": {"2023-01-03 00:00:00": 0.0, "2023-01-04 00:00:00": -0.01},
+  "start_date": "2023-01-03",
+  "end_date": "2023-12-29",
   "initial_capital": 10000.0,
+  "memory_stats": null,
   "analysis": {
-    "performance_grade": "B",
+    "performance_grade": "C",
     "risk_assessment": {
-      "risk_level": "moderate",
-      "max_drawdown": -0.08,
+      "risk_level": "Low",
+      "max_drawdown": 0.08,
       "sortino_ratio": 1.6,
       "calmar_ratio": 1.85,
       "recovery_factor": 1.9,
-      "risk_adjusted_return": 0.17,
-      "downside_protection": "good"
+      "risk_adjusted_return": 1.6,
+      "downside_protection": "Good"
     },
     "trade_quality": {
-      "quality": "good",
+      "quality": "Good",
       "total_trades": 24,
-      "frequency": "moderate"
+      "frequency": "Low",
+      "win_rate": 0.58,
+      "avg_win": 412.0,
+      "avg_loss": -206.0,
+      "best_trade": 1180.0,
+      "worst_trade": -590.0,
+      "avg_duration_days": 8.5,
+      "risk_reward_ratio": 2.0
     },
-    "strengths": ["Consistent positive expectancy"],
-    "weaknesses": [],
-    "recommendations": ["Consider wider stops in choppy markets"],
-    "summary": "Solid risk-adjusted returns with moderate drawdown."
+    "strengths": ["Low maximum drawdown", "Good return vs drawdown ratio"],
+    "weaknesses": ["Room for optimization"],
+    "recommendations": ["Consider position size of 18.0% based on Kelly Criterion"],
+    "summary": "The strategy generated a 15.0% return with a Sharpe ratio of 1.20. Maximum drawdown was 8.0% with a 58.0% win rate across 24 trades. Performance is good with acceptable risk levels."
   },
   "status": "success"
 }
 ```
+
+`avg_win`, `avg_loss`, `best_trade`, `worst_trade`, and `expectancy` are
+per-trade P&L in account currency, not returns. Each trade's `duration` is
+an empty string: vectorbt's trade records have no `Duration` column, so the
+engine has nothing to copy (`avg_duration` is still computed). With no
+trades, `trade_quality` reports `"quality": "No trades"`,
+`"frequency": "None"`, and `null` for the per-trade fields.
 
 ### backtesting_optimize_strategy
 
@@ -206,6 +221,7 @@ faithfully-preserved legacy limitation (`generate_param_grid` raises
   ],
   "total_combinations_tested": 64,
   "valid_combinations": 61,
+  "memory_stats": null,
   "status": "success"
 }
 ```
@@ -213,16 +229,18 @@ faithfully-preserved legacy limitation (`generate_param_grid` raises
 ### backtesting_walk_forward_analysis
 
 Roll a strategy forward through repeated optimize/test windows to gauge
-robustness.
+robustness. Each step re-optimizes on the preceding 504 calendar days with
+the `coarse` grid, then tests the best parameters on the next window, so
+`strategy` must be one of the five optimizable templates.
 
 **Tool name**: `backtesting_walk_forward_analysis` (readOnlyHint: true)
 
 **Parameters**:
 - `symbol` (str, required)
-- `strategy` (str, default: "sma_cross")
-- `start_date`, `end_date` (str, optional)
-- `window_size` (int, default: 252): trading days per test window
-- `step_size` (int, default: 63): rolling step between windows
+- `strategy` (str, default: "sma_cross"): `sma_cross`, `rsi`, `macd`, `bollinger`, or `momentum`
+- `start_date`, `end_date` (str, optional): defaults to the last 3 years (1095 days)
+- `window_size` (int, default: 252): calendar days per test window
+- `step_size` (int, default: 63): calendar days between windows
 
 **Returns** (`WalkForwardResult`):
 ```json
@@ -236,15 +254,15 @@ robustness.
   "consistency": 0.75,
   "walk_forward_results": [
     {
-      "period": "2023-Q1",
-      "parameters": {"fast_period": 10, "slow_period": 25},
+      "period": "2023-01-02 to 2023-09-11",
+      "parameters": {"fast_period": 10, "slow_period": 20},
       "in_sample_sharpe": 1.3,
       "out_sample_return": 0.08,
       "out_sample_sharpe": 1.1,
       "out_sample_drawdown": -0.05
     }
   ],
-  "summary": "8 windows tested; average out-of-sample Sharpe 0.95.",
+  "summary": "Walk-forward analysis shows 12.0% average return with Sharpe ratio of 0.95. Strategy was profitable in 75% of periods. Results show moderate robustness with room for improvement.",
   "status": "success"
 }
 ```
@@ -263,7 +281,8 @@ distribution.
 - `num_simulations` (int, default: 1000)
 - `fast_period`, `slow_period`, `period` (int, optional): strategy overrides
 
-**Returns** (`MonteCarloResult`; percentile keys are `p5`/`p25`/`p50`/`p75`/`p95`):
+**Returns** (`MonteCarloResult`; percentile keys are `p5`/`p25`/`p50`/`p75`/`p95`,
+and `var_95` is the `p5` return):
 ```json
 {
   "num_simulations": 1000,
@@ -272,13 +291,15 @@ distribution.
   "return_percentiles": {"p5": 0.02, "p25": 0.10, "p50": 0.17, "p75": 0.23, "p95": 0.32},
   "expected_drawdown": -0.09,
   "drawdown_std": 0.03,
-  "drawdown_percentiles": {"p5": -0.18, "p50": -0.08, "p95": -0.02},
+  "drawdown_percentiles": {"p5": -0.18, "p25": -0.11, "p50": -0.08, "p75": -0.05, "p95": -0.02},
   "probability_profit": 0.85,
-  "var_95": -0.12,
-  "summary": "85% probability of profit across 1000 simulations.",
+  "var_95": 0.02,
+  "summary": "Monte Carlo simulation shows 16.8% expected return with 85.0% probability of profit. 95% Value at Risk is 2.0%. Strategy shows strong probabilistic edge.",
   "status": "success"
 }
 ```
+
+A backtest with no trades has nothing to resample and returns an error.
 
 ### backtesting_compare_strategies
 
@@ -288,10 +309,13 @@ Backtest multiple strategies on the same symbol and rank them.
 
 **Parameters**:
 - `symbol` (str, required)
-- `strategies` (list[str], optional): strategy keys to compare
+- `strategies` (list[str], optional): strategy keys to compare; defaults to
+  `sma_cross`, `rsi`, `macd`, `bollinger`, `momentum`. A strategy whose
+  backtest fails is dropped from the rankings.
 - `start_date`, `end_date` (str, optional)
 
-**Returns** (`StrategyComparisonResult`):
+**Returns** (`StrategyComparisonResult`; `rankings` is sorted by Sharpe ratio,
+and each row's `max_drawdown` is the absolute value):
 ```json
 {
   "rankings": [
@@ -300,7 +324,7 @@ Backtest multiple strategies on the same symbol and rank them.
       "parameters": {"fast_period": 12, "slow_period": 26, "signal_period": 9},
       "total_return": 0.28,
       "sharpe_ratio": 1.45,
-      "max_drawdown": -0.07,
+      "max_drawdown": 0.07,
       "win_rate": 0.6,
       "profit_factor": 1.6,
       "total_trades": 20,
@@ -313,7 +337,7 @@ Backtest multiple strategies on the same symbol and rank them.
   "best_sharpe": {"strategy": "macd", "...": "..."},
   "best_drawdown": {"strategy": "sma_cross", "...": "..."},
   "best_win_rate": {"strategy": "macd", "...": "..."},
-  "summary": "macd ranked best overall across 3 strategies compared.",
+  "summary": "The best performing strategy is macd with a Sharpe ratio of 1.45 and total return of 28.0%. It outperformed 2 other strategies tested.",
   "status": "success"
 }
 ```
@@ -326,7 +350,8 @@ metrics. Per-symbol backtests run with bounded concurrency (a semaphore of
 independently -- there is no combined equity curve and no cross-symbol
 correlation. `total_return`/`average_sharpe` are per-symbol averages;
 `max_drawdown` is the worst (most negative) constituent drawdown, not a
-joint-portfolio calculation.
+joint-portfolio calculation. A symbol whose backtest fails is left out of
+the results.
 
 **Tool name**: `backtesting_backtest_portfolio` (readOnlyHint: true)
 
@@ -335,7 +360,8 @@ joint-portfolio calculation.
 - `strategy` (str, default: "sma_cross")
 - `start_date`, `end_date` (str, optional)
 - `initial_capital` (float, default: 10000.0)
-- `position_size` (float, default: 0.1): fraction of capital per symbol
+- `position_size` (float, default: 0.1): fraction of capital per symbol (each
+  symbol's backtest starts with `initial_capital * position_size`)
 - `fast_period`, `slow_period`, `period` (int, optional): strategy overrides
 
 **Returns** (`PortfolioBacktestResult`):
@@ -351,7 +377,7 @@ joint-portfolio calculation.
   "individual_results": [
     {"symbol": "AAPL", "strategy": "sma_cross", "metrics": {"...": "..."}}
   ],
-  "summary": "Portfolio backtest of 5 symbols with sma_cross strategy.",
+  "summary": "Portfolio backtest of 5 symbols with sma_cross strategy",
   "status": "success"
 }
 ```
@@ -451,21 +477,22 @@ validate against the matched template's required parameters.
 "Optimizable" means `backtesting_optimize_strategy` supports it; every
 template works with `backtesting_run_backtest` and `backtesting_compare_strategies`.
 The last three (`online_learning`, `regime_aware`, `ensemble`) carry a
-descriptive `code` field in the catalog rather than an executable
+descriptive `code` field in `STRATEGY_TEMPLATES` rather than an executable
 vectorbt-expression string, but their runtime signal generation
 (`strategies/signals.py`) is real, self-contained pandas/numpy logic -- not
 a stub and not a delegation to the ML strategy classes below.
 
 ### ML strategy classes (8 total)
 
-These back the ML-enhanced tools below, not `backtesting_run_backtest`
-directly:
+Six of these back the ML-enhanced tools below, not `backtesting_run_backtest`
+directly. `OnlineLearningStrategy` and `HybridAdaptiveStrategy` are ported
+but no tool reaches them:
 
 | Class | Module | Role |
 | --- | --- | --- |
 | `MLPredictor` | `strategies/ml/ml_predictor.py` | Random-forest price-movement classifier |
 | `FeatureExtractor` | `strategies/ml/feature_engineering.py` | Technical-indicator feature pipeline |
-| `AdaptiveStrategy` | `strategies/ml/adaptive.py` | Gradient/momentum parameter adaptation |
+| `AdaptiveStrategy` | `strategies/ml/adaptive.py` | Gradient or random-search parameter adaptation |
 | `OnlineLearningStrategy` | `strategies/ml/online_learning.py` | Streaming SGD classifier |
 | `HybridAdaptiveStrategy` | `strategies/ml/hybrid_adaptive.py` | Combines adaptive + online-learning signals |
 | `RegimeAwareStrategy` | `strategies/ml/regime_aware.py` | Switches base strategy by detected regime |
@@ -482,17 +509,20 @@ Run a backtest using an ML-enhanced strategy.
 
 **Parameters**:
 - `symbol` (str, required)
-- `strategy_type` (str, default: "ml_predictor"): `ml_predictor`, `adaptive`, `ensemble`, or `regime_aware`
+- `strategy_type` (str, default: "ml_predictor"): `ml_predictor`, `adaptive`, `ensemble`, or `regime_aware` (`online_learning` is accepted as an alias for `adaptive`)
 - `start_date`, `end_date` (str, optional)
 - `initial_capital` (float, default: 10000.0)
-- `train_ratio` (float, default: 0.8)
+- `train_ratio` (float, default: 0.8): the first `train_ratio` of the bars
+  train the model (`ml_predictor`) or fit the regime detector
+  (`regime_aware`); signals and metrics come from the remaining bars only
 - `model_type` (str, default: "random_forest")
 - `n_estimators` (int, default: 100)
 - `max_depth` (int, optional)
 - `learning_rate` (float, default: 0.01)
-- `adaptation_method` (str, default: "gradient")
+- `adaptation_method` (str, default: "gradient"): `gradient` or `random_search`
 
-**Returns** (`MLBacktestResult`):
+**Returns** (`MLBacktestResult`; `trades` rows have the same shape as
+`backtesting_run_backtest`'s):
 ```json
 {
   "metrics": {
@@ -504,13 +534,15 @@ Run a backtest using an ML-enhanced strategy.
     "total_trades": 30,
     "profit_factor": 1.7
   },
-  "trades": [{"entry_time": "2023-02-01", "exit_time": "2023-02-20", "pnl": 120.0, "return": 0.04}],
-  "equity_curve": {"2023-01-01": 10000.0},
-  "drawdown_series": {"2023-01-01": 0.0},
+  "trades": [{"entry_date": "2023-02-01 00:00:00", "exit_date": "2023-02-20 00:00:00", "entry_price": 150.0, "exit_price": 156.0, "size": 20.0, "pnl": 120.0, "return": 0.04, "duration": ""}],
+  "equity_curve": {"2023-01-03 00:00:00": 10000.0},
+  "drawdown_series": {"2023-01-03 00:00:00": 0.0},
   "ml_metrics": {
+    "strategy_type": "ml_predictor",
     "training_period": 400,
     "testing_period": 100,
-    "model_accuracy": 0.68,
+    "train_test_split": 0.8,
+    "training_metrics": {"train_accuracy": 0.68, "n_samples": 400, "n_features": 75, "...": "..."},
     "feature_importance": {"rsi": 0.25, "macd": 0.22}
   },
   "status": "success"
@@ -543,10 +575,19 @@ Train a random-forest ML predictor model for trading signals.
   "target_periods": 5,
   "return_threshold": 0.02,
   "model_parameters": {"n_estimators": 100, "max_depth": 10, "min_samples_split": 2},
-  "training_metrics": {"accuracy": 0.68, "precision": 0.72, "recall": 0.65, "f1_score": 0.68},
+  "training_metrics": {
+    "train_accuracy": 0.68,
+    "n_samples": 500,
+    "n_features": 75,
+    "target_distribution": {"0": 171, "1": 174, "2": 155},
+    "feature_importance": {"rsi": 0.25, "macd": 0.22}
+  },
   "status": "success"
 }
 ```
+
+`train_accuracy` is in-sample accuracy on the training data; there is no
+held-out evaluation.
 
 ### backtesting_analyze_market_regimes
 
@@ -558,12 +599,13 @@ Hidden Markov Model -- the name is kept for backward compatibility.
 zero-model rule-based classifier on trend slope and volatility. The
 returned `method` field reports what was **actually** used, which can
 differ from the request: fitting silently falls back to `"threshold"` when
-there isn't enough history to fit a genuine statistical model (in practice,
-this tool's own default 365-day lookback is usually *not* enough for
-`n_regimes=3`; use a longer `start_date`/`end_date` range to fit a real
-model). Each `recent_regime_history` entry's `probabilities` are the fitted
-model's real posterior when one exists, otherwise an honest one-hot vector
-at the assigned regime -- never a fabricated uniform distribution.
+there isn't enough history to fit a genuine statistical model or the fit
+itself fails (in practice, this tool's own default 365-day lookback is
+usually *not* enough for `n_regimes=3`; use a longer `start_date`/`end_date`
+range to fit a real model). Each `recent_regime_history` entry's
+`probabilities` are the fitted model's real posterior when one exists,
+otherwise an honest one-hot vector at the assigned regime -- never a
+fabricated uniform distribution.
 
 **Tool name**: `backtesting_analyze_market_regimes` (readOnlyHint: true)
 
@@ -608,6 +650,10 @@ SMA-crossover variant) and keeps its own template name in the result, so
 addressable per requested strategy rather than collapsing onto one shared
 key. An unknown name raises a clear error rather than being silently
 dropped.
+
+Only the first five `symbols` are backtested. A symbol with fewer than 100
+bars in the range, or whose backtest fails, is skipped, and the call errors
+only when no symbol succeeds.
 
 **Tool name**: `backtesting_create_strategy_ensemble` (readOnlyHint: true)
 
@@ -654,11 +700,12 @@ instead of raising -- there is no separate error schema per tool:
 ```
 
 Common causes: an empty or too-short price history fetch, an unsupported
-strategy name (`ValueError` from `get_strategy_template`), an unsupported
-`optimize_strategy` target (only `sma_cross`/`rsi`/`macd`/`bollinger`/
-`momentum` have parameter grids), or an analysis that exceeds
-`BacktestingSettings.analysis_timeout_seconds` (120s by default, configurable
-via `BACKTESTING_*` env vars -- see `maverick/backtesting/config.py`).
+strategy name (`ValueError` from `strategies.signals.generate_signals`), an
+unsupported `optimize_strategy` or `walk_forward_analysis` target (only
+`sma_cross`/`rsi`/`macd`/`bollinger`/`momentum` have parameter grids), or an
+analysis that exceeds `BacktestingSettings.analysis_timeout_seconds` (120s;
+not env-configurable -- only initial capital, fees, and slippage read
+`BACKTESTING_*` env vars, see `maverick/backtesting/config.py`).
 
 ## Integration Examples
 
@@ -684,29 +731,36 @@ via `BACKTESTING_*` env vars -- see `maverick/backtesting/config.py`).
 ### MCP client usage
 
 ```python
-import mcp
+import asyncio
 
-client = mcp.Client("maverick-mcp")
+from fastmcp import Client
 
-# Run a backtest
-result = await client.call_tool("backtesting_run_backtest", {
-    "symbol": "AAPL",
-    "strategy": "sma_cross",
-    "fast_period": 10,
-    "slow_period": 20,
-    "initial_capital": 50000,
-})
 
-# Optimize a strategy
-optimization = await client.call_tool("backtesting_optimize_strategy", {
-    "symbol": "TSLA",
-    "strategy": "rsi",
-    "optimization_level": "medium",
-    "optimization_metric": "sharpe_ratio",
-})
+async def main():
+    # `make dev` serves Streamable HTTP here (no trailing slash).
+    async with Client("http://localhost:8003/mcp") as client:
+        # Run a backtest
+        result = await client.call_tool("backtesting_run_backtest", {
+            "symbol": "AAPL",
+            "strategy": "sma_cross",
+            "fast_period": 10,
+            "slow_period": 20,
+            "initial_capital": 50000,
+        })
 
-# List the strategy catalog
-catalog = await client.call_tool("backtesting_list_strategies", {})
+        # Optimize a strategy
+        optimization = await client.call_tool("backtesting_optimize_strategy", {
+            "symbol": "TSLA",
+            "strategy": "rsi",
+            "optimization_level": "medium",
+            "optimization_metric": "sharpe_ratio",
+        })
+
+        # List the strategy catalog
+        catalog = await client.call_tool("backtesting_list_strategies", {})
+
+
+asyncio.run(main())
 ```
 
 ## Best Practices
@@ -723,5 +777,5 @@ catalog = await client.call_tool("backtesting_list_strategies", {})
 
 ### Risk management
 1. Use `backtesting_monte_carlo_simulation` to understand the distribution of outcomes, not just the point estimate.
-2. Use `backtesting_backtest_portfolio` to see diversification effects across symbols.
+2. Use `backtesting_backtest_portfolio` to see how one strategy holds up across symbols (each symbol runs on its own; it does not model diversification).
 3. Watch `max_drawdown` and `sortino_ratio` in the `analysis.risk_assessment` block, not just `total_return`.

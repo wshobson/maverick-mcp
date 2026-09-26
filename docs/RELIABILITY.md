@@ -6,18 +6,23 @@ v1.0.0. Update when behavior changes.
 ## What exists
 
 - Per-service circuit breakers around outbound HTTP calls
-  (`maverick.platform.http.get_breaker`), used by market data fetchers and
-  the Exa search provider.
-- A shared rate limiter (`DATA_PROVIDER_RATE_LIMIT`, default 5/s) on
-  outbound HTTP requests via `maverick.platform.http.request_resilient`.
+  (`maverick.platform.http.get_breaker`), used by market data fetchers, the
+  Exa search provider, and (through `request_resilient`) the SearXNG search
+  provider.
+- A per-service rate limiter (`DATA_PROVIDER_RATE_LIMIT`, default 5/s) on
+  outbound HTTP requests made through
+  `maverick.platform.http.request_resilient`. Only the SearXNG provider uses
+  it today; yfinance and Exa calls do not pass through it.
 - Extras degrade gracefully: with `[backtesting]`/`[research]` absent, each
   domain's `tools.register()` logs one warning and registers zero tools
   instead of raising, so a base install boots and serves the other domains.
 - `maverick.server.app.main` catches any exception building the server and
   reports a clean one-line error plus a non-zero exit rather than a raw
   traceback -- the process's only top-level entry point.
-- Tiered caching (memory, then Redis or SQLite) degrades to in-memory/SQLite
-  automatically when Redis is unavailable or disabled.
+- Tiered caching (memory, then Redis or SQLite) uses memory plus SQLite when
+  Redis is not configured. A tier error on get/set/delete is logged and
+  treated as a miss, so a configured but unreachable Redis degrades to the
+  memory tier alone (the SQLite tier is not built when Redis is configured).
 
 ## Known gaps
 
@@ -38,3 +43,12 @@ v1.0.0. Update when behavior changes.
   runs without breaker/retry protection by design. Routing it through the
   breaker from a worker thread deadlocked; `_build_yfinance_tier` in
   `maverick/market_data/fetchers.py` records why.
+- A circuit breaker whose half-open probe is cancelled (for example by an
+  `asyncio.wait_for` timeout) stays half-open, so every later call through
+  that breaker fails with `CircuitOpenError` until the server restarts
+  (`CircuitBreaker.reset()` and `reset_breakers()` exist, but only tests
+  call them).
+  `CircuitBreaker.call` in `maverick/platform/http.py` catches `Exception`,
+  which does not include `asyncio.CancelledError`. A call admitted before the
+  breaker opened can also close it when it completes late. Open as #272;
+  draft fix in #273.
