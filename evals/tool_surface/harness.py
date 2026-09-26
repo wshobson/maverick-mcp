@@ -41,8 +41,9 @@ BANNED_ENV_PREFIXES = (
 )
 SMOKE_MARGIN = 1.5
 # The SDK checks max_budget_usd between turns, so a single query can overshoot
-# it; batch 2's b15 spent $0.77 against a $0.40 per-query cap. The run-level
-# check therefore reserves twice the per-query cap for each query.
+# it by the cost of its last turn, which nothing here bounds. Batch 2's b15
+# spent $0.77 against a $0.40 per-query cap, so the run-level check reserves
+# twice the per-query cap. That is a reservation, not a guarantee.
 PER_QUERY_OVERSHOOT = 2.0
 
 
@@ -153,9 +154,9 @@ def init_problems(init: Mapping[str, Any], expected_tools: Iterable[str]) -> lis
 def budget_stop_reason(
     spent: float, smoke_cost: float | None, cap: float, per_query_cap: float
 ) -> str | None:
-    """Why the next query must not start, or None. The estimate is the worst
-    case: twice the per-query cap (the SDK can overshoot it within a turn), or
-    1.5x the smoke cost when that is larger."""
+    """Why the next query must not start, or None. The estimate is twice the
+    per-query cap (the SDK can overshoot it within a turn), or 1.5x the smoke
+    cost when that is larger. It is a reservation, not a hard bound."""
     estimate = PER_QUERY_OVERSHOOT * per_query_cap
     if smoke_cost is not None:
         estimate = max(estimate, SMOKE_MARGIN * smoke_cost)

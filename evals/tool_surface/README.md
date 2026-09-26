@@ -35,9 +35,12 @@ order; any other file runs in file order, and its first case is the smoke query.
 
 The budget cap is checked before each query starts. Each query also has a
 $0.40 SDK budget, but the SDK checks it between turns, so one query can
-overshoot it (batch 2's b15 spent $0.77). The cap check therefore reserves
-twice the per-query budget, or 1.5 times the smoke query's cost if that is
-larger.
+overshoot it by the cost of its last turn (batch 2's b15 spent $0.77). The cap
+check therefore reserves twice the per-query budget, or 1.5 times the smoke
+query's cost if that is larger. That makes `--budget-usd` a planning cap, not
+a hard ceiling. The hard ceiling is the Claude account itself: with usage
+credits off, requests stop when the Agent SDK credit or balance runs out. Set
+`--budget-usd` with margin below what the account has left.
 
 Before each prompt is sent, the harness connects the CLI and checks the
 session. No API key may be in use, the login must be a Claude subscription,
@@ -46,11 +49,10 @@ the Maverick tools (no built-ins and no `research_*` tools). If any check
 fails, the run stops and no prompt is sent. After the prompt, the init message
 is checked again, and it must report `apiKeySource` as `none`.
 
-The run starts with one smoke query (q01), which must also report a cost. The
-other queries then run one at a time. Each query has its own $0.40 limit. A
-query does not start when the spend so far plus its worst case would pass the
-cap. The worst case is $0.40, or 1.5 times the smoke cost if that is larger.
-No query is retried.
+The run starts with one smoke query (the first case), which must also report
+a cost. The other queries then run one at a time. A query does not start when
+the spend so far plus its reservation (described above) would pass the cap. No
+query is retried.
 
 Each query gets a fresh copy of its seeded database in a temporary directory
 outside the repository, and the server gets only `PATH`, `HOME`,

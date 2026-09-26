@@ -203,6 +203,11 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     try:
+        cases = _ordered_cases(args.cases)
+    except (OSError, ValueError, KeyError) as exc:
+        print(f"refusing to start: cannot read cases from {args.cases}: {exc}")
+        return 2
+    try:
         cli_env = harness.cli_env(os.environ)
     except HarnessAbort as exc:
         print(f"refusing to start: {exc}")
@@ -231,7 +236,7 @@ def main(argv: list[str] | None = None) -> int:
         traces=folder / "traces",
     )
     run.traces.mkdir(parents=True)
-    summary = asyncio.run(run_all(run, _ordered_cases(args.cases)))
+    summary = asyncio.run(run_all(run, cases))
     _write_json(
         folder / "run.json",
         {
