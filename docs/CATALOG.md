@@ -36,6 +36,7 @@ Status labels:
 | `exec-plans/completed/2026-09-13-pandas-ta-removal.md` | current | engineering | Execution plan for the pandas-ta removal (4 tasks: feature engineering, dependency drop, pandas 3, bookkeeping). |
 | `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
 | `exec-plans/active/2026-09-05-open-items-remediation.md` | current | engineering | Execution plan for the 2026-09 open-items remediation (25 tasks: triage, contributor fixes, deps, FastMCP 4, SearXNG, v1.1.0). |
+| `exec-plans/active/2026-09-26-tech-debt-sweep.md` | current | engineering | Execution plan for the 2026-09-26 tech-debt sweep (unused dependencies, tracker items, Claude workflows on Opus 5.5). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
 | `generated/README.md` | current | docs | Marker for script-generated docs. |
