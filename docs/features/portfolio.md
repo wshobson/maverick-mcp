@@ -118,3 +118,34 @@ was used.
 Positions are stored in the `pf_portfolios` and `pf_positions` tables
 (SQLAlchemy Core, `maverick/portfolio/data.py`). The active personal-use
 default is a single local portfolio, not a hosted multi-user product.
+
+### Column Precision
+
+| Column | Postgres | SQLite |
+| --- | --- | --- |
+| `shares` | `NUMERIC(20, 8)` | `NUMERIC(20, 8)` |
+| `average_cost_basis` | `NUMERIC(12, 4)` | `NUMERIC(12, 4)` |
+| `total_cost` | `NUMERIC(28, 12)` | `NUMERIC(20, 4)` |
+
+The ledger rounds `average_cost_basis` to 4 places when it merges a purchase
+into an existing position. It never rounds `total_cost`, and 8-place shares
+times a 4-place price needs 12 places, so Postgres stores the ledger's total
+exactly. Shares beyond 8 places and prices beyond 4 places are rounded when
+stored, on both backends.
+
+SQLite has no decimal type. SQLAlchemy stores each value as a float and reads
+it back rounded to the column's scale, so SQLite returns `total_cost` rounded
+to 4 places. It keeps 4 places because a 12-place read would show float
+noise: `12345.6789` would read back as `12345.678900000001`.
+
+`ensure_schema` creates missing tables and adds missing nullable columns, but
+it never changes the type of an existing column. An existing Postgres
+database needs this statement once:
+
+```sql
+ALTER TABLE pf_positions ALTER COLUMN total_cost TYPE NUMERIC(28, 12);
+```
+
+The statement only widens the column, so existing rows convert without loss.
+Totals that were already rounded to 4 places are not recovered. SQLite
+databases need no change.

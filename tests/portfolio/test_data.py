@@ -10,8 +10,9 @@ from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import Numeric, func, insert, select
 from sqlalchemy import delete as sa_delete
-from sqlalchemy import func, insert, select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
@@ -31,6 +32,7 @@ from maverick.portfolio.data import (
     read_positions,
     upsert_position,
 )
+from maverick.portfolio.ledger import add_shares, remove_shares
 from maverick.portfolio.types import PositionPayload
 
 
@@ -151,6 +153,70 @@ def test_upsert_then_read_preserves_total_cost_exactly(factory):
         positions = read_positions(session, portfolio_id)
 
     assert positions[0].total_cost == Decimal("1062.7259")
+
+
+# -- cost column precision ------------------------------------------------------
+
+_LEDGER_DATE = "2026-01-15T00:00:00+00:00"
+
+
+def _ledger_positions() -> list[PositionPayload]:
+    """One position from each ledger path, built from 8dp shares and 4dp
+    prices, plus the largest single add the service settings allow."""
+    opened = add_shares(
+        None, "AAPL", Decimal("0.12345678"), Decimal("123.4567"), _LEDGER_DATE
+    )
+    merged = add_shares(
+        opened, "AAPL", Decimal("2.87654321"), Decimal("98.7654"), _LEDGER_DATE
+    )
+    trimmed, _ = remove_shares(merged, Decimal("1.00000001"))
+    assert trimmed is not None
+    largest = add_shares(
+        None,
+        "BIG",
+        Decimal("999999999.12345678"),
+        Decimal("999999.9999"),
+        _LEDGER_DATE,
+    )
+    return [opened, merged, trimmed, largest]
+
+
+def _postgres_stores_unchanged(column_name: str, value: Decimal) -> bool:
+    """Whether Postgres NUMERIC(p, s) keeps ``value`` exactly. Postgres
+    rounds to s places and rejects magnitudes of 10 ** (p - s) or more."""
+    numeric = PF_POSITIONS.c[column_name].type.dialect_impl(postgresql.dialect())
+    assert isinstance(numeric, Numeric)
+    assert numeric.precision is not None and numeric.scale is not None
+    places = Decimal(1).scaleb(-numeric.scale)
+    limit = Decimal(10) ** (numeric.precision - numeric.scale)
+    return value.quantize(places) == value and abs(value) < limit
+
+
+def test_cost_columns_hold_the_ledger_scale():
+    for position in _ledger_positions():
+        for column_name in ("average_cost_basis", "total_cost"):
+            value = getattr(position, column_name)
+            assert _postgres_stores_unchanged(column_name, value), (
+                position.ticker,
+                column_name,
+                value,
+            )
+
+
+def test_sqlite_reads_total_cost_at_four_places_without_float_noise(factory):
+    # SQLite has no decimal type: SQLAlchemy binds a float and formats it back
+    # at the column's scale. At 12 places this value reads as
+    # 12345.678900000001, so the SQLite column keeps scale 4.
+    with session_scope(factory) as session:
+        portfolio_id = get_or_create_portfolio(session, "default", "My Portfolio")
+        upsert_position(
+            session, portfolio_id, _position(total_cost=Decimal("12345.6789"))
+        )
+
+    with session_scope(factory) as session:
+        positions = read_positions(session, portfolio_id)
+
+    assert str(positions[0].total_cost) == "12345.6789"
 
 
 def test_upsert_then_read_preserves_sector(factory):

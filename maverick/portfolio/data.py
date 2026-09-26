@@ -3,11 +3,18 @@
 No math lives here -- these functions store and retrieve exactly what the
 ledger computed. Two conventions worth calling out:
 
-* Decimal round-trip exactness: `shares`/`average_cost_basis`/`total_cost`
-  are bound and read back explicitly via `Decimal(str(...))` rather than
-  relying on the driver's native Decimal handling, so the 8/4/4-place
-  precision the columns declare survives a write-then-read cycle exactly,
-  independent of backend.
+* Decimal precision is set by the backend, not by the `Decimal(str(...))`
+  wrapping here. Postgres binds and returns `Decimal` natively, so a value
+  survives exactly when it fits the column's NUMERIC(p, s). SQLite has no
+  decimal type: SQLAlchemy binds a float and reads it back formatted to the
+  column's scale. `shares` keeps 8 places and `average_cost_basis` keeps 4,
+  the ledger's basis quantum. The ledger never quantizes `total_cost`, and
+  8-place shares times a 4-place price or basis needs 12 places, so Postgres
+  stores it as NUMERIC(28, 12). SQLite keeps NUMERIC(20, 4) for it because a
+  12-place read of a float shows noise (12345.6789 reads back as
+  12345.678900000001), so SQLite returns `total_cost` rounded to 4 places.
+  `docs/features/portfolio.md` has the ALTER TABLE for existing Postgres
+  databases.
 * `purchase_date` is an opaque ISO 8601 string on `PositionPayload` (see
   `ledger.py`), but the column is a real `DateTime(timezone=True)`. SQLite
   (this project's only tested backend) drops tzinfo on read, so writes
@@ -73,7 +80,12 @@ PF_POSITIONS = Table(
     Column("ticker", String(20), nullable=False, index=True),
     Column("shares", Numeric(20, 8), nullable=False),
     Column("average_cost_basis", Numeric(12, 4), nullable=False),
-    Column("total_cost", Numeric(20, 4), nullable=False),
+    # 12 places on Postgres; SQLite reads floats, so it keeps 4 (module docstring).
+    Column(
+        "total_cost",
+        Numeric(28, 12).with_variant(Numeric(20, 4), "sqlite"),
+        nullable=False,
+    ),
     Column("purchase_date", DateTime(timezone=True), nullable=False),
     Column("notes", Text, nullable=True),
     Column("sector", String(100), nullable=True),
