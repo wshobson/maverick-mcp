@@ -132,6 +132,23 @@ class TestMarketRegimeDetector:
         assert probs[regime] == pytest.approx(1.0)
         assert not np.allclose(probs, 1 / 3)
 
+    def test_fallback_then_larger_fit_retries_requested_method(self, ohlcv):
+        """A detector that fell back to `threshold` on too little data must
+        retry its requested method on a later, larger fit. `RegimeAwareStrategy`
+        holds one detector across refits, so the fallback must not stick."""
+        det = MarketRegimeDetector(
+            method="kmeans", n_regimes=3, lookback_period=50, random_state=0
+        )
+        det.fit_regimes(pd.DataFrame({"close": np.linspace(100, 110, 60)}))
+        assert det.method == "threshold"
+
+        det.fit_regimes(ohlcv)
+
+        assert det.is_fitted
+        assert det.method == "kmeans"
+        assert hasattr(det.model, "cluster_centers_")
+        assert det.requested_method == "kmeans"
+
 
 class TestRegimeProbabilities:
     """Regression tests for the uniform-probability defect:
