@@ -24,6 +24,8 @@ def _server_environ() -> dict[str, str]:
 
 def main() -> None:
     case = json.loads(POINTER.read_text())
+    # Resolve $TMPDIR now: clearing the environment below removes it.
+    scratch_root = tempfile.gettempdir()
     # Drop every inherited variable (API keys, Redis settings) before any
     # maverick import can read them.
     kept = _server_environ()
@@ -32,7 +34,9 @@ def main() -> None:
 
     from evals.tool_surface import harness, seed
 
-    scratch = Path(tempfile.mkdtemp(prefix="maverick-agent-eval-")).resolve()
+    scratch = Path(
+        tempfile.mkdtemp(prefix="maverick-agent-eval-", dir=scratch_root)
+    ).resolve()
     database = seed.build(case["data_state"], scratch / f"{case['data_state']}.db")
     env = harness.server_env(kept, database, scratch / "cache.db")
     print(
