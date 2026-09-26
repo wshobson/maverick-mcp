@@ -11,9 +11,13 @@ FROM python:3.12-slim AS builder
 
 COPY --from=ghcr.io/astral-sh/uv:0.12.19 /uv /bin/uv
 
+# UV_COMPILE_BYTECODE writes .pyc files at build time: the runtime venv is
+# read-only and PYTHONDONTWRITEBYTECODE is set, so without them every start
+# would compile pandas, vectorbt, and the rest from source.
 ENV UV_PROJECT_ENVIRONMENT=/app/.venv \
     UV_PYTHON_DOWNLOADS=never \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    UV_COMPILE_BYTECODE=1
 
 WORKDIR /app
 
@@ -21,11 +25,14 @@ WORKDIR /app
 # cached until pyproject.toml or uv.lock changes. Ships the backtesting and
 # research extras so the image has the full tool surface out of the box;
 # drop --extra backtesting --extra research for a smaller, core-only image.
-COPY pyproject.toml uv.lock README.md ./
+COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-editable --no-install-project \
     --extra backtesting --extra research
 
 # Then install the project itself as a regular (non-editable) package.
+# README.md is copied here, not above, because the package metadata needs
+# it and a README edit must not invalidate the dependency layer.
+COPY README.md ./
 COPY maverick ./maverick
 RUN uv sync --frozen --no-dev --no-editable --extra backtesting --extra research
 

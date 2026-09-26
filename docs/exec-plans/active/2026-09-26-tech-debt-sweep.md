@@ -25,8 +25,8 @@
 | hiredis | core | remove, and declare `redis[hiredis]` instead | redis-py loads it at runtime when present; the extra says why. |
 | psycopg2-binary, aiosqlite, asyncpg | core | keep | Loaded by SQLAlchemy from the URL scheme: the sync engine uses psycopg2 for `postgresql://`, and `maverick/platform/db.py` rewrites URLs to `sqlite+aiosqlite` and `postgresql+asyncpg`. |
 | aiosqlite, asyncpg | dev | remove | Duplicates of the core entries. |
-| pytest-timeout, testcontainers, vcrpy, watchdog, bandit, safety, types-requests, types-pytz | dev | remove | No test, Makefile target, or workflow uses them. Removing `safety` also removes `nltk` and its open advisory GHSA-8mgp-746c-j5xp. |
-| pytest, pytest-asyncio, pytest-cov, pytest-xdist, ruff, ty | dev | keep | Used by pytest config, `make test-cov`, `make test-parallel`, `make lint`, `make typecheck`. |
+| testcontainers, vcrpy, watchdog, bandit, safety, types-requests, types-pytz | dev | remove | No test, Makefile target, or workflow uses them. Removing `safety` also removes `nltk` and its open advisory GHSA-8mgp-746c-j5xp. |
+| pytest, pytest-asyncio, pytest-cov, pytest-timeout, pytest-xdist, ruff, ty | dev | keep | Used by pytest config, CI's `--timeout=60`, `make test-cov`, `make test-parallel`, `make lint`, `make typecheck`. The first audit listed pytest-timeout for removal; the Task 1 implementer found it in use. |
 | numba, scipy | `[backtesting]` | remove | Never imported; vectorbt and scikit-learn declare them. |
 | langchain, langchain-community | `[research]` | remove | Never imported. |
 | pydantic | not declared | add to core | Imported directly by every domain's `config.py` and `types.py`. |
