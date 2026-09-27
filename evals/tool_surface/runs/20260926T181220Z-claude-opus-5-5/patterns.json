@@ -1,39 +1,10 @@
 {
   "status": "draft",
-  "generated_from": "batch 1 modes carried over; all 20 batch-2 notes grouped (Seth's words only)",
+  "created": "2026-09-27T10:37:14.113484+00:00",
   "failure_modes": [
     {
-      "name": "Tool reports success on a failed lookup",
-      "description": "A tool returns status success for input it could not serve (for example a delisted ticker), so the client cannot tell the call failed.",
-      "notes": []
-    },
-    {
-      "name": "Market data stale or missing",
-      "description": "The answer's method is sound, but the market data behind it is stale or does not reach back far enough, so a figure is wrong or the question cannot be answered properly until the data is backfilled.",
-      "notes": [
-        {
-          "trace_id": "b06",
-          "span_id": null
-        },
-        {
-          "trace_id": "b15",
-          "span_id": null
-        }
-      ]
-    },
-    {
-      "name": "Answerable request goes unanswered",
-      "description": "The tools needed to answer the request are available, yet the trace does not produce an answer.",
-      "notes": []
-    },
-    {
-      "name": "Impossible trade input accepted",
-      "description": "A trade is recorded with input that cannot be real, such as a purchase dated on a day the market was closed, with no check and no question to the user.",
-      "notes": []
-    },
-    {
-      "name": "Answers without asking for missing information",
-      "description": "The request leaves out something the answer depends on (for example which stock), and the assistant answers anyway instead of asking.",
+      "name": "Acts on a guess instead of asking",
+      "description": "The request leaves out something the action or answer depends on (which stock, which date or year, the user's goals), and the assistant records data or gives a specific answer using a value it assumed instead of asking first. Saying what it assumed does not make it a pass.",
       "notes": [
         {
           "trace_id": "b18",
@@ -46,8 +17,22 @@
       ]
     },
     {
-      "name": "Tool call fails",
-      "description": "A tool call fails (b05: the support and resistance tool).",
+      "name": "Market data missing or unreliable",
+      "description": "The method is sound, but the local market data behind the answer is empty, stale, or does not cover enough history, so a figure is wrong or the question cannot be answered.",
+      "notes": [
+        {
+          "trace_id": "b06",
+          "span_id": null
+        },
+        {
+          "trace_id": "b15",
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "name": "Tool result misleading or unusable",
+      "description": "A Maverick tool reports success for input it could not serve, rejects valid input with a misleading error, or returns a result too large for the client to read.",
       "notes": [
         {
           "trace_id": "b05",

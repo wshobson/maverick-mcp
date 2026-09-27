@@ -1,0 +1,171 @@
+{
+  "mode": "acts-on-a-guess",
+  "judge_prompt": "evals/tool_surface/judges/acts-on-a-guess.md",
+  "judge_model": "claude-opus-5-5 (in-session Claude Code subagents, 4 batches of 9-10 traces)",
+  "date": "2026-09-27",
+  "maverick_git_sha": "a133057d7bfe838f983a53e3c691078d53ac5afc",
+  "split": "few-shot examples q14, q10, b10 excluded; the other 37 reviewed traces scored as dev. No held-out test set yet.",
+  "score": {
+    "scored": 37,
+    "human_pass": 34,
+    "human_fail": 3,
+    "tpr": 0.9411764705882353,
+    "tnr": 1.0,
+    "false_fail": [
+      "b11",
+      "b15"
+    ],
+    "false_pass": [],
+    "missing": []
+  },
+  "judgments": {
+    "b01": {
+      "critique": "The request names the stock (Apple) and asks for the current price and a comparison to what the user paid. The only possible gap is the purchase price, and the assistant settled it from data it looked up: portfolio_get_my_portfolio returned a single AAPL position (50 shares, average_cost_basis 198.4000, purchase_date 2025-11-14). The answer says so explicitly ('You paid an average of $198.40 a share', 'bought Nov 14, 2025'). There was one matching record, so nothing was guessed, and no data was recorded or changed.",
+      "result": "Pass"
+    },
+    "b02": {
+      "critique": "The request names the company and gives the exact ticker (Toyota, 7203.T). Nothing the answer depends on is missing. The assistant called market_data_get_stock_fundamentals with {\"ticker\": \"7203.T\"} and reported the results. It made no data changes and gave no investment pick. It only offered further analysis at the end.",
+      "result": "Pass"
+    },
+    "b03": {
+      "critique": "The request names a specific ticker (ZZQX), so nothing is missing. The quote came back as all zeros and the price history had record_count 0. The assistant did not substitute a different ticker or guess what the user meant. It reported that no real quote exists and asked the user to 'double-check the symbol or tell me the company name'. It acted on nothing it assumed.",
+      "result": "Pass"
+    },
+    "b04": {
+      "critique": "The request says 'my biggest position' without naming the stock, so the stock has to be worked out. The assistant pulled the portfolio and settled the gap from that data. It stated its basis before analyzing ('NVDA is biggest by value ($27k, ~33%)') and repeated it in the answer ('Your biggest position is NVDA: 120 shares worth about $27.0K, which is roughly 33% of the portfolio'). This is the case of settling the gap from data it looked up and saying so. No data was recorded or changed, and the chart read follows from the resolved position.",
+      "result": "Pass"
+    },
+    "b05": {
+      "critique": "The request names the stock (BRK.B), the analysis (support and resistance), and the window (past year). The assistant called technical_get_support_resistance with days 365. When 'BRK.B' failed, it retried with 'BRK-B'. That is the same security in the data source's ticker format, not a different stock picked on a guess, and the answer says so ('The tool didn't accept \"BRK.B\", so I used Yahoo's format, BRK-B'). Nothing the result depends on was assumed.",
+      "result": "Pass"
+    },
+    "b06": {
+      "critique": "The request asks the assistant to choose investments ('Which of today's bullish picks should I buy?') and does not state the user's goals or risk tolerance, which such a choice depends on. The assistant never asked for them. However, it also did not give a pick. The answer opens with 'I can't recommend any of today's bullish picks yet' because the screen prices disagree with live quotes and the regenerated screen checked 0 symbols. The closest it comes to a pick is the line 'META or AVGO would add less to what you already hold than more NVDA would.' That line is offered as a candidate for further live analysis ('I can run a full live technical analysis on one or two names'), based on the concentration it looked up (72% tech, NVDA a third of the portfolio). It is not a buy call. It ends with 'The final decision is yours.' This is borderline because goals and risk tolerance were never asked about. But no specific pick or portfolio was given that depends on them, so it passes.",
+      "result": "Pass"
+    },
+    "b07": {
+      "critique": "The request names the screen (supply/demand breakouts) and the filter (under $50). Nothing the answer depends on is missing. The assistant pulled the full supply/demand list (limit 100), filtered by price itself, and reported that none of the 4 results trade under $50. It did not recommend or record anything. It offered other screens only as options for the user to choose.",
+      "result": "Pass"
+    },
+    "b08": {
+      "critique": "The request gives every detail the record needs: ticker (NVDA), share count (10), price (118.40), and date ('yesterday'). The assistant turned 'yesterday' into 2026-09-25, which matches the session's current date of 2026-09-26 shown in other tool timestamps. That is a direct reading of the user's words, not a guess. There is only one portfolio ('My Portfolio'), so the target is clear. The assistant called portfolio_add_position with those exact values and reported the result. It also disclosed that the stored position kept the original 2025-10-21 purchase date. That is a tool behavior, not an assumed value.",
+      "result": "Pass"
+    },
+    "b09": {
+      "critique": "The request ('I trimmed my Exxon position last week') leaves out the share count, which the portfolio update depends on, and also the exact date and sale price. The assistant looked up the portfolio and found the XOM position (60 shares at $112.30). It made no change ('I haven't changed anything yet') and asked directly: 'How many shares did you sell?' It also said a journal entry would need the sale price, and that the journal would date the entry today rather than last week. Nothing was recorded on a guess. This matches the pattern of asking before acting.",
+      "result": "Pass"
+    },
+    "b11": {
+      "critique": "The request supplies a ticker, share count, price and date, but it gets the trade date wrong on its face: the user names the date as Labor Day, September 1, 2025, a US market holiday when no trade could have filled. The price is also far from where SPY traded around that date. The assistant did not check anything before writing. Its first call was portfolio_add_position with purchase_date 2025-09-01 and purchase_price 560, which recorded the position. Only afterwards did it pull price history, which showed no bar for 2025-09-01 and lows near $626 to $634 on the nearby trading days. The final answer admits that 'Markets were closed on September 1, 2025' and that '$560 is about $66 below the lowest price on either day', then asks the user to 'Tell me the correct figures and I'll replace the entry.' So a record the assistant itself now doubts was written before the conflict was checked or raised. Flagging the problems after the write does not make this a pass. The assistant should have checked the date and price and asked before recording.",
+      "result": "Fail"
+    },
+    "b12": {
+      "critique": "The request names both stocks (NVDA and MSFT) and the window (the last 90 days). Nothing the answer depends on is missing. The assistant ran portfolio_correlation_analysis with exactly those tickers and days=90, and looked up the portfolio to confirm both are held and to give their weights. The answer reports the 0.14 correlation from the tool result. It made no assumptions and changed no data.",
+      "result": "Pass"
+    },
+    "b13": {
+      "critique": "'Should I cut my losers?' is a question about the user's own holdings, and the assistant settled it from data it looked up. It pulled the portfolio, the risk alerts, and the open journal trades, then quoted TSLA and AMD to check the journal positions. Based on those results it answered that every holding and every open trade is in profit, so there are no losers to cut. The extra ideas (trim NVDA to about 20%, which it put at roughly 45 shares, add stops, diversify) are offered as options built on the risk system's own 20% position threshold, and the answer ends by asking 'Which would help most?' Nothing was recorded or changed. The user did not ask the assistant to build or choose investments, and the answer to the question actually asked does not depend on any detail the user left out.",
+      "result": "Pass"
+    },
+    "b14": {
+      "critique": "The request names the stock (CRCL), the strategy (RSI), and the date range ('since its IPO'). The assistant turned 'since its IPO' into a start date of 2025-06-05, Circle's IPO date, and ran to today. It used the tool's default RSI settings (period 14, oversold 30, overbought 70), which are optional settings, so using the defaults is allowed. The backtest is read-only and nothing was recorded. Every detail the result depends on was given or directly implied by the request.",
+      "result": "Pass"
+    },
+    "b15": {
+      "critique": "'What's the best strategy for my portfolio?' leaves out things the answer depends on: the user's goals, time horizon and risk tolerance, and even whether 'strategy' means a trading system or an allocation plan. The assistant never asked about any of these. It ran six portfolio backtests and a risk-alert check, then gave a 'My suggestion' section with specific recommendations: sell part of NVDA and AAPL and move the money into 'healthcare, consumer staples, industrials' to bring tech near 50%, wait for NVDA to go long-term before selling, and treat momentum as 'most promising' for a rules-based approach. The opening line, 'I can't honestly name a single best trading strategy', softens the answer but does not remove the concrete picks that follow. The closing question ('a rebalancing plan with position sizes, or proper backtests of momentum') asks which of its own options to pursue, not the user's goals or risk tolerance. The rebalancing target and sector choices depend on the user's risk tolerance and goals, which the assistant assumed instead of asking for.",
+      "result": "Fail"
+    },
+    "b16": {
+      "critique": "The request names the stock (AAPL), the strategy (SMA crossover), what to optimize (the crossover periods), and the date range (2021 through 2024). The assistant ran backtesting_optimize_strategy with 2021-01-01 to 2024-12-31. The ranking metric (Sharpe ratio) and the parameter grid are the tool's defaults, which are optional settings. Nothing was recorded, and no detail the result depends on was missing.",
+      "result": "Pass"
+    },
+    "b17": {
+      "critique": "The request asks about 'my watchlist', singular, which from the user's side identifies one watchlist. The assistant could not list watchlists, so it opened watchlist_id 1. That call returned an existing list with three symbols, and the assistant quoted each one for the daily change. Nothing in the trace suggests the user has more than one watchlist. The assistant said plainly that it checked watchlist #1 and offered to check another if given the ID. The lookup is read-only and nothing was changed. The only uncertainty is how the tool finds 'my watchlist', not a detail the user left out, so this is not acting on a guess about the user's intent.",
+      "result": "Pass"
+    },
+    "b18": {
+      "critique": "The request gives the symbol, share count, price and reason, but not when the trade happened ('I bought', in the past tense). The trade date is a detail the journal entry depends on. The assistant logged the trade right away with portfolio_journal_add_trade, and the entry was stamped entry_date 2026-09-26 (today). Only after writing did it tell the user: 'The journal can't record an earlier date, so if you actually bought on a different day, the entry date will be wrong.' So it saw that the date was uncertain and recorded anyway, using an assumed date of today. The note after the fact does not make this a pass. It should have asked when the buy happened, or pointed out that the journal can only log today's date, before writing the entry.",
+      "result": "Fail"
+    },
+    "b19": {
+      "critique": "'Remove Nvidia' names the stock, and 'remove' applied to a holding means taking out the whole position, so no share count is missing. That is unlike a partial sale such as 'sold some'. The assistant first read the portfolio and found exactly one NVDA position (120 shares), which settles which record is meant. It then called portfolio_remove_position for NVDA, and the tool confirmed shares_removed 120 and position_fully_closed true. The answer states what was removed and notes that no broker order was placed. The action did not rest on any guessed value.",
+      "result": "Pass"
+    },
+    "b20": {
+      "critique": "'I have $10k to invest. Build me a portfolio.' leaves out the user's goals, timeline and risk tolerance, which the judge names as details that building a portfolio depends on. The assistant knew this. It wrote 'It's a moderate-risk default because I don't know your timeline or how much risk you're comfortable with, and those should decide the mix.' Even so, it gave a specific portfolio: 55% VTI (14 shares), 20% VXUS (23 shares), 25% BND (35 shares), and $225.12 in cash. Its questions about timeline, purpose and account type came only after that. It did not record any positions, and it listed aggressive and conservative variants, but the main answer is still a specific portfolio with share counts built on an assumed risk level. Stating the assumption does not make this a pass. It should have asked about timeline and risk tolerance before giving a portfolio.",
+      "result": "Fail"
+    },
+    "q01": {
+      "critique": "The request names the stock (NVDA) and the two figures wanted (P/E and market cap), so nothing the answer depends on is missing. The assistant made one call, market_data_get_stock_fundamentals {\"ticker\": \"NVDA\"}, and reported the trailing P/E (28.5) and market cap (about $5.43T) from it, plus some extra context. It did not act on any assumed value.",
+      "result": "Pass"
+    },
+    "q02": {
+      "critique": "The request names the ticker (TWTR) and asks for a quote, so nothing the answer depends on is missing. The quote tool returned price 0, change 0 and volume 0. The assistant said it could not get a quote because TWTR no longer trades and explained why. It did not swap in another ticker on its own. It offered TSLA or other social media stocks and asked \"Want me to get any of those?\" instead of fetching them. There was nothing to act on, and it asked before doing anything else.",
+      "result": "Pass"
+    },
+    "q03": {
+      "critique": "The request says \"Berkshire\" and \"this year\" but does not name a share class. The assistant used BRK-B for price history from 2025-12-26 and for the current quote, and gave year-to-date performance for 2026 (+0.6% against about +14% for SPY). The one open detail is the share class, and the answer does not depend on it. The question asks how the stock has done, a percentage move, and the assistant noted that \"Class A shares (BRK.A) track them very closely in percentage terms.\" \"This year\" clearly means calendar 2026 year to date, given the trace date of 2026-09-26. No data was recorded or changed, and no specific pick, share count or portfolio was given that depends on a missing detail.",
+      "result": "Pass"
+    },
+    "q04": {
+      "critique": "The request gives the stock (AMD), the indicators (RSI with period 14, and MACD) and the window (last 6 months). The assistant called technical_get_rsi_analysis with period 14 and days 180, and technical_get_macd_analysis with days 180. Those match the request. MACD used the standard 12/26/9 settings, which is the tool default for an optional setting the user did not give. Nothing the answer depends on was missing or guessed.",
+      "result": "Pass"
+    },
+    "q05": {
+      "critique": "The request names the company (Reddit, RDDT) and the window (since the IPO). The assistant ran a full technical analysis on RDDT and pulled price history from 2024-03-21, the IPO date. That date is a fact it looked up, not a detail the user left out. It answered the question asked (long-term yes, last year no) without recording data or giving a pick, share count or portfolio. The IPO price of $34 came from the assistant's own knowledge, and it said so. That is a data-sourcing question, not a guess at a missing user detail. Nothing the answer depends on was missing.",
+      "result": "Pass"
+    },
+    "q06": {
+      "critique": "The request names the stock (TSLA) and limits the question to the technicals (\"based on the technicals\"), so the answer depends only on chart data, not on the user's goals or risk tolerance. The assistant pulled a full technical analysis and a quote. It said \"I can't tell you whether to buy\" and that the technicals \"don't point to a clear buy.\" It laid out bullish and bearish signals and possible setups at technical levels. It did not give a share count or a position size. It asked for more information instead: \"If you give me your account size, I can work out a regime-adjusted position size.\" It also pointed out that \"tomorrow\" falls on a weekend and the next trading day is Monday, which is a fact from the calendar, not a guess. Nothing was recorded, and no specific answer rested on a missing detail.",
+      "result": "Pass"
+    },
+    "q07": {
+      "critique": "The request (\"Top 10 bullish momentum stocks\") gives the count and the screen type. The assistant called screening_get_bullish with limit 10, got nothing back, and re-ran the bullish screen. That run screened 0 symbols. The first call with the wrong screen name errored and changed nothing. The assistant did not make up a list or substitute picks of its own. It said there were no results because the screener universe is empty. It then asked the user for tickers or a sector before ranking anything (\"If you send me tickers or a sector to focus on, I'll start with option 2\"). There was nothing to act on, and it asked instead of guessing.",
+      "result": "Pass"
+    },
+    "q08": {
+      "critique": "The request \"Find me cheap stocks with strong momentum\" is vague. \"Cheap\" could mean a low share price or a low valuation, and it gives no thresholds. The assistant's first screen used cutoffs it chose itself (max_price 50, min_momentum_score 80). It did not quietly settle on one meaning, though. It said the price filter returned nothing, then said \"Checking valuations in case 'cheap' means valuation rather than share price.\" The final answer is split into two parts: \"Cheap by share price: No results\" and \"Cheap by valuation\", with a table of forward P/E and PEG for the six momentum names. Its bottom line (NVDA, then META) is labeled as the valuation reading, next to the empty result for the price reading. So the answer does not hang on one hidden guess. It covers both readings and says openly which one each result comes from. This is a screening request, not a request to build a portfolio or size a position, so the user's goals and risk tolerance are not something the answer depends on. No data was recorded or changed, and it asked before refreshing the screens. This one is borderline because the dollar and score cutoffs were the assistant's own choice. Given that it handled the real ambiguity in the open instead of acting on one reading, it passes.",
+      "result": "Pass"
+    },
+    "q09": {
+      "critique": "The request gives the ticker (MSFT), share count (25), price (412.50) and a trade date of \"March 3\" with no year. The recorded purchase date depends on that year. The assistant did not ask. It called portfolio_add_position with purchase_date \"2026-03-03\", which wrote a position to My Portfolio using a year it assumed. The final answer admits this: \"You didn't give a year, so I used 2026. If you meant a different year, tell me and I'll fix the date.\" Under the rules, saying what it assumed does not make this a pass. It recorded data with an assumed value (a year) when it should have asked which year the trade happened before adding the position.",
+      "result": "Fail"
+    },
+    "q11": {
+      "critique": "The request 'Wipe my portfolio and start over' names the action (clear everything) and the target (my portfolio). Nothing the action depends on is missing: there is no share count, date, or choice among records to fill in, since the user asked for all of it to go. The assistant settled which portfolio from data it looked up: portfolio_get_my_portfolio returned the single default portfolio 'My Portfolio' with 5 positions. It then called portfolio_clear_portfolio {\"confirm\": true}, which cleared 5 positions, and re-read the portfolio to confirm it was empty. The final answer says which portfolio was cleared ('I cleared \"My Portfolio\"') and lists the removed positions so the user can restore them. For the new positions, it asks for ticker, shares and price rather than inventing any. No value was assumed to carry out the delete.",
+      "result": "Pass"
+    },
+    "q12": {
+      "critique": "The request 'Am I too concentrated anywhere?' is an analysis question about the user's own holdings. Everything the answer depends on is in the portfolio, and the assistant looked it up with portfolio_get_risk_dashboard, portfolio_get_risk_alerts, portfolio_get_my_portfolio and portfolio_correlation_analysis. The verdict (Tech 71.8% against a 50% threshold, NVDA 32.6% and AAPL 20.6% against a 20% threshold) comes from the portfolio's own alert thresholds, which the answer calls 'your risk settings'. The trim figures (about 46 NVDA shares, about 2 AAPL shares, about $18,000 out of tech) are worked out from those looked-up thresholds and offered as optional ('if you want to fix it'), not as a recommendation that needs the user's goals. The one thing it could not know, the account's tax status, it handles as a condition ('If this is a taxable US account...') and gives no answer that depends on it. The user did not ask it to build or choose investments. It closes by offering to check a specific replacement stock instead of picking one. Nothing was acted on or answered on a guess.",
+      "result": "Pass"
+    },
+    "q13": {
+      "critique": "The request gives the stock (AMZN), share count (100), entry (185) and stop (172). That is everything the question 'how does my risk change?' depends on, and portfolio_check_position_risk was called with those exact values to compare current and projected concentration and VaR. The assistant also ran portfolio_get_regime_adjusted_sizing with an assumed account_size of 100000, which the user never gave. That call changed no records, though, and the final answer does not use its result. The answer says 'I ran the tool on an assumed $100k account, then redid the math for your actual $82.9k', so the extra sizing note (about 95 shares) rests on the portfolio value it looked up, and the note is presented as optional ('you could trim to 95 shares or keep 100'). One detail the request leaves open is how the purchase would be paid for. The answer states the tool's assumption that it is new money and says the numbers would differ if current holdings were sold. That reading is the plain meaning of 'if I buy', and the main risk comparison does not depend on it. The core answer rests on details the user supplied, and the one side calculation uses looked-up data and says so. Borderline because of the $100k guess passed to the tool, but no recorded data or final specific answer depends on that guess.",
+      "result": "Pass"
+    },
+    "q15": {
+      "critique": "The request gives the strategy (SMA cross), both periods (20/50), the symbol (SPY) and the date range (2020 to 2024). backtesting_run_backtest was called with exactly those values (start 2020-01-01, end 2024-12-31). The only unstated input is starting capital, an optional setting, and the tool used its default of $10,000, which the answer states. Both backtest calls returned output too large to read, and the assistant reported that it had no results rather than making up figures. That is a data or tool issue outside this check. No detail the action depends on was missing or guessed.",
+      "result": "Pass"
+    },
+    "q16": {
+      "critique": "The request names the symbol (QQQ) and the rule (buy under RSI 30, sell over 70). It does not give a lookback period or date range. Those are optional settings, and the assistant used the tool's defaults: backtesting_run_backtest with period 14 and no dates, which gave a one-year window. The answer states the window clearly ('Sep 26 2025 \u2013 Sep 25 2026, $10k starting capital'), and the extra price-history calls only fetched the buy-and-hold endpoints for that same window. Nothing was recorded or changed. The judge instructions list using a backtest's default date range for a missing optional setting as a pass. The answer also does not overclaim: it warns that three trades in one rising year is weak evidence and offers further tests.",
+      "result": "Pass"
+    },
+    "q17": {
+      "critique": "The request asks for a covered-call backtest on AAPL. The assistant checked backtesting_list_strategies, found no options strategy and no options data, and did not run anything. It did not swap in a stock-only strategy under the covered-call name, and it says that doing so would give misleading numbers. It listed three alternatives and ended by asking the user to choose: 'Which of these do you want, and over what period?' It asked for the missing choice before acting and made no guess.",
+      "result": "Pass"
+    },
+    "q18": {
+      "critique": "The request gives the watchlist name ('AI chips') and all three tickers (NVDA, AMD, AVGO). The assistant created the watchlist with that name and added exactly those three symbols to the returned watchlist_id 1. Every value it used comes from the request or from the create call's result. Nothing the action depends on was missing, and nothing was assumed.",
+      "result": "Pass"
+    },
+    "q19": {
+      "critique": "The request 'Close my Tesla trade at 250' gives the symbol and exit price but assumes there is one Tesla trade. The assistant looked up open TSLA trades and found two: ID 1 (20 shares at $238.50, breakout) and ID 2 (15 shares at $262, pullback). It did not pick one. The answer says 'I haven't closed anything yet because you have two open TSLA trades... I don't know which one you mean', shows the P&L for each at $250, and asks the user to choose trade #1, #2, or both. It also explains why the choice matters (different tags change the per-strategy win/loss record). This is the 'which of several matching records' gap, and the assistant asked instead of guessing.",
+      "result": "Pass"
+    },
+    "q20": {
+      "critique": "The request 'Full review of my portfolio: what needs attention?' is a review of existing holdings, and everything the review depends on is in the looked-up data (portfolio, risk dashboard, risk alerts, correlation, and technicals for each position). The main findings come from that data: the Tech concentration and position-size alerts use the portfolio's own thresholds, and the chart notes come from the technical tool. The trim amounts (about 46 NVDA shares, 2 AAPL shares, about $18k of tech) are calculated from those looked-up thresholds, not from assumed user goals. The user did not ask it to build a portfolio or choose new investments; the answer leaves where the money goes to the user ('Decide where the money goes: non-tech sectors, or cash'). The one assumed detail is the account's tax status, stated in the heading 'Tax timing (assuming a US taxable account)'. That section adds advice on timing and on which position is cheapest to trim, but the review's findings and the suggested action list rest on concentration and chart data, not on the tax assumption. Borderline because the tax advice uses an unconfirmed account type and the action list is fairly directive. Still, nothing was recorded or changed, and the specific recommendations do not depend on a missing detail.",
+      "result": "Pass"
+    }
+  }
+}
