@@ -5,7 +5,8 @@ arguments and a trimmed result, and the final answer. Labels come from the
 reviewer's verdicts (`annotations.json`) and the draft grouping of their notes
 (`patterns.json`): a trace is a Fail for a mode when the grouping lists it under
 that mode, and a Pass otherwise. Traces used as the judge's few-shot examples
-are left out of scoring.
+are left out of scoring. Case ids must be unique across the selected runs;
+pass `--run` to pick runs when a case file was run more than once.
 
     python -m evals.tool_surface.judge inputs --mode acts-on-a-guess --out <dir>
     python -m evals.tool_surface.judge score --mode acts-on-a-guess --judgments <file>
@@ -21,6 +22,7 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 RUNS = HERE / "runs"
 RESULT_CHARS = 600
+VERDICTS = ("Pass", "Fail")
 
 # Mode slug -> the mode's name in patterns.json and the judge's few-shot traces.
 MODES: dict[str, dict[str, Any]] = {
@@ -52,12 +54,27 @@ def render(trace: Mapping[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _read(path: Path) -> Any:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def reviewed_runs(root: Path) -> list[Path]:
+    """Run folders that have traces and both of the reviewer's label files."""
+    return sorted(
+        run
+        for run in root.iterdir()
+        if (run / "traces").is_dir()
+        and (run / "annotations.json").is_file()
+        and (run / "patterns.json").is_file()
+    )
+
+
 def load_labeled(runs: Iterable[Path], mode_name: str) -> dict[str, dict[str, Any]]:
     """Reviewed traces keyed by id, each with its trace and its label for the mode."""
     labeled: dict[str, dict[str, Any]] = {}
     for run in runs:
-        verdicts = json.loads((run / "annotations.json").read_text())["traces"]
-        patterns = json.loads((run / "patterns.json").read_text())
+        verdicts = _read(run / "annotations.json")["traces"]
+        patterns = _read(run / "patterns.json")
         failing = {
             note["trace_id"]
             for mode in patterns["failure_modes"]
@@ -67,10 +84,33 @@ def load_labeled(runs: Iterable[Path], mode_name: str) -> dict[str, dict[str, An
         for trace_id, annotation in verdicts.items():
             if annotation.get("verdict") not in ("pass", "fail"):
                 continue
-            trace = json.loads((run / "traces" / f"{trace_id}.json").read_text())
+            if trace_id in labeled:
+                raise ValueError(
+                    f"case {trace_id} is in {labeled[trace_id]['run']} and "
+                    f"{run.name}; pick runs with --run"
+                )
+            trace = _read(run / "traces" / f"{trace_id}.json")
             label = "Fail" if trace_id in failing else "Pass"
-            labeled[trace_id] = {"trace": trace, "label": label}
+            labeled[trace_id] = {"trace": trace, "label": label, "run": run.name}
     return labeled
+
+
+def verdicts(judgments: Mapping[str, Any]) -> tuple[dict[str, str], list[str]]:
+    """Each judged id's Pass or Fail, and the ids whose result is neither.
+
+    Accepts the bare `{id: {critique, result}}` map or a saved result file
+    that holds it under `judgments`.
+    """
+    raw = judgments.get("judgments", judgments)
+    results: dict[str, str] = {}
+    invalid: list[str] = []
+    for trace_id, judgment in raw.items():
+        result = str(judgment.get("result", "")).capitalize()
+        if result in VERDICTS:
+            results[trace_id] = result
+        else:
+            invalid.append(trace_id)
+    return results, sorted(invalid)
 
 
 def score(labels: Mapping[str, str], results: Mapping[str, str]) -> dict[str, Any]:
@@ -98,9 +138,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mode", choices=sorted(MODES), required=True)
     parser.add_argument("--out", type=Path, help="inputs: folder for <id>.txt files")
     parser.add_argument("--judgments", type=Path, help="score: {id: {result}} JSON")
+    parser.add_argument(
+        "--run", type=Path, action="append", help="a run folder (default: all reviewed)"
+    )
     args = parser.parse_args(argv)
     mode = MODES[args.mode]
-    runs = sorted(path for path in RUNS.iterdir() if (path / "traces").is_dir())
+    runs = args.run or reviewed_runs(RUNS)
     labeled = load_labeled(runs, mode["name"])
     scored = {i: item for i, item in labeled.items() if i not in mode["examples"]}
     if args.command == "inputs":
@@ -108,15 +151,15 @@ def main(argv: list[str] | None = None) -> int:
             parser.error("inputs needs --out")
         args.out.mkdir(parents=True, exist_ok=True)
         for trace_id, item in scored.items():
-            (args.out / f"{trace_id}.txt").write_text(render(item["trace"]) + "\n")
+            text = render(item["trace"]) + "\n"
+            (args.out / f"{trace_id}.txt").write_text(text, encoding="utf-8")
         print(f"wrote {len(scored)} judge inputs to {args.out}")
         return 0
     if args.judgments is None:
         parser.error("score needs --judgments")
-    judgments = json.loads(args.judgments.read_text())
-    results = {i: str(j["result"]).capitalize() for i, j in judgments.items()}
+    results, invalid = verdicts(_read(args.judgments))
     labels = {i: item["label"] for i, item in scored.items()}
-    json.dump(score(labels, results), sys.stdout, indent=2)
+    json.dump({**score(labels, results), "invalid": invalid}, sys.stdout, indent=2)
     print()
     return 0
 

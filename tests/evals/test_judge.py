@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from evals.tool_surface import judge
 
 
@@ -66,3 +68,39 @@ def test_score_reports_tpr_tnr_and_each_disagreement() -> None:
     assert report["false_fail"] == ["b"]
     assert report["false_pass"] == ["d"]
     assert report["missing"] == ["e"]
+
+
+def _run(root: Path, name: str, case_ids: list[str]) -> Path:
+    run = root / name
+    (run / "traces").mkdir(parents=True)
+    for case_id in case_ids:
+        (run / "traces" / f"{case_id}.json").write_text(json.dumps(_trace(case_id)))
+    verdicts = {case_id: {"verdict": "pass"} for case_id in case_ids}
+    (run / "annotations.json").write_text(json.dumps({"traces": verdicts}))
+    (run / "patterns.json").write_text(json.dumps({"failure_modes": []}))
+    return run
+
+
+def test_a_case_id_repeated_across_runs_is_an_error(tmp_path: Path) -> None:
+    first = _run(tmp_path, "20260926T1-a", ["q01"])
+    second = _run(tmp_path, "20260927T1-b", ["q01"])
+    with pytest.raises(ValueError, match="q01"):
+        judge.load_labeled([first, second], "M")
+
+
+def test_only_reviewed_runs_are_selected(tmp_path: Path) -> None:
+    reviewed = _run(tmp_path, "20260926T1-a", ["q01"])
+    unreviewed = tmp_path / "20260927T1-b"
+    (unreviewed / "traces").mkdir(parents=True)
+    assert judge.reviewed_runs(tmp_path) == [reviewed]
+
+
+def test_verdicts_unwrap_a_saved_result_and_set_aside_invalid_ones() -> None:
+    saved = {
+        "mode": "m",
+        "judgments": {
+            "a": {"critique": "c", "result": "pass"},
+            "b": {"critique": "c", "result": "Maybe"},
+        },
+    }
+    assert judge.verdicts(saved) == ({"a": "Pass"}, ["b"])
