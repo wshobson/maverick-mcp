@@ -1,6 +1,7 @@
 """External market data fetchers. Third layer: imports only the platform."""
 
 import asyncio
+import re
 from collections.abc import Callable
 from typing import Any
 
@@ -10,6 +11,12 @@ from maverick.platform.config import HttpSettings
 from maverick.platform.http import get_breaker
 
 _YFINANCE_RETRIES = 2
+
+# Yahoo spells class shares with a dash (BRK-B), but people type a dot
+# (BRK.B). Exchange suffixes also use a dot (VOD.L, 7203.T), so the dash
+# spelling is only a fallback for a dotted symbol whose own fetch came back
+# empty.
+_CLASS_SHARE_SYMBOL = re.compile(r"^[A-Z]{1,5}\.[A-Z]$")
 
 HistoryFn = Callable[..., pd.DataFrame]
 InfoFn = Callable[[str], dict[str, Any]]
@@ -55,12 +62,32 @@ def _strip_tz(frame: pd.DataFrame) -> pd.DataFrame:
     return frame
 
 
+def _class_share_alias(symbol: str) -> str | None:
+    """Yahoo's dash spelling of a dotted class-share symbol, else None."""
+    if _CLASS_SHARE_SYMBOL.match(symbol):
+        return symbol.replace(".", "-")
+    return None
+
+
+def info_price(info: dict[str, Any]) -> float | None:
+    """The price in a yfinance `info` dict, or None when it has no usable one.
+
+    For a symbol it has no data for (delisted, unknown, or a class share
+    spelled with a dot), Yahoo returns a stub `info` dict of metadata keys
+    with no price, so a missing or zero price is how "no data" shows up.
+    """
+    return info.get("currentPrice") or info.get("regularMarketPrice") or None
+
+
 class YFinanceFetcher:
     """Injectable yfinance wrapper with circuit-breaker and retry resilience.
 
     The default `*_fn` bindings lazily `import yfinance` only when actually
     invoked, so constructing this class (or importing this module) never
     imports yfinance — tests inject fakes and never hit the real bindings.
+
+    `history` and `info` retry a dotted class-share symbol (`BRK.B`) once
+    with Yahoo's dash spelling (`BRK-B`) when the first fetch has no data.
     """
 
     def __init__(
@@ -104,6 +131,9 @@ class YFinanceFetcher:
         self, symbol: str, start: Any, end: Any, interval: str = "1d"
     ) -> pd.DataFrame:
         frame = await self._call(self._history_fn, symbol, start, end, interval)
+        alias = _class_share_alias(symbol)
+        if alias is not None and frame.empty:
+            frame = await self._call(self._history_fn, alias, start, end, interval)
         return _strip_tz(frame)
 
     async def batch_history(
@@ -113,7 +143,13 @@ class YFinanceFetcher:
         return {symbol: _strip_tz(frame) for symbol, frame in frames.items()}
 
     async def info(self, symbol: str) -> dict[str, Any]:
-        return await self._call(self._info_fn, symbol)
+        info = await self._call(self._info_fn, symbol)
+        alias = _class_share_alias(symbol)
+        if alias is not None and info_price(info) is None:
+            retried = await self._call(self._info_fn, alias)
+            if info_price(retried) is not None:
+                return retried
+        return info
 
 
 class MoverFetcher:

@@ -400,7 +400,7 @@ otherwise. Full behavior detail lives in `ARCHITECTURE.md`,
 | --- | --- |
 | `market_data_get_price_history` | OHLCV price history for a ticker, smart-cached. |
 | `market_data_get_price_history_batch` | Price history for multiple tickers at once. |
-| `market_data_get_quote` | A single quote, TTL-cached. |
+| `market_data_get_quote` | A single quote, TTL-cached. Returns an error when Yahoo has no price for the ticker (delisted or unknown). |
 | `market_data_get_stock_fundamentals` | Valuation, financials, and trading stats. |
 | `market_data_get_market_overview` | Indices, sector performance, top movers, and volatility. |
 | `market_data_get_chart_links` | Static external chart links for a ticker. |

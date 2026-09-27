@@ -117,6 +117,97 @@ async def test_breaker_opens_after_repeated_fetcher_failures():
 
 
 # ---------------------------------------------------------------------------
+# YFinanceFetcher: class-share symbols (Yahoo spells BRK.B as BRK-B)
+# ---------------------------------------------------------------------------
+
+# What yfinance returns for a symbol Yahoo does not know (probed for BRK.B
+# and TWTR): a stub of metadata keys with no price.
+_PRICELESS_INFO = {"quoteType": "NONE", "language": "en-US", "maxAge": 86400}
+
+
+def _history_by_symbol(frames: dict[str, pd.DataFrame]):
+    calls: list[str] = []
+
+    def fake_history(symbol, start, end, interval="1d"):
+        calls.append(symbol)
+        return frames.get(symbol, pd.DataFrame())
+
+    return fake_history, calls
+
+
+def _info_by_symbol(infos: dict[str, dict]):
+    calls: list[str] = []
+
+    def fake_info(symbol):
+        calls.append(symbol)
+        return infos.get(symbol, _PRICELESS_INFO)
+
+    return fake_info, calls
+
+
+async def test_history_retries_empty_class_share_symbol_with_dash():
+    fake_history, calls = _history_by_symbol({"BRK-B": _tz_aware_frame()})
+    fetcher = YFinanceFetcher(history_fn=fake_history)
+
+    result = await fetcher.history("BRK.B", "2026-07-13", "2026-07-16")
+
+    assert calls == ["BRK.B", "BRK-B"]
+    assert list(result["Close"]) == [1.2, 2.2, 3.2]
+
+
+async def test_history_keeps_dotted_symbol_whose_first_fetch_has_data():
+    fake_history, calls = _history_by_symbol({"VOD.L": _tz_aware_frame()})
+    fetcher = YFinanceFetcher(history_fn=fake_history)
+
+    result = await fetcher.history("VOD.L", "2026-07-13", "2026-07-16")
+
+    assert calls == ["VOD.L"]
+    assert len(result) == 3
+
+
+@pytest.mark.parametrize("symbol", ["7203.T", "SHOP.TO", "AAPL"])
+async def test_history_never_rewrites_a_symbol_that_is_not_a_class_share(symbol):
+    fake_history, calls = _history_by_symbol({})
+    fetcher = YFinanceFetcher(history_fn=fake_history)
+
+    result = await fetcher.history(symbol, "2026-07-13", "2026-07-16")
+
+    assert calls == [symbol]
+    assert result.empty
+
+
+async def test_info_retries_priceless_class_share_symbol_with_dash():
+    fake_info, calls = _info_by_symbol({"BRK-B": {"currentPrice": 505.48}})
+    fetcher = YFinanceFetcher(info_fn=fake_info)
+
+    result = await fetcher.info("BRK.B")
+
+    assert calls == ["BRK.B", "BRK-B"]
+    assert result == {"currentPrice": 505.48}
+
+
+async def test_info_keeps_dotted_symbol_whose_first_fetch_has_a_price():
+    fake_info, calls = _info_by_symbol({"VOD.L": {"currentPrice": 125.8}})
+    fetcher = YFinanceFetcher(info_fn=fake_info)
+
+    result = await fetcher.info("VOD.L")
+
+    assert calls == ["VOD.L"]
+    assert result == {"currentPrice": 125.8}
+
+
+async def test_info_keeps_first_result_when_dash_spelling_has_no_price_either():
+    first = {"quoteType": "EQUITY", "longName": "Priceless Class A"}
+    fake_info, calls = _info_by_symbol({"ABC.A": first})
+    fetcher = YFinanceFetcher(info_fn=fake_info)
+
+    result = await fetcher.info("ABC.A")
+
+    assert calls == ["ABC.A", "ABC-A"]
+    assert result == first
+
+
+# ---------------------------------------------------------------------------
 # MoverFetcher
 # ---------------------------------------------------------------------------
 

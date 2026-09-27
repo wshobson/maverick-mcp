@@ -59,7 +59,11 @@ enter only through `platform/`.
 
 - `market_data/`: quote/history/fundamentals/market-overview reads, backed
   by `yfinance` (no API key required). Market movers come from finviz,
-  falling back to a `yfinance` batch scan.
+  falling back to a `yfinance` batch scan. When a symbol shaped like a
+  dotted class share (`BRK.B`: one to five letters, a dot, one letter)
+  returns no data, `YFinanceFetcher` retries it once with Yahoo's dash
+  spelling (`BRK-B`). A symbol that returns data is never rewritten, so
+  exchange suffixes such as `VOD.L` keep working.
 - `technical/`: RSI, MACD, support/resistance, and full technical analysis
   built on `market_data`'s price history.
 - `screening/`: Maverick bullish, bearish, and supply/demand screens;
