@@ -23,6 +23,8 @@ Status labels:
 | `../ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. Root-level entry point alongside `AGENTS.md`. |
 | `../evals/tool_surface/README.md` | current | engineering | Tool-surface traces: an in-session Claude Code subagent runs fixed cases on the Maverick tools for error analysis, no scoring. |
 | `../evals/tool_surface/agent/maverick-eval-client.md` | current | engineering | Claude Code subagent definition for in-session eval traces; `make eval-agent-install` copies it into `.claude/agents/`. |
+| `../evals/tool_surface/failure_modes.md` | current | engineering | Draft failure-mode taxonomy from the reviewer's notes on the 2026-09-26 trace runs: where each fix belongs and which evaluator each mode gets. |
+| `../evals/tool_surface/judges/acts-on-a-guess.md` | current | engineering | Judge prompt for the "acts on a guess instead of asking" failure mode, run by in-session subagents and scored by `evals/tool_surface/judge.py`. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
 | `design-docs/2026-09-05-open-items-remediation.md` | current | engineering | Approved design for the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG research backend. |
 | `design-docs/2026-09-13-pandas-ta-removal.md` | current | engineering | Approved design for removing pandas-ta and moving numpy, numba, pandas, and vectorbt. |

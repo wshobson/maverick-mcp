@@ -61,6 +61,27 @@ kinds in `injected_context`. There is no per-query cost to record. Token usage
 comes from the transcript, which records a response's usage as it starts, so
 output token counts run low.
 
+## Failure modes and judges
+
+`failure_modes.md` groups the reviewer's notes into failure modes and says
+where each fix belongs. A mode gets a model judge only when the failure needs
+judgment; defects in Maverick or the fixtures are fixed instead and tracked
+in `docs/exec-plans/tech-debt-tracker.md`.
+
+A judge runs in-session, like the traces. Render its inputs, have subagents
+judge the input files against the judge prompt and write
+`{"<id>": {"critique": ..., "result": "Pass" | "Fail"}}`, then score
+the verdicts against the reviewer's labels:
+
+```bash
+uv run python -m evals.tool_surface.judge inputs --mode acts-on-a-guess --out <dir>
+uv run python -m evals.tool_surface.judge score --mode acts-on-a-guess --judgments <file>
+```
+
+A trace's label for a mode is Fail when `patterns.json` lists it under that
+mode, and Pass otherwise. The prompt's few-shot traces are left out of
+scoring. Results are kept in `judges/results/`.
+
 ## Output
 
 Each converted case writes `runs/<run>/traces/<id>.json`. Name a run folder
