@@ -449,7 +449,7 @@ market-data tools; there is no pre-seeded S&P 500 database. See
 | `portfolio_watchlist_add` | Add a ticker to a watchlist (mutates). |
 | `portfolio_watchlist_remove` | Remove a ticker from a watchlist (mutates). |
 | `portfolio_watchlist_brief` | Intelligence brief for every symbol on a watchlist. |
-| `portfolio_journal_add_trade` | Log a new open trade (mutates). |
+| `portfolio_journal_add_trade` | Log a new open trade; optional ISO `entry_date` records a past trade (mutates). |
 | `portfolio_journal_close_trade` | Close an open trade; PnL computed automatically (mutates). |
 | `portfolio_journal_list_trades` | List journal trades, optionally filtered. |
 | `portfolio_journal_review` | Full detail for a single journal trade. |
