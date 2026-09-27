@@ -279,6 +279,11 @@ def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
         raise ValueError(f"finviz screen has no change column: {list(df.columns)}")
     df = df.assign(_percent=df[column].map(_finviz_percent).astype(float))
     sort_column = "Volume" if kind == "most_active" else "_percent"
+    # A row with no ranking value is not a mover. With none left, return []
+    # so MoverFetcher falls through to the yfinance tier.
+    df = df[pd.to_numeric(df[sort_column], errors="coerce").notna()]
+    if df.empty:
+        return []
     df = df.sort_values(sort_column, ascending=(kind == "losers"))
 
     rows: list[dict[str, Any]] = []

@@ -409,14 +409,23 @@ def test_finviz_tier_reads_a_legacy_numeric_change_column(serve_finviz):
     assert [row["change_percent"] for row in rows] == pytest.approx([12.5, 5.73])
 
 
-def test_finviz_tier_keeps_an_unparseable_change_out_of_the_ranking(serve_finviz):
+def test_finviz_tier_leaves_out_a_row_it_cannot_rank(serve_finviz):
     serve_finviz(_finviz_frame(**{"Change %": ["5.73%", "-", "-3.10%", "-8.00%"]}))
 
     rows = _finviz_tier("gainers", 4)
 
-    assert [row["symbol"] for row in rows] == ["AAA", "CCC", "DDD", "BBB"]
-    assert rows[-1]["change_percent"] is None
-    assert rows[-1]["change"] is None
+    assert [row["symbol"] for row in rows] == ["AAA", "CCC", "DDD"]
+
+
+async def test_finviz_tier_with_nothing_rankable_falls_through_to_yfinance(
+    serve_finviz,
+):
+    serve_finviz(_finviz_frame(**{"Change %": ["-", "-", "-", "-"]}))
+    batch = _counting_sync([{"symbol": "MSFT"}])
+
+    fetcher = MoverFetcher(finviz_fn=_finviz_tier, batch_quote_fn=batch)
+
+    assert await fetcher.gainers(5) == [{"symbol": "MSFT"}]
 
 
 async def test_finviz_tier_without_a_change_column_falls_through_to_yfinance(
