@@ -94,6 +94,54 @@ for about 63,000 input tokens. Tuning the cutoff on three failures would only
 fit noise, so the subagent judge stays the evaluator for this mode. The run is
 in `judges/results/2026-09-27-acts-on-a-guess-jev-dev.json`.
 
+## Re-run on 2026-09-27
+
+After the fixes, the seven affected cases were re-run through the subagent, in
+`runs/20260927T152805Z-claude-opus-5-5/`:
+
+- q02: the quote now returns an error ("No quote data for TWTR ...").
+- q07: `screening_run_screens` now says how to add symbols. The assistant
+  declined to pick its own list, so the request still has no answer while the
+  default universe stays an open decision.
+- q15: the model read the backtest result (largest tool result about 9,200
+  characters).
+- b05: `BRK.B` works as typed.
+- b06: the screens ran on live data for the nine seeded symbols, with no
+  fixture prices.
+- b15: the assistant asked what "strategy" meant and about the horizon.
+- b18: the journal now takes `entry_date`, but the assistant still logged
+  today's date without asking. So this mode is the assistant's behavior, not
+  only a missing tool parameter.
+
+The re-runs and batch 3 also surfaced new defects, now rows in
+`docs/exec-plans/tech-debt-tracker.md`:
+
+- finviz movers (fixed in #300)
+- synthetic support and resistance levels
+- `risk_adjusted_analysis` sizing
+- annualized metrics on a 365-day year
+- profit factor 0 with no losing trades
+- seed cost bases far below real prices
+- a price-bar insert race under parallel calls
+- no tool that lists watchlists
+- no dividend fields
+
+A suspected correlation bug was checked: an independent yfinance calculation
+reproduced the low values, so they are real for the last year. The separate
+off-diagonal selection issue in `correlation_analysis` stays open in the
+tracker.
+
+## Batch 3
+
+`cases_batch3.json` (c01 to c20) aims at the "acts on a guess" mode. Sixteen
+cases leave out or get wrong a detail the result depends on (the `gap` field
+names which), and four are controls (`gap: none`). c03 names its trade by tag
+but gives no sale date, and c15 names no watchlist while no tool lists them,
+so both are gap cases. The traces are in
+`runs/20260927T153817Z-claude-opus-5-5/` and wait for the reviewer's labels.
+The judge is scored on them only after labeling, so its verdicts cannot bias
+the review.
+
 ## For the reviewer
 
 - q09: the note says March 3 was a Sunday. That holds for 2024; the assistant

@@ -6,8 +6,10 @@ own words. There are no judges, no scores, and no CI gate.
 
 ## Dimensions
 
-`cases.json` (batch 1) and `cases_batch2.json` (batch 2) each hold 20 fixed
-queries. Each case has three dimensions:
+`cases.json` (batch 1), `cases_batch2.json` (batch 2), and `cases_batch3.json`
+(batch 3) each hold 20 fixed queries. Each case has three dimensions, and
+batch 3 adds a fourth, `gap`: what the request leaves out or gets wrong
+(`none` for its controls). The three dimensions are:
 
 - task: lookup, technicals, screening, bookkeeping, risk, backtest,
   journal-watchlist, or multi-step.

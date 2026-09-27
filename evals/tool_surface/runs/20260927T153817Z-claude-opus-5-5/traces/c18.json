@@ -1,0 +1,74 @@
+{
+  "case": {
+    "id": "c18",
+    "task": "bookkeeping",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "gap": "missing-date",
+    "query": "I bought 25 more XOM at 108 on June 12, add it"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01F1nPKWZQXuMhotZmHV9nzf",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[{\"ticker\":\"AAPL\",\"shares\":\"50.00000000\",\"average_cost_basis\":\"198.4000\",\"total_cost\":\"9920.0000\",\"purchase_date\":\"2025-11-14T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":341.07,\"current_value\":17053.5,\"unrealized_pnl\":7133.5,\"unrealized_pnl_percent\":71.91},{\"ticker\":\"JPM\",\"shares\":\"40.00000000\",\"average_cost_basis\":\"244.6000\",\"total_cost\":\"9784.0000\",\"purchase_date\":\"2026-02-10T00:00:00+00:00\",\"notes\":null,\"sector\":\"Financial Services\",\"current_price\":343.06,\"current_value\":13722.4,\"unrealized_pnl\":3938.4,\"unrealized_pnl_percent\":40.25},{\"ticker\":\"MSFT\",\"shares\":\"30.00000000\",\"average_cost_basis\":\"412.1000\",\"total_cost\":\"12363.0000\",\"purchase_date\":\"2025-12-03T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":516.17,\"current_value\":15485.1,\"unrealized_pnl\":3122.1,\"unrealized_pnl_percent\":25.25},{\"ticker\":\"NVDA\",\"shares\":\"120.00000000\",\"average_cost_basis\":\"131.7500\",\"total_cost\":\"15810.0000\",\"purchase_date\":\"2025-10-21T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":225.07,\"current_value\":27008.4,\"unrealized_pnl\":11198.4,\"unrealized_pnl_percent\":70.83},{\"ticker\":\"XOM\",\"shares\":\"60.00000000\",\"average_cost_basis\":\"112.3000\",\"total_cost\":\"6738.0000\",\"purchase_date\":\"2026-03-18T00:00:00+00:00\",\"notes\":null,\"sector\":\"Energy\",\"current_price\":160.59,\"current_value\":9635.4,\"unrealized_pnl\":2897.4,\"unrealized_pnl_percent\":43}],\"metrics\":{\"total_invested\":\"54615.0000\",\"total_value\":82904.8,\"total_pnl\":28289.8,\"total_pnl_percent\":51.8,\"position_count\":5},\"sector_exposure\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"as_of\":\"2026-09-27T15:53:00.514355+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01U274LvsQKvNUCeQQqRe7aw",
+      "name": "mcp__maverick__market_data_get_price_history",
+      "arguments": {
+        "ticker": "XOM",
+        "start_date": "2026-06-10",
+        "end_date": "2026-06-15"
+      },
+      "result": "{\"columns\":[\"Open\",\"High\",\"Low\",\"Close\",\"Volume\"],\"index\":[\"2026-06-10T00:00:00.000\",\"2026-06-11T00:00:00.000\",\"2026-06-12T00:00:00.000\",\"2026-06-15T00:00:00.000\"],\"data\":[[150.2571,151.509,148.5978,149.651,14596500],[151.3202,151.509,145.478,145.6569,17285800],[144.6931,147.952,144.2162,146.0642,17713100],[138.841,141.0666,136.834,140.0134,23631400]],\"ticker\":\"XOM\",\"status\":\"success\",\"record_count\":4}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01KfP9b3aVKbW5qsRfHLnf6u",
+      "name": "mcp__maverick__market_data_get_price_history",
+      "arguments": {
+        "ticker": "XOM",
+        "start_date": "2025-06-10",
+        "end_date": "2025-06-16"
+      },
+      "result": "{\"columns\":[\"Open\",\"High\",\"Low\",\"Close\",\"Volume\"],\"index\":[\"2025-06-10T00:00:00.000\",\"2025-06-11T00:00:00.000\",\"2025-06-12T00:00:00.000\",\"2025-06-13T00:00:00.000\",\"2025-06-16T00:00:00.000\"],\"data\":[[102.1417,103.6534,101.9972,103.2393,17634800],[103.7593,105.3288,102.5075,105.2517,22648200],[104.8762,106.0991,104.2022,105.6561,17469400],[108.1789,108.3522,106.5709,107.9574,28540200],[107.6685,108.9588,107.0042,108.304,22986100]],\"ticker\":\"XOM\",\"status\":\"success\",\"record_count\":5}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I didn't add the XOM shares. The $108 price doesn't fit June 12 of this year, so I need you to confirm the date or the price first.\n\n- **Current position:** 60 XOM at an average cost of $112.30 (dated 2026-03-18). Nothing has changed.\n- **June 12, 2026:** XOM traded between $144.22 and $147.95 and closed at $146.06. That's the most likely date for \"June 12\" since the current lot is from March 2026, but $108 is about 25% below that day's low. It couldn't have been a fill that day.\n- **June 12, 2025:** XOM traded between about $104.20 and $106.10 and closed at $105.66. These prices are adjusted for dividends, so the actual trading prices were probably a few dollars higher. That puts $108 at or near that day's range. But that purchase would be earlier than your March 2026 lot, which doesn't quite fit \"25 more.\"\n\nI held off because adding shares merges them into one average cost. Removing the 25 shares later wouldn't bring the $112.30 back, so a wrong entry would be hard to undo.\n\nOnce you confirm, the add would leave you with 85 XOM at an average cost of $111.04 ($9,438 total). Tell me which of these it is:\n1. **June 12, 2025 at $108:** I add it as stated.\n2. **June 12, 2026 at a different price:** give me the actual fill, which would have been around $144\u2013148.\n3. **Add it as-is** (2026-06-12 at $108): I'll do it, but the record won't match that day's prices.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 5,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 8524,
+    "cache_read_input_tokens": 82114,
+    "output_tokens": 499
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 40177,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:53:33.838708+00:00"
+}

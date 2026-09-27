@@ -1,0 +1,79 @@
+{
+  "case": {
+    "id": "c10",
+    "task": "backtest",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "gap": "none",
+    "query": "Backtest an RSI 30/70 strategy on MSFT"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01KJYJMmg7SpuQreC7DafFQe",
+      "name": "mcp__maverick__backtesting_run_backtest",
+      "arguments": {
+        "symbol": "MSFT",
+        "strategy": "rsi",
+        "oversold": 30,
+        "overbought": 70
+      },
+      "result": "{\"symbol\":\"MSFT\",\"strategy\":\"rsi\",\"parameters\":{\"period\":14,\"oversold\":30,\"overbought\":70},\"metrics\":{\"total_return\":-0.14664458195960306,\"annual_return\":-0.20667758127842495,\"sharpe_ratio\":-0.7740249413359132,\"sortino_ratio\":-0.997492899091192,\"calmar_ratio\":-0.6994696626485083,\"max_drawdown\":-0.2954775486557204,\"win_rate\":0.5,\"profit_factor\":0.22646388051413158,\"expectancy\":-733.2229097980162,\"total_trades\":2,\"winning_trades\":1,\"losing_trades\":1,\"avg_win\":429.3232112938336,\"avg_loss\":-1895.769030889866,\"best_trade\":429.3232112938336,\"worst_trade\":-1895.769030889866,\"avg_duration\":59.5,\"kelly_criterion\":-1,\"recovery_factor\":-0.4962968679913747,\"risk_reward_ratio\":0.22646388051413158},\"trades\":[{\"entry_date\":\"2025-11-17 00:00:00\",\"exit_date\":\"2026-04-15 00:00:00\",\"entry_price\":503.85195089721674,\"exit_price\":409.15074243164065,\"size\":19.82727261891242,\"pnl\":-1895.769030889866,\"return\":-0.18976647999207558,\"duration\":\"\"},{\"entry_date\":\"2026-06-18 00:00:00\",\"exit_date\":\"2026-07-16 00:00:00\",\"entry_price\":379.0657903747558,\"exit_price\":399.9459671630859,\"size\":21.3581257920209,\"pnl\":429.3232112938336,\"return\":0.0530281696243802,\"duration\":\"\"}],\"equity_curve\":{\"2025-09-29 00:00:00\":10000,\"2025-10-03 00:00:00\":10000,\"2025-10-09 00:00:00\":10000,\"2025-10-15 00:00:00\":10000,\"2025-10-21 00:00:00\":10000,\"2025-10-28 00:00:00\":10000,\"2025-11-03 00:00:00\":10000,\"2025-11-07 00:00:00\":10000,\"2025-11-13 00:00:00\":10000,\"2025-11-19 00:00:00\":9579.443781153472,\"2025-11-26 00:00:00\":9565.45553382669,\"2025-12-03 00:00:00\":9412.368997354213,\"2025-12-09 00:00:00\":9693.914695333882,\"2025-12-15 00:00:00\":9355.036424869253,\"2025-12-22 00:00:00\":9554.029196664349,\"2025-12-29 00:00:00\":9596.979009440096,\"2026-01-05 00:00:00\":9316.22294130563,\"2026-01-09 00:00:00\":9442.907402172223,\"2026-01-15 00:00:00\":8997.241527699147,\"2026-01-23 00:00:00\":9180.277120737346,\"2026-01-29 00:00:00\":8540.938945908936,\"2026-02-04 00:00:00\":8160.486815364343,\"2026-02-10 00:00:00\":8142.35921342373,\"2026-02-18 00:00:00\":7873.029482451605,\"2026-02-24 00:00:00\":7681.678270284934,\"2026-03-02 00:00:00\":7870.265475453217,\"2026-03-06 00:00:00\":8075.834260395967,\"2026-03-12 00:00:00\":7935.628069145623,\"2026-03-19 00:00:00\":7682.0745979083895,\"2026-03-25 00:00:00\":7327.017689282002,\"2026-03-31 00:00:00\":7309.839458396658,\"2026-04-07 00:00:00\":7351.703151960034,\"2026-04-14 00:00:00\":7762.838906604513,\"2026-04-20 00:00:00\":8104.2309691101345,\"2026-04-24 00:00:00\":8104.2309691101345,\"2026-04-30 00:00:00\":8104.2309691101345,\"2026-05-06 00:00:00\":8104.2309691101345,\"2026-05-13 00:00:00\":8104.2309691101345,\"2026-05-19 00:00:00\":8104.2309691101345,\"2026-05-26 00:00:00\":8104.2309691101345,\"2026-06-01 00:00:00\":8104.2309691101345,\"2026-06-08 00:00:00\":8104.2309691101345,\"2026-06-12 00:00:00\":8104.2309691101345,\"2026-06-18 00:00:00\":8088.0467874883725,\"2026-06-25 00:00:00\":7521.6269189382665,\"2026-07-01 00:00:00\":8192.080309755964,\"2026-07-09 00:00:00\":8193.78411044018,\"2026-07-15 00:00:00\":8434.037605467789,\"2026-07-21 00:00:00\":8533.55418040397,\"2026-07-27 00:00:00\":8533.55418040397,\"2026-08-03 00:00:00\":8533.55418040397,\"2026-08-07 00:00:00\":8533.55418040397,\"2026-08-13 00:00:00\":8533.55418040397,\"2026-08-19 00:00:00\":8533.55418040397,\"2026-08-25 00:00:00\":8533.55418040397,\"2026-09-01 00:00:00\":8533.55418040397,\"2026-09-08 00:00:00\":8533.55418040397,\"2026-09-14 00:00:00\":8533.55418040397,\"2026-09-18 00:00:00\":8533.55418040397,\"2026-09-25 00:00:00\":8533.55418040397},\"drawdown_series\":{\"2025-09-29 00:00:00\":0,\"2025-10-03 00:00:00\":0,\"2025-10-09 00:00:00\":0,\"2025-10-15 00:00:00\":0,\"2025-10-21 00:00:00\":0,\"2025-10-28 00:00:00\":0,\"2025-11-03 00:00:00\":0,\"2025-11-07 00:00:00\":0,\"2025-11-13 00:00:00\":0,\"2025-11-19 00:00:00\":-0.04205562188465284,\"2025-11-26 00:00:00\":-0.043454446617331,\"2025-12-03 00:00:00\":-0.05876310026457854,\"2025-12-09 00:00:00\":-0.030608530466611827,\"2025-12-15 00:00:00\":-0.0644963575130747,\"2025-12-22 00:00:00\":-0.04459708033356524,\"2025-12-29 00:00:00\":-0.04030209905599047,\"2026-01-05 00:00:00\":-0.06837770586943714,\"2026-01-09 00:00:00\":-0.055709259782777965,\"2026-01-15 00:00:00\":-0.10027584723008542,\"2026-01-23 00:00:00\":-0.08197228792626532,\"2026-01-29 00:00:00\":-0.14590610540910642,\"2026-02-04 00:00:00\":-0.18395131846356572,\"2026-02-10 00:00:00\":-0.18576407865762723,\"2026-02-18 00:00:00\":-0.21269705175483988,\"2026-02-24 00:00:00\":-0.23183217297150704,\"2026-03-02 00:00:00\":-0.2129734524546789,\"2026-03-06 00:00:00\":-0.1924165739604038,\"2026-03-12 00:00:00\":-0.20643719308543818,\"2026-03-19 00:00:00\":-0.23179254020916162,\"2026-03-25 00:00:00\":-0.2672982310718003,\"2026-03-31 00:00:00\":-0.2690160541603345,\"2026-04-07 00:00:00\":-0.26482968480399693,\"2026-04-14 00:00:00\":-0.22371610933954922,\"2026-04-20 00:00:00\":-0.189576903088987,\"2026-04-24 00:00:00\":-0.189576903088987,\"2026-04-30 00:00:00\":-0.189576903088987,\"2026-05-06 00:00:00\":-0.189576903088987,\"2026-05-13 00:00:00\":-0.189576903088987,\"2026-05-19 00:00:00\":-0.189576903088987,\"2026-05-26 00:00:00\":-0.189576903088987,\"2026-06-01 00:00:00\":-0.189576903088987,\"2026-06-08 00:00:00\":-0.189576903088987,\"2026-06-12 00:00:00\":-0.189576903088987,\"2026-06-18 00:00:00\":-0.19119532125116323,\"2026-06-25 00:00:00\":-0.24783730810617366,\"2026-07-01 00:00:00\":-0.1807919690244042,\"2026-07-09 00:00:00\":-0.18062158895598257,\"2026-07-15 00:00:00\":-0.15659623945322176,\"2026-07-21 00:00:00\":-0.14664458195960384,\"2026-07-27 00:00:00\":-0.14664458195960384,\"2026-08-03 00:00:00\":-0.14664458195960384,\"2026-08-07 00:00:00\":-0.14664458195960384,\"2026-08-13 00:00:00\":-0.14664458195960384,\"2026-08-19 00:00:00\":-0.14664458195960384,\"2026-08-25 00:00:00\":-0.14664458195960384,\"2026-09-01 00:00:00\":-0.14664458195960384,\"2026-09-08 00:00:00\":-0.14664458195960384,\"2026-09-14 00:00:00\":-0.14664458195960384,\"2026-09-18 00:00:00\":-0.14664458195960384,\"2026-09-25 00:00:00\":-0.14664458195960384},\"start_date\":\"2025-09-29\",\"end_date\":\"2026-09-25\",\"initial_capital\":10000,\"memory_stats\":null,\"analysis\":{\"performance_grade\":\"F\",\"risk_assessment\":{\"risk_level\":\"Medium\",\"max_drawdown\":0.2954775486557204,\"sortino_ratio\":-0.997492899091192,\"calmar_ratio\":-0.6994696626485083,\"recovery_factor\":-0.4962968679913747,\"risk_adjusted_return\":-0.7740249413359132,\"downside_protection\":\"Poor\"},\"trade_quality\":{\"quality\":\"Average\",\"total_trades\":2,\"frequency\":\"Very Low\",\"win_rate\":0.5,\"avg_win\":429.3232112938336,\"avg_loss\":-1895.769030889866,\"best_trade\":429.3232112938336,\"worst_trade\":-1895.769030889866,\"avg_duration_days\":59.5,\"risk_reward_ratio\":0.22646388051413158},\"strengths\":[\"Consistent performance\"],\"weaknesses\":[\"Poor risk-adjusted returns\",\"Unprofitable trades overall\",\"Insufficient trade signals\",\"Poor downside protection\",\"Negative returns\"],\"recommendations\":[\"Implement tighter stop-loss rules to reduce drawdowns\",\"Consider more sensitive parameters for increased signals\",\"Adjust exit strategy for better risk-reward ratio\",\"Focus on cutting losses quicker and letting winners run\",\"Consider position sizing based on volatility\"],\"summary\":\"The strategy generated a -14.7% return with a Sharpe ratio of -0.77. Maximum drawdown was 29.5% with a 50.0% win rate across 2 trades. Performance needs significant improvement before live trading.\"},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01AJFBgkxN3S5QjcNGsiVses",
+      "name": "mcp__maverick__market_data_get_price_history",
+      "arguments": {
+        "ticker": "MSFT",
+        "start_date": "2025-09-29",
+        "end_date": "2025-10-01"
+      },
+      "result": "{\"columns\":[\"Open\",\"High\",\"Low\",\"Close\",\"Volume\"],\"index\":[\"2025-09-29T00:00:00.000\",\"2025-09-30T00:00:00.000\",\"2025-10-01T00:00:00.000\"],\"data\":[[507.3259,512.6322,504.7273,510.4006,17617800],[509.0517,513.9315,505.5009,513.7233,19728200],[510.599,516.2624,507.5144,515.4689,22632300]],\"ticker\":\"MSFT\",\"status\":\"success\",\"record_count\":3}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01Amrbcp7efDawz1PtKGP9iS",
+      "name": "mcp__maverick__market_data_get_price_history",
+      "arguments": {
+        "ticker": "MSFT",
+        "start_date": "2026-09-23",
+        "end_date": "2026-09-25"
+      },
+      "result": "{\"columns\":[\"Open\",\"High\",\"Low\",\"Close\",\"Volume\"],\"index\":[\"2026-09-23T00:00:00.000\",\"2026-09-24T00:00:00.000\",\"2026-09-25T00:00:00.000\"],\"data\":[[500.76,509.44,495.88,500.59,19445600],[495.07,498.9,491.22,497.93,16657600],[499.04,519.4,497.25,516.17,38154200]],\"ticker\":\"MSFT\",\"status\":\"success\",\"record_count\":3}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "The RSI 30/70 strategy lost 14.7% on MSFT over the past year. Just holding the stock would have made about 1.1% over the same period.\n\n**Settings:** RSI 14-period (the default), buying below 30 and selling above 70. It ran on daily bars from 2025-09-29 to 2026-09-25 (the default one-year window), starting with $10,000.\n\n**Results**\n| Metric | Value |\n|---|---|\n| Total return | -14.66% ($10,000 to $8,533.55) |\n| Buy and hold, same window | +1.13% (close $510.40 to $516.17) |\n| Max drawdown | -29.5% |\n| Sharpe / Sortino / Calmar | -0.77 / -1.00 / -0.70 |\n| Trades | 2 (1 win, 1 loss) |\n| Profit factor | 0.23 |\n| Average holding time | 59.5 days |\n| Tool's grade | F |\n\n**Trades**\n1. Bought 2025-11-17 at $503.85 and sold 2026-04-15 at $409.15, a loss of 19.0% (-$1,895.77). RSI never got back above 70 while MSFT kept falling, so the strategy held the whole slide. There is no stop-loss, so nothing cut the loss short.\n2. Bought 2026-06-18 at $379.07 and sold 2026-07-16 at $399.95, a gain of 5.3% (+$429.32).\n\nAfter mid-July the strategy was in cash for the rest of the window, so it missed MSFT's move from about $400 back to $516.\n\n**Caveats**\n- Two trades is far too few to judge the strategy. This result mostly shows how this one year went for MSFT, not whether the rule works.\n- The tool reports an annual return of -20.7%, which doesn't match a -14.7% total over about one year. It looks like a different annualizing method. Use the total return.\n- The tool's automatic comments are generic. It lists \"Consistent performance\" as a strength, which two trades can't show, and calls a 29.5% drawdown \"Medium\" risk.\n\n**Possible next steps:** run a longer window (for example 5+ years) to get more trades, try other thresholds such as 35/65 to trade more often, or compare RSI against other strategies on MSFT.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 4,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 11207,
+    "cache_read_input_tokens": 69517,
+    "output_tokens": 520
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 39820,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:46:49.997869+00:00"
+}

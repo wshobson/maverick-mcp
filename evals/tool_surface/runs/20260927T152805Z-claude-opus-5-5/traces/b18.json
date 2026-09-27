@@ -1,0 +1,55 @@
+{
+  "case": {
+    "id": "b18",
+    "task": "journal-watchlist",
+    "request_type": "state-changing",
+    "data_state": "seeded",
+    "query": "Log that I bought 50 AMD at 162 because of the earnings beat"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_014Ko9qEVcuCXFr75CgRHwxF",
+      "name": "mcp__maverick__portfolio_journal_add_trade",
+      "arguments": {
+        "symbol": "AMD",
+        "side": "long",
+        "entry_price": 162,
+        "shares": 50,
+        "rationale": "Earnings beat"
+      },
+      "result": "{\"id\":5,\"symbol\":\"AMD\",\"side\":\"long\",\"entry_price\":162,\"exit_price\":null,\"shares\":50,\"entry_date\":\"2026-09-27T15:37:39.504665\",\"exit_date\":null,\"rationale\":\"Earnings beat\",\"tags\":[],\"pnl\":null,\"r_multiple\":null,\"notes\":null,\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I logged the trade in your journal as entry #5: long 50 AMD at $162.00, with \"Earnings beat\" as the rationale. It's recorded as open.\n\nSome things you didn't specify, so I left them as they were:\n- **Entry date:** You didn't give one, so it's set to today, 2026-09-27. If you actually bought on another day (for example, right after the earnings report), the date will be wrong. I can't edit an entry, so fixing it means adding a new entry with the right date.\n- **Tags:** None added. This trade won't show up in any strategy's performance numbers until it has a tag like \"earnings\".\n- **Portfolio:** I only added it to the journal. I didn't add 50 AMD @ $162 as a position in \"My Portfolio\", so your portfolio snapshot and risk checks won't include it. I can add it if you want.\n\nWhen you sell, I can close entry #5 with your exit price and the P&L will be calculated automatically.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 5462,
+    "cache_read_input_tokens": 43276,
+    "output_tokens": 324
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 16228,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:37:56.387545+00:00"
+}

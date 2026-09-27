@@ -1,0 +1,253 @@
+{
+  "case": {
+    "id": "c08",
+    "task": "screening",
+    "request_type": "advice",
+    "data_state": "seeded",
+    "gap": "missing-goals",
+    "query": "Pick three stocks for me to buy this week"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "text",
+      "text": "I'll start by checking market conditions, the latest screens, and your current portfolio."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01EPYC8Fubve6F5UQz5xwtzF",
+      "name": "mcp__maverick__market_data_get_market_overview",
+      "arguments": {},
+      "result": "{\"indices\":{\"^GSPC\":{\"name\":\"S&P 500\",\"symbol\":\"^GSPC\",\"price\":7743.41,\"change\":39.28,\"change_percent\":0.51},\"^DJI\":{\"name\":\"Dow Jones\",\"symbol\":\"^DJI\",\"price\":51828.62,\"change\":478.64,\"change_percent\":0.93},\"^IXIC\":{\"name\":\"NASDAQ\",\"symbol\":\"^IXIC\",\"price\":27068.72,\"change\":129.35,\"change_percent\":0.48},\"^RUT\":{\"name\":\"Russell 2000\",\"symbol\":\"^RUT\",\"price\":2837.55,\"change\":1.98,\"change_percent\":0.07},\"^VIX\":{\"name\":\"VIX\",\"symbol\":\"^VIX\",\"price\":14.87,\"change\":-0.8,\"change_percent\":-5.11},\"^TNX\":{\"name\":\"10Y Treasury\",\"symbol\":\"^TNX\",\"price\":5.18,\"change\":0.02,\"change_percent\":0.43}},\"sectors\":{\"Technology\":0.8,\"Financials\":0.57,\"Health Care\":0.49,\"Energy\":-0.89,\"Consumer Discretionary\":0.22,\"Consumer Staples\":0.44,\"Industrials\":0.95,\"Materials\":0.24,\"Real Estate\":-0.22,\"Utilities\":0.38,\"Communication Services\":-0.9},\"top_gainers\":[{\"symbol\":\"AAAON\",\"price\":89.1,\"change\":0,\"change_percent\":0,\"volume\":1947345},{\"symbol\":\"AAEHR\",\"price\":104.39,\"change\":0,\"change_percent\":0,\"volume\":2862145},{\"symbol\":\"AAESI\",\"price\":12.47,\"change\":0,\"change_percent\":0,\"volume\":12172155},{\"symbol\":\"AALHC\",\"price\":8.21,\"change\":0,\"change_percent\":0,\"volume\":10653836},{\"symbol\":\"AALM\",\"price\":13.72,\"change\":0,\"change_percent\":0,\"volume\":11521398},{\"symbol\":\"AAPUS\",\"price\":7.25,\"change\":0,\"change_percent\":0,\"volume\":37110597},{\"symbol\":\"AAXTX\",\"price\":36.21,\"change\":0,\"change_percent\":0,\"volume\":2171615},{\"symbol\":\"BBE\",\"price\":288.7,\"change\":0,\"change_percent\":0,\"volume\":17360046},{\"symbol\":\"BBEX\",\"price\":40.19,\"change\":0,\"change_percent\":0,\"volume\":2976864},{\"symbol\":\"BBIRK\",\"price\":33.6,\"change\":0,\"change_percent\":0,\"volume\":3728290}],\"top_losers\":[{\"symbol\":\"AABSI\",\"price\":9.74,\"change\":0,\"change_percent\":0,\"volume\":3206563},{\"symbol\":\"AABTC\",\"price\":9.1,\"change\":0,\"change_percent\":0,\"volume\":1107043},{\"symbol\":\"AACAD\",\"price\":20.68,\"change\":0,\"change_percent\":0,\"volume\":3364113},{\"symbol\":\"AAEMD\",\"price\":6.28,\"change\":0,\"change_percent\":0,\"volume\":133607},{\"symbol\":\"AAPLX\",\"price\":8.01,\"change\":0,\"change_percent\":0,\"volume\":3345316},{\"symbol\":\"BBB\",\"price\":8.21,\"change\":0,\"change_percent\":0,\"volume\":32315843},{\"symbol\":\"BBKKT\",\"price\":8.5,\"change\":0,\"change_percent\":0,\"volume\":1010858},{\"symbol\":\"BBKV\",\"price\":21.81,\"change\":0,\"change_percent\":0,\"volume\":2011412},{\"symbol\":\"BBLSH\",\"price\":37.58,\"change\":0,\"change_percent\":0,\"volume\":875176},{\"symbol\":\"BBOIL\",\"price\":22.66,\"change\":0,\"change_percent\":0,\"volume\":7537297}],\"volatility\":{\"vix\":14.87,\"vix_change_percent\":-5.11,\"fear_level\":\"low\"},\"last_updated\":\"2026-09-27T15:43:41.588578+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01LVKaA2hFXnKAZD5q1kuxLt",
+      "name": "mcp__maverick__screening_get_all",
+      "arguments": {},
+      "result": "{\"bullish\":[],\"bearish\":[],\"supply_demand\":[],\"date_analyzed\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01FQE2ibnQNj7YVAdZi8GEtX",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[{\"ticker\":\"AAPL\",\"shares\":\"50.00000000\",\"average_cost_basis\":\"198.4000\",\"total_cost\":\"9920.0000\",\"purchase_date\":\"2025-11-14T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":341.07,\"current_value\":17053.5,\"unrealized_pnl\":7133.5,\"unrealized_pnl_percent\":71.91},{\"ticker\":\"JPM\",\"shares\":\"40.00000000\",\"average_cost_basis\":\"244.6000\",\"total_cost\":\"9784.0000\",\"purchase_date\":\"2026-02-10T00:00:00+00:00\",\"notes\":null,\"sector\":\"Financial Services\",\"current_price\":343.06,\"current_value\":13722.4,\"unrealized_pnl\":3938.4,\"unrealized_pnl_percent\":40.25},{\"ticker\":\"MSFT\",\"shares\":\"30.00000000\",\"average_cost_basis\":\"412.1000\",\"total_cost\":\"12363.0000\",\"purchase_date\":\"2025-12-03T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":516.17,\"current_value\":15485.1,\"unrealized_pnl\":3122.1,\"unrealized_pnl_percent\":25.25},{\"ticker\":\"NVDA\",\"shares\":\"120.00000000\",\"average_cost_basis\":\"131.7500\",\"total_cost\":\"15810.0000\",\"purchase_date\":\"2025-10-21T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":225.07,\"current_value\":27008.4,\"unrealized_pnl\":11198.4,\"unrealized_pnl_percent\":70.83},{\"ticker\":\"XOM\",\"shares\":\"60.00000000\",\"average_cost_basis\":\"112.3000\",\"total_cost\":\"6738.0000\",\"purchase_date\":\"2026-03-18T00:00:00+00:00\",\"notes\":null,\"sector\":\"Energy\",\"current_price\":160.59,\"current_value\":9635.4,\"unrealized_pnl\":2897.4,\"unrealized_pnl_percent\":43}],\"metrics\":{\"total_invested\":\"54615.0000\",\"total_value\":82904.8,\"total_pnl\":28289.8,\"total_pnl_percent\":51.8,\"position_count\":5},\"sector_exposure\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"as_of\":\"2026-09-27T15:43:36.692809+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01GeVseMrMafz9X3e7hryYtL",
+      "name": "mcp__maverick__screening_run_screens",
+      "arguments": {},
+      "result": "{\"status\":\"success\",\"results\":{\"bullish\":{\"screen\":\"bullish\",\"symbols_screened\":9,\"symbols_qualified\":6,\"symbols_failed\":0,\"date_analyzed\":\"2026-09-27\",\"duration_seconds\":1.0702594169415534},\"bearish\":{\"screen\":\"bearish\",\"symbols_screened\":9,\"symbols_qualified\":3,\"symbols_failed\":0,\"date_analyzed\":\"2026-09-27\",\"duration_seconds\":1.0857074589002877},\"supply_demand\":{\"screen\":\"supply_demand\",\"symbols_screened\":9,\"symbols_qualified\":3,\"symbols_failed\":0,\"date_analyzed\":\"2026-09-27\",\"duration_seconds\":1.0883685420267284}},\"count\":3}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01BgB2FmoMow9sYzCp5gNmX8",
+      "name": "mcp__maverick__screening_get_all",
+      "arguments": {},
+      "result": "{\"bullish\":[{\"symbol\":\"NVDA\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-27\",\"close\":225.07,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":225.07,\"sma50\":215.79476400000004,\"sma150\":204.04676733333335,\"sma200\":199.1272205,\"rsi14\":55.301370215874535,\"volume\":89808400,\"avg_volume_30d\":120604276.66666667},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"INTC\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-27\",\"close\":123,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":123,\"sma50\":99.05239999999999,\"sma150\":91.07393333333333,\"sma200\":79.20185000000001,\"rsi14\":66.90009629605773,\"volume\":97481700,\"avg_volume_30d\":102088476.66666667},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"ANET\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-27\",\"close\":206.55,\"combined_score\":110,\"momentum_score\":null,\"indicators\":{\"close\":206.55,\"sma50\":190.233,\"sma150\":164.84026666666668,\"sma200\":157.0391,\"rsi14\":60.17533363297416,\"volume\":4377000,\"avg_volume_30d\":5160046.666666667},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), RSI not overbought\"},{\"symbol\":\"PLTR\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-27\",\"close\":189.67,\"combined_score\":85,\"momentum_score\":null,\"indicators\":{\"close\":189.67,\"sma50\":163.92680000000001,\"sma150\":147.29143333333334,\"sma200\":152.023625,\"rsi14\":63.69582438852373,\"volume\":17779900,\"avg_volume_30d\":27884050},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":false,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, RSI not overbought\"},{\"symbol\":\"META\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-27\",\"close\":751.66,\"combined_score\":85,\"momentum_score\":null,\"indicators\":{\"close\":751.66,\"sma50\":615.3199979999999,\"sma150\":615.4696,\"sma200\":625.4245980000001,\"rsi14\":71.38342980621077,\"volume\":25753100,\"avg_volume_30d\":20857496.666666668},\"flags\":{\"close_above_sma50\":true,\"close_above_sma150\":true,\"close_above_sma200\":true,\"ma_aligned\":false,\"volume_surge\":false,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA50, close above SMA150, close above SMA200, RSI not overbought\"},{\"symbol\":\"CVS\",\"screen\":\"bullish\",\"date_analyzed\":\"2026-09-27\",\"close\":89.13,\"combined_score\":70,\"momentum_score\":null,\"indicators\":{\"close\":89.13,\"sma50\":97.01622399999998,\"sma150\":89.929226,\"sma200\":86.706558,\"rsi14\":40.09882862542261,\"volume\":15767300,\"avg_volume_30d\":7254473.333333333},\"flags\":{\"close_above_sma50\":false,\"close_above_sma150\":false,\"close_above_sma200\":true,\"ma_aligned\":true,\"volume_surge\":true,\"rsi_not_overbought\":true},\"reason\":\"bullish screen: close above SMA200, moving averages aligned (SMA50 > SMA150 > SMA200), volume surge, RSI not overbought\"}],\"bearish\":[{\"symbol\":\"NFLX\",\"screen\":\"bearish\",\"date_analyzed\":\"2026-09-27\",\"close\":71.15,\"combined_score\":65,\"momentum_score\":null,\"indicators\":{\"close\":71.15,\"sma50\":75.53699999999999,\"sma200\":84.7127,\"rsi14\":37.07698498891881,\"macd\":-1.6459993388371572,\"macd_signal\":-0.7866052154687396,\"atr14\":2.109495276396628,\"atr_avg_20d\":2.276763584242498,\"volume\":23175700,\"avg_volume_30d\":30842263.333333332,\"prior_close\":71.72},\"flags\":{\"close_below_sma50\":true,\"close_below_sma200\":true,\"rsi_oversold\":false,\"rsi_weak\":true,\"macd_bearish\":true,\"volume_decline\":false,\"atr_contraction\":false},\"reason\":\"bearish screen: close below SMA50, close below SMA200, RSI weak (below 40), MACD below signal\"},{\"symbol\":\"NKE\",\"screen\":\"bearish\",\"date_analyzed\":\"2026-09-27\",\"close\":35.75,\"combined_score\":50,\"momentum_score\":null,\"indicators\":{\"close\":35.75,\"sma50\":39.405117999999995,\"sma200\":48.60907050000001,\"rsi14\":35.56942611317389,\"macd\":-1.0644161679889095,\"macd_signal\":-1.094910019325596,\"atr14\":0.9682951975257251,\"atr_avg_20d\":1.0302690248629969,\"volume\":38219700,\"avg_volume_30d\":31960053.333333332,\"prior_close\":35.99},\"flags\":{\"close_below_sma50\":true,\"close_below_sma200\":true,\"rsi_oversold\":false,\"rsi_weak\":true,\"macd_bearish\":false,\"volume_decline\":false,\"atr_contraction\":false},\"reason\":\"bearish screen: close below SMA50, close below SMA200, RSI weak (below 40)\"},{\"symbol\":\"AVGO\",\"screen\":\"bearish\",\"date_analyzed\":\"2026-09-27\",\"close\":352.81,\"combined_score\":40,\"momentum_score\":null,\"indicators\":{\"close\":352.81,\"sma50\":376.00553,\"sma200\":367.0419445,\"rsi14\":44.04068390992029,\"macd\":-6.263146172793881,\"macd_signal\":-7.481353230061818,\"atr14\":10.929648226256278,\"atr_avg_20d\":12.423500144730752,\"volume\":16220900,\"avg_volume_30d\":25717963.333333332,\"prior_close\":350.36},\"flags\":{\"close_below_sma50\":true,\"close_below_sma200\":true,\"rsi_oversold\":false,\"rsi_weak\":false,\"macd_bearish\":false,\"volume_decline\":false,\"atr_contraction\":false},\"reason\":\"bearish screen: close below SMA50, close below SMA200\"}],\"supply_demand\":[{\"symbol\":\"NVDA\",\"screen\":\"supply_demand\",\"date_analyzed\":\"2026-09-27\",\"close\":225.07,\"combined_score\":75,\"momentum_score\":65.14,\"indicators\":{\"close\":225.07,\"sma50\":215.79476400000004,\"sma150\":204.04676733333335,\"sma200\":199.1272205,\"sma200_22_bars_ago\":195.15263300000004,\"volume\":89808400,\"avg_volume_30d\":120604276.66666667,\"high_252d\":236.0006},\"flags\":{\"close_above_sma150\":true,\"close_above_sma200\":true,\"sma150_above_sma200\":true,\"sma200_rising\":true,\"sma50_above_sma150\":true,\"sma50_above_sma200\":true,\"close_above_sma50\":true,\"volume_surge\":false,\"near_52w_high\":true},\"reason\":\"supply demand screen: close above SMA150, close above SMA200, SMA150 above SMA200, SMA200 trending up, SMA50 above SMA150, SMA50 above SMA200, close above SMA50, within 25% of the 252-day high\"},{\"symbol\":\"INTC\",\"screen\":\"supply_demand\",\"date_analyzed\":\"2026-09-27\",\"close\":123,\"combined_score\":75,\"momentum_score\":100,\"indicators\":{\"close\":123,\"sma50\":99.05239999999999,\"sma150\":91.07393333333333,\"sma200\":79.20185000000001,\"sma200_22_bars_ago\":72.2596,\"volume\":97481700,\"avg_volume_30d\":102088476.66666667,\"high_252d\":142.35},\"flags\":{\"close_above_sma150\":true,\"close_above_sma200\":true,\"sma150_above_sma200\":true,\"sma200_rising\":true,\"sma50_above_sma150\":true,\"sma50_above_sma200\":true,\"close_above_sma50\":true,\"volume_surge\":false,\"near_52w_high\":true},\"reason\":\"supply demand screen: close above SMA150, close above SMA200, SMA150 above SMA200, SMA200 trending up, SMA50 above SMA150, SMA50 above SMA200, close above SMA50, within 25% of the 252-day high\"},{\"symbol\":\"ANET\",\"screen\":\"supply_demand\",\"date_analyzed\":\"2026-09-27\",\"close\":206.55,\"combined_score\":75,\"momentum_score\":100,\"indicators\":{\"close\":206.55,\"sma50\":190.233,\"sma150\":164.84026666666668,\"sma200\":157.0391,\"sma200_22_bars_ago\":149.8306,\"volume\":4377000,\"avg_volume_30d\":5160046.666666667,\"high_252d\":214.89},\"flags\":{\"close_above_sma150\":true,\"close_above_sma200\":true,\"sma150_above_sma200\":true,\"sma200_rising\":true,\"sma50_above_sma150\":true,\"sma50_above_sma200\":true,\"close_above_sma50\":true,\"volume_surge\":false,\"near_52w_high\":true},\"reason\":\"supply demand screen: close above SMA150, close above SMA200, SMA150 above SMA200, SMA200 trending up, SMA50 above SMA150, SMA50 above SMA200, close above SMA50, within 25% of the 252-day high\"}],\"date_analyzed\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01BVtBUcdas6f5joJw2QhgCt",
+      "name": "mcp__maverick__technical_get_full_technical_analysis",
+      "arguments": {
+        "ticker": "INTC"
+      },
+      "result": "{\"ticker\":\"INTC\",\"current_price\":123,\"trend\":{\"score\":6,\"direction\":\"bullish\",\"adx\":24.75},\"outlook\":\"strongly bullish\",\"rsi\":{\"current\":66.9,\"period\":14,\"signal\":\"bullish\",\"description\":\"RSI is currently at 66.9, indicating bullish conditions.\"},\"macd\":{\"macd\":7.17,\"signal_line\":4.25,\"histogram\":2.92,\"indicator_signal\":\"bullish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bullish with no recent crossover.\"},\"stochastic\":{\"k\":93.54,\"d\":95.19,\"signal\":\"overbought\",\"crossover\":\"bearish crossover detected\",\"description\":\"Stochastic Oscillator is overbought with bearish crossover detected.\"},\"bollinger\":{\"upper\":130.44,\"middle\":104.54,\"lower\":78.64,\"current_price\":123,\"position\":\"above middle band\",\"volatility\":\"expanding (increased volatility)\",\"description\":\"Price is above middle band, indicating bullish conditions. Volatility is expanding (increased volatility).\"},\"volume\":{\"current\":97481700,\"average\":122852260,\"ratio\":0.79,\"description\":\"average\",\"signal\":\"neutral\"},\"levels\":{\"support\":[85.14,110.7,116.85],\"resistance\":[127.44,129.15,135.3]},\"analysis_metadata\":{\"bars_analyzed\":274,\"as_of\":\"2026-09-25\"},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_016mC6TXdi82m6c7ygdmffXg",
+      "name": "mcp__maverick__technical_get_full_technical_analysis",
+      "arguments": {
+        "ticker": "ANET"
+      },
+      "result": "{\"ticker\":\"ANET\",\"current_price\":206.55,\"trend\":{\"score\":6,\"direction\":\"bullish\",\"adx\":17.68},\"outlook\":\"strongly bullish\",\"rsi\":{\"current\":60.18,\"period\":14,\"signal\":\"bullish\",\"description\":\"RSI is currently at 60.18, indicating bullish conditions.\"},\"macd\":{\"macd\":4.21,\"signal_line\":3.3,\"histogram\":0.91,\"indicator_signal\":\"bullish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bullish with no recent crossover.\"},\"stochastic\":{\"k\":83.21,\"d\":86.41,\"signal\":\"overbought\",\"crossover\":\"no recent crossover\",\"description\":\"Stochastic Oscillator is overbought with no recent crossover.\"},\"bollinger\":{\"upper\":209.34,\"middle\":196.58,\"lower\":183.82,\"current_price\":206.55,\"position\":\"above middle band\",\"volatility\":\"expanding (increased volatility)\",\"description\":\"Price is above middle band, indicating bullish conditions. Volatility is expanding (increased volatility).\"},\"volume\":{\"current\":4377000,\"average\":5440830,\"ratio\":0.8,\"description\":\"average\",\"signal\":\"neutral\"},\"levels\":{\"support\":[181.27,185.9,196.22],\"resistance\":[212,216.88,227.21]},\"analysis_metadata\":{\"bars_analyzed\":274,\"as_of\":\"2026-09-25\"},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01QvnirPW5QvFXmLkKGZ11Ab",
+      "name": "mcp__maverick__technical_get_full_technical_analysis",
+      "arguments": {
+        "ticker": "PLTR"
+      },
+      "result": "{\"ticker\":\"PLTR\",\"current_price\":189.67,\"trend\":{\"score\":7,\"direction\":\"bullish\",\"adx\":25.54},\"outlook\":\"strongly bullish\",\"rsi\":{\"current\":63.7,\"period\":14,\"signal\":\"bullish\",\"description\":\"RSI is currently at 63.7, indicating bullish conditions.\"},\"macd\":{\"macd\":6.1,\"signal_line\":5.07,\"histogram\":1.02,\"indicator_signal\":\"bullish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bullish with no recent crossover.\"},\"stochastic\":{\"k\":89.87,\"d\":91.71,\"signal\":\"overbought\",\"crossover\":\"bearish crossover detected\",\"description\":\"Stochastic Oscillator is overbought with bearish crossover detected.\"},\"bollinger\":{\"upper\":195.09,\"middle\":178.4,\"lower\":161.71,\"current_price\":189.67,\"position\":\"above middle band\",\"volatility\":\"expanding (increased volatility)\",\"description\":\"Price is above middle band, indicating bullish conditions. Volatility is expanding (increased volatility).\"},\"volume\":{\"current\":17779900,\"average\":26402420,\"ratio\":0.67,\"description\":\"below average\",\"signal\":\"weak conviction\"},\"levels\":{\"support\":[164.55,170.7,180.19],\"resistance\":[194.68,199.15,208.64]},\"analysis_metadata\":{\"bars_analyzed\":274,\"as_of\":\"2026-09-25\"},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01Vr838iTFtkLwRqtynFygBe",
+      "name": "mcp__maverick__technical_get_full_technical_analysis",
+      "arguments": {
+        "ticker": "META"
+      },
+      "result": "{\"ticker\":\"META\",\"current_price\":751.66,\"trend\":{\"score\":6,\"direction\":\"bullish\",\"adx\":39.69},\"outlook\":\"moderately bullish\",\"rsi\":{\"current\":71.38,\"period\":14,\"signal\":\"overbought\",\"description\":\"RSI is currently at 71.38, indicating overbought conditions.\"},\"macd\":{\"macd\":42.93,\"signal_line\":31.2,\"histogram\":11.73,\"indicator_signal\":\"bullish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bullish with no recent crossover.\"},\"stochastic\":{\"k\":89.95,\"d\":90.55,\"signal\":\"overbought\",\"crossover\":\"bearish crossover detected\",\"description\":\"Stochastic Oscillator is overbought with bearish crossover detected.\"},\"bollinger\":{\"upper\":786.52,\"middle\":660.49,\"lower\":534.45,\"current_price\":751.66,\"position\":\"above middle band\",\"volatility\":\"stable\",\"description\":\"Price is above middle band, indicating bullish conditions. Volatility is stable.\"},\"volume\":{\"current\":25753100,\"average\":26781070,\"ratio\":0.96,\"description\":\"average\",\"signal\":\"neutral\"},\"levels\":{\"support\":[536.85,676.49,714.08],\"resistance\":[779.82,789.24,826.83]},\"analysis_metadata\":{\"bars_analyzed\":274,\"as_of\":\"2026-09-25\"},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01LQvYFMbEsSVk2CEz8VQpmT",
+      "name": "mcp__maverick__technical_get_full_technical_analysis",
+      "arguments": {
+        "ticker": "CVS"
+      },
+      "result": "{\"ticker\":\"CVS\",\"current_price\":89.13,\"trend\":{\"score\":2,\"direction\":\"bearish\",\"adx\":38.98},\"outlook\":\"strongly bearish\",\"rsi\":{\"current\":40.1,\"period\":14,\"signal\":\"bearish\",\"description\":\"RSI is currently at 40.1, indicating bearish conditions.\"},\"macd\":{\"macd\":-2.66,\"signal_line\":-2.11,\"histogram\":-0.55,\"indicator_signal\":\"bearish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bearish with no recent crossover.\"},\"stochastic\":{\"k\":13.32,\"d\":6.43,\"signal\":\"oversold\",\"crossover\":\"bullish crossover detected\",\"description\":\"Stochastic Oscillator is oversold with bullish crossover detected.\"},\"bollinger\":{\"upper\":100.85,\"middle\":92.64,\"lower\":84.43,\"current_price\":89.13,\"position\":\"below middle band\",\"volatility\":\"expanding (increased volatility)\",\"description\":\"Price is below middle band, indicating bearish conditions. Volatility is expanding (increased volatility).\"},\"volume\":{\"current\":15767300,\"average\":9531150,\"ratio\":1.65,\"description\":\"above average\",\"signal\":\"bullish (high volume on up move)\"},\"levels\":{\"support\":[80.22,84.5,84.67],\"resistance\":[93.59,98.04,98.5]},\"analysis_metadata\":{\"bars_analyzed\":274,\"as_of\":\"2026-09-25\"},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_019dSnkEQ13R2q1dad36Wk8Z",
+      "name": "mcp__maverick__portfolio_get_risk_dashboard",
+      "arguments": {},
+      "result": "{\"total_value\":82904.8,\"sector_concentration\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"max_sector_pct\":0.7183,\"portfolio_var_95\":1291.6,\"portfolio_var_99\":1826.29,\"total_pnl\":28289.8,\"position_count\":5,\"status\":\"success\",\"portfolio_name\":\"My Portfolio\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Next, fundamentals for the leading candidates and how they correlate with what you already hold."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01Y9KYFSWeBxke5GLUCecvT1",
+      "name": "mcp__maverick__market_data_get_stock_fundamentals",
+      "arguments": {
+        "ticker": "INTC"
+      },
+      "result": "{\"symbol\":\"INTC\",\"company\":{\"name\":\"Intel Corporation\",\"sector\":\"Technology\",\"industry\":\"Semiconductors\",\"website\":\"https://www.intel.com\",\"description\":\"Intel Corporation designs, develops, manufactures, markets, sells, and services computing and related end products and services in the United States, Ireland, Israel, and internationally. It operates through three segments: CCG, DCAI, and Intel Foundry. The company offers client computing group products, including client and commercial CPUs, discrete client GPUs, edge computing, and connectivity products; data center and AI products, such as server CPUs, discrete GPUs, and networking products; and semiconductors comprising wafer fabrication, substrates, and other related products and services. It also provides driving assistance and self-driving solutions; and develops and manufactures multi-beam mask writing tools. The company sells its products through sales organizations, distributors, resellers, retailers, and OEM partners. It serves original equipment manufacturers, original design manufacturers, cloud service providers, and other manufacturers and service providers. Intel Corporation has a strategic collaboration with Infosys Limited to develop a multi-layer AI fabric that unifies infrastructure, models, data, applications, and workflows into a composable and agent-ready ecosystem. The company was incorporated in 1968 and is headquartered in Santa Clara, California.\"},\"market_data\":{\"current_price\":123,\"market_cap\":650190913536,\"enterprise_value\":656823025664,\"shares_outstanding\":5286105262,\"float_shares\":4619496960},\"valuation\":{\"pe_ratio\":null,\"forward_pe\":59.648514,\"peg_ratio\":1.36,\"price_to_book\":7.085662,\"price_to_sales\":11.400458},\"financials\":{\"revenue\":57031999488,\"profit_margin\":-0.19794,\"operating_margin\":0.12189999,\"roe\":-0.10715,\"roa\":0.0141199995},\"trading\":{\"avg_volume\":108969353,\"avg_volume_10d\":122852260,\"beta\":2.231,\"week_52_high\":142.35,\"week_52_low\":32.89},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01MPDGepaa3BXQNPhVQNebAh",
+      "name": "mcp__maverick__market_data_get_stock_fundamentals",
+      "arguments": {
+        "ticker": "ANET"
+      },
+      "result": "{\"symbol\":\"ANET\",\"company\":{\"name\":\"Arista Networks, Inc.\",\"sector\":\"Technology\",\"industry\":\"Computer Hardware\",\"website\":\"https://www.arista.com\",\"description\":\"Arista Networks, Inc. engages in the development, marketing, and sale of data-driven, client to cloud networking solutions for AI, data center, campus, and routing environments in the Americas, Europe, the Middle East, Africa, and the Asia-Pacific. Its cloud networking solutions consist of Extensible Operating System (EOS), a publish-subscribe state-sharing networking operating system offered in combination with a set of network applications. The company offers data center, cloud and AI networking, cognitive adjacencies, and cognitive network software and services. It also provides post contract customer support services, such as technical support, hardware repair and replacement parts beyond standard warranty, bug fixes, patches, and upgrade services. The company serves a range of industries comprising internet companies, cloud service providers, financial services organizations, government agencies, media and entertainment, healthcare, oil and gas, education, manufacturing, industrial, and others. It markets and sells its products through distributors, system integrators, value-added resellers, and original equipment manufacturer partners, as well as through its direct sales force. Arista Networks, Inc. was formerly known as Arastra, Inc. and changed its name to Arista Networks, Inc. in October 2008. The company was incorporated in 2004 and is headquartered in Santa Clara, California.\"},\"market_data\":{\"current_price\":206.55,\"market_cap\":260505960448,\"enterprise_value\":247162650624,\"shares_outstanding\":1261224648,\"float_shares\":1049792948},\"valuation\":{\"pe_ratio\":65.57143,\"forward_pe\":39.817482,\"peg_ratio\":1.55,\"price_to_book\":17.604195,\"price_to_sales\":24.71406},\"financials\":{\"revenue\":10540800000,\"profit_margin\":0.38371,\"operating_margin\":0.45393002,\"roe\":0.31476,\"roa\":0.14119},\"trading\":{\"avg_volume\":6805885,\"avg_volume_10d\":5440830,\"beta\":1.617,\"week_52_high\":214.89,\"week_52_low\":114.52},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_018ggsdppC6e9evn3ANKJyio",
+      "name": "mcp__maverick__market_data_get_stock_fundamentals",
+      "arguments": {
+        "ticker": "PLTR"
+      },
+      "result": "{\"symbol\":\"PLTR\",\"company\":{\"name\":\"Palantir Technologies Inc.\",\"sector\":\"Technology\",\"industry\":\"Software - Infrastructure\",\"website\":\"https://www.palantir.com\",\"description\":\"Palantir Technologies Inc. builds and deploys software platforms for the intelligence community to assist in counterterrorism investigations and operations in the United States, the United Kingdom, and internationally. It provides Palantir Gotham integrates with other platforms for defense offerings which enables users to see, understand, and act in the modern battlespace; operations centers to the tactical edge; integrating data from domains and sensors in near real-time; and situational awareness and accelerating operational decision-making, as well as facilitates the hand-off between analysts and operational users, helping operators plan and execute real-world responses to threats that have been identified within the platform. It also offers Palantir Foundry, a platform that helps organizations operate by creating a central operating system for their data; and allows individual users to integrate and analyze the data they need in one place. In addition, it provides Palantir Apollo, a software that delivers software and updates across the business, as well as enables customers to deploy their software virtually in any environment; and Palantir Artificial Intelligence Platform that provides unified access to open-source, self-hosted, and commercial large language models (LLMs) that can transform structured and unstructured data into LLM-understandable objects and can turn organizations' actions and processes into tools for humans and LLM-driven agents. The company also has a strategic partnership with Ondas Inc. to develop and deploy AI-enabled operational capabilities to scale stratospheric, aerial, and land-based ISR missions. The company has a strategic collaboration with NVIDIA to deliver an intelligent engine for running NVIDIA AI and Nemotron open models in sovereign environments and with PwC to transform critical business operations and deliver measurable enterprise value. The company was incorporated in 2003 and is headquartered in Aventura, Florida.\"},\"market_data\":{\"current_price\":189.67,\"market_cap\":455788101632,\"enterprise_value\":446701109248,\"shares_outstanding\":2300713329,\"float_shares\":2109957437},\"valuation\":{\"pe_ratio\":162.11111,\"forward_pe\":81.649086,\"peg_ratio\":1.83,\"price_to_book\":46.624878,\"price_to_sales\":74.04037},\"financials\":{\"revenue\":6155940864,\"profit_margin\":0.49005002,\"operating_margin\":0.47120997,\"roe\":0.38097,\"roa\":0.17292999},\"trading\":{\"avg_volume\":36945036,\"avg_volume_10d\":26402420,\"beta\":1.621,\"week_52_high\":207.52,\"week_52_low\":106.37},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_012Mc2STSX6YU2ZgAcdYesAo",
+      "name": "mcp__maverick__market_data_get_stock_fundamentals",
+      "arguments": {
+        "ticker": "META"
+      },
+      "result": "{\"symbol\":\"META\",\"company\":{\"name\":\"Meta Platforms, Inc.\",\"sector\":\"Communication Services\",\"industry\":\"Internet Content & Information\",\"website\":\"https://www.meta.com\",\"description\":\"Meta Platforms, Inc. engages in the development of products that enable people to connect and share with friends and family through mobile devices, personal computers, virtual reality (VR) headsets, and AI glasses in the United States, Canada, Europe, Asia-Pacific, and internationally. It operates through two segments, Family of Apps (FoA) and Reality Labs (RL). The FoA segment offers Facebook, which enables people to build community through feed, reels, stories, groups, marketplace, and other; Instagram that brings people closer through Instagram feed, stories, reels, live, and messaging; Messenger, a messaging application for people to connect with friends, family, communities, and businesses across platforms and devices through text, audio, and video calls; Meta AI, an assistant that's available across apps, as a stand-alone app, on AI glasses, and on the web; Threads, an application for text-based updates and public conversations; and WhatsApp, a messaging application that is used by people and businesses to communicate and transact. The RL segment provides virtual and augmented reality products, including consumer hardware, software, and content that help people feel connected, as well as Meta Quest devices that enable social experiences across gaming, fitness, entertainment, and more. The segment also includes wearables such as AI glasses like Ray Ban Meta and Oakley Meta glasses; and the Meta Ray Ban Display, which combines AI glasses with an integrated lens display and the Meta Neural Band, a wrist worn device using electromyography that lets people control their AI glasses through neuromuscular signals. Meta Platforms, Inc. has a collaboration with Microsoft Corporation, NVIDIA Corporation, Advanced Micro Devices, Inc., Broadcom Inc., and OpenAI, L.L.C. The company was formerly known as Facebook, Inc. and changed its name to Meta Platforms, Inc. in October 2021. The company was incorporated in 2004 and is headquartered in Menlo Park, California.\"},\"market_data\":{\"current_price\":751.66,\"market_cap\":1914858373120,\"enterprise_value\":1936916480000,\"shares_outstanding\":2205128509,\"float_shares\":2201809630},\"valuation\":{\"pe_ratio\":28.332453,\"forward_pe\":21.496538,\"peg_ratio\":0.99,\"price_to_book\":7.3318377,\"price_to_sales\":8.389413},\"financials\":{\"revenue\":228246994944,\"profit_margin\":0.29834998,\"operating_margin\":0.34827,\"roe\":0.29848,\"roa\":0.14591},\"trading\":{\"avg_volume\":19739836,\"avg_volume_10d\":26781070,\"beta\":1.243,\"week_52_high\":779.82,\"week_52_low\":520.26},\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01FN4xd7jZM4g8Vktc1KMrWC",
+      "name": "mcp__maverick__portfolio_correlation_analysis",
+      "arguments": {
+        "tickers": [
+          "INTC",
+          "ANET",
+          "PLTR",
+          "META",
+          "NVDA",
+          "AAPL",
+          "MSFT",
+          "JPM",
+          "XOM"
+        ],
+        "days": 180
+      },
+      "result": "{\"matrix\":{\"INTC\":{\"INTC\":1,\"ANET\":0.3852516994915658,\"PLTR\":0.03522810999689042,\"META\":0.14336003105449727,\"NVDA\":0.3902442914857247,\"AAPL\":0.007943190957473789,\"MSFT\":-0.010941095639687202,\"JPM\":0.08496973752141895,\"XOM\":-0.21938329813860502},\"ANET\":{\"INTC\":0.3852516994915658,\"ANET\":1,\"PLTR\":0.18177491044442742,\"META\":0.18089648679334397,\"NVDA\":0.3853061284774368,\"AAPL\":-0.09393733564562096,\"MSFT\":0.13948373153968754,\"JPM\":0.22254075171690388,\"XOM\":-0.16405415983673038},\"PLTR\":{\"INTC\":0.03522810999689042,\"ANET\":0.18177491044442742,\"PLTR\":1,\"META\":0.16927405778691548,\"NVDA\":0.20436405326466592,\"AAPL\":0.1547307865637957,\"MSFT\":0.4026702764225126,\"JPM\":0.09126646175057677,\"XOM\":-0.09634664765119641},\"META\":{\"INTC\":0.14336003105449727,\"ANET\":0.18089648679334397,\"PLTR\":0.16927405778691548,\"META\":1,\"NVDA\":0.30391954139568905,\"AAPL\":0.14174164817661652,\"MSFT\":0.11906888869024788,\"JPM\":0.2086228038867854,\"XOM\":-0.2748555265522097},\"NVDA\":{\"INTC\":0.3902442914857247,\"ANET\":0.3853061284774368,\"PLTR\":0.20436405326466592,\"META\":0.30391954139568905,\"NVDA\":1,\"AAPL\":0.0634075162569391,\"MSFT\":0.21881657504787544,\"JPM\":0.15461119140668822,\"XOM\":-0.2373452051376285},\"AAPL\":{\"INTC\":0.007943190957473789,\"ANET\":-0.09393733564562096,\"PLTR\":0.1547307865637957,\"META\":0.14174164817661652,\"NVDA\":0.0634075162569391,\"AAPL\":1,\"MSFT\":0.12835736734994652,\"JPM\":0.1908185869420492,\"XOM\":-0.14654564034656684},\"MSFT\":{\"INTC\":-0.010941095639687202,\"ANET\":0.13948373153968754,\"PLTR\":0.4026702764225126,\"META\":0.11906888869024788,\"NVDA\":0.21881657504787544,\"AAPL\":0.12835736734994652,\"MSFT\":1,\"JPM\":0.09279301577566137,\"XOM\":-0.13372665989764962},\"JPM\":{\"INTC\":0.08496973752141895,\"ANET\":0.22254075171690388,\"PLTR\":0.09126646175057677,\"META\":0.2086228038867854,\"NVDA\":0.15461119140668822,\"AAPL\":0.1908185869420492,\"MSFT\":0.09279301577566137,\"JPM\":1,\"XOM\":-0.14958621501430563},\"XOM\":{\"INTC\":-0.21938329813860502,\"ANET\":-0.16405415983673038,\"PLTR\":-0.09634664765119641,\"META\":-0.2748555265522097,\"NVDA\":-0.2373452051376285,\"AAPL\":-0.14654564034656684,\"MSFT\":-0.13372665989764962,\"JPM\":-0.14958621501430563,\"XOM\":1}},\"high_correlation_pairs\":[],\"hedges\":[],\"average_correlation\":0.091,\"diversification_score\":90.9,\"recommendation\":\"Well diversified\",\"period_days\":180,\"data_points\":179,\"portfolio_context\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Next, ATR-based stops and targets for the candidates."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01UXbG67kegELD8bPRXjAFyv",
+      "name": "mcp__maverick__portfolio_risk_adjusted_analysis",
+      "arguments": {
+        "ticker": "ANET"
+      },
+      "result": "{\"ticker\":\"ANET\",\"current_price\":206.55,\"atr\":8,\"risk_level\":50,\"position_sizing\":{\"suggested_position_size\":500,\"max_shares\":2,\"position_value\":500,\"percent_of_portfolio\":0.5},\"stop_loss\":{\"stop_loss\":194.55,\"stop_loss_percent\":5.81,\"max_risk_amount\":500},\"entry_strategy\":{\"immediate_entry\":206.55,\"scale_in_levels\":[206.55,202.55,198.55]},\"targets\":{\"price_target\":218.55,\"profit_potential\":12,\"risk_reward_ratio\":1.5},\"analysis\":{\"confidence_score\":35,\"strategy_type\":\"moderate\",\"time_horizon\":\"medium-term\"},\"existing_position\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01D5z5hN1aZQRtWQZaoxfHE4",
+      "name": "mcp__maverick__portfolio_risk_adjusted_analysis",
+      "arguments": {
+        "ticker": "META"
+      },
+      "result": "{\"ticker\":\"META\",\"current_price\":751.66,\"atr\":25.73,\"risk_level\":50,\"position_sizing\":{\"suggested_position_size\":500,\"max_shares\":0,\"position_value\":500,\"percent_of_portfolio\":0.5},\"stop_loss\":{\"stop_loss\":713.06,\"stop_loss_percent\":5.13,\"max_risk_amount\":500},\"entry_strategy\":{\"immediate_entry\":751.66,\"scale_in_levels\":[751.66,738.79,725.93]},\"targets\":{\"price_target\":790.26,\"profit_potential\":38.6,\"risk_reward_ratio\":1.5},\"analysis\":{\"confidence_score\":35,\"strategy_type\":\"moderate\",\"time_horizon\":\"medium-term\"},\"existing_position\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_015TSRaNhdzXFfxWLJryUCHT",
+      "name": "mcp__maverick__portfolio_risk_adjusted_analysis",
+      "arguments": {
+        "ticker": "INTC"
+      },
+      "result": "{\"ticker\":\"INTC\",\"current_price\":123,\"atr\":6.34,\"risk_level\":50,\"position_sizing\":{\"suggested_position_size\":500,\"max_shares\":4,\"position_value\":500,\"percent_of_portfolio\":0.5},\"stop_loss\":{\"stop_loss\":113.49,\"stop_loss_percent\":7.73,\"max_risk_amount\":500},\"entry_strategy\":{\"immediate_entry\":123,\"scale_in_levels\":[123,119.83,116.66]},\"targets\":{\"price_target\":132.51,\"profit_potential\":9.51,\"risk_reward_ratio\":1.5},\"analysis\":{\"confidence_score\":35,\"strategy_type\":\"moderate\",\"time_horizon\":\"medium-term\"},\"existing_position\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01SZnTFDrsQiU2EMSvswxCzZ",
+      "name": "mcp__maverick__portfolio_risk_adjusted_analysis",
+      "arguments": {
+        "ticker": "PLTR"
+      },
+      "result": "{\"ticker\":\"PLTR\",\"current_price\":189.67,\"atr\":7.07,\"risk_level\":50,\"position_sizing\":{\"suggested_position_size\":500,\"max_shares\":2,\"position_value\":500,\"percent_of_portfolio\":0.5},\"stop_loss\":{\"stop_loss\":179.07,\"stop_loss_percent\":5.59,\"max_risk_amount\":500},\"entry_strategy\":{\"immediate_entry\":189.67,\"scale_in_levels\":[189.67,186.14,182.6]},\"targets\":{\"price_target\":200.27,\"profit_potential\":10.6,\"risk_reward_ratio\":1.5},\"analysis\":{\"confidence_score\":35,\"strategy_type\":\"moderate\",\"time_horizon\":\"medium-term\"},\"existing_position\":null,\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "My three picks are Arista Networks (ANET), Meta (META) and Intel (INTC). Treat Intel as the smallest and most speculative of the three. I haven't bought anything or changed your portfolio. These picks only come from a 9-stock list, so they're a starting point, not a search of the whole market.\n\n**Where the picks come from.** No screens had ever been run, so I ran them (the results are now saved). Maverick only knows 9 stocks: NVDA, INTC, ANET, PLTR, META, CVS, NFLX, NKE and AVGO. Six passed the bullish screen and three landed on the bearish one. Prices are from Friday's close (Sept 25), so Monday's open will differ. The market backdrop is calm: the VIX (a fear gauge) is at 14.9 and the S&P 500 rose 0.5% on Friday. The 10-year Treasury yield is high at 5.18%.\n\n**Your portfolio.** It's worth about $82.9k and is 72% tech. Nvidia alone is about 33% of it (120 shares). That's the main reason I left Nvidia out even though it tops the screen.\n\n| Pick | Price | Why | Main risk | Stop / target (based on recent daily price swings) |\n|---|---|---|---|---|\n| ANET | $206.55 | Cleanest setup. Short-, medium- and long-term price averages are stacked in order, and the long-term one is rising. Momentum is healthy but not stretched (RSI 60). About 4% below its 52-week high. Strong business: 38% profit margin, 31% return on equity, about 40x next year's earnings. | Adds more tech. Price resistance at $212\u2013$215. | Stop $194.55 (-5.8%), target $218.55 |\n| META | $751.66 | Cheapest of the group at about 21.5x next year's earnings, with a 30% profit margin. Strong trend on above-average volume. It's classed as Communication Services, so it doesn't add to your tech share. | Short-term overheated: RSI 71 and 22% above its 50-day average. Consider buying in pieces or waiting for a dip toward $714. | Stop $713.06 (-5.1%), target $790.26 |\n| INTC | $123.00 | Strongest momentum score in the screen (100), and its price averages are fully in order. | Speculative. Still losing money (-20% profit margin). It moves about 2.2 times as much as the market (beta 2.23) and has roughly quadrupled from its $32.89 low. A short-term indicator just turned down. It also tends to move with Nvidia, which you already hold a lot of. | Stop $113.49 (-7.7%), target $132.51 |\n\n**The ones I passed on:**\n- **Palantir (PLTR):** very expensive at 162x earnings and 74x sales, its longer-term averages aren't in order, and buying volume is weak. It's the alternative if you don't want Intel.\n- **CVS:** it only just passed the bullish screen, and the full technical read calls it \"strongly bearish.\"\n- **NFLX, NKE and AVGO:** on the bearish screen.\n\nBuying ANET and INTC keeps you at roughly 70% tech. If you want real diversification, the answer is outside this 9-stock list, and I have no data on those stocks.\n\n**How much to buy:** I haven't suggested share counts. The sizing tool seems to assume a $100k account rather than your $82.9k portfolio. It gave the same $500 figure as both the position size and the maximum loss, and 0 shares for META. I don't know your cash, risk tolerance, or whether \"this week\" means a short trade or a longer hold. With those three things I can size each position from the stops above. I can also run a pre-trade risk check on each position.\n\n**Maverick data problems (not your picks):**\n- The market overview's top gainers and losers look like placeholder data: odd tickers like AAAON and BBOIL, all at 0.00% change.\n- The correlation tool rated the holdings plus candidates \"well diversified,\" but some readings look too low for big tech stocks (Apple vs. Microsoft at 0.13). With 72% in one sector, don't rely on that label.\n- `screening_get_all` shows `date_analyzed: null` at the top level even though every row has a date.\n- AAPL, MSFT, JPM and XOM are in your portfolio but not in the list the screens check.\n\nThis is analysis from screening tools, not personal financial advice.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 8,
+  "usage": {
+    "input_tokens": 16,
+    "cache_creation_input_tokens": 26685,
+    "cache_read_input_tokens": 185312,
+    "output_tokens": 75
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 89945,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:45:02.039962+00:00"
+}

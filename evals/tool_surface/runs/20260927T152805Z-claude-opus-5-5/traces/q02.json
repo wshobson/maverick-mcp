@@ -1,0 +1,63 @@
+{
+  "case": {
+    "id": "q02",
+    "task": "lookup",
+    "request_type": "specified",
+    "data_state": "edge",
+    "query": "Get me a quote on TWTR"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01KA3Df3J4oBymN9h2N7DfEE",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "TWTR"
+      },
+      "result": "{\"status\":\"error\",\"error\":\"No quote data for TWTR; it may be delisted or not a valid ticker.\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01F1DbuTEm2VT4gmrv4K7a3v",
+      "name": "mcp__maverick__market_data_get_price_history",
+      "arguments": {
+        "ticker": "TWTR",
+        "start_date": "2022-10-01",
+        "end_date": "2022-11-15"
+      },
+      "result": "{\"columns\":[\"Open\",\"High\",\"Low\",\"Close\",\"Volume\"],\"index\":[],\"data\":[],\"ticker\":\"TWTR\",\"status\":\"success\",\"record_count\":0}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I couldn't get a quote for TWTR. It isn't a listed ticker anymore.\n\n- **Quote:** the quote tool returned an error: \"No quote data for TWTR; it may be delisted or not a valid ticker.\"\n- **Past prices:** I also asked for TWTR's daily prices from Oct 1 to Nov 15, 2022. The request succeeded but came back with 0 rows, so the data source has no older data under that symbol either.\n- **Why:** Twitter stopped trading as TWTR in late October 2022, when Elon Musk bought it at $54.20 per share and took it private. The company is now X Corp. and is still private, so there is no public stock or live quote for it. (This comes from general knowledge, not from the tools.)\n\nI didn't quote a different ticker in its place, because nothing listed stands in directly for Twitter. If you had a related company in mind, send the ticker and I'll get the quote.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 4,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 17764,
+    "cache_read_input_tokens": 47859,
+    "output_tokens": 265
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 19965,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:28:32.198475+00:00"
+}
