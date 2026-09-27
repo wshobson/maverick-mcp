@@ -239,8 +239,33 @@ _YFINANCE_TIER_SYMBOLS = (
 )
 
 
+# finviz heads the column "Change %"; older pages headed it "Change".
+_FINVIZ_CHANGE_COLUMNS = ("Change %", "Change")
+
+
+def _finviz_percent(cell: Any) -> float | None:
+    """A finviz change cell as a percent (5.73), or None when it has none.
+
+    finvizfinance keeps a column it does not know as page text ("5.73%").
+    A column it does know goes through its `number_covert`, which turns
+    "5.73%" into the fraction 0.0573.
+    """
+    if isinstance(cell, str):
+        try:
+            return float(cell.strip().rstrip("%"))
+        except ValueError:
+            return None
+    if isinstance(cell, int | float) and math.isfinite(cell):
+        return float(cell) * 100
+    return None
+
+
 def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
-    """Sync finviz screener tier. Imports `finvizfinance` lazily, on call."""
+    """Sync finviz screener tier. Imports `finvizfinance` lazily, on call.
+
+    Raises when the screen has no change column, so `MoverFetcher` falls
+    through to the next tier rather than return unranked rows as movers.
+    """
     from finvizfinance.screener.overview import Overview
 
     screener = Overview()
@@ -249,20 +274,36 @@ def _finviz_tier(kind: str, limit: int) -> list[dict[str, Any]]:
     if df is None or df.empty:
         return []
 
-    sort_column = "Volume" if kind == "most_active" else "Change"
-    if sort_column in df.columns:
-        df = df.sort_values(sort_column, ascending=(kind == "losers"))
+    column = next((c for c in _FINVIZ_CHANGE_COLUMNS if c in df.columns), None)
+    if column is None:
+        raise ValueError(f"finviz screen has no change column: {list(df.columns)}")
+    df = df.assign(_percent=df[column].map(_finviz_percent).astype(float))
+    sort_column = "Volume" if kind == "most_active" else "_percent"
+    # A row with no ranking value is not a mover. With none left, return []
+    # so MoverFetcher falls through to the yfinance tier.
+    df = df[pd.to_numeric(df[sort_column], errors="coerce").notna()]
+    if df.empty:
+        return []
+    df = df.sort_values(sort_column, ascending=(kind == "losers"))
 
-    return [
-        {
-            "symbol": row.get("Ticker"),
-            "price": row.get("Price"),
-            "change": row.get("Change"),
-            "change_percent": row.get("Change"),
-            "volume": row.get("Volume"),
-        }
-        for _, row in df.head(limit).iterrows()
-    ]
+    rows: list[dict[str, Any]] = []
+    for _, row in df.head(limit).iterrows():
+        price = row.get("Price")
+        percent = _finviz_percent(row.get(column))
+        change = None
+        # finviz has no absolute change; derive it from the prior close.
+        if isinstance(price, int | float) and percent is not None and percent > -100:
+            change = price - price / (1 + percent / 100)
+        rows.append(
+            {
+                "symbol": row.get("Ticker"),
+                "price": price,
+                "change": change,
+                "change_percent": percent,
+                "volume": row.get("Volume"),
+            }
+        )
+    return rows
 
 
 def _build_yfinance_tier(download_fn: DownloadFn) -> MoverTierFn:
