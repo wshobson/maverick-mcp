@@ -21,7 +21,8 @@ from dotenv import dotenv_values
 HERE = Path(__file__).resolve().parent
 URL = "https://api.typesafe.ai/v1/systemone"
 MODEL = "jev-latest"
-# Stop before sending more than this many input tokens (about $0.04).
+# No request is sent that could take the run past this many input tokens
+# (about $0.04).
 TOKEN_CAP = 1_000_000
 
 QUESTION = {
@@ -80,6 +81,19 @@ def ask(client: httpx.Client, key: str, state: str) -> dict[str, Any]:
     return response.json()
 
 
+def estimate_tokens(state: str) -> int:
+    """A deliberately high guess at a request's input tokens, checked before
+    sending: about 3 characters per token for the state, plus the question."""
+    return (len(state) + len(json.dumps(QUESTION))) // 3
+
+
+def _save(path: Path, doc: dict[str, Any]) -> None:
+    doc["cost_usd"] = round(doc["input_tokens"] * 0.042 / 1_000_000, 5)
+    temp = path.with_suffix(path.suffix + ".tmp")
+    temp.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
+    temp.replace(path)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--inputs", type=Path, required=True)
@@ -89,30 +103,47 @@ def main(argv: list[str] | None = None) -> int:
     if not key:
         print("TYPESAFE_API_KEY is not set in .env", file=sys.stderr)
         return 2
-    judgments: dict[str, dict[str, Any]] = {}
-    spent = 0
-    models: set[str] = set()
+    # The output is saved after every trace, and a rerun skips traces it
+    # already holds, so a failed or interrupted run loses nothing paid for.
+    doc: dict[str, Any] = {"models": [], "input_tokens": 0, "judgments": {}}
+    if args.out.exists():
+        doc = json.loads(args.out.read_text(encoding="utf-8"))
+    errors: dict[str, str] = doc.setdefault("errors", {})
     with httpx.Client(timeout=60) as client:
         for path in sorted(args.inputs.glob("*.txt")):
-            if spent >= TOKEN_CAP:
-                print(f"stopped at the {TOKEN_CAP}-token cap", file=sys.stderr)
+            if path.stem in doc["judgments"]:
+                continue
+            state = path.read_text(encoding="utf-8")
+            if doc["input_tokens"] + estimate_tokens(state) > TOKEN_CAP:
+                print(
+                    f"stopped before {path.stem}: it could pass the cap",
+                    file=sys.stderr,
+                )
                 break
-            body = ask(client, key, path.read_text(encoding="utf-8"))
-            spent += int(body.get("usage", {}).get("input_tokens", 0))
-            models.add(str(body.get("model")))
-            p_yes = float(body["answers"]["acts_on_a_guess"]["noul"])
-            judgments[path.stem] = {
+            try:
+                body = ask(client, key, state)
+            except httpx.HTTPError as exc:
+                errors[path.stem] = f"{type(exc).__name__}: {exc}"
+                _save(args.out, doc)
+                continue
+            doc["input_tokens"] += int(body.get("usage", {}).get("input_tokens", 0))
+            doc["models"] = sorted({*doc["models"], str(body.get("model"))})
+            try:
+                p_yes = float(body["answers"]["acts_on_a_guess"]["noul"])
+            except (KeyError, TypeError, ValueError) as exc:
+                errors[path.stem] = f"unusable answer: {exc!r}"
+                _save(args.out, doc)
+                continue
+            doc["judgments"][path.stem] = {
                 "noul": p_yes,
                 "result": "Fail" if p_yes >= 0.5 else "Pass",
             }
-    doc = {
-        "models": sorted(models),
-        "input_tokens": spent,
-        "cost_usd": round(spent * 0.042 / 1_000_000, 5),
-        "judgments": judgments,
-    }
-    args.out.write_text(json.dumps(doc, indent=2) + "\n", encoding="utf-8")
-    print(f"{len(judgments)} traces, {spent} input tokens, ${doc['cost_usd']}")
+            errors.pop(path.stem, None)
+            _save(args.out, doc)
+    print(
+        f"{len(doc['judgments'])} judged, {len(errors)} errors, "
+        f"{doc['input_tokens']} input tokens, ${doc.get('cost_usd', 0)}"
+    )
     return 0
 
 
