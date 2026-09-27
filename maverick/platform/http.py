@@ -40,7 +40,10 @@ class CircuitBreaker:
     `asyncio.Lock` guards state/counter transitions so that only the
     task that performs the open->half_open transition becomes the
     probe; every other concurrently-waiting caller fails fast with
-    `CircuitOpenError` instead of queueing behind the probe.
+    `CircuitOpenError` instead of queueing behind the probe. Cancelling
+    that probe reopens the breaker with a fresh recovery window. Results
+    from calls admitted before a newer open or explicit reset are ignored
+    for breaker state transitions.
     """
 
     def __init__(self, name: str, settings: HttpSettings) -> None:

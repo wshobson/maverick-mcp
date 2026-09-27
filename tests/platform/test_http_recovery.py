@@ -72,6 +72,22 @@ async def test_cancelled_probe_reopens_and_recovers_after_a_new_window(clock):
     assert breaker.state == "closed"
 
 
+async def test_wait_for_timeout_reopens_probe_with_a_new_window(clock):
+    breaker = _breaker()
+    await _open(breaker)
+    clock[0] = 60
+    pending = PendingCall()
+
+    with pytest.raises(TimeoutError):
+        await asyncio.wait_for(breaker.call(pending), timeout=0.01)
+
+    assert breaker.state == "open"
+    clock[0] = 61
+    with pytest.raises(CircuitOpenError) as error:
+        await breaker.call(_healthy)
+    assert error.value.seconds_until_half_open == 59
+
+
 async def test_cancelled_closed_call_does_not_count_as_a_dependency_failure(clock):
     breaker = _breaker(threshold=2)
     pending = PendingCall()
