@@ -4,7 +4,7 @@
     "task": "journal-watchlist",
     "request_type": "ambiguous",
     "data_state": "seeded",
-    "gap": "resolvable-from-data",
+    "gap": "missing-date",
     "query": "Close out the Tesla pullback trade, I sold at 271"
   },
   "source": "claude-code-subagent",

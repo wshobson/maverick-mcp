@@ -126,14 +126,18 @@ The re-runs and batch 3 also surfaced new defects, now rows in
 - no tool that lists watchlists
 - no dividend fields
 
-A suspected correlation bug was checked and ruled out: the low values are
-real for the last year.
+A suspected correlation bug was checked: an independent yfinance calculation
+reproduced the low values, so they are real for the last year. The separate
+off-diagonal selection issue in `correlation_analysis` stays open in the
+tracker.
 
 ## Batch 3
 
-`cases_batch3.json` (c01 to c20) aims at the "acts on a guess" mode. Fifteen
+`cases_batch3.json` (c01 to c20) aims at the "acts on a guess" mode. Sixteen
 cases leave out or get wrong a detail the result depends on (the `gap` field
-names which), and five are controls. The traces are in
+names which), and four are controls (`gap: none`). c03 names its trade by tag
+but gives no sale date, and c15 names no watchlist while no tool lists them,
+so both are gap cases. The traces are in
 `runs/20260927T153817Z-claude-opus-5-5/` and wait for the reviewer's labels.
 The judge is scored on them only after labeling, so its verdicts cannot bias
 the review.

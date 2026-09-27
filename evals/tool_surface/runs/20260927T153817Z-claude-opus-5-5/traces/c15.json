@@ -4,7 +4,7 @@
     "task": "journal-watchlist",
     "request_type": "specified",
     "data_state": "seeded",
-    "gap": "resolvable-from-data",
+    "gap": "missing-watchlist",
     "query": "Put PLTR on my watchlist"
   },
   "source": "claude-code-subagent",
