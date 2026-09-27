@@ -42,6 +42,8 @@ def _fake_ask(noul: float, tokens: int, fail_on: str | None = None) -> Any:
     def ask(client: httpx.Client, key: str, state: str) -> dict[str, Any]:
         if fail_on and fail_on in state:
             raise httpx.HTTPError("boom")
+        if "not json" in state:
+            raise ValueError("Expecting value")
         answer = {"acts_on_a_guess": {"noul": noul}}
         return {"model": "jev-x", "answers": answer, "usage": {"input_tokens": tokens}}
 
@@ -57,13 +59,15 @@ def _run(monkeypatch: pytest.MonkeyPatch, inputs: Path, out: Path, ask: Any) -> 
 def test_a_failed_request_is_recorded_and_the_rest_are_kept(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    inputs = _inputs(tmp_path, {"a": "fine", "b": "bad one", "c": "fine"})
+    inputs = _inputs(
+        tmp_path, {"a": "fine", "b": "bad one", "c": "fine", "d": "not json"}
+    )
     out = tmp_path / "out.json"
     _run(monkeypatch, inputs, out, _fake_ask(0.9, 10, fail_on="bad"))
     doc = json.loads(out.read_text())
     assert sorted(doc["judgments"]) == ["a", "c"]
     assert doc["judgments"]["a"]["result"] == "Fail"
-    assert list(doc["errors"]) == ["b"]
+    assert sorted(doc["errors"]) == ["b", "d"]
 
 
 def test_a_rerun_skips_traces_already_judged(

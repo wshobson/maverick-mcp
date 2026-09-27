@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
                 break
             try:
                 body = ask(client, key, state)
-            except httpx.HTTPError as exc:
+            except (httpx.HTTPError, ValueError) as exc:  # ValueError: a non-JSON body
                 errors[path.stem] = f"{type(exc).__name__}: {exc}"
                 _save(args.out, doc)
                 continue
