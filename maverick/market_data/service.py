@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from maverick.market_data.config import MarketDataSettings, get_market_data_settings
 from maverick.market_data.data import METADATA, read_price_range, write_price_bars
-from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher
+from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher, info_price
 from maverick.market_data.types import (
     CompanyInfo,
     Fundamentals,
@@ -54,7 +54,11 @@ def _to_plain_date(value: Any) -> date:
 
 
 def _quote_from_info(symbol: str, info: dict[str, Any]) -> Quote:
-    price = info.get("currentPrice") or info.get("regularMarketPrice") or 0.0
+    price = info_price(info)
+    if price is None:
+        raise ValueError(
+            f"No quote data for {symbol}; it may be delisted or not a valid ticker."
+        )
     prev_close = info.get("previousClose") or price
     change = price - prev_close
     change_percent = (change / prev_close * 100) if prev_close else 0.0

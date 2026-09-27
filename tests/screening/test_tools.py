@@ -276,6 +276,47 @@ async def test_run_screens_with_explicit_screen_runs_only_that_one(stub_service)
     assert stub_service.run_all_calls == 0
 
 
+def _assert_empty_universe_error(result: dict[str, Any]) -> None:
+    assert result["status"] == "error"
+    message = result["error"]
+    assert "No symbols are known locally yet" in message
+    assert "market_data_get_price_history" in message
+    assert "market_data_get_price_history_batch" in message
+    assert "run the screens again" in message
+
+
+async def test_run_screens_all_with_empty_universe_explains_how_to_add_symbols(
+    stub_service,
+):
+    stub_service.run_all_result = {
+        name: _run(name, screened=0, qualified=0)
+        for name in ("bullish", "bearish", "supply_demand")
+    }
+
+    result = await tools.screening_run_screens()
+
+    _assert_empty_universe_error(result)
+
+
+async def test_run_screens_one_with_empty_universe_explains_how_to_add_symbols(
+    stub_service,
+):
+    stub_service.run_screen_result = _run("bullish", screened=0, qualified=0)
+
+    result = await tools.screening_run_screens(screen="bullish")
+
+    _assert_empty_universe_error(result)
+
+
+async def test_run_screens_with_no_qualifiers_is_still_success(stub_service):
+    stub_service.run_screen_result = _run("bullish", screened=4, qualified=0)
+
+    result = await tools.screening_run_screens(screen="bullish")
+
+    assert result["status"] == "success"
+    assert result["results"]["bullish"]["symbols_qualified"] == 0
+
+
 async def test_run_screens_service_exception_returns_error_payload(stub_service):
     stub_service.raise_on_run_screen = ValueError("Unknown screen: 'bogus'")
 

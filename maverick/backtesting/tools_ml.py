@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from maverick.backtesting.tools_support import require_service
+from maverick.backtesting.tools_support import require_service, success_payload
 
 
 async def backtesting_run_ml_strategy_backtest(
@@ -40,9 +40,7 @@ async def backtesting_run_ml_strategy_backtest(
             learning_rate=learning_rate,
             adaptation_method=adaptation_method,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -72,9 +70,7 @@ async def backtesting_train_ml_predictor(
             max_depth=max_depth,
             min_samples_split=min_samples_split,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -109,9 +105,7 @@ async def backtesting_analyze_market_regimes(
             n_regimes=n_regimes,
             lookback_period=lookback_period,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -135,8 +129,6 @@ async def backtesting_create_strategy_ensemble(
             end_date=end_date,
             initial_capital=initial_capital,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}

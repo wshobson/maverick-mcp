@@ -259,8 +259,16 @@ class StrategyComparisonRow(BaseModel):
     rank: int
 
 
+class StrategyComparisonFailure(BaseModel):
+    """A requested strategy whose backtest raised, and the error it raised."""
+
+    strategy: str
+    error: str
+
+
 class StrategyComparisonResult(BaseModel):
-    """Return shape of the `compare_strategies` tool."""
+    """Return shape of the `compare_strategies` tool. Strategies whose backtest
+    raised are left out of `rankings` and listed in `failed`."""
 
     rankings: list[StrategyComparisonRow]
     best_overall: StrategyComparisonRow | None
@@ -269,6 +277,7 @@ class StrategyComparisonResult(BaseModel):
     best_drawdown: StrategyComparisonRow
     best_win_rate: StrategyComparisonRow
     summary: str
+    failed: list[StrategyComparisonFailure] = Field(default_factory=list)
 
 
 # -- list_strategies ------------------------------------------------------
@@ -310,12 +319,21 @@ class PortfolioBacktestMetrics(BaseModel):
     total_trades: int
 
 
+class PortfolioBacktestFailure(BaseModel):
+    """A requested symbol whose backtest raised, and the error it raised."""
+
+    symbol: str
+    error: str
+
+
 class PortfolioBacktestResult(BaseModel):
-    """Return shape of the `backtest_portfolio` tool."""
+    """Return shape of the `backtest_portfolio` tool. Symbols whose backtest
+    raised are left out of `individual_results` and listed in `failed`."""
 
     portfolio_metrics: PortfolioBacktestMetrics
     individual_results: list[BacktestResult]
     summary: str
+    failed: list[PortfolioBacktestFailure] = Field(default_factory=list)
 
 
 # -- ML-enhanced strategy tools ---------------------------------------------

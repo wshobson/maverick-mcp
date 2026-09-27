@@ -228,6 +228,82 @@ async def test_get_quote_caches_and_calls_yf_info_once(tmp_path):
     assert info_calls == ["AAPL"]
 
 
+@pytest.mark.parametrize(
+    "info",
+    [
+        {"quoteType": "NONE", "language": "en-US"},
+        {"currentPrice": None, "regularMarketPrice": None, "previousClose": 54.2},
+        {"currentPrice": 0, "regularMarketPrice": 0.0, "previousClose": 54.2},
+    ],
+    ids=["missing", "none", "zero"],
+)
+async def test_get_quote_without_a_price_raises_and_caches_nothing(tmp_path, info):
+    """Eval q02: delisted TWTR came back as a success with price 0."""
+    cache = _cache(tmp_path)
+    service = MarketDataService(
+        _engine(tmp_path),
+        cache,
+        YFinanceFetcher(info_fn=lambda symbol: info),
+        MoverFetcher(),
+    )
+
+    with pytest.raises(
+        ValueError, match="No quote data for TWTR.*delisted or not a valid ticker"
+    ):
+        await service.get_quote("twtr")
+
+    assert await cache.exists(generate_cache_key("md_quote", symbol="TWTR")) is False
+
+
+async def test_get_quote_for_class_share_symbol_keeps_the_dotted_symbol(tmp_path):
+    def fake_info(symbol):
+        if symbol == "BRK-B":
+            return {"currentPrice": 505.48, "previousClose": 500.0, "volume": 1_000}
+        return {"quoteType": "NONE", "language": "en-US"}
+
+    service = MarketDataService(
+        _engine(tmp_path),
+        _cache(tmp_path),
+        YFinanceFetcher(info_fn=fake_info),
+        MoverFetcher(),
+    )
+
+    quote = await service.get_quote("brk.b")
+
+    assert quote.symbol == "BRK.B"
+    assert quote.price == 505.48
+
+
+async def test_price_history_for_class_share_symbol_uses_dash_spelling(tmp_path):
+    """Eval b05: Yahoo has bars for `BRK-B` but none for `BRK.B`."""
+    monday, friday = date(2026, 7, 13), date(2026, 7, 17)
+    history_calls: list[str] = []
+
+    def fake_history(symbol, start, end, interval="1d"):
+        history_calls.append(symbol)
+        if symbol == "BRK-B":
+            return _bars([monday + timedelta(days=i) for i in range(5)])
+        return pd.DataFrame()
+
+    service = MarketDataService(
+        _engine(tmp_path),
+        _cache(tmp_path),
+        YFinanceFetcher(history_fn=fake_history),
+        MoverFetcher(),
+        calendar=_weekday_calendar(monday, friday),
+    )
+
+    result = await service.get_price_history("brk.b", monday, friday)
+
+    assert len(result) == 5
+    assert history_calls == ["BRK.B", "BRK-B"]
+
+    # Stored under the symbol the caller typed, so the next call hits the DB.
+    again = await service.get_price_history("BRK.B", monday, friday)
+    assert len(again) == 5
+    assert history_calls == ["BRK.B", "BRK-B"]
+
+
 # ---------------------------------------------------------------------------
 # get_fundamentals
 # ---------------------------------------------------------------------------

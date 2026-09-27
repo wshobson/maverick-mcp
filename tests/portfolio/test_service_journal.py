@@ -54,6 +54,20 @@ async def test_add_trade_creates_open_entry(tmp_path):
     assert entry.notes == "watching for continuation"
 
 
+async def test_add_trade_records_a_past_entry_date(tmp_path):
+    service = _service(tmp_path)
+
+    entry = await service.add_trade(
+        symbol="AAPL",
+        side="long",
+        entry_price=Decimal("150.0"),
+        shares=Decimal("10"),
+        entry_date="2026-03-15",
+    )
+
+    assert entry.entry_date.startswith("2026-03-15")
+
+
 async def test_add_trade_quantizes_entry_price_to_cents(tmp_path):
     service = _service(tmp_path)
 

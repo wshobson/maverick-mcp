@@ -61,7 +61,9 @@ pre-seeded universe:
   bullish/bearish/supply-demand screens over whatever symbols are already
   known locally (the same `md_stocks` table). Fetch price history for the
   tickers you care about before running a screen for meaningful coverage;
-  there is no S&P 500-wide default universe on a fresh install.
+  there is no S&P 500-wide default universe on a fresh install. With no
+  symbols known locally, `screening_run_screens` returns an error that says
+  to fetch price history first.
 
 ## Connecting A Client After Setup
 

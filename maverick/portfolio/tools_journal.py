@@ -16,6 +16,7 @@ functions from this module; this module needs nothing back from
 `journal_service` argument to `configure()` here.
 """
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -46,9 +47,22 @@ async def portfolio_journal_add_trade(
     rationale: str | None = None,
     tags: list[str] | None = None,
     notes: str | None = None,
+    entry_date: str | None = None,
 ) -> dict[str, Any]:
-    """Add an open trade to the journal. Entry date is always now (no
-    backdating -- matches the legacy tool's own signature)."""
+    """Add an open trade to the journal. `entry_date` is an ISO 8601 date or
+    datetime (for example `2026-03-15` or `2026-03-15T14:30:00Z`) for a trade
+    made earlier; omit it to record the trade as entered now."""
+    if entry_date is not None:
+        try:
+            datetime.fromisoformat(entry_date)
+        except ValueError:
+            return {
+                "status": "error",
+                "error": (
+                    "entry_date must be an ISO 8601 date or datetime, for "
+                    f"example 2026-03-15 or 2026-03-15T14:30:00Z; got {entry_date!r}"
+                ),
+            }
     try:
         journal_service = _require_journal_service()
         entry = await journal_service.add_trade(
@@ -56,6 +70,7 @@ async def portfolio_journal_add_trade(
             side=side,
             entry_price=Decimal(str(entry_price)),
             shares=Decimal(str(shares)),
+            entry_date=entry_date,
             rationale=rationale,
             tags=tags,
             notes=notes,

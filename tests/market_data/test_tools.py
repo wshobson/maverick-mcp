@@ -9,6 +9,8 @@ from fastmcp import Client, FastMCP
 
 from maverick.market_data import tools
 from maverick.market_data.config import MarketDataSettings
+from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher
+from maverick.market_data.service import MarketDataService
 from maverick.market_data.types import (
     CompanyInfo,
     Fundamentals,
@@ -19,6 +21,9 @@ from maverick.market_data.types import (
     TradingStats,
     Volatility,
 )
+from maverick.platform.cache import Cache
+from maverick.platform.config import CacheSettings, DatabaseSettings
+from maverick.platform.db import create_engine_from_settings
 
 
 def _frame(dates: list[date]) -> pd.DataFrame:
@@ -311,6 +316,30 @@ async def test_get_quote_service_exception_returns_error_payload(stub_service):
     result = await tools.get_quote("ZZZZ")
 
     assert result == {"status": "error", "error": "no such ticker"}
+
+
+async def test_get_quote_without_a_price_returns_error_envelope(tmp_path):
+    """Eval q02, end to end through the real service: no price is an error."""
+    engine = create_engine_from_settings(
+        DatabaseSettings(url=f"sqlite:///{tmp_path}/md.db", use_pooling=True)
+    )
+    cache = Cache(settings=CacheSettings(sqlite_path=str(tmp_path / "cache.db")))
+    priceless = {"quoteType": "NONE", "language": "en-US"}
+    tools.configure(
+        MarketDataService(
+            engine,
+            cache,
+            YFinanceFetcher(info_fn=lambda symbol: priceless),
+            MoverFetcher(),
+        )
+    )
+
+    result = await tools.get_quote("TWTR")
+
+    assert result == {
+        "status": "error",
+        "error": "No quote data for TWTR; it may be delisted or not a valid ticker.",
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -285,10 +285,18 @@ class StubJournalService:
         self.raise_on_compare_strategies: Exception | None = None
 
     async def add_trade(
-        self, symbol, side, entry_price, shares, rationale=None, tags=None, notes=None
+        self,
+        symbol,
+        side,
+        entry_price,
+        shares,
+        entry_date=None,
+        rationale=None,
+        tags=None,
+        notes=None,
     ) -> JournalEntryPayload:
         self.add_trade_calls.append(
-            (symbol, side, entry_price, shares, rationale, tags, notes)
+            (symbol, side, entry_price, shares, rationale, tags, notes, entry_date)
         )
         if self.raise_on_add_trade is not None:
             raise self.raise_on_add_trade
@@ -1024,6 +1032,42 @@ async def test_journal_add_trade_str_mediated_decimal_ingress(stub_journal_servi
     assert call[4] == "Momentum breakout"
     assert call[5] == ["momentum"]
     assert call[6] == "note"
+    # No entry_date given: None reaches the service, which defaults to now.
+    assert call[7] is None
+
+
+@pytest.mark.parametrize("entry_date", ["2026-03-15", "2026-03-15T14:30:00Z"])
+async def test_journal_add_trade_passes_entry_date_through(
+    stub_journal_service, entry_date
+):
+    result = await tools.portfolio_journal_add_trade(
+        symbol="AAPL",
+        side="long",
+        entry_price=150.0,
+        shares=10.0,
+        entry_date=entry_date,
+    )
+
+    assert result["status"] == "success"
+    assert stub_journal_service.add_trade_calls[0][7] == entry_date
+
+
+async def test_journal_add_trade_malformed_entry_date_returns_clear_error(
+    stub_journal_service,
+):
+    result = await tools.portfolio_journal_add_trade(
+        symbol="AAPL",
+        side="long",
+        entry_price=150.0,
+        shares=10.0,
+        entry_date="last Tuesday",
+    )
+
+    assert result["status"] == "error"
+    assert "entry_date" in result["error"]
+    assert "ISO 8601" in result["error"]
+    assert "'last Tuesday'" in result["error"]
+    assert stub_journal_service.add_trade_calls == []
 
 
 async def test_journal_add_trade_service_exception_returns_error_payload(
@@ -1442,3 +1486,21 @@ async def test_register_in_memory_client_reads_my_holdings_resource(stub_service
     assert payload["status"] == "success"
     assert payload["uri"] == "portfolio://my-holdings"
     assert payload["positions"][0]["ticker"] == "AAPL"
+
+
+def test_journal_add_trade_keeps_its_old_positional_order() -> None:
+    import inspect
+
+    from maverick.portfolio.tools_journal import portfolio_journal_add_trade
+
+    names = list(inspect.signature(portfolio_journal_add_trade).parameters)
+    assert names[:7] == [
+        "symbol",
+        "side",
+        "entry_price",
+        "shares",
+        "rationale",
+        "tags",
+        "notes",
+    ]
+    assert names[-1] == "entry_date"

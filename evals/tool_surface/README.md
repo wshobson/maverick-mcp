@@ -13,10 +13,11 @@ queries. Each case has three dimensions:
   journal-watchlist, or multi-step.
 - request type: specified, vague, ambiguous, advice, state-changing, or
   unsupported.
-- data state: `empty` (schema only), `seeded` (a five-position portfolio, a
-  fixture screening snapshot, one watchlist, and four journal trades), or
-  `edge` (the seeded data with an unusual query). `seed.py` builds these
-  offline.
+- data state: `empty` (schema only), `seeded` (a five-position portfolio,
+  nine symbols registered for the screener with no prices or screening
+  results, one watchlist, and four journal trades), or `edge` (the seeded
+  data with an unusual query). `seed.py` builds these offline. A trace that
+  runs the screens fetches live prices for those nine symbols.
 
 ## Running it
 
