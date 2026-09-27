@@ -14,6 +14,15 @@ _RUN_SCREENS_ANNOTATIONS = {
     "idempotent_hint": True,
 }
 
+# The universe is every symbol in the local `md_stocks` table, which only a
+# price-history fetch fills, so a fresh install has nothing to screen.
+_EMPTY_UNIVERSE_ERROR = (
+    "No symbols are known locally yet, so there is nothing to screen. Fetch "
+    "price history for the tickers you want to screen with "
+    "market_data_get_price_history or market_data_get_price_history_batch, "
+    "then run the screens again."
+)
+
 _service: ScreeningService | None = None
 
 
@@ -117,6 +126,8 @@ async def screening_run_screens(screen: str | None = None) -> dict[str, Any]:
 
     Always returns a `screen name -> ScreenRun` mapping under `results`, even
     for a single explicit screen, so callers never need to branch on shape.
+    Screens only symbols already known locally; with none, returns an error
+    that says how to add them.
     """
     try:
         service = _require_service()
@@ -128,6 +139,8 @@ async def screening_run_screens(screen: str | None = None) -> dict[str, Any]:
             # honest error payload); this cast only satisfies the type
             # checker for a value whose validity isn't known until then.
             runs = {screen: await service.run_screen(cast(ScreenName, screen))}
+        if all(run.symbols_screened == 0 for run in runs.values()):
+            return {"status": "error", "error": _EMPTY_UNIVERSE_ERROR}
         return {
             "status": "success",
             "results": {name: run.model_dump() for name, run in runs.items()},
