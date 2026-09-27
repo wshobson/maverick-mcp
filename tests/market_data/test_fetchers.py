@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from types import ModuleType
 from typing import cast
 
 import pandas as pd
@@ -12,6 +13,7 @@ from maverick.market_data.fetchers import (
     MoverFetcher,
     YFinanceFetcher,
     _build_yfinance_tier,
+    _finviz_tier,
     build_mover_fetcher,
 )
 from maverick.platform.config import HttpSettings
@@ -306,6 +308,151 @@ async def test_mover_no_fns_injected_returns_empty_list():
     assert await fetcher.gainers(5) == []
     assert await fetcher.losers(5) == []
     assert await fetcher.most_active(5) == []
+
+
+# ---------------------------------------------------------------------------
+# _finviz_tier
+# ---------------------------------------------------------------------------
+
+
+def _finviz_frame(**overrides: list) -> pd.DataFrame:
+    """Shaped like finvizfinance 1.3.0's `Overview().screener_view()`.
+
+    Rows come back in ticker order, and the change column is headed
+    "Change %" and holds the page text ("5.73%"), not a number. The fake
+    screener ignores filters, so gainers and losers share one frame.
+    """
+    columns: dict[str, list] = {
+        "Ticker": ["AAA", "BBB", "CCC", "DDD"],
+        "Company": ["A Corp", "B Corp", "C Corp", "D Corp"],
+        "Sector": ["Technology"] * 4,
+        "Industry": ["Software"] * 4,
+        "Country": ["USA"] * 4,
+        "Market Cap": [1.0e9, 2.0e9, 3.0e9, 4.0e9],
+        "P/E": [10.0, 20.0, 30.0, 40.0],
+        "Price": [10.573, 11.25, 9.69, 9.2],
+        "Change %": ["5.73%", "12.50%", "-3.10%", "-8.00%"],
+        "Volume": [4.0e6, 1.0e6, 9.0e6, 2.0e6],
+    }
+    columns.update(overrides)
+    return pd.DataFrame(columns)
+
+
+@pytest.fixture
+def serve_finviz(monkeypatch: pytest.MonkeyPatch):
+    """Serve a frame from a stand-in `finvizfinance.screener.overview`."""
+
+    def _serve(frame: pd.DataFrame | None) -> None:
+        class FakeOverview:
+            def set_filter(self, filters_dict: dict[str, str]) -> None:
+                pass
+
+            def screener_view(self) -> pd.DataFrame | None:
+                return frame
+
+        module = ModuleType("finvizfinance.screener.overview")
+        monkeypatch.setattr(module, "Overview", FakeOverview, raising=False)
+        monkeypatch.setitem(sys.modules, "finvizfinance.screener.overview", module)
+
+    return _serve
+
+
+def test_finviz_tier_ranks_gainers_by_change_percent(serve_finviz):
+    serve_finviz(_finviz_frame())
+
+    rows = _finviz_tier("gainers", 2)
+
+    assert [row["symbol"] for row in rows] == ["BBB", "AAA"]
+    assert [row["change_percent"] for row in rows] == pytest.approx([12.5, 5.73])
+
+
+def test_finviz_tier_ranks_losers_most_negative_first(serve_finviz):
+    serve_finviz(_finviz_frame())
+
+    rows = _finviz_tier("losers", 2)
+
+    assert [row["symbol"] for row in rows] == ["DDD", "CCC"]
+    assert [row["change_percent"] for row in rows] == pytest.approx([-8.0, -3.1])
+
+
+def test_finviz_tier_ranks_most_active_by_volume(serve_finviz):
+    serve_finviz(_finviz_frame())
+
+    rows = _finviz_tier("most_active", 3)
+
+    assert [row["symbol"] for row in rows] == ["CCC", "AAA", "DDD"]
+
+
+def test_finviz_tier_derives_change_from_price_and_percent(serve_finviz):
+    serve_finviz(_finviz_frame())
+
+    rows = {row["symbol"]: row for row in _finviz_tier("gainers", 4)}
+
+    # 11.25 after +12.5% means a prior close of 10.00; 9.20 after -8% too.
+    assert rows["BBB"]["change"] == pytest.approx(1.25)
+    assert rows["DDD"]["change"] == pytest.approx(-0.8)
+    assert rows["BBB"]["price"] == pytest.approx(11.25)
+    assert rows["BBB"]["volume"] == pytest.approx(1.0e6)
+
+
+def test_finviz_tier_reads_a_legacy_numeric_change_column(serve_finviz):
+    # finvizfinance runs a column headed "Change" through `number_covert`,
+    # which turns "5.73%" into the fraction 0.0573.
+    frame = _finviz_frame(Change=[0.0573, 0.125, -0.031, -0.08]).drop(
+        columns=["Change %"]
+    )
+    serve_finviz(frame)
+
+    rows = _finviz_tier("gainers", 2)
+
+    assert [row["symbol"] for row in rows] == ["BBB", "AAA"]
+    assert [row["change_percent"] for row in rows] == pytest.approx([12.5, 5.73])
+
+
+def test_finviz_tier_keeps_an_unparseable_change_out_of_the_ranking(serve_finviz):
+    serve_finviz(_finviz_frame(**{"Change %": ["5.73%", "-", "-3.10%", "-8.00%"]}))
+
+    rows = _finviz_tier("gainers", 4)
+
+    assert [row["symbol"] for row in rows] == ["AAA", "CCC", "DDD", "BBB"]
+    assert rows[-1]["change_percent"] is None
+    assert rows[-1]["change"] is None
+
+
+async def test_finviz_tier_without_a_change_column_falls_through_to_yfinance(
+    serve_finviz,
+):
+    serve_finviz(_finviz_frame().drop(columns=["Change %"]))
+    batch = _counting_sync([{"symbol": "MSFT"}])
+
+    fetcher = MoverFetcher(finviz_fn=_finviz_tier, batch_quote_fn=batch)
+
+    assert await fetcher.gainers(5) == [{"symbol": "MSFT"}]
+    assert batch.calls == [("gainers", 5)]
+
+
+def test_finviz_tier_returns_empty_for_an_empty_screen(serve_finviz):
+    serve_finviz(None)
+
+    assert _finviz_tier("losers", 5) == []
+
+
+@pytest.mark.parametrize(
+    ("cell", "expected"),
+    [
+        ("5.73%", 5.73),
+        ("-3.1%", -3.1),
+        (" 0.00% ", 0.0),
+        (0.0573, 5.73),
+        ("-", None),
+        (float("nan"), None),
+        (None, None),
+    ],
+)
+def test_finviz_percent_reads_page_text_and_finvizfinance_fractions(
+    cell: object, expected: float | None
+) -> None:
+    assert fetchers._finviz_percent(cell) == pytest.approx(expected)
 
 
 # ---------------------------------------------------------------------------
