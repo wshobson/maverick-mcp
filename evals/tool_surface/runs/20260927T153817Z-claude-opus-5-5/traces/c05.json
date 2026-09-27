@@ -1,0 +1,54 @@
+{
+  "case": {
+    "id": "c05",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "gap": "missing-stock",
+    "query": "What happens to my portfolio risk if I add 200 shares at 55?"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "text",
+      "text": "The request doesn't name a ticker, so I'll look at the portfolio before running any check."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01NtW9KyKUKucpY7DJ9rXfRh",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[{\"ticker\":\"AAPL\",\"shares\":\"50.00000000\",\"average_cost_basis\":\"198.4000\",\"total_cost\":\"9920.0000\",\"purchase_date\":\"2025-11-14T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":341.07,\"current_value\":17053.5,\"unrealized_pnl\":7133.5,\"unrealized_pnl_percent\":71.91},{\"ticker\":\"JPM\",\"shares\":\"40.00000000\",\"average_cost_basis\":\"244.6000\",\"total_cost\":\"9784.0000\",\"purchase_date\":\"2026-02-10T00:00:00+00:00\",\"notes\":null,\"sector\":\"Financial Services\",\"current_price\":343.06,\"current_value\":13722.4,\"unrealized_pnl\":3938.4,\"unrealized_pnl_percent\":40.25},{\"ticker\":\"MSFT\",\"shares\":\"30.00000000\",\"average_cost_basis\":\"412.1000\",\"total_cost\":\"12363.0000\",\"purchase_date\":\"2025-12-03T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":516.17,\"current_value\":15485.1,\"unrealized_pnl\":3122.1,\"unrealized_pnl_percent\":25.25},{\"ticker\":\"NVDA\",\"shares\":\"120.00000000\",\"average_cost_basis\":\"131.7500\",\"total_cost\":\"15810.0000\",\"purchase_date\":\"2025-10-21T00:00:00+00:00\",\"notes\":null,\"sector\":\"Technology\",\"current_price\":225.07,\"current_value\":27008.4,\"unrealized_pnl\":11198.4,\"unrealized_pnl_percent\":70.83},{\"ticker\":\"XOM\",\"shares\":\"60.00000000\",\"average_cost_basis\":\"112.3000\",\"total_cost\":\"6738.0000\",\"purchase_date\":\"2026-03-18T00:00:00+00:00\",\"notes\":null,\"sector\":\"Energy\",\"current_price\":160.59,\"current_value\":9635.4,\"unrealized_pnl\":2897.4,\"unrealized_pnl_percent\":43}],\"metrics\":{\"total_invested\":\"54615.0000\",\"total_value\":82904.8,\"total_pnl\":28289.8,\"total_pnl_percent\":51.8,\"position_count\":5},\"sector_exposure\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"as_of\":\"2026-09-27T15:40:51.906645+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I didn't run the risk check because your question doesn't say which stock the 200 shares at $55 would be. The check needs a ticker, and I didn't want to guess one.\n\nNone of your current holdings is a likely match. The cheapest is XOM at $160.59, so $55 points to a new position rather than adding to one you already own.\n\n**What I can tell you without the ticker (portfolio as of 2026-09-27):**\n- The portfolio is worth $82,904.80 across five positions: AAPL, JPM, MSFT, NVDA and XOM. Unrealized gain is $28,289.80 (+51.8%).\n- Sector mix: Technology 71.8%, Financial Services 16.6%, Energy 11.6%.\n- 200 shares at $55 costs $11,000. That would be about 11.7% of the new $93,904.80 total, which is smaller than NVDA, AAPL or MSFT.\n- The sector matters most:\n  - If the stock is a tech company, Technology goes from 71.8% to about 75.1%, making the concentration you already have worse.\n  - If it's in another sector, Technology drops to about 63.4%, which spreads your risk out more.\n- The change in VaR (the estimate of how much you could lose on a bad day) depends on how volatile the stock is and how closely it moves with your current holdings. I can't estimate that without the ticker.\n\n**Next step:** Tell me the ticker and I'll run the pre-trade risk check with 200 shares at $55. It compares your current portfolio risk with the risk after the trade. It doesn't place or record anything.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 6740,
+    "cache_read_input_tokens": 44071,
+    "output_tokens": 417
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 23754,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:41:19.953825+00:00"
+}

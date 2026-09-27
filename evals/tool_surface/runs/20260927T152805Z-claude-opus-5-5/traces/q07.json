@@ -1,0 +1,81 @@
+{
+  "case": {
+    "id": "q07",
+    "task": "screening",
+    "request_type": "specified",
+    "data_state": "empty",
+    "query": "Top 10 bullish momentum stocks"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01RdKK8nGtBWPVacCydibdK3",
+      "name": "mcp__maverick__screening_get_bullish",
+      "arguments": {
+        "limit": 10
+      },
+      "result": "{\"status\":\"success\",\"results\":[],\"count\":0}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_019arSchYLLhtULs6A9iZk1X",
+      "name": "mcp__maverick__screening_get_all",
+      "arguments": {},
+      "result": "{\"bullish\":[],\"bearish\":[],\"supply_demand\":[],\"date_analyzed\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "No screen snapshots exist yet, so I'll compute the bullish screen."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_016RVJN7B4X5yhM8iMwkor5C",
+      "name": "mcp__maverick__screening_run_screens",
+      "arguments": {
+        "screen": "bullish"
+      },
+      "result": "{\"status\":\"error\",\"error\":\"No symbols are known locally yet, so there is nothing to screen. Fetch price history for the tickers you want to screen with market_data_get_price_history or market_data_get_price_history_batch, then run the screens again.\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_011SXMYvNoqfeKV958oUUZtH",
+      "name": "mcp__maverick__market_data_get_market_overview",
+      "arguments": {},
+      "result": "{\"indices\":{\"^GSPC\":{\"name\":\"S&P 500\",\"symbol\":\"^GSPC\",\"price\":7743.41,\"change\":39.28,\"change_percent\":0.51},\"^DJI\":{\"name\":\"Dow Jones\",\"symbol\":\"^DJI\",\"price\":51828.62,\"change\":478.64,\"change_percent\":0.93},\"^IXIC\":{\"name\":\"NASDAQ\",\"symbol\":\"^IXIC\",\"price\":27068.72,\"change\":129.35,\"change_percent\":0.48},\"^RUT\":{\"name\":\"Russell 2000\",\"symbol\":\"^RUT\",\"price\":2837.55,\"change\":1.98,\"change_percent\":0.07},\"^VIX\":{\"name\":\"VIX\",\"symbol\":\"^VIX\",\"price\":14.87,\"change\":-0.8,\"change_percent\":-5.11},\"^TNX\":{\"name\":\"10Y Treasury\",\"symbol\":\"^TNX\",\"price\":5.18,\"change\":0.02,\"change_percent\":0.43}},\"sectors\":{\"Technology\":0.8,\"Financials\":0.57,\"Health Care\":0.49,\"Energy\":-0.89,\"Consumer Discretionary\":0.22,\"Consumer Staples\":0.44,\"Industrials\":0.95,\"Materials\":0.24,\"Real Estate\":-0.22,\"Utilities\":0.38,\"Communication Services\":-0.9},\"top_gainers\":[{\"symbol\":\"AAAON\",\"price\":89.1,\"change\":0,\"change_percent\":0,\"volume\":1947345},{\"symbol\":\"AAEHR\",\"price\":104.39,\"change\":0,\"change_percent\":0,\"volume\":2862145},{\"symbol\":\"AAESI\",\"price\":12.47,\"change\":0,\"change_percent\":0,\"volume\":12172155},{\"symbol\":\"AALHC\",\"price\":8.21,\"change\":0,\"change_percent\":0,\"volume\":10653836},{\"symbol\":\"AALM\",\"price\":13.72,\"change\":0,\"change_percent\":0,\"volume\":11521398},{\"symbol\":\"AAPUS\",\"price\":7.25,\"change\":0,\"change_percent\":0,\"volume\":37110597},{\"symbol\":\"AAXTX\",\"price\":36.21,\"change\":0,\"change_percent\":0,\"volume\":2171615},{\"symbol\":\"BBE\",\"price\":288.7,\"change\":0,\"change_percent\":0,\"volume\":17360046},{\"symbol\":\"BBEX\",\"price\":40.19,\"change\":0,\"change_percent\":0,\"volume\":2976864},{\"symbol\":\"BBIRK\",\"price\":33.6,\"change\":0,\"change_percent\":0,\"volume\":3728290}],\"top_losers\":[{\"symbol\":\"AABSI\",\"price\":9.74,\"change\":0,\"change_percent\":0,\"volume\":3206563},{\"symbol\":\"AABTC\",\"price\":9.1,\"change\":0,\"change_percent\":0,\"volume\":1107043},{\"symbol\":\"AACAD\",\"price\":20.68,\"change\":0,\"change_percent\":0,\"volume\":3364113},{\"symbol\":\"AAEMD\",\"price\":6.28,\"change\":0,\"change_percent\":0,\"volume\":133607},{\"symbol\":\"AAPLX\",\"price\":8.01,\"change\":0,\"change_percent\":0,\"volume\":3345316},{\"symbol\":\"BBB\",\"price\":8.21,\"change\":0,\"change_percent\":0,\"volume\":32315843},{\"symbol\":\"BBKKT\",\"price\":8.5,\"change\":0,\"change_percent\":0,\"volume\":1010858},{\"symbol\":\"BBKV\",\"price\":21.81,\"change\":0,\"change_percent\":0,\"volume\":2011412},{\"symbol\":\"BBLSH\",\"price\":37.58,\"change\":0,\"change_percent\":0,\"volume\":875176},{\"symbol\":\"BBOIL\",\"price\":22.66,\"change\":0,\"change_percent\":0,\"volume\":7537297}],\"volatility\":{\"vix\":14.87,\"vix_change_percent\":-5.11,\"fear_level\":\"low\"},\"last_updated\":\"2026-09-27T15:29:12.870874+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I couldn't produce a top-10 bullish momentum list because Maverick has no screening data to rank yet.\n\nWhat I found:\n- **The bullish screen is empty.** `screening_get_bullish` (limit 10) returned 0 results. `screening_get_all` shows the bullish, bearish and supply/demand screens are all empty, with `date_analyzed: null`, so no screen has ever been run.\n- **The screen can't be run yet either.** `screening_run_screens(screen=\"bullish\")` returned an error: \"No symbols are known locally yet, so there is nothing to screen.\" It only ranks symbols whose price history has already been loaded, and none has been.\n- **The market overview's gainers list isn't usable as a substitute.** All 10 \"top gainers\" and 10 \"top losers\" show 0.00% change and appear to be in alphabetical order (AAAON, AAEHR, AAESI, ..., BBIRK). That's a sorting or data problem, not a ranking by performance. The index figures in the same response do look normal: S&P 500 7743.41 (+0.51%), Nasdaq +0.48%, VIX 14.87 (-5.11%). Industrials (+0.95%) and Technology (+0.80%) led the sectors.\n\nTo get the list, someone has to choose which stocks to screen. I didn't pick a set myself, because the result would then be \"the top 10 of a list I made up\" rather than the top bullish momentum stocks. The steps are:\n1. Choose the stocks to screen, for example the S&P 100, the Nasdaq-100, or your own watchlist.\n2. Load their price history with `market_data_get_price_history_batch` (there is a maximum number of tickers per call).\n3. Run `screening_run_screens(screen=\"bullish\")`, then `screening_get_bullish(limit=10)`.\n\nNothing was saved or changed. The screen run failed before writing anything, and every other call was read-only.\n\nThe top gainers/losers output is worth looking into as a separate bug in the market overview tool.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 6,
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 7775,
+    "cache_read_input_tokens": 96960,
+    "output_tokens": 309
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 39117,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:29:30.742277+00:00"
+}

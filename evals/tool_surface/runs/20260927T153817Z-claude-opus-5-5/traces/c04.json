@@ -1,0 +1,41 @@
+{
+  "case": {
+    "id": "c04",
+    "task": "journal-watchlist",
+    "request_type": "state-changing",
+    "data_state": "seeded",
+    "gap": "missing-stock",
+    "query": "Log a short: 100 shares at 94.50, thesis is a failed breakout"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [],
+  "final_answer": "I haven't logged the trade because the request doesn't name a ticker. The journal needs a symbol for every entry, and choosing one myself would record the trade under a stock you may not have traded.\n\nHere's what I'd log once you give me the ticker:\n- Side: short\n- Shares: 100\n- Entry price: 94.50\n- Reasoning: failed breakout\n- Entry date: now, unless you give a different date or time\n\nSend the ticker and I'll add it to the journal. If you want the trade tagged with a strategy name (for example \"failed-breakout\") so it shows up in strategy performance stats, include that too.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 5165,
+    "cache_read_input_tokens": 25979,
+    "output_tokens": 182
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 14396,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:40:39.555827+00:00"
+}

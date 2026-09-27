@@ -1,0 +1,101 @@
+{
+  "case": {
+    "id": "c06",
+    "task": "risk",
+    "request_type": "advice",
+    "data_state": "empty",
+    "gap": "missing-goals",
+    "query": "How much of my money should I put into NVDA?"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "text",
+      "text": "I'll start by checking your current portfolio and an NVDA risk-based sizing analysis."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01K9pribXPGHSpT6Eo1iWZTw",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[],\"metrics\":{\"total_invested\":\"0\",\"total_value\":0,\"total_pnl\":0,\"total_pnl_percent\":0,\"position_count\":0},\"sector_exposure\":{},\"as_of\":\"2026-09-27T15:41:31.315516+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01AeAma9dPPumV4sqhQaQdWk",
+      "name": "mcp__maverick__portfolio_risk_adjusted_analysis",
+      "arguments": {
+        "ticker": "NVDA"
+      },
+      "result": "{\"ticker\":\"NVDA\",\"current_price\":225.07,\"atr\":6.17,\"risk_level\":50,\"position_sizing\":{\"suggested_position_size\":500,\"max_shares\":2,\"position_value\":500,\"percent_of_portfolio\":0.5},\"stop_loss\":{\"stop_loss\":215.81,\"stop_loss_percent\":4.11,\"max_risk_amount\":500},\"entry_strategy\":{\"immediate_entry\":225.07,\"scale_in_levels\":[225.07,221.98,218.9]},\"targets\":{\"price_target\":234.33,\"profit_potential\":9.26,\"risk_reward_ratio\":1.5},\"analysis\":{\"confidence_score\":35,\"strategy_type\":\"moderate\",\"time_horizon\":\"medium-term\"},\"existing_position\":null,\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01FJw6jyVsPzn7aPw9q4KF8p",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "NVDA"
+      },
+      "result": "{\"symbol\":\"NVDA\",\"price\":225.07,\"change\":0.4899999999999807,\"change_percent\":0.21818505654999584,\"volume\":87931936,\"timestamp\":\"2026-09-27T15:41:31.973105+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Your portfolio is empty, so I don't know your account size. I'll check the market regime and NVDA's technical picture to give context, scaling to a normalized $100k basis that you can adjust."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01DN8QVfVAcWzGJoJ2Q13mQJ",
+      "name": "mcp__maverick__portfolio_get_regime_adjusted_sizing",
+      "arguments": {
+        "account_size": 100000,
+        "entry_price": 225.07,
+        "stop_loss": 215.81,
+        "risk_pct": 1
+      },
+      "result": "{\"shares\":80,\"position_value\":18005.6,\"risk_amount\":750,\"regime_multiplier\":0.75,\"adjusted_risk_pct\":0.75,\"regime\":\"transitional\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01SfheL3QUUZSwVGXYPyJ6D2",
+      "name": "mcp__maverick__technical_get_full_technical_analysis",
+      "arguments": {
+        "ticker": "NVDA"
+      },
+      "result": "{\"ticker\":\"NVDA\",\"current_price\":225.07,\"trend\":{\"score\":6,\"direction\":\"bullish\",\"adx\":13.14},\"outlook\":\"strongly bullish\",\"rsi\":{\"current\":55.3,\"period\":14,\"signal\":\"bullish\",\"description\":\"RSI is currently at 55.3, indicating bullish conditions.\"},\"macd\":{\"macd\":2.34,\"signal_line\":1.97,\"histogram\":0.37,\"indicator_signal\":\"bullish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bullish with no recent crossover.\"},\"stochastic\":{\"k\":63.96,\"d\":67.88,\"signal\":\"bearish\",\"crossover\":\"no recent crossover\",\"description\":\"Stochastic Oscillator is bearish with no recent crossover.\"},\"bollinger\":{\"upper\":232.8,\"middle\":221.65,\"lower\":210.51,\"current_price\":225.07,\"position\":\"above middle band\",\"volatility\":\"contracting (potential breakout ahead)\",\"description\":\"Price is above middle band, indicating bullish conditions. Volatility is contracting (potential breakout ahead).\"},\"volume\":{\"current\":89808400,\"average\":106374760,\"ratio\":0.84,\"description\":\"average\",\"signal\":\"neutral\"},\"levels\":{\"support\":[202.56,207.02,213.82],\"resistance\":[234.5,236.32,247.58]},\"analysis_metadata\":{\"bars_analyzed\":274,\"as_of\":\"2026-09-25\"},\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I can't give you a dollar amount yet because I don't know how big your account is. Your Maverick portfolio (\"My Portfolio\") is empty, so there's no balance to work from, and I didn't want to guess one. The rule below turns into a number as soon as you tell me your account size and how much you're willing to lose on this trade.\n\n**Sizing rule**\n\nMaverick's analysis puts the stop at $215.81. That's 1.5 times NVDA's average daily range (ATR, $6.17) below the $225.07 price, so you'd risk $9.26 a share (4.11%). The market regime check reads \"transitional,\" which cuts normal risk to 75%.\n\nShares = (account size \u00d7 risk % \u00d7 0.75) \u00f7 $9.26\n\n| Risk per trade | Effective risk | NVDA as % of account | On a $100k account (example only) |\n|---|---|---|---|\n| 0.5% | 0.375% | ~9% | ~40 shares, ~$9,000 |\n| 1% | 0.75% | ~18% | 80 shares, $18,006 (checked with the tool) |\n| 2% | 1.5% | ~36% | ~162 shares, ~$36,500 |\n\n**Things to weigh**\n\n- **Concentration can matter more than the stop.** Because the stop is tight, even 1% risk puts about 18% of your account in one stock, and 2% puts about 36%. Many investors cap a single stock at 5\u201310% whatever the stop math says. If you plan to hold NVDA long term rather than trade it, that cap is the better guide, and the tight stop doesn't really apply.\n- **The stop sits just above support at $213.82.** A normal pullback to support could trigger it. A stop below support, around $212, is safer but raises your risk to about $13 a share, so you'd buy fewer shares.\n- **The signals are mixed.** The technical read is labelled \"strongly bullish\": RSI 55, positive MACD, and price above the middle Bollinger band. But the trend is weak (ADX 13), the stochastic reads bearish, volume is below average (0.84x), and Maverick's own confidence score is only 35 out of 100. Its $234.33 target is just under resistance at $234.50, which gives a 1.5 to 1 reward-to-risk ratio.\n- **The prices are from Friday.** Today is Sunday, so the $225.07 quote is Friday's close (the technical data is dated 2026-09-25). Check the price when the market opens.\n\n**Ignore Maverick's \"suggested size\" of $500 / 2 shares**\n\nThe sizing tool returned numbers that don't add up: 2 shares at $225.07 is $450, not $500, and $500 of risk with a $9.26 stop would be about 54 shares. With an empty portfolio it appears to have assumed an account size of its own (0.5% implies $100k). That output looks like a tool bug worth tracking down.\n\n**What I need from you**\n\n1. Your account size, or how much you have available to invest.\n2. How much you'd accept losing on this one position (as a percent or in dollars).\n3. Whether this is a trade with a stop or a long-term holding.\n\nWith those, I'll run a pre-trade risk check for the exact share count. This is a sizing framework, not personal financial advice.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 7284,
+    "cache_read_input_tokens": 43919,
+    "output_tokens": 19
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 41853,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:42:09.572598+00:00"
+}

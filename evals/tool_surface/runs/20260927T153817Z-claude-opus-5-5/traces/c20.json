@@ -1,0 +1,70 @@
+{
+  "case": {
+    "id": "c20",
+    "task": "multi-step",
+    "request_type": "advice",
+    "data_state": "empty",
+    "gap": "missing-goals",
+    "query": "I'm retiring in five years. What should I do with my money?"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "text",
+      "text": "I'll start by checking whether there's a portfolio on record, so the answer can be based on real holdings instead of guesses."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_013So5pv8YC9VpYk8S1CBvk4",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[],\"metrics\":{\"total_invested\":\"0\",\"total_value\":0,\"total_pnl\":0,\"total_pnl_percent\":0,\"position_count\":0},\"sector_exposure\":{},\"as_of\":\"2026-09-27T15:54:08.042697+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01PAYm37N1fKKuLSWzxiiSdQ",
+      "name": "mcp__maverick__portfolio_get_risk_dashboard",
+      "arguments": {},
+      "result": "{\"status\":\"empty\",\"message\":\"No positions found in portfolio 'My Portfolio'\",\"portfolio_name\":\"My Portfolio\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01SyUYyUnTvP9SrtbqPfVbNL",
+      "name": "mcp__maverick__portfolio_get_risk_alerts",
+      "arguments": {},
+      "result": "{\"status\":\"empty\",\"message\":\"No positions found in portfolio 'My Portfolio'\",\"portfolio_name\":\"My Portfolio\",\"alerts\":[]}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I can't give a real answer yet because I don't know anything about your money. The portfolio on file (\"My Portfolio\", user \"default\") is empty: no positions, $0 invested. The risk dashboard and risk alerts both came back empty for that reason. I didn't guess at your holdings or goals, and I made no changes: no positions, watchlists or journal entries.\n\nMaverick is also the wrong tool for most of this question. It analyzes stocks and portfolios (prices, technicals, screens, backtests, and concentration and risk checks). It can't handle the core of retirement planning: how much you can withdraw each year, taxes and account types, pension or Social Security timing, or health insurance.\n\n**General principles for a five-year runway** (general information, not personal advice):\n- **Protect the money you'll spend soon.** A big market drop just before or just after you retire, while you're withdrawing, does lasting damage. That's called sequence-of-returns risk. A common approach is to hold roughly the first few years of withdrawals in cash or short-term bonds, so you're not forced to sell stocks in a downturn.\n- **Don't abandon growth entirely.** Retirement can last 25 to 30 years or more, so money you won't touch for a decade usually still needs some stocks to keep up with inflation.\n- **Shift gradually over the five years.** Rebalancing step by step toward a more conservative mix avoids betting everything on the timing of one big move.\n- **Do the basics first:** pay off high-interest debt, keep an emergency fund, and use any catch-up contributions to tax-advantaged accounts you're eligible for.\n- **Plan for the big fixed items:** when to claim pension or Social Security, and health coverage if you retire before public coverage starts (age 65 for Medicare in the US).\n- **A fee-only fiduciary financial planner** is worth considering here. The account types, taxes and income sources matter more than which stocks you pick.\n\n**What I'd need from you to go further:**\n1. Your age, your country, and the account types your savings are in (for example 401(k), IRA or taxable).\n2. Roughly how much you've saved and what it's invested in now.\n3. What you expect to spend each year in retirement, and any other income (pension, Social Security, rental).\n4. How you'd handle a 30% market drop in the year you retire.\n5. Any debts, especially a mortgage.\n6. Whether you want me to add your current holdings to Maverick.\n\nOnce I have your holdings (and your go-ahead to add them), I can check what Maverick can see: sector concentration, oversized positions, correlation between holdings, and a value-at-risk estimate (how much the portfolio could plausibly lose in a bad period). That would show how exposed you are today. It still wouldn't replace an overall retirement plan.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 7087,
+    "cache_read_input_tokens": 43700,
+    "output_tokens": 29
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 29946,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:54:40.909127+00:00"
+}

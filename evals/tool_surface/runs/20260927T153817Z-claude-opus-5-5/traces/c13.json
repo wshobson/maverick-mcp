@@ -1,0 +1,41 @@
+{
+  "case": {
+    "id": "c13",
+    "task": "bookkeeping",
+    "request_type": "specified",
+    "data_state": "empty",
+    "gap": "implausible-input",
+    "query": "Record a purchase of 20 COST at 915 on December 1, 2026"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [],
+  "final_answer": "I haven't recorded the purchase. The date given is December 1, 2026, but today is September 27, 2026, so that date is about two months away. A purchase can't have happened on a future date, so the date is probably a typo. It might be meant as December 1, 2025, or as some date in 2026 that has already passed. If I picked one, the cost basis and holding period would be wrong.\n\nThe request is also unclear about where to record it. There are two places:\n1. **Portfolio position** (portfolio_add_position in \"My Portfolio\"): this adds 20 COST shares at $915, or averages them into any COST already held.\n2. **Trade journal** (portfolio_journal_add_trade, long side): this logs an open trade you can close later for P&L and strategy stats.\n\nTo go ahead I need two answers from the user:\n- **The correct purchase date.** If they really mean a trade planned for December 1, 2026, that's a plan rather than a purchase. A watchlist entry fits that better than a position.\n- **Where to record it:** portfolio, journal, or both.\n\nOnce I have those, it's one call per destination: 20 shares, $915.00, the confirmed date.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 5321,
+    "cache_read_input_tokens": 25970,
+    "output_tokens": 309
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 15774,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:48:37.339141+00:00"
+}

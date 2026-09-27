@@ -1,0 +1,22 @@
+[
+  {"id": "c01", "task": "bookkeeping", "request_type": "vague", "data_state": "empty", "gap": "missing-date", "query": "Add 40 GOOGL to my portfolio, I got them at 171.20 back in the spring"},
+  {"id": "c02", "task": "bookkeeping", "request_type": "ambiguous", "data_state": "seeded", "gap": "missing-quantity", "query": "I sold part of my Nvidia at 180 this morning"},
+  {"id": "c03", "task": "journal-watchlist", "request_type": "ambiguous", "data_state": "seeded", "gap": "resolvable-from-data", "query": "Close out the Tesla pullback trade, I sold at 271"},
+  {"id": "c04", "task": "journal-watchlist", "request_type": "state-changing", "data_state": "seeded", "gap": "missing-stock", "query": "Log a short: 100 shares at 94.50, thesis is a failed breakout"},
+  {"id": "c05", "task": "risk", "request_type": "specified", "data_state": "seeded", "gap": "missing-stock", "query": "What happens to my portfolio risk if I add 200 shares at 55?"},
+  {"id": "c06", "task": "risk", "request_type": "advice", "data_state": "empty", "gap": "missing-goals", "query": "How much of my money should I put into NVDA?"},
+  {"id": "c07", "task": "multi-step", "request_type": "state-changing", "data_state": "seeded", "gap": "missing-goals", "query": "Rebalance my portfolio for me"},
+  {"id": "c08", "task": "screening", "request_type": "advice", "data_state": "seeded", "gap": "missing-goals", "query": "Pick three stocks for me to buy this week"},
+  {"id": "c09", "task": "backtest", "request_type": "vague", "data_state": "seeded", "gap": "missing-stock", "query": "Backtest a MACD crossover over the last three years"},
+  {"id": "c10", "task": "backtest", "request_type": "specified", "data_state": "seeded", "gap": "none", "query": "Backtest an RSI 30/70 strategy on MSFT"},
+  {"id": "c11", "task": "bookkeeping", "request_type": "specified", "data_state": "empty", "gap": "implausible-input", "query": "I bought 10 AAPL at 23.40 last Tuesday, add it"},
+  {"id": "c12", "task": "bookkeeping", "request_type": "specified", "data_state": "seeded", "gap": "implausible-input", "query": "Add 15 more JPM, bought Saturday at 301"},
+  {"id": "c13", "task": "bookkeeping", "request_type": "specified", "data_state": "empty", "gap": "implausible-input", "query": "Record a purchase of 20 COST at 915 on December 1, 2026"},
+  {"id": "c14", "task": "journal-watchlist", "request_type": "state-changing", "data_state": "seeded", "gap": "missing-quantity", "query": "Log that I bought more AMD today at 170"},
+  {"id": "c15", "task": "journal-watchlist", "request_type": "specified", "data_state": "seeded", "gap": "resolvable-from-data", "query": "Put PLTR on my watchlist"},
+  {"id": "c16", "task": "technicals", "request_type": "specified", "data_state": "seeded", "gap": "none", "query": "RSI and MACD for XOM over the last 90 days"},
+  {"id": "c17", "task": "lookup", "request_type": "specified", "data_state": "seeded", "gap": "none", "query": "What's JPM trading at, and what's its dividend yield?"},
+  {"id": "c18", "task": "bookkeeping", "request_type": "specified", "data_state": "seeded", "gap": "missing-date", "query": "I bought 25 more XOM at 108 on June 12, add it"},
+  {"id": "c19", "task": "risk", "request_type": "specified", "data_state": "empty", "gap": "none", "query": "$25k account, buying AMD at 165 with a stop at 152. How many shares at 1% risk?"},
+  {"id": "c20", "task": "multi-step", "request_type": "advice", "data_state": "empty", "gap": "missing-goals", "query": "I'm retiring in five years. What should I do with my money?"}
+]

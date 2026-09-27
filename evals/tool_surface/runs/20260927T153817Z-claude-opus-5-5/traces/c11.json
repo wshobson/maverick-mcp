@@ -1,0 +1,66 @@
+{
+  "case": {
+    "id": "c11",
+    "task": "bookkeeping",
+    "request_type": "specified",
+    "data_state": "empty",
+    "gap": "implausible-input",
+    "query": "I bought 10 AAPL at 23.40 last Tuesday, add it"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "text",
+      "text": "I'll check AAPL's actual price around last Tuesday before recording anything, because $23.40 looks low for AAPL."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_014RLUjBP79e5srzZteH67Pc",
+      "name": "mcp__maverick__market_data_get_price_history",
+      "arguments": {
+        "ticker": "AAPL",
+        "start_date": "2026-09-14",
+        "end_date": "2026-09-26"
+      },
+      "result": "{\"columns\":[\"Open\",\"High\",\"Low\",\"Close\",\"Volume\"],\"index\":[\"2026-09-14T00:00:00.000\",\"2026-09-15T00:00:00.000\",\"2026-09-16T00:00:00.000\",\"2026-09-17T00:00:00.000\",\"2026-09-18T00:00:00.000\",\"2026-09-21T00:00:00.000\",\"2026-09-22T00:00:00.000\",\"2026-09-23T00:00:00.000\",\"2026-09-24T00:00:00.000\",\"2026-09-25T00:00:00.000\"],\"data\":[[334.79,335.5,331.34,333.08,39269100],[330.14,331.78,328.35,331.34,31748200],[332.53,335.48,330.7,332.41,35981000],[334.77,338.34,330.18,337,36700200],[337.91,338.49,332.53,336.13,86588200],[335.28,339.64,333.05,338.98,34999200],[340.14,345.34,338.75,339.75,40711800],[341.08,341.8,335.5,337.02,31658800],[336.72,338.91,334.3,335.92,24733100],[336.04,341.67,334.53,341.07,29950100]],\"ticker\":\"AAPL\",\"status\":\"success\",\"record_count\":10}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_012bJ1Urr1p1hWTx5e1KiMcs",
+      "name": "mcp__maverick__portfolio_get_my_portfolio",
+      "arguments": {},
+      "result": "{\"user_id\":\"default\",\"name\":\"My Portfolio\",\"positions\":[],\"metrics\":{\"total_invested\":\"0\",\"total_value\":0,\"total_pnl\":0,\"total_pnl_percent\":0,\"position_count\":0},\"sector_exposure\":{},\"as_of\":\"2026-09-27T15:47:11.082272+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "I didn't add the position because $23.40 isn't a price AAPL traded at last week.\n\n**The price doesn't match AAPL's market data.**\n- Today is Sunday 2026-09-27, so \"last Tuesday\" is most likely 2026-09-22. AAPL's range that day was $338.75 to $345.34, closing at $339.75.\n- If you meant the Tuesday before, 2026-09-15, the range was $328.35 to $331.78.\n- Every day from Sept 14 to Sept 25 traded between about $328 and $345. $23.40 is roughly 14x too low, and it isn't a slipped decimal either: $234.00 is also outside every day's range.\n\nRecording it as given would make your cost basis $234 instead of about $3,400, and the position would show about +1,350% unrealized profit that isn't real.\n\n**Where things stand:** the \"My Portfolio\" portfolio (user \"default\") is empty. Nothing was written, so there's no position to average into and nothing to undo.\n\n**To add it, I need two things confirmed:**\n1. **The actual fill price.** Your trade confirmation will have it; if you bought on Sept 22, it should be between $338.75 and $345.34. Or were these shares bought through another ticker?\n2. **The date.** Is it 2026-09-22, or 2026-09-15?\n\nOnce you confirm, this is the exact call I'll make, with only the price and date filled in:\nportfolio_add_position(ticker=\"AAPL\", shares=10, purchase_price=<confirmed price>, purchase_date=<2026-09-22 or 2026-09-15>)",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 6750,
+    "cache_read_input_tokens": 44239,
+    "output_tokens": 408
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 25194,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:47:27.798991+00:00"
+}

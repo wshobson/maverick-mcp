@@ -1,0 +1,41 @@
+{
+  "case": {
+    "id": "c19",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "empty",
+    "gap": "none",
+    "query": "$25k account, buying AMD at 165 with a stop at 152. How many shares at 1% risk?"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [],
+  "final_answer": "**Buy 19 shares of AMD.**\n\n- 1% of $25,000 is **$250**. That's the most you'd lose.\n- Buying at $165 with a stop at $152 means you lose **$13 per share**.\n- $250 / $13 = 19.23, rounded down to **19 shares**. Rounding down keeps you under the 1% limit.\n\n**What that works out to:**\n- **Cost:** 19 \u00d7 $165 = **$3,135**, about 12.5% of the account.\n- **Loss if the stop is hit:** 19 \u00d7 $13 = **$247**, about 0.99% of the account.\n- The stop sits about 7.9% below your entry.\n\nThis is just arithmetic on the numbers you gave me. I didn't pull a live AMD price or check your portfolio. The loss figure assumes the stop fills at $152. If the price gaps below the stop, the loss will be larger.\n\nOne option if you want it: the regime-adjusted sizing tool cuts position size when the market looks choppy (to 75%) or bearish (to 50%). In a choppy market that would mean about 14 shares instead of 19. I can run it if you'd like.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 5372,
+    "cache_read_input_tokens": 25979,
+    "output_tokens": 428
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 16938,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:53:54.946550+00:00"
+}

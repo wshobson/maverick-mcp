@@ -1,0 +1,75 @@
+{
+  "case": {
+    "id": "c16",
+    "task": "technicals",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "gap": "none",
+    "query": "RSI and MACD for XOM over the last 90 days"
+  },
+  "source": "claude-code-subagent",
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "apiKeySource": "unverified",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01EwjZUqAToghW5GSV2Eg1jz",
+      "name": "mcp__maverick__technical_get_rsi_analysis",
+      "arguments": {
+        "ticker": "XOM",
+        "days": 90
+      },
+      "result": "{\"status\":\"error\",\"error\":\"(sqlite3.IntegrityError) UNIQUE constraint failed: md_price_bars.stock_id, md_price_bars.date\\n[SQL: INSERT INTO md_price_bars (stock_id, date, open, high, low, close, volume) VALUES (?, ?, ?, ?, ?, ?, ?)]\\n[parameters: [(10, '2025-08-25', 107.77635281058514, 108.76761986699798, 107.42649210490949, 108.59268951416016, 9744900), (10, '2025-08-26', 108.23311615272006, 108.66071791639624, 107.25156209122048, 108.3497314453125, 18143900), (10, '2025-08-27', 108.28170867190343, 109.7977742801282, 108.28170867190343, 109.57424926757812, 15262600), (10, '2025-08-28', 109.69087260799938, 110.44890170919774, 108.91340268064054, 110.1573486328125, 14189800), (10, '2025-08-29', 110.5169321497463, 111.55679393662437, 110.38087602170638, 111.07087707519531, 14597900), (10, '2025-09-02', 110.96396512433365, 111.99410640835276, 110.13790801462953, 111.45960235595703, 15206700), (10, '2025-09-03', 110.75987893875846, 111.20692151454529, 108.32057447471314, 108.75790405273438, 14920100), (10, '2025-09-04', 108.9522753120418, 109.94354241103126, 108.24283345769933, 109.2341079711914, 12864400)  ... displaying 10 of 274 total bound parameter sets ...  (10, '2026-09-24', 163.05999755859375, 164.91000366210938, 161.1999969482422, 162.13999938964844, 12484900), (10, '2026-09-25', 160.22999572753906, 161.7899932861328, 159.77999877929688, 160.58999633789062, 10996700)]]\\n(Background on this error at: https://sqlalche.me/e/20/gkpj)\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01DNZG4tG3zFdyVrkXwJTqvQ",
+      "name": "mcp__maverick__technical_get_macd_analysis",
+      "arguments": {
+        "ticker": "XOM",
+        "days": 90
+      },
+      "result": "{\"macd\":0.63,\"signal_line\":1.38,\"histogram\":-0.74,\"indicator_signal\":\"bearish\",\"crossover\":\"no recent crossover\",\"description\":\"MACD is bearish with no recent crossover.\",\"ticker\":\"XOM\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01SAmzbtJdRxbehcpKkLUfXJ",
+      "name": "mcp__maverick__technical_get_rsi_analysis",
+      "arguments": {
+        "ticker": "XOM",
+        "days": 90
+      },
+      "result": "{\"current\":48.95,\"period\":14,\"signal\":\"bearish\",\"description\":\"RSI is currently at 48.95, indicating bearish conditions.\",\"ticker\":\"XOM\",\"status\":\"success\"}",
+      "is_error": false
+    }
+  ],
+  "final_answer": "XOM momentum is weak over the last 90 days (days=90, fetched 2026-09-27). Neither indicator shows a strong trend.\n\n**RSI (14-period):** 48.95, which the tool labels \"bearish\". That label only reflects that the reading is just under 50. It is nowhere near oversold (30) or overbought (70), so in practice it's close to neutral with a slight downward lean.\n\n**MACD:** The MACD line is 0.63 and the signal line is 1.38, so the histogram is -0.74. The tool labels it \"bearish\" with \"no recent crossover\". The MACD line is still above zero but sits below its signal line, meaning upward momentum is fading and has not reversed yet.\n\nPrice for context: the last bar the tool loaded was the 2026-09-25 close of 160.59, down from 162.14 on 2026-09-24. That came from the failed call's error message, not from a quote call.\n\n**Maverick defect found:** I first ran the RSI and MACD calls in parallel. MACD succeeded, but RSI failed with:\n\n`sqlite3.IntegrityError: UNIQUE constraint failed: md_price_bars.stock_id, md_price_bars.date`\n\nIt was inserting 274 XOM bars (2025-08-25 to 2026-09-25, stock_id 10). Running the RSI call again on its own worked. The likely cause is that both parallel calls found the XOM cache empty and both tried to insert the same bars, so the second insert hit the unique key. The cache write in the price-history path needs to be an upsert or insert-ignore on (stock_id, date), or handle this conflict. Without that fix, any parallel technical calls on a ticker that isn't cached yet can fail the same way.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 4,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 6813,
+    "cache_read_input_tokens": 62365,
+    "output_tokens": 418
+  },
+  "notional_cost_usd": null,
+  "duration_ms": 25533,
+  "injected_context": [
+    "credential_org",
+    "date",
+    "environment",
+    "hook_success",
+    "mcp_instructions_delta",
+    "model",
+    "prompt_snapshot",
+    "remote_session_change",
+    "session_context",
+    "total_tokens_reminder"
+  ],
+  "maverick_git_sha": "10e7fbecb375bee88428a4d6776387889abd21c3",
+  "timestamp": "2026-09-27T15:52:08.716572+00:00"
+}
