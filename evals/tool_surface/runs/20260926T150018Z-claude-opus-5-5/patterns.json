@@ -1,0 +1,60 @@
+{
+  "status": "draft",
+  "generated_from": "Seth's notes on q01-q16",
+  "failure_modes": [
+    {
+      "name": "Tool reports success on a failed lookup",
+      "description": "A tool returns status success for input it could not serve (for example a delisted ticker), so the client cannot tell the call failed.",
+      "notes": [
+        {
+          "trace_id": "q02",
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "name": "Market data stale or missing",
+      "description": "The answer's method is sound, but the market data behind it is stale or does not reach back far enough, so a figure is wrong or the question cannot be answered properly until the data is backfilled.",
+      "notes": [
+        {
+          "trace_id": "q04",
+          "span_id": null
+        },
+        {
+          "trace_id": "q15",
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "name": "Answerable request goes unanswered",
+      "description": "The tools needed to answer the request are available, yet the trace does not produce an answer.",
+      "notes": [
+        {
+          "trace_id": "q07",
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "name": "Impossible trade input accepted",
+      "description": "A trade is recorded with input that cannot be real, such as a purchase dated on a day the market was closed, with no check and no question to the user.",
+      "notes": [
+        {
+          "trace_id": "q09",
+          "span_id": null
+        }
+      ]
+    },
+    {
+      "name": "Answers without asking for missing information",
+      "description": "The request leaves out something the answer depends on (for example which stock), and the assistant answers anyway instead of asking.",
+      "notes": [
+        {
+          "trace_id": "q14",
+          "span_id": null
+        }
+      ]
+    }
+  ]
+}

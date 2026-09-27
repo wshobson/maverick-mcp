@@ -330,6 +330,7 @@ class TestAnalyzeVolume:
         )
         result = analyze_volume(df, SETTINGS)
 
+        assert result.ratio is not None
         assert result.ratio < 0.7
         assert result.description == "below average"
         assert result.signal == "weak conviction"

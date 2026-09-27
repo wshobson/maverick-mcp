@@ -12,6 +12,8 @@ Numeric assertions are pinned: recorded by actually running this code, per
 the task's characterization-testing brief.
 """
 
+from typing import Any
+
 import pandas as pd
 import pytest
 
@@ -70,7 +72,7 @@ def _metrics(**overrides) -> BacktestMetrics:
 
 
 def _result(**overrides) -> BacktestResult:
-    fields = {
+    fields: dict[str, Any] = {
         "symbol": "TEST",
         "strategy": "A",
         "parameters": {},
@@ -176,6 +178,7 @@ def test_compare_strategies_ranks_by_sharpe_and_picks_bests():
     assert isinstance(comparison, StrategyComparisonResult)
     assert [row.strategy for row in comparison.rankings] == ["B", "A"]
     assert [row.rank for row in comparison.rankings] == [1, 2]
+    assert comparison.best_overall is not None
     assert comparison.best_overall.strategy == "B"
     assert comparison.best_return.strategy == "A"
     assert comparison.best_sharpe.strategy == "B"

@@ -69,6 +69,7 @@ class TestMarketRegimeDetector:
         )
         det.fit_regimes(ohlcv)
         assert det.is_fitted
+        assert det.model is not None
         assert det.model.random_state == 123
         # Determinism still holds for the overridden seed.
         assert det.detect_current_regime(ohlcv) == det.detect_current_regime(ohlcv)
@@ -131,6 +132,23 @@ class TestMarketRegimeDetector:
         assert probs.sum() == pytest.approx(1.0)
         assert probs[regime] == pytest.approx(1.0)
         assert not np.allclose(probs, 1 / 3)
+
+    def test_fallback_then_larger_fit_retries_requested_method(self, ohlcv):
+        """A detector that fell back to `threshold` on too little data must
+        retry its requested method on a later, larger fit. `RegimeAwareStrategy`
+        holds one detector across refits, so the fallback must not stick."""
+        det = MarketRegimeDetector(
+            method="kmeans", n_regimes=3, lookback_period=50, random_state=0
+        )
+        det.fit_regimes(pd.DataFrame({"close": np.linspace(100, 110, 60)}))
+        assert det.method == "threshold"
+
+        det.fit_regimes(ohlcv)
+
+        assert det.is_fitted
+        assert det.method == "kmeans"
+        assert hasattr(det.model, "cluster_centers_")
+        assert det.requested_method == "kmeans"
 
 
 class TestRegimeProbabilities:
@@ -204,7 +222,7 @@ class TestRegimeProbabilities:
         def _boom(_features):
             raise RuntimeError("simulated scaler failure")
 
-        det.scaler.transform = _boom
+        det.scaler.transform = _boom  # ty: ignore[invalid-assignment]  # raising stub patch
         window = data.iloc[-51:]
         regime = det.detect_current_regime(window)
         probs = det.get_regime_probabilities(window)
@@ -252,3 +270,28 @@ class TestRegimeAwareStrategy:
         analysis = strategy.get_regime_analysis()
         assert analysis["total_switches"] == strategy.regime_switches
         assert sum(analysis["regime_counts"].values()) == len(ohlcv)
+
+    def test_generate_signals_never_refits_on_the_traded_data(self, ohlcv):
+        """A detector fitted on training data that fell back to `threshold`
+        must not be refit on the data passed to `generate_signals`, or a
+        train/test backtest leaks the test period. An explicit
+        `fit_regime_detector` call with more history retries the method."""
+        detector = MarketRegimeDetector(
+            method="kmeans", n_regimes=3, lookback_period=50, random_state=0
+        )
+        strategy = RegimeAwareStrategy(
+            regime_strategies={
+                0: SilentStrategy("Bear"),
+                1: SilentStrategy("Side"),
+                2: SilentStrategy("Bull"),
+            },
+            regime_detector=detector,
+        )
+        strategy.fit_regime_detector(ohlcv.iloc[:80])
+        assert detector.method == "threshold"
+
+        strategy.generate_signals(ohlcv)
+        assert detector.method == "threshold"
+
+        strategy.fit_regime_detector(ohlcv)
+        assert detector.method == "kmeans"

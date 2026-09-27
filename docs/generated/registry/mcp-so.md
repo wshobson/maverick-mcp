@@ -33,8 +33,10 @@ not fabricated here** — only the metadata values to paste in are given.
   cost-basis P&L, plus optional backtesting and deep-research extras. Not
   financial advice.
 - **Repo URL**: https://github.com/wshobson/maverick-mcp
-- **Install command**: `uvx maverick-mcp-server` (stdio; once published to
-  PyPI) or `pip install "maverick-mcp-server[backtesting,research]"`
+- **Install command**: `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio`
+  or `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"`.
+  Not the bare PyPI name: it belongs to an unrelated project until the name
+  transfer completes (see `docs/runbooks/releasing.md`).
 - **Transports**: stdio, streamable HTTP
 - **Categories/tags**: finance, stocks, market-data, technical-analysis,
   portfolio, backtesting, research

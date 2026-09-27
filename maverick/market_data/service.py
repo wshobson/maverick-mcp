@@ -264,17 +264,6 @@ class MarketDataService:
         )
         return quote
 
-    async def get_quotes(self, symbols: list[str]) -> dict[str, Quote]:
-        """Fetch quotes for multiple symbols concurrently, keyed by symbol.
-
-        Fails fast: `asyncio.gather` runs without `return_exceptions=True`,
-        so the first symbol to raise (e.g. an invalid ticker) propagates
-        immediately, cancelling the other in-flight lookups rather than
-        returning a partial dict.
-        """
-        quotes = await asyncio.gather(*(self.get_quote(symbol) for symbol in symbols))
-        return {quote.symbol: quote for quote in quotes}
-
     # -- fundamentals -------------------------------------------------------
 
     async def get_fundamentals(self, symbol: str) -> Fundamentals:

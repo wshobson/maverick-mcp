@@ -1,7 +1,7 @@
 # Maverick-MCP Makefile
 # Central command interface for agent-friendly development
 
-.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check clean tail-log check setup redis-start redis-stop docker-up docker-down docker-logs
+.PHONY: help dev dev-stdio stop test test-all test-watch test-specific test-parallel test-cov lint format typecheck docs-check eval-agent-install eval-agent-case eval-review clean check setup redis-start redis-stop docker-up docker-down docker-logs
 
 # Default target
 help:
@@ -23,8 +23,9 @@ help:
 	@echo "  make typecheck    - Run type checking"
 	@echo "  make docs-check   - Validate documentation catalog and links"
 	@echo "  make check        - Run all checks (lint + type check)"
-	@echo ""
-	@echo "  make tail-log     - Follow backend logs"
+	@echo "  make eval-agent-install - Install the in-session eval client subagent"
+	@echo "  make eval-agent-case CASES=<file> CASE=<id> - Point the next eval subagent at a case"
+	@echo "  make eval-review  - Review the newest trace run in a local browser UI (port 8765)"
 	@echo ""
 	@echo "  make clean        - Clean up generated files"
 	@echo ""
@@ -101,7 +102,7 @@ format:
 # CI typecheck job.
 typecheck:
 	@echo "Running type checker..."
-	@uv run --extra dev --extra backtesting --extra research ty check maverick
+	@uv run --extra dev --extra backtesting --extra research ty check maverick tests evals
 
 docs-check:
 	@echo "Checking documentation catalog..."
@@ -110,11 +111,26 @@ docs-check:
 check: lint typecheck
 	@echo "All checks passed!"
 
-# Utility commands
-tail-log:
-	@echo "Following backend logs (Ctrl+C to stop)..."
-	@tail -f backend.log
+# Tool-surface traces for error analysis, recorded by an in-session subagent:
+# install the eval client agent, then point it at one case before each spawn.
+# See evals/tool_surface/README.md.
+eval-agent-install:
+	@mkdir -p .claude/agents
+	@sed "s|{REPO}|$(CURDIR)|g" evals/tool_surface/agent/maverick-eval-client.md > .claude/agents/maverick-eval-client.md
+	@echo "Installed .claude/agents/maverick-eval-client.md (restart Claude Code to load it)"
 
+eval-agent-case:
+	@uv run python -c "import json,sys; cases={c['id']:c for c in json.load(open('$(CASES)'))}; json.dump(cases['$(CASE)'], open('evals/tool_surface/.agent_case.json','w'))"
+	@echo "Next maverick-eval-client spawn runs case $(CASE) from $(CASES)"
+
+# Local review UI for error analysis on the newest run (override EVAL_RUN).
+# Run folders start with a UTC timestamp, so the last one sorted is the newest.
+EVAL_RUN ?= $(lastword $(sort $(dir $(wildcard evals/tool_surface/runs/*/traces))))
+eval-review:
+	@test -n "$(EVAL_RUN)" || { echo "No trace runs under evals/tool_surface/runs"; exit 1; }
+	@uv run python evals/review/server.py --run $(EVAL_RUN) $(ARGS)
+
+# Utility commands
 setup:
 	@echo "Setting up Maverick-MCP..."
 	@if [ ! -f .env ]; then \

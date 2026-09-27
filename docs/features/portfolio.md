@@ -80,8 +80,9 @@ never produces a sector-concentration alert.
 
 - Use `Decimal` for financial calculations.
 - Shares support fractional quantities.
-- Persist shares with up to 8 decimal places where supported.
-- Persist prices and total cost with fixed decimal precision.
+- Persist shares rounded half-up to 8 decimal places.
+- Persist average cost basis and total cost rounded half-up to 4 decimal
+  places.
 - Round only at storage or display boundaries.
 - Do not use float math for cost-basis calculations.
 
@@ -91,6 +92,16 @@ never produces a sector-concentration alert.
 - Shares added or removed must be positive.
 - Purchase price must be positive.
 - Removing more shares than owned closes the position.
+- A sale amount is rounded to 8 places before it is subtracted. A sale whose
+  remaining shares round to 0 at 8 places, or whose remaining total cost
+  rounds to 0 at 4 places, closes the position.
+- A purchase is rejected as too small when its total cost rounds to 0 at 4
+  places (or its share count or average cost basis rounds to 0), for example
+  0.001 shares at 0.01. A purchase added to an existing position is also
+  rejected when its own share count rounds to 0 at 8 places, because it would
+  change the cost without adding shares.
+- A sale amount that rounds to 0 at 8 places is rejected rather than treated
+  as a sale of nothing.
 - Current price may be unavailable; in that case portfolio display should
   degrade without inventing market values.
 
@@ -118,3 +129,9 @@ was used.
 Positions are stored in the `pf_portfolios` and `pf_positions` tables
 (SQLAlchemy Core, `maverick/portfolio/data.py`). The active personal-use
 default is a single local portfolio, not a hosted multi-user product.
+
+The ledger rounds shares to 8 decimal places and average cost basis and
+total cost to 4, half-up, the same scales the columns declare. SQLite and
+Postgres therefore both store exactly what the ledger computed. SQLite stores
+floats, so its exactness holds up to 15 significant digits: shares below
+10,000,000 and costs below 100,000,000,000.

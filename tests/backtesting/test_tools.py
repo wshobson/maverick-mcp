@@ -312,7 +312,7 @@ class StubService:
 @pytest.fixture
 def stub_service():
     stub = StubService()
-    tools.configure(stub)
+    tools.configure(stub)  # ty: ignore[invalid-argument-type]  # duck-typed stub
     yield stub
 
 
@@ -322,7 +322,7 @@ def stub_service():
 
 
 async def test_unconfigured_service_returns_configure_error_payload():
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     result = await tools.backtesting_list_strategies()
 
@@ -634,6 +634,7 @@ async def test_register_marks_every_tool_read_only(stub_service):
 
     for name in _EXPECTED_TOOL_NAMES:
         tool = await mcp.get_tool(name)
+        assert tool is not None
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
 

@@ -5,7 +5,6 @@ from fastmcp import FastMCP
 from maverick.backtesting import backtesting_extra_available
 from maverick.backtesting import tools as backtesting_tools
 from maverick.market_data import tools as market_data_tools
-from maverick.market_data.config import get_market_data_settings
 from maverick.market_data.fetchers import YFinanceFetcher, build_mover_fetcher
 from maverick.market_data.service import MarketDataService
 from maverick.platform.cache import Cache
@@ -40,7 +39,7 @@ def build_server() -> FastMCP:
        that is easy to forget at assembly time.
     3. `ScreeningService`/`PortfolioService`/`TechnicalService` each inject
        that one `MarketDataService` instance.
-    4. `JournalService` is portfolio's standalone sibling service (own
+    4. `JournalService` is portfolio's standalone sibling service (shared
        engine, own schema); it is wired into `portfolio.tools.configure`'s
        optional `journal_service` parameter rather than composed inside
        `PortfolioService`.
@@ -57,7 +56,7 @@ def build_server() -> FastMCP:
     cache = Cache(settings.cache, redis_settings=settings.redis)
 
     yf = YFinanceFetcher(http_settings=settings.http)
-    movers = build_mover_fetcher(get_market_data_settings(), yf)
+    movers = build_mover_fetcher(yf)
     market_data = MarketDataService(engine, cache, yf, movers)
 
     screening = ScreeningService(engine, market_data)

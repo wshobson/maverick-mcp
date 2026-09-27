@@ -56,7 +56,7 @@ class StubMarketData:
 
     async def get_price_history(
         self, symbol: str, start: date | None, end: date | None
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         self.calls.append((symbol, start, end))
         if self._delay:
             await asyncio.sleep(self._delay)
@@ -311,7 +311,7 @@ def _stub_per_symbol_drawdowns(
     async def _fake(symbol, strategy, start, end, *, initial_capital, parameters=None):
         return _canned_backtest_result(symbol, drawdowns[symbol])
 
-    service._run_single_backtest = _fake  # type: ignore[method-assign]
+    service._run_single_backtest = _fake  # ty: ignore[invalid-assignment]  # instance method patch
 
 
 async def test_backtest_portfolio_max_drawdown_selects_worst_not_mildest():

@@ -1,0 +1,78 @@
+{
+  "case": {
+    "id": "q14",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "empty",
+    "query": "$50k account, entry 42, stop 39, how many shares?"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 10.91,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:04:15.542978+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "text",
+      "text": "Use regime-adjusted sizing tool."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_01YJnVSWK2smbtLYmEmp1tDm",
+      "name": "mcp__maverick__portfolio_get_regime_adjusted_sizing",
+      "arguments": {
+        "account_size": 50000,
+        "entry_price": 42,
+        "stop_loss": 39
+      },
+      "result": "{\"shares\":250,\"position_value\":10500,\"risk_amount\":750,\"regime_multiplier\":0.75,\"adjusted_risk_pct\":1.5,\"regime\":\"transitional\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "**Buy 250 shares.** That's based on the current market regime, which the tool reads from SPY as \"transitional\" (not clearly up or down).\n\n| | |\n|---|---|\n| Risk per share | $42 \u2212 $39 = **$3.00** |\n| Base risk (2% of $50k) | $1,000 |\n| Regime adjustment | \u00d7 0.75 \u2192 **1.5% risk = $750** |\n| Shares | $750 \u00f7 $3 = **250** |\n| Position value | 250 \u00d7 $42 = **$10,500** (21% of the account) |\n\nIf you hit your stop, you lose about $750, which is 1.5% of the account. Without the regime adjustment, the standard 2% rule would give **333 shares**: $1,000 of risk and a $13,986 position.\n\nKeep in mind that a $39 stop still lets you lose more than $750 if the price gaps below it. Also, 21% of your capital in one stock is a sizable weight, so check that it fits your concentration limits."
+    }
+  ],
+  "final_answer": "**Buy 250 shares.** That's based on the current market regime, which the tool reads from SPY as \"transitional\" (not clearly up or down).\n\n| | |\n|---|---|\n| Risk per share | $42 \u2212 $39 = **$3.00** |\n| Base risk (2% of $50k) | $1,000 |\n| Regime adjustment | \u00d7 0.75 \u2192 **1.5% risk = $750** |\n| Shares | $750 \u00f7 $3 = **250** |\n| Position value | 250 \u00d7 $42 = **$10,500** (21% of the account) |\n\nIf you hit your stop, you lose about $750, which is 1.5% of the account. Without the regime adjustment, the standard 2% rule would give **333 shares**: $1,000 of risk and a $13,986 position.\n\nKeep in mind that a $39 stop still lets you lose more than $750 if the price gaps below it. Also, 21% of your capital in one stock is a sizable weight, so check that it fits your concentration limits.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 2,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 771,
+    "cache_read_input_tokens": 23606,
+    "output_tokens": 503,
+    "output_tokens_details": {
+      "thinking_tokens": 45
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 771,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 365,
+        "cache_read_input_tokens": 12056,
+        "cache_creation_input_tokens": 265,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 265
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.021929200000000003,
+  "permission_denials": [],
+  "duration_ms": 6809
+}

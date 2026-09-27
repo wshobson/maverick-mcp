@@ -1,0 +1,98 @@
+{
+  "case": {
+    "id": "b05",
+    "task": "technicals",
+    "request_type": "specified",
+    "data_state": "edge",
+    "query": "Support and resistance for BRK.B over the past year"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 16.32,
+  "maverick_git_sha": "2d7c7074911401ddead17a6d7f96b146b95be1c5",
+  "timestamp": "2026-09-26T18:13:31.121573+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_0174d7qy7sXcv8dL9SA9uJRp",
+      "name": "mcp__maverick__technical_get_support_resistance",
+      "arguments": {
+        "ticker": "BRK.B",
+        "days": 365
+      },
+      "result": "{\"status\":\"error\",\"error\":\"Insufficient price history for 'BRK.B' to compute support/resistance levels: not enough bars were fetched, or the most recent bar is missing data.\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Ticker format may need a dash."
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_017CnGK3cRciU2y1jvvzcX5k",
+      "name": "mcp__maverick__technical_get_support_resistance",
+      "arguments": {
+        "ticker": "BRK-B",
+        "days": 365
+      },
+      "result": "{\"support\":[454.93,480.21,495.68],\"resistance\":[523.74,530.75,556.03],\"ticker\":\"BRK-B\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_015Jd6Zn8yjhn221iCd8wkXv",
+      "name": "mcp__maverick__market_data_get_quote",
+      "arguments": {
+        "ticker": "BRK-B"
+      },
+      "result": "{\"symbol\":\"BRK-B\",\"price\":505.48,\"change\":0.30000000000001137,\"change_percent\":0.05938477374401428,\"volume\":2917821,\"timestamp\":\"2026-09-26T18:13:41.387637+00:00\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "BRK.B is at **$505.48** (+0.06% today). The nearest support is about 2% below and the nearest resistance about 3.6% above, so the price is sitting in the middle of its range.\n\nThe tool didn't accept \"BRK.B\", so I used Yahoo's format, **BRK-B**.\n\n| Level | Price | Distance from current |\n|---|---|---|\n| Resistance 3 | $556.03 | +10.0% |\n| Resistance 2 | $530.75 | +5.0% |\n| Resistance 1 | $523.74 | +3.6% |\n| **Current** | **$505.48** | \u2014 |\n| Support 1 | $495.68 | \u22121.9% |\n| Support 2 | $480.21 | \u22125.0% |\n| Support 3 | $454.93 | \u221210.0% |\n\n- **Nearby levels:** $495.68 is the closest floor. If it breaks, the next one is $480.21.\n- **Resistance cluster:** $523.74 and $530.75 are close together, so the $524\u2013531 area is the main ceiling. A close above it would open the way to about $556.\n- **Deep support:** $454.93, about 10% down, is the one-year floor.\n\nThese levels come from a simple lookback-window calculation over the past year's swing highs and lows. They're rough reference zones, not exact prices, and they don't account for how much trading happened at each level. I can run a full technical analysis (trend, RSI, MACD) if you want to know which way the price is leaning within this range."
+    }
+  ],
+  "final_answer": "BRK.B is at **$505.48** (+0.06% today). The nearest support is about 2% below and the nearest resistance about 3.6% above, so the price is sitting in the middle of its range.\n\nThe tool didn't accept \"BRK.B\", so I used Yahoo's format, **BRK-B**.\n\n| Level | Price | Distance from current |\n|---|---|---|\n| Resistance 3 | $556.03 | +10.0% |\n| Resistance 2 | $530.75 | +5.0% |\n| Resistance 1 | $523.74 | +3.6% |\n| **Current** | **$505.48** | \u2014 |\n| Support 1 | $495.68 | \u22121.9% |\n| Support 2 | $480.21 | \u22125.0% |\n| Support 3 | $454.93 | \u221210.0% |\n\n- **Nearby levels:** $495.68 is the closest floor. If it breaks, the next one is $480.21.\n- **Resistance cluster:** $523.74 and $530.75 are close together, so the $524\u2013531 area is the main ceiling. A close above it would open the way to about $556.\n- **Deep support:** $454.93, about 10% down, is the one-year floor.\n\nThese levels come from a simple lookback-window calculation over the past year's swing highs and lows. They're rough reference zones, not exact prices, and they don't account for how much trading happened at each level. I can run a full technical analysis (trend, RSI, MACD) if you want to know which way the price is leaning within this range.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 4,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 1149,
+    "cache_read_input_tokens": 48333,
+    "output_tokens": 839,
+    "output_tokens_details": {
+      "thinking_tokens": 96
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1149,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 565,
+        "cache_read_input_tokens": 12473,
+        "cache_creation_input_tokens": 226,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 226
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.0366606,
+  "permission_denials": [],
+  "duration_ms": 11586
+}

@@ -9,15 +9,16 @@ surface.
 ## Overview
 
 The deep research feature runs web-search-backed financial research using a
-sequential LangGraph workflow: plan the query, search with Exa, validate and
-score sources, synthesize findings with a configured LLM, and return a
-structured report with citations. It is designed for local educational
-analysis and should always communicate uncertainty, cite sources where
-applicable, and avoid presenting generated conclusions as financial advice.
+sequential LangGraph workflow: plan the query, search the web (Exa, or a
+self-hosted SearXNG instance), validate and score sources, synthesize
+findings with a configured LLM, and return a structured report with
+citations. It is designed for local educational analysis and should always
+communicate uncertainty, cite sources where applicable, and avoid presenting
+generated conclusions as financial advice.
 
 The research surface lives behind the optional `[research]` dependency
-extra (`langchain`, `langchain-anthropic`, `langchain-community`,
-`langchain-openai`, `langgraph`, `exa-py`). On a base install with the extra
+extra (`langchain-anthropic`, `langchain-core`, `langchain-openai`,
+`langgraph`, `exa-py`). On a base install with the extra
 absent, the server still boots cleanly and registers **zero** `research_*`
 tools -- see [Installation](#installation) below.
 
@@ -26,9 +27,9 @@ tools -- see [Installation](#installation) below.
 - Comprehensive research over companies, sectors, market topics, and news.
 - Persona-aware framing for conservative, moderate, aggressive, and
   day-trader analysis modes.
-- Exa-backed web search with financial-domain scoring (credibility,
-  relevance, authoritativeness) and circuit-breaker protection via
-  `maverick.platform.http`.
+- Exa- or SearXNG-backed web search with financial-domain scoring
+  (credibility, relevance, authoritativeness) and circuit-breaker protection
+  via `maverick.platform.http`.
 - Depth-scaled timeouts (`basic`/`standard`/`comprehensive`/`exhaustive`),
   each with its own budget and source count.
 - BYOK LLM configuration: bring your own provider/key rather than relying on
@@ -45,21 +46,23 @@ tools -- see [Installation](#installation) below.
   plain parameter instead.
 - **Conversation memory / checkpointing** does not port. Session-scoped
   conversation memory belongs to the MCP client, not the server; the legacy
-  `maverick_mcp/memory/` checkpoint stores are not ported and retire at
-  cutover (Phase 8).
+  `maverick_mcp/memory/` checkpoint stores were not ported and were deleted
+  with the rest of `maverick_mcp/` at the v1.0 cutover.
 - **`research_search_financial_news`** does not port as a standalone tool;
   news search is folded into the three surviving tools' underlying search
   step, not exposed as its own call.
 - **Tavily search** does not port. `TavilySearchProvider` was never
   instantiated in the legacy code (`tavily` was never even a declared
-  dependency) -- Exa is the sole search provider.
+  dependency) -- the search providers are Exa (the default) and SearXNG.
 - **The parallel multi-agent orchestrator** (concurrent subagent execution,
   cross-agent result reconciliation) does not port. The sequential graph is
   what a single-model, single-request MCP tool call needs. The subagent
   *specializations* it invoked (fundamental, technical, sentiment,
-  competitive) do port, wired into the sequential graph's specialized-
-  analysis branch instead.
-- **Vector store research caching** does not port; it is a
+  competitive) do port, and the fundamental, sentiment, and competitive
+  ones are wired into the sequential graph's specialized-analysis branch
+  instead. The technical one is ported but, as in legacy, the graph's
+  routing step never selects it.
+- **Vector store research caching** does not port; it was a legacy
   `maverick_mcp` persistence layer, not research-domain logic.
 
 ## Installation
@@ -70,7 +73,7 @@ The core install has no research tools. Install the extra to enable all 3:
 uv sync --extra research
 ```
 
-or, from a published wheel:
+or, from the release tag:
 
 ```bash
 pip install "maverick-mcp-server[research] @ git+https://github.com/wshobson/maverick-mcp@v1.1.0"
@@ -134,7 +137,7 @@ fail-fast configuration:
 ```bash
 LLM_PROVIDER=anthropic          # one of: openai, anthropic, openrouter, openai_compatible
 LLM_API_KEY=your_llm_api_key
-LLM_MODEL=claude-sonnet-4-5-20250929
+LLM_MODEL=claude-sonnet-4-6
 LLM_BASE_URL=                   # required for openai_compatible; defaults to
                                  # https://openrouter.ai/api/v1 for openrouter
 LLM_TEMPERATURE=0.0             # optional, defaults to 0.0
@@ -151,6 +154,10 @@ LLM_TEMPERATURE=0.0             # optional, defaults to 0.0
   three speak the OpenAI wire protocol) is imported lazily inside
   `get_llm()`, so `maverick.platform` stays importable with no `langchain*`
   package installed.
+- `get_llm()` always sends `LLM_TEMPERATURE` (default `0.0`). Claude models
+  released after Claude Opus 4.6 (Claude Sonnet 5, Claude Opus 4.7 and
+  later) accept only `temperature=1.0` and reject any other value with a
+  400, so set `LLM_TEMPERATURE=1.0` when `LLM_MODEL` names one of them.
 
 BYOK settings design adapted from PR #132 by ne0ark (credit preserved in
 `maverick/platform/llm.py`'s module docstring).
@@ -163,7 +170,8 @@ live-API-key test coverage.
 ## MCP Tools
 
 Registered research tools (`readOnlyHint: true`, `openWorldHint: true` --
-every call reaches an external API: Exa search and the configured BYOK LLM):
+every call reaches an external service: the configured search backend and
+the configured BYOK LLM):
 
 ### `research_run_comprehensive`
 
@@ -218,22 +226,28 @@ actually fired through the exposed tool).
 
 All three tools return the same envelope pattern on success -- a typed
 result whose `model_dump(mode="json")` becomes the payload, with a
-`"status": "success"` key merged in -- and `{"status": "error", "error":
-"..."}` on any failure (unconfigured service, timeout, or an internal
-agent error). None of the three persist anything server-side.
+`"status": "success"` key merged in -- and `"status": "error"` with an
+`"error"` message on any failure. Research-level failures (unconfigured
+search or LLM, timeout, or an agent error) come back as a typed
+`ResearchError` dump, so they also carry `"success": false`, `error_type`,
+`request_id`, and `timestamp` (configuration and timeout errors add
+`details`, and timeouts add `suggestions`); only an unexpected exception
+yields the bare `{"status": "error", "error": "..."}`. None of the three
+persist anything server-side.
 
 ## Workflow
 
-1. Validate configuration (Exa key, then BYOK LLM); fail fast with a typed
-   error naming what's missing.
+1. Validate configuration (the selected search backend's `EXA_API_KEY` or
+   `SEARXNG_BASE_URL`, then the BYOK LLM); fail fast with a typed error
+   naming what's missing.
 2. Resolve persona, research depth, and timeframe (fixed overrides for the
    company/sentiment tools; caller-supplied for comprehensive research).
 3. Build a `DeepResearchAgent` and run its LangGraph workflow under
    `asyncio.wait_for` with a depth-appropriate timeout.
-4. The graph plans search queries, searches with Exa, validates and scores
-   sources (credibility, relevance, financial relevance, domain
-   authoritativeness), optionally routes to a specialized subagent
-   (fundamental/technical/sentiment/competitive), and synthesizes findings
+4. The graph plans search queries, searches with the configured backend,
+   validates and scores sources (credibility, relevance, financial
+   relevance, domain authoritativeness), optionally routes to a specialized
+   subagent (fundamental/sentiment/competitive), and synthesizes findings
    with the configured LLM.
 5. Adapt the typed `ResearchReport` into the tool-facing envelope (or a
    typed timeout/execution error) and return it with citations, confidence
@@ -244,6 +258,8 @@ agent error). None of the three persist anything server-side.
 All `tests/research/` coverage is fully mocked -- no network calls, no real
 API keys, ever. Search results are faked at the provider boundary; the LLM
 is faked with a scripted chat model double. See
-`tests/research/conftest.py` for the settings-reset fixture pattern (Exa
-circuit breakers, research settings, LLM settings, and market-data settings
-singletons all reset per test).
+`tests/research/conftest.py` for the settings-reset fixture pattern (circuit
+breakers, research settings, LLM settings, and market-data settings
+singletons all reset per test, and the research and BYOK environment
+variables are scrubbed first, so a shell that exports a real `EXA_API_KEY`
+cannot make a unit test call Exa).

@@ -6,7 +6,6 @@ import pandas as pd
 import pytest
 from sqlalchemy.orm import sessionmaker
 
-from maverick.market_data.config import MarketDataSettings
 from maverick.market_data.data import METADATA, write_price_bars
 from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher
 from maverick.market_data.service import MarketDataService
@@ -95,7 +94,7 @@ async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
         # fetch-window fix -- pre-fix (end == friday, not friday + 1 day)
         # this would drop Friday and the test would fail with a 4-row frame.
         history_calls.append((symbol, start, end))
-        mask = (available.index.date >= start) & (available.index.date < end)
+        mask = (available.index.date >= start) & (available.index.date < end)  # ty: ignore[unresolved-attribute]  # pandas builds .date at runtime
         return available.loc[mask]
 
     service = MarketDataService(
@@ -170,7 +169,7 @@ async def test_price_history_respects_plain_callable_calendar(tmp_path):
         # comment in test_trading_day_cache_fetches_only_missing_span_
         # then_serves_from_db above.
         history_calls.append((symbol, start, end))
-        mask = (available.index.date >= start) & (available.index.date < end)
+        mask = (available.index.date >= start) & (available.index.date < end)  # ty: ignore[unresolved-attribute]  # pandas builds .date at runtime
         return available.loc[mask]
 
     def callable_calendar(start: date, end: date) -> list[date]:
@@ -227,43 +226,6 @@ async def test_get_quote_caches_and_calls_yf_info_once(tmp_path):
     assert first.change == pytest.approx(2.5)
     assert second.price == 190.5
     assert info_calls == ["AAPL"]
-
-
-async def test_get_quotes_happy_path_over_two_symbols(tmp_path):
-    engine = _engine(tmp_path)
-    info_by_symbol = {
-        "AAPL": {"currentPrice": 190.5, "previousClose": 188.0, "volume": 1_000},
-        "MSFT": {"currentPrice": 300.0, "previousClose": 295.0, "volume": 2_000},
-    }
-
-    def fake_info(symbol):
-        return info_by_symbol[symbol]
-
-    service = MarketDataService(
-        engine, _cache(tmp_path), YFinanceFetcher(info_fn=fake_info), MoverFetcher()
-    )
-
-    result = await service.get_quotes(["AAPL", "MSFT"])
-
-    assert set(result) == {"AAPL", "MSFT"}
-    assert result["AAPL"].price == 190.5
-    assert result["MSFT"].price == 300.0
-
-
-async def test_get_quotes_fails_fast_when_one_symbol_raises(tmp_path):
-    engine = _engine(tmp_path)
-
-    def fake_info(symbol):
-        if symbol == "BAD":
-            raise RuntimeError("no such ticker")
-        return {"currentPrice": 1.0, "previousClose": 1.0, "volume": 1}
-
-    service = MarketDataService(
-        engine, _cache(tmp_path), YFinanceFetcher(info_fn=fake_info), MoverFetcher()
-    )
-
-    with pytest.raises(RuntimeError, match="no such ticker"):
-        await service.get_quotes(["AAPL", "BAD"])
 
 
 # ---------------------------------------------------------------------------
@@ -387,7 +349,7 @@ async def test_market_overview_reads_vix_explicitly_and_reports_high_fear(tmp_pa
             ),
         }
 
-    service.get_indices_summary = fake_indices_summary
+    service.get_indices_summary = fake_indices_summary  # ty: ignore[invalid-assignment]  # instance method patch
 
     # See the comment in `test_get_market_overview_second_call_served_from_
     # cache` below: `md_market_overview` has no per-test salt, so clear it
@@ -428,9 +390,9 @@ async def test_get_market_overview_second_call_served_from_cache(tmp_path):
         call_counts["movers"] += 1
         return []
 
-    service.get_indices_summary = fake_indices_summary
-    service.get_sector_performance = fake_sector_performance
-    service.get_movers = fake_movers
+    service.get_indices_summary = fake_indices_summary  # ty: ignore[invalid-assignment]  # instance method patch
+    service.get_sector_performance = fake_sector_performance  # ty: ignore[invalid-assignment]  # instance method patch
+    service.get_movers = fake_movers  # ty: ignore[invalid-assignment]  # instance method patch
 
     # `md_market_overview` is a single global cache key with no per-test
     # salt: `Cache` resolves its backend from process-wide platform
@@ -474,10 +436,7 @@ async def test_get_movers_maps_dicts_to_mover_models(tmp_path):
             }
         ]
 
-    movers = MoverFetcher(
-        finviz_fn=fake_finviz,
-        settings=MarketDataSettings(capital_companion_api_key=None),
-    )
+    movers = MoverFetcher(finviz_fn=fake_finviz)
     service = MarketDataService(engine, _cache(tmp_path), YFinanceFetcher(), movers)
 
     result = await service.get_movers("gainers", 5)

@@ -86,6 +86,7 @@ def test_redis_password_is_secret(monkeypatch):
     monkeypatch.setenv("REDIS_PASSWORD", "hunter2")
     s = PlatformSettings()
     assert "hunter2" not in repr(s.redis)
+    assert s.redis.password is not None
     assert s.redis.password.get_secret_value() == "hunter2"
 
 

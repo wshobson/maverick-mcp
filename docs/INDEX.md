@@ -35,61 +35,46 @@ rather than the whole knowledge base up front.
   drafts (Docker MCP Catalog, Smithery, Glama, PulseMCP, mcp.so).
 - `generated/release-notes/v1.1.0.md` - release notes for v1.1.0.
 
-## Modernization
+## Designs, Plans, And Engineering State
 
 - `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
   design and migration plan.
 - `design-docs/2026-09-05-open-items-remediation.md` - approved design for
   the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG
-  research backend.
+  research backend. Shipped in v1.1.0 except the owner-gated publishing.
 - `design-docs/2026-09-13-pandas-ta-removal.md` - approved design for
   removing pandas-ta and moving numpy, numba, pandas, and vectorbt.
-- `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` - Phase 0
-  execution plan.
-- `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` - Phase 1
-  execution plan (platform seam).
-- `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` - Phase 2
-  execution plan (market data domain).
-- `exec-plans/completed/2026-07-19-phase-3-screening-domain.md` - Phase 3
-  execution plan (screening domain and technical core).
-- `exec-plans/completed/2026-07-19-phase-4-portfolio-domain.md` - Phase 4
-  execution plan (portfolio domain).
-- `exec-plans/completed/2026-07-19-phase-5-technical-domain.md` - Phase 5
-  execution plan (technical domain completion).
-- `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` - Phase 6
-  execution plan (backtesting extra).
-- `exec-plans/completed/2026-07-20-phase-7-research-extra.md` - Phase 7
-  execution plan (research extra).
-- `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` - Phase 8
-  execution plan (server assembly and cutover).
-- `exec-plans/completed/2026-09-13-pandas-ta-removal.md` - execution plan
-  for the pandas-ta removal and the numeric-stack unfreeze.
+  Shipped in #271.
 - `exec-plans/active/2026-07-20-phase-9-distribution.md` - Phase 9
   execution plan (distribution and registry rollout).
 - `exec-plans/active/2026-09-05-open-items-remediation.md` - execution plan
   for the 2026-09 open-items remediation.
 - `exec-plans/tech-debt-tracker.md` - known debt, one line each.
-- `product-specs/index.md` - product spec index, empty until the tool surface
-  is curated.
-- `generated/README.md` - marker for script-generated docs.
+- `product-specs/index.md` - product spec index; no specs written yet.
+- `generated/README.md` - what lives in `generated/` (hand-written registry
+  drafts and release notes).
 - `QUALITY_SCORE.md` - per-area quality grades.
 - `RELIABILITY.md` - reliability state and gaps.
 - `SECURITY.md` - engineering security posture.
 
 ## Testing Docs
 
-- `testing/README.md` - canonical test guide.
+- `testing/README.md` - canonical test guide, including integration/external
+  test policy and timeouts.
 - `testing/in-memory.md` - FastMCP in-memory testing patterns.
-- `testing/integration.md` - integration and orchestration test notes.
 - `testing/exa-research.md` - Exa/research provider test strategy.
-- `testing/speed.md` - research speed and timeout validation.
+- `../evals/tool_surface/README.md` - tool-surface trace harness for error
+  analysis. Read before recording or reviewing eval traces (`make eval-*`).
 
 ## Historical Or Tool-Owned Context
 
 - `superpowers/` - historical Superpowers specs and plans.
+- `exec-plans/completed/` - completed execution plans: Phases 0 to 8 of the
+  v1.0 modernization, the pandas-ta removal, and the 2026-09-26 tech-debt
+  sweep. Read when you need to know why a domain is shaped the way it is.
 
-This folder is cataloged but is not the current product documentation unless a
-current doc links to a specific artifact.
+These folders are cataloged but are not the current product documentation
+unless a current doc links to a specific artifact.
 
 ## Hygiene Rules
 

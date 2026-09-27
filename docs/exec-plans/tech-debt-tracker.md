@@ -4,21 +4,11 @@ One line per item. Remove the line in the same change that removes the debt.
 
 | Item | Where | Phase to fix |
 | --- | --- | --- |
-| `setup.py` duplicates hatchling and parses pyproject by hand | repo root | packaging |
-| Wheel build uses `include = ["*.py"]` instead of explicit packages | `pyproject.toml` | packaging |
-| `server.json` declares only remote transports and no package installs | repo root | distribution |
-| Dockerfile is single-stage and ships build toolchain in the final image | `Dockerfile` | distribution |
-| Default pytest filter deselects 664 tests; review the marker policy | `pyproject.toml` | cutover |
-| MCP Apps chart rendering | new server | deferred |
-| Tasks extension for long-running backtests | new server | deferred |
-| `ty check` clean over `maverick/` but ~147 diagnostics under `tests/`; tests are outside the gate | `tests/` | deferred |
+| `server.json` declares the PyPI package `maverick-mcp-server`, which this project has never published: the name is held by another account until pypi/support#12150 resolves | repo root | distribution |
+| MCP Apps chart rendering | `maverick/` | deferred |
+| Tasks extension for long-running backtests | `maverick/backtesting/` | deferred |
 | Macro (FRED) port deferred; zero live consumers today; no macro domain exists yet | not ported | macro port |
-| Tier-3 mover fallback runs without breaker/retry (documented last-resort trade-off) | `maverick/market_data/fetchers.py` | deferred |
-| Capital Companion tier uses `request_with_retry` without breaker and creates a client per call; align with `request_resilient` at server assembly | `maverick/market_data/fetchers.py` | cutover |
-| `get_quotes` is untested-in-production surface (no tool consumes it) | `maverick/market_data/service.py` | cutover |
-| screening change-history (legacy pipeline) not ported; revisit if wanted | new server | deferred |
-| run_screen executes rubrics on the event loop; wrap in to_thread if universe_max grows | `maverick/screening/service.py` | deferred |
-| `pf_positions.total_cost` Numeric(20,4) would round >4dp fractional-share totals on Postgres (SQLite unaffected); revisit if Postgres adopted | `maverick/portfolio/data.py` | deferred |
-| service_ml.py, ensemble.py, and online_learning.py at 499-500/500 line cap; split before next addition | `maverick/backtesting/service_ml.py`, `maverick/backtesting/strategies/ml/ensemble.py`, `maverick/backtesting/strategies/ml/online_learning.py` | deferred |
-| Regime detector fallback overwrites the requested method (`self.method = "threshold"`), so a detector held by `RegimeAwareStrategy` never retries the statistical fit on later, larger data; store the requested method separately and allow a refit | `maverick/backtesting/strategies/ml/regime_detector.py` | deferred |
-| Lock carries pandas 3.0.5 / numpy 2.5.3 / vectorbt 1.1.0 while the floors stay at pandas>=2.3.3 / numpy>=2.2.6 / vectorbt>=1.0.0 and CI installs --frozen, so the floor combination never runs; a floor install also resurfaces numpy's generic-timedelta DeprecationWarning through vectorbt 1.0 | `pyproject.toml` | dependencies |
+| screening change-history (legacy pipeline) not ported; revisit if wanted | `maverick/screening/` | deferred |
+| Every backtest trade's `duration` is `""`: `_extract_trades` reads a `Duration` column that vectorbt 1.x `records_readable` does not have | `maverick/backtesting/engine.py` | backtesting |
+| `get_llm()` always passes `LLM_TEMPERATURE` (default `0.0`) to `ChatAnthropic`; Claude models released after Claude Opus 4.6 accept only `1.0` and return a 400 for any other value, so research and `backtesting_parse_strategy` fail on them unless the user sets `LLM_TEMPERATURE=1.0` | `maverick/platform/llm.py` | research |
+| `server.json`'s `oci` package declares `stdio` transport, but the image's default command serves Streamable HTTP on `0.0.0.0:8000` | repo root, `Dockerfile` | distribution |

@@ -58,8 +58,8 @@ Each domain follows the same forward-only layer order: `types.py` ->
 enter only through `platform/`.
 
 - `market_data/`: quote/history/fundamentals/market-overview reads, backed
-  by `yfinance` (no API key required) with an optional Capital Companion
-  tier and a finviz fallback for market movers.
+  by `yfinance` (no API key required). Market movers come from finviz,
+  falling back to a `yfinance` batch scan.
 - `technical/`: RSI, MACD, support/resistance, and full technical analysis
   built on `market_data`'s price history.
 - `screening/`: Maverick bullish, bearish, and supply/demand screens;
@@ -71,7 +71,8 @@ enter only through `platform/`.
   rule-based strategy templates plus 8 ML strategy classes, optimization,
   walk-forward analysis, and Monte Carlo simulation.
 - `research/` (`[research]` extra): a sequential LangGraph workflow --
-  plan, search via Exa, validate/score sources, synthesize with a BYOK LLM.
+  plan, search via Exa or SearXNG (`RESEARCH_SEARCH_BACKEND`),
+  validate/score sources, synthesize with a BYOK LLM.
 
 Extras degrade gracefully: with `[backtesting]`/`[research]` not installed,
 each domain's `tools.register()` logs one warning and registers zero tools
@@ -90,8 +91,8 @@ rationale):
    every other domain's is lazy via `ensure_schema`).
 3. `ScreeningService`, `PortfolioService`, and `TechnicalService` each
    receive that one `MarketDataService` instance.
-4. `JournalService` is portfolio's standalone sibling (its own engine, own
-   tables), wired into `portfolio.tools.configure`'s optional
+4. `JournalService` is portfolio's standalone sibling (the shared engine,
+   its own tables), wired into `portfolio.tools.configure`'s optional
    `journal_service` parameter.
 5. `BacktestingService`/`ResearchService` are constructed, and their
    heavy-dependency modules imported, only when their extras are installed.
@@ -115,7 +116,8 @@ every domain in the import graph.
   of the default portfolio.
 
 Every tool declares `readOnlyHint: true` unless it mutates state (adding,
-removing, or clearing positions/watchlists/journal entries). Text fetched
+removing, or clearing positions/watchlists/journal entries, recomputing a
+screen, or clearing the quote cache). Text fetched
 from third parties (news, search results) is untrusted input and is
 returned to the client labeled as data, never blended into instructions.
 
@@ -125,18 +127,22 @@ returned to the client labeled as data, never blended into instructions.
 - PostgreSQL is supported via `DATABASE_URL`/`POSTGRES_URL` for larger local
   datasets.
 - Every domain that owns tables calls `platform.db.ensure_schema`, which
-  creates missing tables idempotently on first use. There is no migration
-  framework (Alembic was legacy-only and did not carry over); schema
-  changes are additive `create_all` calls.
-- Redis is optional (`REDIS_HOST` presence enables it); the cache falls back
-  to an in-memory tier, then SQLite, when Redis is unavailable or disabled.
+  creates missing tables, and adds missing nullable columns to existing
+  ones, idempotently on first use. There is no migration framework (Alembic
+  was legacy-only and did not carry over); schema changes are additive
+  (`create_all` plus `ALTER TABLE ... ADD COLUMN`), and a missing
+  non-nullable or constrained column is skipped with a warning.
+- Redis is optional (`REDIS_HOST` presence enables it). With Redis disabled
+  the cache runs an in-memory tier, then SQLite; with Redis enabled there is
+  no SQLite tier, and an unreachable Redis degrades to the memory tier alone.
 
 ## MCP Transports
 
 - STDIO is the default and the preferred Claude Desktop path
   (`maverick-mcp --transport stdio` / `python -m maverick.server`).
 - Streamable HTTP at `http://localhost:8003/mcp` is the `make dev`
-  transport for bridge (`mcp-remote`) and remote workflows.
+  transport for clients that speak HTTP natively, the `mcp-remote` bridge,
+  and remote workflows.
 - SSE does not exist in the new server; it was deleted at the v1.0.0
   cutover along with its monkey-patches.
 
@@ -146,7 +152,7 @@ See `docs/runbooks/mcp-clients.md` for concrete client configuration.
 
 The `docs/superpowers/` folder, and the completed plans under
 `docs/exec-plans/completed/`, contain historical planning and migration context
-from the v1.0 rebuild. The modernization design doc and the active plan stay
+from the v1.0 rebuild. The modernization design doc and the active plans stay
 `current` in `docs/CATALOG.md`. They explain why the domains are
 shaped the way they are, but the current source of truth starts at
 `docs/INDEX.md` and this file.

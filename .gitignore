@@ -80,3 +80,8 @@ ta-lib-0.4.0-src.tar.gz
 .claude/
 data/
 .superpowers/
+
+# Review UI backup copies (the review server writes these next to annotations.json)
+evals/tool_surface/runs/*/*.bak
+# Case pointer for the in-session eval subagent (evals/tool_surface/agent_server.py)
+evals/tool_surface/.agent_case.json

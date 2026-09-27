@@ -154,7 +154,7 @@ class StubService:
 @pytest.fixture
 def stub_service():
     stub = StubService()
-    tools.configure(stub)
+    tools.configure(stub)  # ty: ignore[invalid-argument-type]  # duck-typed stub
     yield stub
 
 
@@ -185,6 +185,7 @@ async def test_register_marks_every_tool_read_only_and_open_world(stub_service):
 
     for name in _EXPECTED_TOOL_NAMES:
         tool = await mcp.get_tool(name)
+        assert tool is not None
         assert tool.annotations is not None
         assert tool.annotations.read_only_hint is True
         assert tool.annotations.open_world_hint is True
@@ -199,7 +200,7 @@ async def test_research_run_comprehensive_unconfigured_returns_error_payload():
     # Explicit reset: another test's `stub_service` fixture may have already configured the
     # module-level service, and it is not torn down automatically (matches
     # tests/backtesting/test_tools.py's `test_unconfigured_service_returns_configure_error_payload`).
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     payload = await tools.research_run_comprehensive("AAPL outlook")
 
@@ -210,7 +211,7 @@ async def test_research_run_comprehensive_unconfigured_returns_error_payload():
 
 
 async def test_research_analyze_company_unconfigured_returns_error_payload():
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     payload = await tools.research_analyze_company("AAPL")
 
@@ -219,7 +220,7 @@ async def test_research_analyze_company_unconfigured_returns_error_payload():
 
 
 async def test_research_analyze_sentiment_unconfigured_returns_error_payload():
-    tools.configure(None)  # type: ignore[arg-type]
+    tools.configure(None)  # ty: ignore[invalid-argument-type]  # reset to unconfigured
 
     payload = await tools.research_analyze_sentiment("semiconductors")
 

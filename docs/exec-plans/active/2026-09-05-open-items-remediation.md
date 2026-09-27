@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Python 3.12 or later. Ruff formatting and linting with line length 88. Domain layering `types -> config -> data -> service -> tools`; run `uv run lint-imports` after touching imports.
-- The full gate for any code change is `make check` (ruff check, ruff format check, import contracts, `ty check maverick`) followed by `uv run pytest --timeout=60`. The suite includes `tests/structure`, which enforces a 500-line cap on every file under `maverick/`, forbids `os.getenv`/`os.environ` outside `config.py` files and `maverick/platform/`, and requires snake_case module names.
+- The full gate for any code change is `make check` (ruff check, ruff format check, import contracts, `ty check maverick tests`) followed by `uv run pytest --timeout=60`. The suite includes `tests/structure`, which enforces a 500-line cap on every file under `maverick/`, forbids `os.getenv`/`os.environ` outside `config.py` files and `maverick/platform/`, and requires snake_case module names.
 - `make docs-check` after adding, moving, or deleting any Markdown or text doc; every new doc needs a row in `docs/CATALOG.md`.
 - No live network calls in unit tests.
 - `Decimal` for financial arithmetic (nothing in this plan changes financial arithmetic).
@@ -2674,6 +2674,8 @@ Deviations and lessons from executing Tasks 1 to 21 inline in one session.
 14. **Task 24 outcome.** Done in pieces as the workstreams closed (the vault lives outside this repo, so nothing to diff here): project page entries for the sweep, the FastMCP 4 migration, the SearXNG backend, and the v1.1.0 publish attempt; both decision records plus a third, `2026-09-05-pypi-name-claim-over-rename`; people pages for A1-NWS-Dev1 and josephur; the TODO open loop, reworded after the PyPI finding to point at the PEP 541 request and its watcher routine instead of a pending-publisher setup; one changelog line per write.
 
 Merged this session: #255, #256, #242, #243, #244, #248, #250, #251, #252, #253, #257, #258, #259, #260, #261, #262, #263. Closed: #241, #254, #245, #246, #247, #186, #249. Open by design: #235 (upstream tracker). Owner-gated and not started: Tasks 22 and 23.
+
+2026-09-26 (status addendum): #235 closed on 2026-09-26, so it is no longer open by design. Task 22 is partly done, as item 13 records: the tag, the GitHub release, and the GHCR image exist, and the PyPI step waits on pypi/support#12150, which has had no action since 2026-09-05. Task 23 has not started (the Docker catalog draft still pins the v1.0.0 commit). Since this session, #272 (circuit breaker stuck half-open after a cancelled probe) and its draft fix PR #273 have opened, so Task 25's exit criteria do not hold yet. The plan stays active.
 
 ## Spec coverage
 

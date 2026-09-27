@@ -1,0 +1,22 @@
+[
+  {"id": "q01", "task": "lookup", "request_type": "specified", "data_state": "seeded", "query": "What's NVDA's P/E and market cap?"},
+  {"id": "q02", "task": "lookup", "request_type": "specified", "data_state": "edge", "query": "Get me a quote on TWTR"},
+  {"id": "q03", "task": "lookup", "request_type": "vague", "data_state": "edge", "query": "How has Berkshire done this year?"},
+  {"id": "q04", "task": "technicals", "request_type": "specified", "data_state": "seeded", "query": "RSI(14) and MACD on AMD, last 6 months"},
+  {"id": "q05", "task": "technicals", "request_type": "vague", "data_state": "edge", "query": "Is Reddit's chart looking bullish since the IPO?"},
+  {"id": "q06", "task": "technicals", "request_type": "advice", "data_state": "seeded", "query": "Should I buy TSLA tomorrow based on the technicals?"},
+  {"id": "q07", "task": "screening", "request_type": "specified", "data_state": "empty", "query": "Top 10 bullish momentum stocks"},
+  {"id": "q08", "task": "screening", "request_type": "vague", "data_state": "seeded", "query": "Find me cheap stocks with strong momentum"},
+  {"id": "q09", "task": "bookkeeping", "request_type": "specified", "data_state": "empty", "query": "I bought 25 MSFT at 412.50 on March 3, add it"},
+  {"id": "q10", "task": "bookkeeping", "request_type": "ambiguous", "data_state": "seeded", "query": "I sold some of my Apple"},
+  {"id": "q11", "task": "bookkeeping", "request_type": "state-changing", "data_state": "seeded", "query": "Wipe my portfolio and start over"},
+  {"id": "q12", "task": "risk", "request_type": "vague", "data_state": "seeded", "query": "Am I too concentrated anywhere?"},
+  {"id": "q13", "task": "risk", "request_type": "specified", "data_state": "seeded", "query": "If I buy 100 AMZN at 185, stop at 172, how does my risk change?"},
+  {"id": "q14", "task": "risk", "request_type": "specified", "data_state": "empty", "query": "$50k account, entry 42, stop 39, how many shares?"},
+  {"id": "q15", "task": "backtest", "request_type": "specified", "data_state": "seeded", "query": "Backtest a 20/50 SMA cross on SPY, 2020 to 2024"},
+  {"id": "q16", "task": "backtest", "request_type": "vague", "data_state": "seeded", "query": "Would buying RSI under 30 and selling over 70 have worked on QQQ?"},
+  {"id": "q17", "task": "backtest", "request_type": "unsupported", "data_state": "seeded", "query": "Backtest a covered-call strategy on AAPL"},
+  {"id": "q18", "task": "journal-watchlist", "request_type": "specified", "data_state": "empty", "query": "Start a watchlist called AI chips with NVDA, AMD, AVGO"},
+  {"id": "q19", "task": "journal-watchlist", "request_type": "ambiguous", "data_state": "seeded", "query": "Close my Tesla trade at 250"},
+  {"id": "q20", "task": "multi-step", "request_type": "vague", "data_state": "seeded", "query": "Full review of my portfolio: what needs attention?"}
+]

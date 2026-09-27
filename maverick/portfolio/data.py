@@ -3,11 +3,16 @@
 No math lives here -- these functions store and retrieve exactly what the
 ledger computed. Two conventions worth calling out:
 
-* Decimal round-trip exactness: `shares`/`average_cost_basis`/`total_cost`
-  are bound and read back explicitly via `Decimal(str(...))` rather than
-  relying on the driver's native Decimal handling, so the 8/4/4-place
-  precision the columns declare survives a write-then-read cycle exactly,
-  independent of backend.
+* Decimal precision: the ledger rounds every position to `SHARES_SCALE`
+  and `COST_SCALE` (`types.py`), and the columns below declare the same
+  scales, so a write-then-read returns what the ledger computed. The
+  `Decimal(str(...))` wrapping here does not set precision; the backend
+  does. Postgres binds and returns `Decimal` natively and stores NUMERIC
+  exactly. SQLite has no decimal type: SQLAlchemy binds a float and reads it
+  back formatted to the column's scale. That is exact up to 15 significant
+  digits (shares below 10,000,000; costs below 100,000,000,000). Do not
+  widen a scale for SQLite: a 12-place read of a float shows noise
+  (12345.6789 reads back as 12345.678900000001).
 * `purchase_date` is an opaque ISO 8601 string on `PositionPayload` (see
   `ledger.py`), but the column is a real `DateTime(timezone=True)`. SQLite
   (this project's only tested backend) drops tzinfo on read, so writes
@@ -46,7 +51,7 @@ from sqlalchemy import (
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from maverick.portfolio.types import PositionPayload
+from maverick.portfolio.types import COST_SCALE, SHARES_SCALE, PositionPayload
 
 METADATA = MetaData()
 
@@ -71,9 +76,9 @@ PF_POSITIONS = Table(
         index=True,
     ),
     Column("ticker", String(20), nullable=False, index=True),
-    Column("shares", Numeric(20, 8), nullable=False),
-    Column("average_cost_basis", Numeric(12, 4), nullable=False),
-    Column("total_cost", Numeric(20, 4), nullable=False),
+    Column("shares", Numeric(20, SHARES_SCALE), nullable=False),
+    Column("average_cost_basis", Numeric(12, COST_SCALE), nullable=False),
+    Column("total_cost", Numeric(20, COST_SCALE), nullable=False),
     Column("purchase_date", DateTime(timezone=True), nullable=False),
     Column("notes", Text, nullable=True),
     Column("sector", String(100), nullable=True),

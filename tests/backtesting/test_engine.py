@@ -21,6 +21,8 @@ per the task's characterization-testing brief. A change to this module's
 math should change these numbers and fail the test; that is the point.
 """
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -42,12 +44,12 @@ def _sma_cross_signals(
     `run_backtest`/`optimize_parameters` without depending on
     `strategies/templates.py` (Task 5)."""
     close = frame["close"]
-    fast = vbt.MA.run(
-        close, params.get("fast_period", 10), short_name="fast"
-    ).ma.squeeze()
-    slow = vbt.MA.run(
-        close, params.get("slow_period", 20), short_name="slow"
-    ).ma.squeeze()
+    # vectorbt builds its indicator classes at runtime, so `run()` has no
+    # useful static type (same annotation as `strategies/signals.py`).
+    fast_ma: Any = vbt.MA.run(close, params.get("fast_period", 10), short_name="fast")
+    slow_ma: Any = vbt.MA.run(close, params.get("slow_period", 20), short_name="slow")
+    fast = fast_ma.ma.squeeze()
+    slow = slow_ma.ma.squeeze()
     entries = (fast > slow) & (fast.shift(1) <= slow.shift(1))
     exits = (fast < slow) & (fast.shift(1) >= slow.shift(1))
     return entries.fillna(False), exits.fillna(False)
@@ -194,7 +196,7 @@ def test_optimize_parameters_pins_best_result(ohlcv_frame):
     assert best_row.total_trades == 12
     # Dynamic key named after `optimization_metric`, preserved via
     # `OptimizationResultRow`'s `extra="allow"`.
-    assert best_row.sharpe_ratio == pytest.approx(-0.6870859573334221, rel=1e-6)
+    assert best_row.sharpe_ratio == pytest.approx(-0.6870859573334221, rel=1e-6)  # ty: ignore[unresolved-attribute]
 
 
 def test_optimize_parameters_no_slippage_differs_from_run_backtest(ohlcv_frame):

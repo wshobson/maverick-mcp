@@ -1,6 +1,6 @@
 """Public API of the research domain, gated behind the optional
-`[research]` extra (langchain, langchain-anthropic, langchain-community,
-langchain-openai, langgraph, exa-py).
+`[research]` extra (langchain-anthropic, langchain-core, langchain-openai,
+langgraph, exa-py).
 
 **The base-install contract.** `import maverick.research` must always
 succeed, with no extra installed, and never print a traceback -- mirroring
@@ -100,7 +100,7 @@ def __getattr__(name: str) -> Any:
     if not research_extra_available():
         raise ImportError(
             f"maverick.research.{name} requires the '[research]' extra "
-            "(langchain, langgraph, exa-py, ...). Install with "
+            "(langchain-core, langgraph, exa-py, ...). Install with "
             "`uv sync --extra research`."
         )
     module_name, attr_name = target

@@ -21,24 +21,16 @@ Status labels:
 | `INDEX.md` | current | docs | Documentation entry point. |
 | `CATALOG.md` | current | docs | Inventory and cleanup state. |
 | `../ARCHITECTURE.md` | current | engineering | Package layout and system boundaries. Root-level entry point alongside `AGENTS.md`. |
+| `../evals/tool_surface/README.md` | current | engineering | Tool-surface traces: an in-session Claude Code subagent runs fixed cases on the Maverick tools for error analysis, no scoring. |
+| `../evals/tool_surface/agent/maverick-eval-client.md` | current | engineering | Claude Code subagent definition for in-session eval traces; `make eval-agent-install` copies it into `.claude/agents/`. |
 | `design-docs/2026-07-18-mcp-modernization.md` | current | engineering | Approved v1.0 modernization design and migration plan. |
 | `design-docs/2026-09-05-open-items-remediation.md` | current | engineering | Approved design for the 2026-09 open-items remediation, FastMCP 4 migration, and SearXNG research backend. |
 | `design-docs/2026-09-13-pandas-ta-removal.md` | current | engineering | Approved design for removing pandas-ta and moving numpy, numba, pandas, and vectorbt. |
-| `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | current | engineering | Phase 0 execution plan (harness scaffold and cleanup). |
-| `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | current | engineering | Phase 1 execution plan (platform seam). |
-| `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` | current | engineering | Phase 2 execution plan (market data domain). |
-| `exec-plans/completed/2026-07-19-phase-3-screening-domain.md` | current | engineering | Phase 3 execution plan (screening domain and technical core). |
-| `exec-plans/completed/2026-07-19-phase-4-portfolio-domain.md` | current | engineering | Phase 4 execution plan (portfolio domain). |
-| `exec-plans/completed/2026-07-19-phase-5-technical-domain.md` | current | engineering | Phase 5 execution plan (technical domain completion). |
-| `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` | current | engineering | Phase 6 execution plan (backtesting extra). |
-| `exec-plans/completed/2026-07-20-phase-7-research-extra.md` | current | engineering | Phase 7 execution plan (research extra). |
-| `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` | current | engineering | Phase 8 execution plan (server assembly and cutover). |
-| `exec-plans/completed/2026-09-13-pandas-ta-removal.md` | current | engineering | Execution plan for the pandas-ta removal (4 tasks: feature engineering, dependency drop, pandas 3, bookkeeping). |
 | `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
 | `exec-plans/active/2026-09-05-open-items-remediation.md` | current | engineering | Execution plan for the 2026-09 open-items remediation (25 tasks: triage, contributor fixes, deps, FastMCP 4, SearXNG, v1.1.0). |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
-| `product-specs/index.md` | current | product | Product spec index, empty until the tool surface is curated. |
-| `generated/README.md` | current | docs | Marker for script-generated docs. |
+| `product-specs/index.md` | current | product | Product spec index; no specs written yet. |
+| `generated/README.md` | current | docs | Describes `generated/`: hand-written registry drafts and release notes. |
 | `generated/registry/README.md` | current | docs | Index of registry submission drafts (Phase 9 Task 3). |
 | `generated/registry/docker-mcp-catalog.md` | current | docs | Docker MCP Catalog PR draft (server.yaml + PR body). |
 | `generated/registry/glama.md` | current | docs | Glama submission draft. |
@@ -52,23 +44,32 @@ Status labels:
 | `api/backtesting.md` | current | engineering | Backtesting API reference. |
 | `features/portfolio.md` | current | product/engineering | Portfolio persistence and cost-basis behavior. |
 | `features/deep-research.md` | current | engineering | Research agent behavior and configuration. |
-| `runbooks/mcp-clients.md` | current | operations | Transports and per-client MCP setup (Claude Desktop, Claude Code, VS Code, GitHub Copilot CLI, Codex CLI, Cursor, OpenCode, Antigravity CLI). Config verified against vendor docs and live CLIs 2026-08-22. |
+| `runbooks/mcp-clients.md` | current | operations | Transports and per-client MCP setup (Claude Desktop, Claude Code, VS Code, GitHub Copilot CLI, Codex CLI, Cursor, OpenCode, Antigravity CLI). Config verified against vendor docs and live CLIs 2026-09-26. |
 | `runbooks/database-setup.md` | current | operations | Database setup and schema creation (no migrations). |
 | `runbooks/self-contained-setup.md` | current | operations | Full local setup. |
 | `runbooks/migrating-to-v1.md` | current | operations | Config/database migration guide from pre-v1.0 installs. |
 | `runbooks/releasing.md` | current | operations | Owner-run publish sequence: PyPI, official MCP Registry, GHCR, third-party registries, `.mcpb` release asset. |
 | `testing/README.md` | current | engineering | Canonical test commands and marker policy. |
 | `testing/in-memory.md` | current | engineering | FastMCP in-memory test patterns. |
-| `testing/integration.md` | current | engineering | Integration test guidance. |
 | `testing/exa-research.md` | current | engineering | Exa/research provider test strategy. |
-| `testing/speed.md` | current | engineering | Research speed validation. |
 | `references/llm-documentation-hygiene.md` | current | docs | Agent-legible documentation rules. |
 
 ## Historical
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `superpowers/` | historical | Historical specs and plans. Current plans should live under `docs/plans/` or a new approved plan location. |
+| `superpowers/` | historical | Historical specs and plans. Current designs live under `design-docs/` and execution plans under `exec-plans/active/`. |
+| `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | historical | Phase 0 execution plan (harness scaffold and cleanup). |
+| `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | historical | Phase 1 execution plan (platform seam). |
+| `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` | historical | Phase 2 execution plan (market data domain). |
+| `exec-plans/completed/2026-07-19-phase-3-screening-domain.md` | historical | Phase 3 execution plan (screening domain and technical core). |
+| `exec-plans/completed/2026-07-19-phase-4-portfolio-domain.md` | historical | Phase 4 execution plan (portfolio domain). |
+| `exec-plans/completed/2026-07-19-phase-5-technical-domain.md` | historical | Phase 5 execution plan (technical domain completion). |
+| `exec-plans/completed/2026-07-19-phase-6-backtesting-extra.md` | historical | Phase 6 execution plan (backtesting extra). |
+| `exec-plans/completed/2026-07-20-phase-7-research-extra.md` | historical | Phase 7 execution plan (research extra). |
+| `exec-plans/completed/2026-07-20-phase-8-server-cutover.md` | historical | Phase 8 execution plan (server assembly and cutover). |
+| `exec-plans/completed/2026-09-13-pandas-ta-removal.md` | historical | Execution plan for the pandas-ta removal (4 tasks: feature engineering, dependency drop, pandas 3, bookkeeping). |
+| `exec-plans/completed/2026-09-26-tech-debt-sweep.md` | historical | Completed plan for the 2026-09-26 tech-debt sweep (unused dependencies, tracker items, Claude workflows on Opus 5.5; PRs #283 to #288). |
 
 ## Deleted Or Consolidated
 
@@ -83,11 +84,11 @@ Status labels:
 | `SETUP_SELF_CONTAINED.md` | deleted | `runbooks/self-contained-setup.md` |
 | `deep_research_agent.md` | deleted | `features/deep-research.md` |
 | `exa_research_testing_strategy.md` | deleted | `testing/exa-research.md` |
-| `speed_testing_framework.md` | deleted | `testing/speed.md` |
+| `speed_testing_framework.md` | deleted | `testing/README.md` |
 | `../scripts/INSTALLATION_GUIDE.md` | deleted | `runbooks/migrating-to-v1.md` |
 | `../scripts/README_TIINGO_LOADER.md` | deleted | `runbooks/migrating-to-v1.md` |
 | `../tests/README.md` | deleted | `testing/README.md` |
-| `../tests/integration/README.md` | deleted | `testing/integration.md` |
+| `../tests/integration/README.md` | deleted | `testing/README.md` |
 | `../maverick_mcp/tests/README_INMEMORY_TESTS.md` | deleted | `testing/in-memory.md` |
 | `../maverick_mcp/README.md` | deleted | `../ARCHITECTURE.md` |
 | `runbooks/tiingo-loader.md` | deleted | `runbooks/migrating-to-v1.md`; the Tiingo bulk data loader and its scripts were removed at the v1.0.0 cutover (`maverick_mcp` deletion). Market data now comes from `yfinance` with no API key required. |
@@ -96,6 +97,8 @@ Status labels:
 | `ARCHITECTURE.md` | deleted | `../ARCHITECTURE.md`; moved to the repository root so the architecture map sits beside `AGENTS.md` as a top-level entry point. |
 | `../GEMINI.md` | deleted | `../AGENTS.md`; it was a pure pointer with no unique content. |
 | `../CLAUDE.md` (regular file) | deleted | Replaced by a symlink to `../AGENTS.md`. Its unique rules were folded into `AGENTS.md` so there is one agent entry point. |
+| `testing/integration.md` | deleted | `testing/README.md`; no integration-marked tests or `tests/integration/` directory exist, so its remaining facts moved into the testing guide. |
+| `testing/speed.md` | deleted | `testing/README.md`; the speed benchmark targets and script it documented no longer exist, so its remaining timeout facts moved into the testing guide. |
 
 ## Allowlisted Non-Documentation Text
 

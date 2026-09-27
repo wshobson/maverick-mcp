@@ -1,0 +1,86 @@
+{
+  "case": {
+    "id": "q13",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "If I buy 100 AMZN at 185, stop at 172, how does my risk change?"
+  },
+  "model": "claude-opus-5-5",
+  "system_prompt": "You are connected to the Maverick MCP server, which provides stock analysis tools.",
+  "wall_seconds": 20.98,
+  "maverick_git_sha": "dd1782d04d7c7912b04b6c1b96bb97c4bf2e26f9",
+  "timestamp": "2026-09-26T15:01:20.246212+00:00",
+  "cli_stderr": [],
+  "apiKeySource": "none",
+  "messages": [
+    {
+      "type": "tool_call",
+      "id": "toolu_01Exr1u4i3hP3gSvSvdQK5b8",
+      "name": "mcp__maverick__portfolio_check_position_risk",
+      "arguments": {
+        "ticker": "AMZN",
+        "shares": 100,
+        "entry_price": 185
+      },
+      "result": "{\"current\":{\"total_value\":82904.8,\"sector_concentration\":{\"Technology\":0.7183,\"Financial Services\":0.1655,\"Energy\":0.1162},\"max_sector_pct\":0.7183,\"portfolio_var_95\":1291.6,\"portfolio_var_99\":1826.29,\"total_pnl\":28289.8,\"position_count\":5},\"projected\":{\"total_value\":101404.8,\"sector_concentration\":{\"Technology\":0.5872,\"Financial Services\":0.1353,\"Energy\":0.095,\"Consumer Cyclical\":0.1824},\"max_sector_pct\":0.5872,\"portfolio_var_95\":1427.82,\"portfolio_var_99\":2018.91,\"total_pnl\":28289.8,\"position_count\":6},\"new_position\":{\"ticker\":\"AMZN\",\"shares\":100,\"price\":185,\"position_value\":18500,\"pct_of_projected_portfolio\":0.1824},\"status\":\"success\",\"portfolio_name\":\"My Portfolio\"}",
+      "is_error": false
+    },
+    {
+      "type": "tool_call",
+      "id": "toolu_014j7yVRK16MmGptEKdakWfP",
+      "name": "mcp__maverick__portfolio_get_regime_adjusted_sizing",
+      "arguments": {
+        "account_size": 100000,
+        "entry_price": 185,
+        "stop_loss": 172
+      },
+      "result": "{\"shares\":115,\"position_value\":21275,\"risk_amount\":1500,\"regime_multiplier\":0.75,\"adjusted_risk_pct\":1.5,\"regime\":\"transitional\",\"status\":\"success\"}",
+      "is_error": false
+    },
+    {
+      "type": "text",
+      "text": "Buying 100 AMZN at $185 with a $172 stop mostly spreads your risk out. Your overall risk goes up a little, and your heavy tilt toward technology drops quite a bit.\n\n**Your portfolio before and after the buy**\n\n| | Now | With AMZN |\n|---|---|---|\n| Total value | $82,905 | $101,405 |\n| Positions | 5 | 6 |\n| Largest sector (Technology) | **71.8%** | **58.7%** |\n| One-day loss at 95% confidence | $1,292 (1.56%) | $1,428 (1.41%) |\n| One-day loss at 99% confidence | $1,826 (2.20%) | $2,019 (1.99%) |\n\n**What changes**\n- **Less concentration.** Your data provider classifies AMZN as Consumer Cyclical, not Technology. So adding it cuts Technology from 72% to 59% and adds a fourth sector at 18.2%.\n- **Your expected worst day grows less than the portfolio.** The 95% one-day loss estimate rises by about $136 (+10.5%), while your money at work rises 22%. As a share of the portfolio, it goes down.\n- **This one trade:** 100 \u00d7 ($185 \u2212 $172) = **$1,300 lost if the stop is hit**. That's about 1.57% of your current $82.9k, or 1.28% of the combined $101.4k. The stop is 7% below your entry. A price gap past $172 could make the loss bigger.\n\n**Position size**\nThe sizing tool rates the market as \"transitional\" (not clearly rising or falling). It cuts a normal 2% risk to **1.5%** for that reason. I ran the tool on an assumed $100k account, then redid the math for your actual $82.9k: 1.5% is about $1,244 of risk, which works out to **about 95 shares**. At 100 shares you'd be slightly over, risking $1,300 instead of about $1,244. That's close enough that you could trim to 95 shares or keep 100.\n\n**Caveats**\n- The \"after\" numbers assume you add $18,500 in new money. If you sell current holdings to pay for it, the concentration and loss estimates would come out differently.\n- The one-day loss estimates assume normal-shaped returns, so they don't include a price gap past your stop.\n- AMZN is still a large company whose price moves a lot with big tech, so you'll diversify less in practice than the sector labels suggest. I can run a correlation check against your current holdings if you want to see how much."
+    }
+  ],
+  "final_answer": "Buying 100 AMZN at $185 with a $172 stop mostly spreads your risk out. Your overall risk goes up a little, and your heavy tilt toward technology drops quite a bit.\n\n**Your portfolio before and after the buy**\n\n| | Now | With AMZN |\n|---|---|---|\n| Total value | $82,905 | $101,405 |\n| Positions | 5 | 6 |\n| Largest sector (Technology) | **71.8%** | **58.7%** |\n| One-day loss at 95% confidence | $1,292 (1.56%) | $1,428 (1.41%) |\n| One-day loss at 99% confidence | $1,826 (2.20%) | $2,019 (1.99%) |\n\n**What changes**\n- **Less concentration.** Your data provider classifies AMZN as Consumer Cyclical, not Technology. So adding it cuts Technology from 72% to 59% and adds a fourth sector at 18.2%.\n- **Your expected worst day grows less than the portfolio.** The 95% one-day loss estimate rises by about $136 (+10.5%), while your money at work rises 22%. As a share of the portfolio, it goes down.\n- **This one trade:** 100 \u00d7 ($185 \u2212 $172) = **$1,300 lost if the stop is hit**. That's about 1.57% of your current $82.9k, or 1.28% of the combined $101.4k. The stop is 7% below your entry. A price gap past $172 could make the loss bigger.\n\n**Position size**\nThe sizing tool rates the market as \"transitional\" (not clearly rising or falling). It cuts a normal 2% risk to **1.5%** for that reason. I ran the tool on an assumed $100k account, then redid the math for your actual $82.9k: 1.5% is about $1,244 of risk, which works out to **about 95 shares**. At 100 shares you'd be slightly over, risking $1,300 instead of about $1,244. That's close enough that you could trim to 95 shares or keep 100.\n\n**Caveats**\n- The \"after\" numbers assume you add $18,500 in new money. If you sell current holdings to pay for it, the concentration and loss estimates would come out differently.\n- The one-day loss estimates assume normal-shaped returns, so they don't include a price gap past your stop.\n- AMZN is still a large company whose price moves a lot with big tech, so you'll diversify less in practice than the sector labels suggest. I can run a correlation check against your current holdings if you want to see how much.",
+  "result_subtype": "success",
+  "is_error": false,
+  "num_turns": 3,
+  "usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 1298,
+    "cache_read_input_tokens": 23614,
+    "output_tokens": 1366,
+    "output_tokens_details": {
+      "thinking_tokens": 310
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 1298,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1133,
+        "cache_read_input_tokens": 12064,
+        "cache_creation_input_tokens": 784,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 784
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "notional_cost_usd": 0.043434799999999996,
+  "permission_denials": [],
+  "duration_ms": 16907
+}

@@ -67,6 +67,9 @@ class MarketRegimeDetector:
                 behavior: the estimator is seeded to 42 and zero-variance
                 noise injection draws from the global `np.random` state.
         """
+        # `requested_method` is what the caller asked for; `method` is the
+        # effective method, which `fit_regimes` may drop to "threshold".
+        self.requested_method = method
         self.method = method
         self.n_regimes = n_regimes
         self.lookback_period = lookback_period
@@ -175,7 +178,9 @@ class MarketRegimeDetector:
         the same threshold method through its own, differently-triggered
         exception handling. `detector.method` (surfaced by
         `analyze_market_regimes`) now honestly reports "threshold" in every
-        such case."""
+        such case. Only the effective `self.method` changes;
+        `self.requested_method` is kept, so the next `fit_regimes` call
+        retries it."""
         logger.warning(f"Falling back to threshold regime method: {reason}")
         self.method = "threshold"
         self.is_fitted = True
@@ -183,9 +188,14 @@ class MarketRegimeDetector:
     def fit_regimes(self, data: DataFrame) -> None:
         """Fit regime detection model to historical data with enhanced robustness.
 
+        Each call starts from `self.requested_method`, so a detector that fell
+        back to "threshold" on an earlier, smaller fit retries its statistical
+        method here.
+
         Args:
             data: Historical price data
         """
+        self.method = self.requested_method
         if self.method == "threshold":
             self.is_fitted = True
             return

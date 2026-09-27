@@ -47,40 +47,16 @@ Welcome to MaverickMCP! We're excited to have you contribute to this open-source
 4. **Start development server**
    ```bash
    make dev
-   # Or: ./scripts/start-backend.sh --dev
    ```
 
 ### Development Commands
 
-- `make dev` - Start everything (recommended)
-- `make test` - Run unit tests (5-10 seconds)
+- `make dev` - Start the server (Streamable HTTP on port 8003)
+- `make test` - Run unit tests (integration/slow/external excluded)
 - `make lint` - Check code quality
 - `make format` - Auto-format code
 - `make typecheck` - Run type checking
-
-### Pre-commit Hooks (Optional but Recommended)
-
-We provide pre-commit hooks to ensure code quality:
-
-```bash
-# Install pre-commit (one time setup)
-pip install pre-commit
-
-# Install hooks for this repository
-pre-commit install
-
-# Run hooks on all files (optional)
-pre-commit run --all-files
-```
-
-Pre-commit hooks will automatically run on every commit and include:
-
-- Code formatting (ruff)
-- Linting (ruff)
-- Security scanning (bandit, safety)
-- Custom financial domain validations
-
-**Note**: Pre-commit hooks are optional for contributors but recommended for maintainers.
+- `make docs-check` - Validate the docs catalog and links (CI runs it)
 
 ## Project Structure
 
@@ -108,7 +84,7 @@ maverick/
 We use pytest with multiple test categories:
 
 ```bash
-# Unit tests only (fast, ~5-10 seconds)
+# Unit tests only (integration/slow/external excluded)
 make test
 
 # All tests including integration
@@ -121,7 +97,7 @@ make test-specific TEST=test_name
 pytest --cov=maverick
 ```
 
-**Note**: Integration tests require PostgreSQL and Redis. They're excluded from CI by default.
+**Note**: Tests marked `integration`, `slow`, or `external` are excluded by default, locally and in CI. `external` tests need real API keys.
 
 ## Code Style
 
@@ -182,7 +158,7 @@ When working with financial logic:
 - [ ] Tests pass (`make test`)
 - [ ] Code is formatted (`make format`)
 - [ ] Type checking passes (`make typecheck`)
-- [ ] Pre-commit hooks pass (`pre-commit run --all-files`)
+- [ ] Lint and docs checks pass (`make lint`, `make docs-check`)
 - [ ] Documentation is updated
 - [ ] Financial calculations are validated
 - [ ] No hardcoded secrets or credentials
@@ -265,7 +241,7 @@ Include:
 - **Educational Purpose**: All financial calculations and analysis tools must be clearly marked as educational
 - **No Investment Advice**: Never include language that could be construed as investment recommendations
 - **Disclaimer Requirements**: Include appropriate disclaimers in docstrings for financial functions
-- **Data Attribution**: Properly attribute data sources (Tiingo, Yahoo Finance, FRED, etc.)
+- **Data Attribution**: Properly attribute data sources (Yahoo Finance, finviz, Exa, etc.)
 - **Risk Warnings**: Include risk warnings in documentation for portfolio and trading-related features
 - **Regulatory Awareness**: Be mindful of securities regulations (SEC, CFTC, international equivalents)
 
@@ -292,10 +268,10 @@ def calculate_risk_metric(data: pd.DataFrame) -> float:
 
 ### Domain-Driven Design
 
-- **Domain layer** - Pure business logic, no external dependencies
-- **Application layer** - Use cases and orchestration
-- **Infrastructure layer** - Database, APIs, external services
-- **API layer** - HTTP handlers, validation, serialization
+- **Layer order** - Each domain imports forward only: `types.py` -> `config.py` -> `data.py` -> `service.py` -> `tools.py`; `uv run lint-imports` enforces it
+- **Platform seam** - Database, cache, HTTP, logging, and the BYOK LLM come only through `maverick/platform/`
+- **Environment** - Env vars are read only in `maverick/platform/` and each domain's `config.py`
+- **Tools layer** - MCP tool registration and response payloads
 
 ### MCP Integration
 
@@ -327,7 +303,6 @@ MaverickMCP follows the [Contributor Covenant Code of Conduct](https://www.contr
 
 Contributors are recognized in multiple ways:
 
-- **CHANGELOG.md** - All contributors listed in release notes
 - **GitHub contributors** - Automatic recognition via commits
 - **Special mentions** - Outstanding contributions highlighted in README
 - **Hall of Fame** - Major contributors featured in documentation
@@ -336,11 +311,10 @@ Contributors are recognized in multiple ways:
 
 Our CI/CD pipeline ensures code quality:
 
-- **Automated testing** - All PRs run comprehensive test suites
-- **Security scanning** - Automated vulnerability detection
-- **Code quality checks** - Linting, formatting, and type checking
-- **Performance testing** - Benchmark validation on PRs
-- **Documentation validation** - Ensures docs stay current
+- **Automated testing** - All PRs run the unit test suite
+- **Dependency security** - Dependabot opens weekly `uv` lock updates, and GitHub alerts on vulnerable dependencies
+- **Code quality checks** - Linting, formatting, import contracts, and type checking
+- **Documentation validation** - The docs catalog and relative links are checked
 
 ### Current Architecture (Simplified for Personal Use)
 
@@ -348,7 +322,7 @@ MaverickMCP has been cleaned up and simplified:
 
 - **No Complex Auth**: Removed enterprise JWT/OAuth systems for simplicity
 - **No Billing System**: Personal-use focused, no subscription management
-- **Local First**: Designed to run locally with Claude Desktop
+- **Local First**: Designed to run locally with any MCP client
 - **Educational Focus**: Built for learning and personal financial analysis
 - **Clean Dependencies**: Removed unnecessary enterprise features
 
@@ -368,11 +342,11 @@ By contributing, you agree that your contributions will be licensed under the MI
 - All financial calculations should include appropriate disclaimers and risk warnings
 - Data accuracy cannot be guaranteed and users must verify information independently
 
-Contributors should review the full financial disclaimer in the LICENSE file and README.md.
+Contributors should review the full financial disclaimer in README.md.
 
 ## Recognition
 
-Contributors will be acknowledged in our CHANGELOG and can be featured in project documentation. We appreciate all contributions, from code to documentation to issue reports!
+Contributors will be acknowledged in GitHub release notes and can be featured in project documentation. We appreciate all contributions, from code to documentation to issue reports!
 
 ---
 

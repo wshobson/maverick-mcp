@@ -28,7 +28,7 @@ Describe what you're working on or what you want to achieve.
 **System Information:**
 - OS: [e.g., macOS, Linux, Windows]
 - Python version: [if relevant]
-- Installation method: [uv, pip, docker]
+- Installation method: [uvx from release tag, Docker (GHCR), from source]
 
 ## What You've Tried
 
@@ -36,7 +36,7 @@ Describe what you're working on or what you want to achieve.
 - [ ] Checked documentation
 - [ ] Searched existing issues
 - [ ] Looked at code examples
-- [ ] Tried the Claude Desktop setup guide
+- [ ] Tried the MCP client setup guide (`docs/runbooks/mcp-clients.md`)
 
 **Attempted solutions:**
 Describe what you've already tried.
@@ -60,7 +60,7 @@ Describe what you've already tried.
 - [ ] Stock screening strategies
 - [ ] Portfolio analysis
 - [ ] Performance optimization
-- [ ] Integration with Claude Desktop
+- [ ] Integration with an MCP client (Claude Desktop, Claude Code, Cursor, etc.)
 - [ ] Contributing to the project
 - [ ] Architecture and design
 - [ ] Error troubleshooting

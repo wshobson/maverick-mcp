@@ -10,33 +10,27 @@ dependencies = [
     # depends on httpx, and maverick/platform/http.py imports it directly,
     # so the httpx pin below is load-bearing.
     "fastmcp>=4.0.3",
-    "uvicorn>=0.48.0",
-    "python-multipart>=0.0.31",
-    "aiofiles>=25.1.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.2.2",
-    "anthropic>=0.104.1",
-    "openai>=2.38.0",
-    # Database and caching
-    "sqlalchemy>=2.0.50",
+    # Every domain's config.py and types.py imports pydantic directly.
+    "pydantic>=2.13.4",
+    # Database and caching. SQLAlchemy loads the drivers by URL scheme:
+    # psycopg2 for the sync `postgresql://` engine, and
+    # maverick/platform/db.py rewrites URLs to `sqlite+aiosqlite` and
+    # `postgresql+asyncpg` for the async engine. The `asyncio` extra pulls
+    # greenlet on every platform; SQLAlchemy's own requirement skips it on
+    # macOS arm64. redis-py loads hiredis at runtime when it is installed.
+    "sqlalchemy[asyncio]>=2.0.50",
     "psycopg2-binary>=2.9.12",
     "aiosqlite>=0.22.1",
     "asyncpg>=0.31.0",
-    "greenlet>=3.5.1",
-    "redis>=8.0.1",
-    "hiredis>=3.4.1",
+    "redis[hiredis]>=8.0.1",
     "msgpack>=1.2.1",
-    "certifi>=2026.5.20",
     # Financial data and analysis (core)
-    "numpy>=2.2.6",
-    "pandas>=2.3.3",
+    "numpy>=2.5.3",
+    "pandas>=3.0.5",
     "yfinance>=1.4.0",
     "finvizfinance>=1.3.0",
-    "pytz>=2026.2",
-    # Security (basic cryptography for data security)
-    "cryptography>=50.0.0",
-    # System monitoring (basic)
-    "psutil>=7.2.2",
     "pandas-market-calendars>=5.4.0",
 ]
 
@@ -45,31 +39,20 @@ dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=1.3.0",
     "pytest-cov>=7.1.0",
+    # CI runs pytest with --timeout=60, and tests/backtesting/test_analysis.py
+    # sets pytest.mark.timeout(300).
     "pytest-timeout>=2.4.0",
     "pytest-xdist>=3.8.0",
-    "testcontainers[postgres,redis]>=4.14.2",
-    "vcrpy>=8.2.1",
-    "watchdog>=6.0.0",
-    "aiosqlite>=0.22.1",
-    "greenlet>=3.5.1",
-    "asyncpg>=0.31.0",
     "ruff>=0.15.14",
-    "bandit>=1.9.4",
-    "safety>=3.7.0",
-    "types-requests>=2.33.0.20260518",
-    "types-pytz>=2026.2.0.20260518",
     "ty>=0.0.43",
 ]
 backtesting = [
-    "vectorbt>=1.0.0",
-    "numba>=0.61.2",
+    "vectorbt>=1.1.0",
     "scikit-learn>=1.9.0",
-    "scipy>=1.18.0",
 ]
 research = [
-    "langchain>=1.3.14",
     "langchain-anthropic>=1.4.6",
-    "langchain-community>=0.4.2",
+    "langchain-core>=1.6.3",
     "langchain-openai>=1.3.5",
     "langgraph>=1.2.11",
     "exa-py>=2.13.0",
@@ -221,7 +204,7 @@ name = "Backtesting layers are forward-only"
 type = "layers"
 layers = [
     "maverick.backtesting.tools : maverick.backtesting.tools_ml : maverick.backtesting.tools_support",
-    "maverick.backtesting.service : maverick.backtesting.service_ml : maverick.backtesting.service_support",
+    "maverick.backtesting.service : maverick.backtesting.service_ml : maverick.backtesting.service_walk_forward : maverick.backtesting.service_support",
     "maverick.backtesting.engine | maverick.backtesting.optimization | maverick.backtesting.analysis | maverick.backtesting.strategies",
     "maverick.backtesting.config",
     "maverick.backtesting.types",
@@ -260,7 +243,7 @@ forbidden_modules = ["maverick.market_data", "maverick.screening", "maverick.por
 [[tool.importlinter.contracts]]
 name = "Backtesting service and tools never import screening or portfolio"
 type = "forbidden"
-source_modules = ["maverick.backtesting.service", "maverick.backtesting.service_ml", "maverick.backtesting.service_support", "maverick.backtesting.tools", "maverick.backtesting.tools_ml", "maverick.backtesting.tools_support"]
+source_modules = ["maverick.backtesting.service", "maverick.backtesting.service_ml", "maverick.backtesting.service_walk_forward", "maverick.backtesting.service_support", "maverick.backtesting.tools", "maverick.backtesting.tools_ml", "maverick.backtesting.tools_support"]
 forbidden_modules = ["maverick.screening", "maverick.portfolio"]
 
 [[tool.importlinter.contracts]]

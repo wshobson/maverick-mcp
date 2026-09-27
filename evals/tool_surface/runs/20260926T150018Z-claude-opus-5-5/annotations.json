@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "traces": {
+    "q01": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:48:08.841Z"
+    },
+    "q02": {
+      "verdict": "fail",
+      "trace_note": "A delisted stock should not come back with a status of \"success\".",
+      "spans": [],
+      "updated": "2026-09-26T17:50:24.604Z"
+    },
+    "q03": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:50:58.817Z"
+    },
+    "q04": {
+      "verdict": "fail",
+      "trace_note": "The calculation methodology looks fine, but the value is wrong. It's possible the data is stale.",
+      "spans": [],
+      "updated": "2026-09-26T17:52:22.209Z"
+    },
+    "q05": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:52:59.298Z"
+    },
+    "q06": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:53:30.797Z"
+    },
+    "q07": {
+      "verdict": "fail",
+      "trace_note": "There are enough tool calls here to be able to answer this question. This is clearly a fail for some reason.",
+      "spans": [],
+      "updated": "2026-09-26T17:55:32.469Z"
+    },
+    "q08": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:55:51.349Z"
+    },
+    "q09": {
+      "verdict": "fail",
+      "trace_note": "March 3rd was on a Sunday. You can't buy any stock on a Sunday. The market's closed.",
+      "spans": [],
+      "updated": "2026-09-26T17:56:41.936Z"
+    },
+    "q10": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:57:09.255Z"
+    },
+    "q11": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:57:40.770Z"
+    },
+    "q12": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:57:59.852Z"
+    },
+    "q13": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:58:15.374Z"
+    },
+    "q14": {
+      "verdict": "fail",
+      "trace_note": "How do you know which stock we're talking about? It's never specified.",
+      "spans": [],
+      "updated": "2026-09-26T17:58:41.991Z"
+    },
+    "q15": {
+      "verdict": "fail",
+      "trace_note": "Data needs to be backfilled in order to answer this question properly.",
+      "spans": [],
+      "updated": "2026-09-26T17:59:03.893Z"
+    },
+    "q16": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T17:59:27.858Z"
+    },
+    "q17": {
+      "verdict": "pass",
+      "trace_note": "Maverick MCP does not handle options data, so this is correct.",
+      "spans": [],
+      "updated": "2026-09-26T18:00:23.767Z"
+    },
+    "q18": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T18:00:38.285Z"
+    },
+    "q19": {
+      "verdict": "pass",
+      "trace_note": "Yeah, the question is ambiguous. The answer is correct. There's not enough there to actually know what the user is talking about.",
+      "spans": [],
+      "updated": "2026-09-26T18:01:14.519Z"
+    },
+    "q20": {
+      "verdict": "pass",
+      "trace_note": "ok",
+      "spans": [],
+      "updated": "2026-09-26T18:02:32.132Z"
+    }
+  }
+}
