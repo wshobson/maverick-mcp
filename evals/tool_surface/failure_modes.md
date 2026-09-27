@@ -15,7 +15,15 @@ market data, or a Maverick tool.
 | Tool result misleading or unusable | q02, b05, q15 | Maverick tool code | None: each defect gets a unit test when fixed |
 
 The known causes behind the second and third modes, and b18's missing
-`entry_date`, are rows in `docs/exec-plans/tech-debt-tracker.md`.
+`entry_date`, were fixed on 2026-09-27, apart from q04 (unconfirmed) and
+q07. The quote now errors without a price (q02). Dotted class shares retry
+with a dash (b05). Tool responses cut equity and drawdown series to 60
+points (q15). The journal tool takes an `entry_date` (b18). Portfolio and
+comparison backtests name what failed (b15). The seed registers a screening
+universe instead of fixture prices (b06). For q07, `screening_run_screens`
+now says how to add symbols; a built-in default universe is still an open
+product decision in `docs/exec-plans/tech-debt-tracker.md`. The traces above
+record what the server did before these fixes.
 
 ## Acts on a guess instead of asking
 
