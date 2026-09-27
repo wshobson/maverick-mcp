@@ -82,6 +82,10 @@ A trace's label for a mode is Fail when `patterns.json` lists it under that
 mode, and Pass otherwise. The prompt's few-shot traces are left out of
 scoring. Results are kept in `judges/results/`.
 
+`jev.py` asks Jev (TypeSafe) the same question about the rendered inputs
+and writes judgments that `score` reads. It is a paid API that uses
+`TYPESAFE_API_KEY` from `.env`, so run it only with the owner's approval.
+
 ## Output
 
 Each converted case writes `runs/<run>/traces/<id>.json`. Name a run folder

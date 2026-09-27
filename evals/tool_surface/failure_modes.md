@@ -78,6 +78,14 @@ judge needs about 20 or more labeled failures of this mode, which means a
 new batch of cases where the request leaves out something the result depends
 on.
 
+The same 37 traces were also put to Jev (`jev-1.13.0`, through `jev.py`) as
+one yes/no question each, with the judge's definitions and examples as its
+criteria. At a 0.5 cutoff it passed 24 of 34 passing traces (TPR 0.71) and
+failed 2 of 3 failing ones (TNR 0.67), missing b18 at 0.27. It cost $0.0027
+for about 63,000 input tokens. Tuning the cutoff on three failures would only
+fit noise, so the subagent judge stays the evaluator for this mode. The run is
+in `judges/results/2026-09-27-acts-on-a-guess-jev-dev.json`.
+
 ## For the reviewer
 
 - q09: the note says March 3 was a Sunday. That holds for 2024; the assistant
