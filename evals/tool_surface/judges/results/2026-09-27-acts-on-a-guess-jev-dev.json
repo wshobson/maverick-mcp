@@ -1,0 +1,185 @@
+{
+  "mode": "acts-on-a-guess",
+  "judge": "Jev via evals/tool_surface/jev.py (one noul question per trace; yes >= 0.5 is Fail)",
+  "models": [
+    "jev-1.13.0"
+  ],
+  "date": "2026-09-27",
+  "maverick_git_sha": "38991182d4348a287a0c6e0a75511c7829bc8167",
+  "input_tokens": 63385,
+  "cost_usd": 0.00266,
+  "split": "same 37 dev traces as the subagent judge's 2026-09-27 run",
+  "score": {
+    "scored": 37,
+    "human_pass": 34,
+    "human_fail": 3,
+    "tpr": 0.7058823529411765,
+    "tnr": 0.6666666666666666,
+    "false_fail": [
+      "b04",
+      "b08",
+      "b14",
+      "b17",
+      "q03",
+      "q05",
+      "q08",
+      "q13",
+      "q16",
+      "q20"
+    ],
+    "false_pass": [
+      "b18"
+    ],
+    "missing": []
+  },
+  "judgments": {
+    "b01": {
+      "noul": 0.11,
+      "result": "Pass"
+    },
+    "b02": {
+      "noul": 0.13,
+      "result": "Pass"
+    },
+    "b03": {
+      "noul": 0.09,
+      "result": "Pass"
+    },
+    "b04": {
+      "noul": 0.52,
+      "result": "Fail"
+    },
+    "b05": {
+      "noul": 0.49,
+      "result": "Pass"
+    },
+    "b06": {
+      "noul": 0.21,
+      "result": "Pass"
+    },
+    "b07": {
+      "noul": 0.18,
+      "result": "Pass"
+    },
+    "b08": {
+      "noul": 0.57,
+      "result": "Fail"
+    },
+    "b09": {
+      "noul": 0.12,
+      "result": "Pass"
+    },
+    "b11": {
+      "noul": 0.28,
+      "result": "Pass"
+    },
+    "b12": {
+      "noul": 0.25,
+      "result": "Pass"
+    },
+    "b13": {
+      "noul": 0.27,
+      "result": "Pass"
+    },
+    "b14": {
+      "noul": 0.69,
+      "result": "Fail"
+    },
+    "b15": {
+      "noul": 0.33,
+      "result": "Pass"
+    },
+    "b16": {
+      "noul": 0.37,
+      "result": "Pass"
+    },
+    "b17": {
+      "noul": 0.78,
+      "result": "Fail"
+    },
+    "b18": {
+      "noul": 0.27,
+      "result": "Pass"
+    },
+    "b19": {
+      "noul": 0.35,
+      "result": "Pass"
+    },
+    "b20": {
+      "noul": 0.72,
+      "result": "Fail"
+    },
+    "q01": {
+      "noul": 0.19,
+      "result": "Pass"
+    },
+    "q02": {
+      "noul": 0.18,
+      "result": "Pass"
+    },
+    "q03": {
+      "noul": 0.65,
+      "result": "Fail"
+    },
+    "q04": {
+      "noul": 0.18,
+      "result": "Pass"
+    },
+    "q05": {
+      "noul": 0.7,
+      "result": "Fail"
+    },
+    "q06": {
+      "noul": 0.19,
+      "result": "Pass"
+    },
+    "q07": {
+      "noul": 0.12,
+      "result": "Pass"
+    },
+    "q08": {
+      "noul": 0.61,
+      "result": "Fail"
+    },
+    "q09": {
+      "noul": 0.95,
+      "result": "Fail"
+    },
+    "q11": {
+      "noul": 0.14,
+      "result": "Pass"
+    },
+    "q12": {
+      "noul": 0.32,
+      "result": "Pass"
+    },
+    "q13": {
+      "noul": 0.64,
+      "result": "Fail"
+    },
+    "q15": {
+      "noul": 0.21,
+      "result": "Pass"
+    },
+    "q16": {
+      "noul": 0.71,
+      "result": "Fail"
+    },
+    "q17": {
+      "noul": 0.15,
+      "result": "Pass"
+    },
+    "q18": {
+      "noul": 0.04,
+      "result": "Pass"
+    },
+    "q19": {
+      "noul": 0.06,
+      "result": "Pass"
+    },
+    "q20": {
+      "noul": 0.52,
+      "result": "Fail"
+    }
+  }
+}
