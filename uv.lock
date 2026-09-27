@@ -829,17 +829,18 @@ server = [
 
 [[package]]
 name = "finvizfinance"
-version = "1.3.0"
+version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "lxml" },
     { name = "pandas" },
     { name = "requests" },
+    { name = "xlsxwriter" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/44/e7633c5ea43ad82a50dedb69de1f48a3334e39c4ab348b4f0f2863c89e43/finvizfinance-1.3.0.tar.gz", hash = "sha256:906f3bfafcb8c995dd75304671f193bc2762a2c766320fcf7551716976de16b9", size = 33442, upload-time = "2026-01-03T13:59:02.619Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/3b/b6e086eca1a616bf7b7b060845ff15fa9f1be049532d5808b1ce29e38f82/finvizfinance-1.5.0.tar.gz", hash = "sha256:d2ef8000cc281d36e9eccf524cac89f5bf0f41a9d1f38c51ae43defbda3c8858", size = 39565, upload-time = "2026-08-29T07:03:55.257Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/ca/b0830e776b6296c8d017e8445f6c01d295558b4401e5d01d0eaa10a50a64/finvizfinance-1.3.0-py3-none-any.whl", hash = "sha256:139e1d2022c3abda6905f10f0f274f3fb8ed193f357fd2664af461a3d24fb29d", size = 44662, upload-time = "2026-01-03T13:59:00.819Z" },
+    { url = "https://files.pythonhosted.org/packages/76/f0/de6ebf7bc863c4b83119195e4368cf822939430d6f8d3efdc7d359ed6031/finvizfinance-1.5.0-py3-none-any.whl", hash = "sha256:5d30f4fabdc27f660b6f4865321e4e261822e983bee0f75e4722e45d4e239f1f", size = 52053, upload-time = "2026-08-29T07:03:53.693Z" },
 ]
 
 [[package]]
@@ -2002,7 +2003,7 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.31.0" },
     { name = "exa-py", marker = "extra == 'research'", specifier = ">=2.13.0" },
     { name = "fastmcp", specifier = ">=4.0.3" },
-    { name = "finvizfinance", specifier = ">=1.3.0" },
+    { name = "finvizfinance", specifier = ">=1.5.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain-anthropic", marker = "extra == 'research'", specifier = ">=1.4.6" },
     { name = "langchain-core", marker = "extra == 'research'", specifier = ">=1.6.3" },
@@ -4084,6 +4085,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/bd/f4/c67440c7fb409a71b7404b7aefcd7569a9c0d6bd071299bf4198ae7a5d95/widgetsnbextension-4.0.15.tar.gz", hash = "sha256:de8610639996f1567952d763a5a41af8af37f2575a41f9852a38f947eb82a3b9", size = 1097402, upload-time = "2025-11-01T21:15:55.178Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3f/0e/fa3b193432cfc60c93b42f3be03365f5f909d2b3ea410295cf36df739e31/widgetsnbextension-4.0.15-py3-none-any.whl", hash = "sha256:8156704e4346a571d9ce73b84bee86a29906c9abfd7223b7228a28899ccf3366", size = 2196503, upload-time = "2025-11-01T21:15:53.565Z" },
+]
+
+[[package]]
+name = "xlsxwriter"
+version = "3.2.9"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/2c/c06ef49dc36e7954e55b802a8b231770d286a9758b3d936bd1e04ce5ba88/xlsxwriter-3.2.9.tar.gz", hash = "sha256:254b1c37a368c444eac6e2f867405cc9e461b0ed97a3233b2ac1e574efb4140c", size = 215940, upload-time = "2025-09-16T00:16:21.63Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl", hash = "sha256:9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3", size = 175315, upload-time = "2025-09-16T00:16:20.108Z" },
 ]
 
 [[package]]
