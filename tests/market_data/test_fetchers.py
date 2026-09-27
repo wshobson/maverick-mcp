@@ -7,6 +7,7 @@ from typing import cast
 import pandas as pd
 import pytest
 
+from maverick.market_data import fetchers
 from maverick.market_data.fetchers import (
     MoverFetcher,
     YFinanceFetcher,
@@ -434,3 +435,18 @@ async def test_yfinance_tier_completes_while_yfinance_breaker_lock_is_held():
         assert result == []
     finally:
         breaker._lock.release()
+
+
+@pytest.mark.parametrize(
+    ("info", "expected"),
+    [
+        ({"currentPrice": float("nan"), "regularMarketPrice": 12.5}, 12.5),
+        ({"currentPrice": float("inf")}, None),
+        ({"currentPrice": -3.0}, None),
+        ({"currentPrice": 0, "regularMarketPrice": 9.0}, 9.0),
+    ],
+)
+def test_info_price_accepts_only_a_finite_positive_price(
+    info: dict[str, float], expected: float | None
+) -> None:
+    assert fetchers.info_price(info) == expected

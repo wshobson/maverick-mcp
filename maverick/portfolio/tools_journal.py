@@ -44,10 +44,10 @@ async def portfolio_journal_add_trade(
     side: str,
     entry_price: float,
     shares: float,
-    entry_date: str | None = None,
     rationale: str | None = None,
     tags: list[str] | None = None,
     notes: str | None = None,
+    entry_date: str | None = None,
 ) -> dict[str, Any]:
     """Add an open trade to the journal. `entry_date` is an ISO 8601 date or
     datetime (for example `2026-03-15` or `2026-03-15T14:30:00Z`) for a trade

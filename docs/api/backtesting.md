@@ -326,7 +326,8 @@ Backtest multiple strategies on the same symbol and rank them.
   `sma_cross`, `rsi`, `macd`, `bollinger`, `momentum`. A strategy whose
   backtest fails is left out of the rankings and listed in `failed` with
   its error message, and the summary says how many failed. If every
-  strategy fails, the call returns an error.
+  strategy fails, the call returns the error `No strategies could be
+  backtested: <strategy>: <error>; ...`.
 - `start_date`, `end_date` (str, optional)
 
 **Returns** (`StrategyComparisonResult`; `rankings` is sorted by Sharpe ratio,
@@ -373,9 +374,10 @@ joint-portfolio calculation. A symbol whose backtest fails is left out of
 `individual_results` and the aggregate metrics and is listed in `failed`
 with its error message, and the summary says how many failed. `failed` is
 `[]` when every symbol ran. If every symbol fails, the call returns the
-error `No symbols could be backtested`. Each entry in `individual_results`
-has the `backtesting_run_backtest` shape without `analysis`, so its
-`equity_curve` and `drawdown_series` hold at most 60 points.
+error `No symbols could be backtested: <symbol>: <error>; ...`. Each entry
+in `individual_results` has the `backtesting_run_backtest` shape without
+`analysis`, so its `equity_curve` and `drawdown_series` hold at most 60
+points.
 
 **Tool name**: `backtesting_backtest_portfolio` (readOnlyHint: true)
 

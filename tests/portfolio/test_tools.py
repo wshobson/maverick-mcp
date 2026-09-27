@@ -1486,3 +1486,21 @@ async def test_register_in_memory_client_reads_my_holdings_resource(stub_service
     assert payload["status"] == "success"
     assert payload["uri"] == "portfolio://my-holdings"
     assert payload["positions"][0]["ticker"] == "AAPL"
+
+
+def test_journal_add_trade_keeps_its_old_positional_order() -> None:
+    import inspect
+
+    from maverick.portfolio.tools_journal import portfolio_journal_add_trade
+
+    names = list(inspect.signature(portfolio_journal_add_trade).parameters)
+    assert names[:7] == [
+        "symbol",
+        "side",
+        "entry_price",
+        "shares",
+        "rationale",
+        "tags",
+        "notes",
+    ]
+    assert names[-1] == "entry_date"

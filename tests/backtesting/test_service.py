@@ -238,6 +238,16 @@ async def test_compare_strategies_names_each_failed_strategy_and_why(ohlcv):
     assert "1 of 3 strategies failed" in result.summary
 
 
+async def test_compare_strategies_names_the_reasons_when_every_strategy_fails(ohlcv):
+    service = _service(StubMarketData(frames={"AAPL": ohlcv}))
+
+    with pytest.raises(
+        ValueError,
+        match="No strategies could be backtested: nope: Unknown strategy type: nope",
+    ):
+        await service.compare_strategies("AAPL", strategies=["nope"])
+
+
 async def test_compare_strategies_reports_no_failures_when_all_succeed(ohlcv):
     service = _service(StubMarketData(frames={"AAPL": ohlcv}))
 
@@ -320,7 +330,9 @@ async def test_backtest_portfolio_raises_when_every_symbol_fails():
     )
     service = _service(market_data)
 
-    with pytest.raises(ValueError, match="No symbols could be backtested"):
+    with pytest.raises(
+        ValueError, match="No symbols could be backtested: AAPL: boom; MSFT: boom"
+    ):
         await service.backtest_portfolio(["AAPL", "MSFT"])
 
 

@@ -51,6 +51,7 @@ from maverick.backtesting import analysis, engine, optimization
 from maverick.backtesting.config import BacktestingSettings, get_backtesting_settings
 from maverick.backtesting.service_ml import _ExtendedBacktestingMixin
 from maverick.backtesting.service_support import (
+    failure_reasons,
     gather_bounded,
     merge_parameters,
     resolve_dates,
@@ -294,6 +295,10 @@ class BacktestingService(_ExtendedBacktestingMixin):
                 )
 
             results, failures = await gather_bounded(strategy_list, _one)
+            if not results:
+                raise ValueError(
+                    f"No strategies could be backtested: {failure_reasons(failures)}"
+                )
             comparison = analysis.compare_strategies(results)
             comparison.failed = [
                 StrategyComparisonFailure(strategy=name, error=error)
@@ -364,7 +369,9 @@ class BacktestingService(_ExtendedBacktestingMixin):
 
             results, failures = await gather_bounded(symbols, _one)
             if not results:
-                raise ValueError("No symbols could be backtested")
+                raise ValueError(
+                    f"No symbols could be backtested: {failure_reasons(failures)}"
+                )
 
             total_return = sum(r.metrics.total_return for r in results) / len(results)
             average_sharpe = sum(r.metrics.sharpe_ratio for r in results) / len(results)

@@ -183,6 +183,11 @@ async def gather_bounded(
     return results, failures
 
 
+def failure_reasons(failures: list[tuple[str, str]]) -> str:
+    """`item: error; item: error`, for an error that names every failed item."""
+    return "; ".join(f"{item}: {error}" for item, error in failures)
+
+
 def generate_wf_summary(
     avg_return: float, avg_sharpe: float, consistency: float
 ) -> str:

@@ -1,6 +1,7 @@
 """External market data fetchers. Third layer: imports only the platform."""
 
 import asyncio
+import math
 import re
 from collections.abc import Callable
 from typing import Any
@@ -74,9 +75,14 @@ def info_price(info: dict[str, Any]) -> float | None:
 
     For a symbol it has no data for (delisted, unknown, or a class share
     spelled with a dot), Yahoo returns a stub `info` dict of metadata keys
-    with no price, so a missing or zero price is how "no data" shows up.
+    with no price, so a missing, zero, or non-finite price is how "no data"
+    shows up.
     """
-    return info.get("currentPrice") or info.get("regularMarketPrice") or None
+    for key in ("currentPrice", "regularMarketPrice"):
+        price = info.get(key)
+        if isinstance(price, int | float) and math.isfinite(price) and price > 0:
+            return float(price)
+    return None
 
 
 class YFinanceFetcher:
