@@ -222,6 +222,49 @@ async def test_compare_strategies_skips_failures_and_ranks_survivors(ohlcv):
     assert result.best_overall is not None
 
 
+async def test_compare_strategies_names_each_failed_strategy_and_why(ohlcv):
+    service = _service(StubMarketData(frames={"AAPL": ohlcv}))
+
+    result = await service.compare_strategies(
+        "AAPL", strategies=["sma_cross", "not_a_real_strategy", "rsi"]
+    )
+
+    assert [f.model_dump() for f in result.failed] == [
+        {
+            "strategy": "not_a_real_strategy",
+            "error": "Unknown strategy type: not_a_real_strategy",
+        }
+    ]
+    assert "1 of 3 strategies failed" in result.summary
+
+
+async def test_compare_strategies_reports_no_failures_when_all_succeed(ohlcv):
+    service = _service(StubMarketData(frames={"AAPL": ohlcv}))
+
+    result = await service.compare_strategies("AAPL", strategies=["sma_cross", "rsi"])
+
+    assert result.failed == []
+    assert "failed" not in result.summary
+
+
+async def test_gather_bounded_returns_failures_with_reasons_in_input_order():
+    from maverick.backtesting.service_support import gather_bounded
+
+    async def _one(item: str) -> BacktestResult:
+        if item == "BAD":
+            raise ValueError("no data for BAD")
+        if item == "EMPTY_MESSAGE":
+            raise RuntimeError()
+        return _canned_backtest_result(item, 0.0)
+
+    results, failures = await gather_bounded(
+        ["AAPL", "BAD", "MSFT", "EMPTY_MESSAGE"], _one
+    )
+
+    assert [r.symbol for r in results] == ["AAPL", "MSFT"]
+    assert failures == [("BAD", "no data for BAD"), ("EMPTY_MESSAGE", "RuntimeError")]
+
+
 # ---------------------------------------------------------------------------
 # 6. list_strategies
 # ---------------------------------------------------------------------------
@@ -250,6 +293,25 @@ async def test_backtest_portfolio_aggregates_across_symbols(ohlcv):
     assert isinstance(result, PortfolioBacktestResult)
     assert result.portfolio_metrics.symbols_tested == 3
     assert len(result.individual_results) == 3
+    assert result.failed == []
+    assert result.summary == "Portfolio backtest of 3 symbols with sma_cross strategy"
+
+
+async def test_backtest_portfolio_names_each_failed_symbol_and_why(ohlcv):
+    market_data = StubMarketData(
+        frames={"AAPL": ohlcv, "GOOG": ohlcv, "EMPTY": _empty_frame()},
+        raise_for={"MSFT": ValueError("rate limited")},
+    )
+    service = _service(market_data)
+
+    result = await service.backtest_portfolio(["AAPL", "MSFT", "GOOG", "EMPTY"])
+
+    assert result.portfolio_metrics.symbols_tested == 2
+    assert [r.symbol for r in result.individual_results] == ["AAPL", "GOOG"]
+    assert [f.symbol for f in result.failed] == ["MSFT", "EMPTY"]
+    assert result.failed[0].error == "rate limited"
+    assert "No price history available for 'EMPTY'" in result.failed[1].error
+    assert "2 of 4 symbols failed" in result.summary
 
 
 async def test_backtest_portfolio_raises_when_every_symbol_fails():

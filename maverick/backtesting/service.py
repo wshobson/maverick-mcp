@@ -62,10 +62,12 @@ from maverick.backtesting.types import (
     BacktestResult,
     MonteCarloResult,
     OptimizationResult,
+    PortfolioBacktestFailure,
     PortfolioBacktestMetrics,
     PortfolioBacktestResult,
     RunBacktestResult,
     StrategyCatalog,
+    StrategyComparisonFailure,
     StrategyComparisonResult,
 )
 from maverick.market_data.service import MarketDataService
@@ -291,8 +293,18 @@ class BacktestingService(_ExtendedBacktestingMixin):
                     parameters=parameters,
                 )
 
-            results = await gather_bounded(strategy_list, _one)
-            return analysis.compare_strategies(results)
+            results, failures = await gather_bounded(strategy_list, _one)
+            comparison = analysis.compare_strategies(results)
+            comparison.failed = [
+                StrategyComparisonFailure(strategy=name, error=error)
+                for name, error in failures
+            ]
+            if failures:
+                comparison.summary = (
+                    f"{comparison.summary.rstrip()} {len(failures)} of "
+                    f"{len(strategy_list)} strategies failed (see failed)."
+                )
+            return comparison
 
         return await self._run(_impl())
 
@@ -350,7 +362,7 @@ class BacktestingService(_ExtendedBacktestingMixin):
                     parameters=parameters,
                 )
 
-            results = await gather_bounded(symbols, _one)
+            results, failures = await gather_bounded(symbols, _one)
             if not results:
                 raise ValueError("No symbols could be backtested")
 
@@ -362,6 +374,13 @@ class BacktestingService(_ExtendedBacktestingMixin):
             # worst, understating portfolio-level risk.
             max_drawdown = min(r.metrics.max_drawdown for r in results)
             total_trades = sum(r.metrics.total_trades for r in results)
+            summary = (
+                f"Portfolio backtest of {len(results)} symbols with {strategy} strategy"
+            )
+            if failures:
+                summary += (
+                    f"; {len(failures)} of {len(symbols)} symbols failed (see failed)"
+                )
 
             return PortfolioBacktestResult(
                 portfolio_metrics=PortfolioBacktestMetrics(
@@ -372,9 +391,11 @@ class BacktestingService(_ExtendedBacktestingMixin):
                     total_trades=total_trades,
                 ),
                 individual_results=results,
-                summary=(
-                    f"Portfolio backtest of {len(results)} symbols with {strategy} strategy"
-                ),
+                summary=summary,
+                failed=[
+                    PortfolioBacktestFailure(symbol=sym, error=error)
+                    for sym, error in failures
+                ],
             )
 
         return await self._run(_impl())

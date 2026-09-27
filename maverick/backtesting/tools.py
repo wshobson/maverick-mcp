@@ -44,6 +44,7 @@ from maverick.backtesting.tools_ml import (
 from maverick.backtesting.tools_support import (
     READ_ONLY_ANNOTATIONS,
     configure,
+    success_payload,
 )
 from maverick.backtesting.tools_support import (
     backtesting_extra_available as _backtesting_extra_available,
@@ -99,9 +100,7 @@ async def backtesting_run_backtest(
             z_score_threshold=z_score_threshold,
             breakout_factor=breakout_factor,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -127,9 +126,7 @@ async def backtesting_optimize_strategy(
             optimization_level=optimization_level,
             top_n=top_n,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -153,9 +150,7 @@ async def backtesting_walk_forward_analysis(
             window_size=window_size,
             step_size=step_size,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -183,9 +178,7 @@ async def backtesting_monte_carlo_simulation(
             slow_period=slow_period,
             period=period,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -202,9 +195,7 @@ async def backtesting_compare_strategies(
         result = await service.compare_strategies(
             symbol, strategies=strategies, start_date=start_date, end_date=end_date
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -214,9 +205,7 @@ async def backtesting_list_strategies() -> dict[str, Any]:
     try:
         service = _require_service()
         result = await service.list_strategies()
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -252,9 +241,7 @@ async def backtesting_backtest_portfolio(
             slow_period=slow_period,
             period=period,
         )
-        payload = result.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return success_payload(result)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 

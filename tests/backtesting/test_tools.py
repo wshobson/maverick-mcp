@@ -4,12 +4,16 @@ on a base install."""
 
 from typing import Any
 
+import pandas as pd
 import pytest
 from fastmcp import Client, FastMCP
 
 from maverick.backtesting import tools
 from maverick.backtesting.types import (
+    BacktestResult,
     EnsembleBacktestResult,
+    EnsembleIndividualResult,
+    EnsembleMemberResult,
     EnsembleSummary,
     MarketRegimeAnalysis,
     MLBacktestResult,
@@ -526,6 +530,141 @@ async def test_create_strategy_ensemble_error_payload(stub_service):
     result = await tools.backtesting_create_strategy_ensemble(["AAPL"])
 
     assert result == {"status": "error", "error": "boom"}
+
+
+# ---------------------------------------------------------------------------
+# responses carry at most 60 points of each equity_curve / drawdown_series
+# ---------------------------------------------------------------------------
+
+
+def _long_series(n: int = 1304) -> dict[str, float]:
+    dates = pd.bdate_range("2020-01-02", periods=n)
+    return {str(d): float(i) for i, d in enumerate(dates)}
+
+
+def _assert_downsampled(sent: dict[str, float], full: dict[str, float]) -> None:
+    assert len(sent) <= 60
+    assert list(sent)[0] == list(full)[0]
+    assert list(sent)[-1] == list(full)[-1]
+    assert all(sent[k] == full[k] for k in sent)
+
+
+def _long_backtest_result(symbol: str, full: dict[str, float]) -> BacktestResult:
+    fields = _run_backtest_result().model_dump(exclude={"analysis"})
+    fields.update(symbol=symbol, equity_curve=full, drawdown_series=full)
+    return BacktestResult(**fields)
+
+
+async def test_run_backtest_response_downsamples_series(stub_service):
+    full = _long_series()
+    stub_service.results["run_backtest"] = _run_backtest_result().model_copy(
+        update={"equity_curve": full, "drawdown_series": full}
+    )
+
+    result = await tools.backtesting_run_backtest("AAPL")
+
+    _assert_downsampled(result["equity_curve"], full)
+    _assert_downsampled(result["drawdown_series"], full)
+    # The service result itself keeps the full series.
+    assert len(stub_service.results["run_backtest"].equity_curve) == len(full)
+
+
+async def test_backtest_portfolio_response_downsamples_each_individual_result(
+    stub_service,
+):
+    full = _long_series()
+    stub_service.results["backtest_portfolio"] = _portfolio_result().model_copy(
+        update={
+            "individual_results": [
+                _long_backtest_result("AAPL", full),
+                _long_backtest_result("MSFT", full),
+            ]
+        }
+    )
+
+    result = await tools.backtesting_backtest_portfolio(["AAPL", "MSFT"])
+
+    assert [r["symbol"] for r in result["individual_results"]] == ["AAPL", "MSFT"]
+    for item in result["individual_results"]:
+        _assert_downsampled(item["equity_curve"], full)
+        _assert_downsampled(item["drawdown_series"], full)
+
+
+async def test_run_ml_strategy_backtest_response_downsamples_series(stub_service):
+    full = _long_series()
+    stub_service.results["run_ml_strategy_backtest"] = _ml_backtest_result().model_copy(
+        update={"equity_curve": full, "drawdown_series": full}
+    )
+
+    result = await tools.backtesting_run_ml_strategy_backtest("AAPL")
+
+    _assert_downsampled(result["equity_curve"], full)
+    _assert_downsampled(result["drawdown_series"], full)
+
+
+async def test_create_strategy_ensemble_response_downsamples_nested_series(
+    stub_service,
+):
+    full = _long_series()
+    member = EnsembleMemberResult(
+        metrics=_ml_backtest_result().metrics,
+        trades=[],
+        equity_curve=full,
+        drawdown_series=full,
+        ensemble_metrics={},
+    )
+    stub_service.results["create_strategy_ensemble"] = _ensemble_result().model_copy(
+        update={
+            "individual_results": [
+                EnsembleIndividualResult(symbol="AAPL", results=member)
+            ]
+        }
+    )
+
+    result = await tools.backtesting_create_strategy_ensemble(["AAPL"])
+
+    nested = result["individual_results"][0]["results"]
+    _assert_downsampled(nested["equity_curve"], full)
+    _assert_downsampled(nested["drawdown_series"], full)
+
+
+async def test_in_memory_client_receives_downsampled_run_backtest(stub_service):
+    full = _long_series()
+    stub_service.results["run_backtest"] = _run_backtest_result().model_copy(
+        update={"equity_curve": full, "drawdown_series": full}
+    )
+    mcp = FastMCP("test")
+    tools.register(mcp)
+
+    async with Client(mcp) as client:
+        result = await client.call_tool("backtesting_run_backtest", {"symbol": "AAPL"})
+
+    _assert_downsampled(result.data["equity_curve"], full)
+    _assert_downsampled(result.data["drawdown_series"], full)
+
+
+async def test_backtest_portfolio_response_names_failed_symbols(stub_service):
+    from maverick.backtesting.types import PortfolioBacktestFailure
+
+    stub_service.results["backtest_portfolio"] = _portfolio_result().model_copy(
+        update={"failed": [PortfolioBacktestFailure(symbol="TSLA", error="boom")]}
+    )
+
+    result = await tools.backtesting_backtest_portfolio(["AAPL", "MSFT", "TSLA"])
+
+    assert result["failed"] == [{"symbol": "TSLA", "error": "boom"}]
+
+
+async def test_compare_strategies_response_names_failed_strategies(stub_service):
+    from maverick.backtesting.types import StrategyComparisonFailure
+
+    stub_service.results["compare_strategies"] = _comparison_result().model_copy(
+        update={"failed": [StrategyComparisonFailure(strategy="nope", error="boom")]}
+    )
+
+    result = await tools.backtesting_compare_strategies("AAPL")
+
+    assert result["failed"] == [{"strategy": "nope", "error": "boom"}]
 
 
 # ---------------------------------------------------------------------------

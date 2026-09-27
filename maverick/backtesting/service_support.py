@@ -159,23 +159,28 @@ def signal_fn_for(strategy: str) -> "engine.SignalFn":
 
 async def gather_bounded(
     items: list[str], run_one: Callable[[str], Awaitable[BacktestResult]]
-) -> list[BacktestResult]:
-    """Run `run_one(item)` for every item under a shared `BATCH_CONCURRENCY`-bounded semaphore,
-    skipping any item whose call raises (mirrors legacy's per-item `except Exception: continue`).
-    Shared by `compare_strategies`/`backtest_portfolio` -- see `service.py`'s module docstring's
-    "Concurrency" note; `create_strategy_ensemble` deliberately does not use this (stays
-    sequential)."""
+) -> tuple[list[BacktestResult], list[tuple[str, str]]]:
+    """Run `run_one(item)` for every item under a shared `BATCH_CONCURRENCY`-bounded semaphore.
+    An item whose call raises does not stop the others; it comes back in the second list as
+    `(item, error message)` so callers can say what failed and why (eval b15). Both lists keep
+    input order. Shared by `compare_strategies`/`backtest_portfolio` -- see `service.py`'s module
+    docstring's "Concurrency" note; `create_strategy_ensemble` deliberately does not use this
+    (stays sequential)."""
     sem = asyncio.Semaphore(BATCH_CONCURRENCY)
 
-    async def _guarded(item: str) -> BacktestResult | None:
+    async def _guarded(item: str) -> BacktestResult | str:
         try:
             async with sem:
                 return await run_one(item)
-        except Exception:
-            return None
+        except Exception as exc:
+            return str(exc) or type(exc).__name__
 
     raw = await asyncio.gather(*(_guarded(item) for item in items))
-    return [r for r in raw if r is not None]
+    results = [r for r in raw if isinstance(r, BacktestResult)]
+    failures = [
+        (item, r) for item, r in zip(items, raw, strict=True) if isinstance(r, str)
+    ]
+    return results, failures
 
 
 def generate_wf_summary(

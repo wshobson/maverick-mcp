@@ -51,6 +51,17 @@ below.
   (orphaned agent workflow with zero live callers) and was deleted, not
   ported.
 
+### Equity and drawdown series in responses
+
+Every `equity_curve` and `drawdown_series` in a tool response holds at most
+60 points. This includes the ones nested in `individual_results`. A longer
+series is sampled at evenly spaced positions, and the first and last dates
+are always kept. Keys stay date strings and values stay floats. The full
+daily series is still used for every metric and for the analysis, so only
+the returned series is shortened. A full daily series is about 100,000
+characters for five years of data, which is more than MCP clients will show
+a model.
+
 ## Installation
 
 The core install has no backtesting tools. Install the extra to enable all
@@ -183,7 +194,9 @@ per-trade P&L in account currency, not returns. Each trade's `duration` is
 an empty string: vectorbt's trade records have no `Duration` column, so the
 engine has nothing to copy (`avg_duration` is still computed). With no
 trades, `trade_quality` reports `"quality": "No trades"`,
-`"frequency": "None"`, and `null` for the per-trade fields.
+`"frequency": "None"`, and `null` for the per-trade fields. `equity_curve`
+and `drawdown_series` hold at most 60 points (see
+[Equity and drawdown series in responses](#equity-and-drawdown-series-in-responses)).
 
 ### backtesting_optimize_strategy
 
@@ -311,11 +324,14 @@ Backtest multiple strategies on the same symbol and rank them.
 - `symbol` (str, required)
 - `strategies` (list[str], optional): strategy keys to compare; defaults to
   `sma_cross`, `rsi`, `macd`, `bollinger`, `momentum`. A strategy whose
-  backtest fails is dropped from the rankings.
+  backtest fails is left out of the rankings and listed in `failed` with
+  its error message, and the summary says how many failed. If every
+  strategy fails, the call returns an error.
 - `start_date`, `end_date` (str, optional)
 
 **Returns** (`StrategyComparisonResult`; `rankings` is sorted by Sharpe ratio,
-and each row's `max_drawdown` is the absolute value):
+each row's `max_drawdown` is the absolute value, and `failed` is `[]` when
+every strategy ran):
 ```json
 {
   "rankings": [
@@ -337,7 +353,10 @@ and each row's `max_drawdown` is the absolute value):
   "best_sharpe": {"strategy": "macd", "...": "..."},
   "best_drawdown": {"strategy": "sma_cross", "...": "..."},
   "best_win_rate": {"strategy": "macd", "...": "..."},
-  "summary": "The best performing strategy is macd with a Sharpe ratio of 1.45 and total return of 28.0%. It outperformed 2 other strategies tested.",
+  "summary": "The best performing strategy is macd with a Sharpe ratio of 1.45 and total return of 28.0%. It outperformed 2 other strategies tested. 1 of 4 strategies failed (see failed).",
+  "failed": [
+    {"strategy": "not_a_strategy", "error": "Unknown strategy type: not_a_strategy"}
+  ],
   "status": "success"
 }
 ```
@@ -351,7 +370,12 @@ independently -- there is no combined equity curve and no cross-symbol
 correlation. `total_return`/`average_sharpe` are per-symbol averages;
 `max_drawdown` is the worst (most negative) constituent drawdown, not a
 joint-portfolio calculation. A symbol whose backtest fails is left out of
-the results.
+`individual_results` and the aggregate metrics and is listed in `failed`
+with its error message, and the summary says how many failed. `failed` is
+`[]` when every symbol ran. If every symbol fails, the call returns the
+error `No symbols could be backtested`. Each entry in `individual_results`
+has the `backtesting_run_backtest` shape without `analysis`, so its
+`equity_curve` and `drawdown_series` hold at most 60 points.
 
 **Tool name**: `backtesting_backtest_portfolio` (readOnlyHint: true)
 
@@ -368,16 +392,19 @@ the results.
 ```json
 {
   "portfolio_metrics": {
-    "symbols_tested": 5,
+    "symbols_tested": 4,
     "total_return": 0.22,
     "average_sharpe": 1.15,
     "max_drawdown": -0.12,
-    "total_trades": 120
+    "total_trades": 96
   },
   "individual_results": [
     {"symbol": "AAPL", "strategy": "sma_cross", "metrics": {"...": "..."}}
   ],
-  "summary": "Portfolio backtest of 5 symbols with sma_cross strategy",
+  "summary": "Portfolio backtest of 4 symbols with sma_cross strategy; 1 of 5 symbols failed (see failed)",
+  "failed": [
+    {"symbol": "XYZ", "error": "No price history available for 'XYZ' between 2023-01-01 and 2024-01-01"}
+  ],
   "status": "success"
 }
 ```
