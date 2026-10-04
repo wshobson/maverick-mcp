@@ -1,1 +1,0 @@
-{"is_error": true, "protocol_error": "1 validation error for call[backtesting_parse_strategy]\ndescription\n  Input should be a valid string [type=string_type, input_value={'invalid': 'object'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/string_type"}

@@ -1,2 +1,0 @@
-{"timestamp": "2026-10-04T18:18:20.187755+00:00", "event": "request", "label": "initialize", "method": "initialize", "arguments": {}}
-{"timestamp": "2026-10-04T18:18:50.192922+00:00", "event": "exception", "label": "initialize", "method": "initialize", "duration_seconds": 30.004444707999937, "type": "MCPError", "detail": "Request 'initialize' timed out"}

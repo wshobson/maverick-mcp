@@ -1,1 +1,0 @@
-{"error": "Research error: Deep research failed: unsupported operand type(s) for +: 'float' and 'dict'", "error_type": "ResearchAgentError", "query": "Microsoft latest annual report revenue and risks", "request_id": "de5ba588-c0cb-48e8-acfe-4cc21a776256", "status": "error", "success": false, "timestamp": "2026-10-04T18:30:15.390890+00:00"}

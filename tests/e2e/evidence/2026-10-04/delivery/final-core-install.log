@@ -1,7 +1,0 @@
-Using Python 3.12.13 environment at: /tmp/maverick-e2e-delivery-20261004/core-venv
-Resolved 1 package in 16ms
-Prepared 1 package in 28ms
-Uninstalled 1 package in 41ms
-Installed 1 package in 6ms
- - maverick-mcp-server==1.1.0 (from file:///tmp/maverick-e2e-delivery-20261004/artifacts/maverick_mcp_server-1.1.0-py3-none-any.whl)
- + maverick-mcp-server==1.1.0 (from file:///tmp/maverick-e2e-delivery-final/artifacts/maverick_mcp_server-1.1.0-py3-none-any.whl)

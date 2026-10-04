@@ -1,7 +1,0 @@
-{"timestamp": "2026-10-04T18:22:43.927519+00:00", "event": "check", "check": "stdio-client/handshake", "status": "pass", "protocol_version": "2025-11-25", "server_info": {"name": "maverick-mcp", "version": "4.0.10"}}
-{"timestamp": "2026-10-04T18:22:43.927686+00:00", "event": "check", "check": "stdio-client/capabilities", "status": "pass", "capabilities": {"logging": {}, "prompts": {"listChanged": false}, "resources": {"subscribe": false, "listChanged": false}, "tools": {"listChanged": true}}}
-{"timestamp": "2026-10-04T18:22:44.056638+00:00", "event": "check", "check": "stdio-client/list_tools/pagination", "status": "pass", "pages": 1, "count": 53, "note": "Followed every returned cursor; server fits current catalog in one page"}
-{"timestamp": "2026-10-04T18:22:44.059516+00:00", "event": "check", "check": "stdio-client/list_prompts/pagination", "status": "pass", "pages": 1, "count": 3, "note": "Followed every returned cursor; server fits current catalog in one page"}
-{"timestamp": "2026-10-04T18:22:44.059604+00:00", "event": "check", "check": "stdio-client/tools-unique", "status": "pass"}
-{"timestamp": "2026-10-04T18:22:44.059670+00:00", "event": "check", "check": "stdio-client/prompts-unique", "status": "pass"}
-{"timestamp": "2026-10-04T18:22:44.649050+00:00", "event": "check", "check": "stdio/unexpected-exception", "status": "fail", "type": "ExceptionGroup", "detail": "unhandled errors in a TaskGroup (1 sub-exception)"}

@@ -1,8 +1,0 @@
-{
-  "timestamp": "2026-10-04T19:12:10.938551+00:00",
-  "interrupted_pid": 59500,
-  "interrupted_exit_code": 143,
-  "termination": "SIGINT requested first; process later stopped by exact-command-verified SIGTERM. Do not describe exit143 as graceful.",
-  "remaining_candidates": [],
-  "scope": "Read-only process audit of owned command signatures, known PID/direct children, and checkout multiprocessing candidates; no unrelated processes stopped."
-}

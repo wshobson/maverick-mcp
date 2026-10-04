@@ -1,4 +1,0 @@
-{"timestamp": "2026-10-04T19:21:39.055032+00:00", "monotonic": 339186.028531791, "pid": 26574, "stage": "before-heavy-imports"}
-{"timestamp": "2026-10-04T19:21:39.099752+00:00", "monotonic": 339186.068798916, "pid": 26574, "stage": "before-config-import"}
-{"timestamp": "2026-10-04T19:21:49.680257+00:00", "monotonic": 339196.649470875, "pid": 26574, "stage": "before-db-import"}
-{"timestamp": "2026-10-04T19:21:49.681867+00:00", "monotonic": 339196.650568625, "pid": 26574, "stage": "before-service-import"}

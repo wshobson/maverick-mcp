@@ -1,2 +1,0 @@
-{"timestamp": "2026-10-04T18:20:24.141140+00:00", "event": "request", "label": "initialize", "method": "initialize", "arguments": {}}
-{"timestamp": "2026-10-04T18:20:24.147541+00:00", "event": "exception", "label": "initialize", "method": "initialize", "duration_seconds": 0.006458499992731959, "type": "CancelledError", "detail": "Cancelled via cancel scope 1082a5bd0"}

@@ -1,1 +1,0 @@
-{"message": "Successfully parsed as sma_cross strategy", "method": "llm", "strategy": {"entry_logic": "Buy when the 10-day SMA crosses above the 20-day SMA", "exit_logic": "Sell when the 10-day SMA crosses below the 20-day SMA", "parameters": {"fast_period": 10, "slow_period": 20}, "strategy_type": "sma_cross"}, "success": true}

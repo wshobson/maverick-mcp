@@ -1,1 +1,0 @@
-{"error": "Research error: Deep research failed: Error code: 401 - {'error': {'message': 'Synthetic invalid model credentials', 'type': 'authentication_error'}}", "error_type": "ResearchAgentError", "query": "Synthetic company outlook", "request_id": "aad531fd-bafd-443e-b465-f08950b4f872", "status": "error", "success": false, "timestamp": "2026-10-04T18:38:29.912818+00:00"}
