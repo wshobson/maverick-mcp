@@ -1,6 +1,7 @@
 """Breaker recovery must survive cancellation and stale in-flight completions."""
 
 import asyncio
+from types import SimpleNamespace
 
 import pytest
 
@@ -12,7 +13,7 @@ from maverick.platform.http import CircuitBreaker, CircuitOpenError
 @pytest.fixture
 def clock(monkeypatch):
     now = [0.0]
-    monkeypatch.setattr(http.time, "monotonic", lambda: now[0])
+    monkeypatch.setattr(http, "time", SimpleNamespace(monotonic=lambda: now[0]))
     return now
 
 
