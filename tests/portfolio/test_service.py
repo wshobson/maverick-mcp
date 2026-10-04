@@ -1047,6 +1047,47 @@ async def test_get_regime_adjusted_sizing_detects_regime_from_spy_history(tmp_pa
     assert market_data.history_calls[0][1] is not None  # start date always set
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("account_size", -1.0),
+        ("entry_price", 0.0),
+        ("stop_loss", float("nan")),
+        ("risk_pct", float("inf")),
+    ],
+)
+async def test_get_regime_adjusted_sizing_rejects_before_history_fetch(
+    tmp_path, field, value
+):
+    market_data = StubMarketData(history_errors={"SPY"})
+    service = _service(tmp_path, market_data=market_data)
+    arguments = {
+        "account_size": 100000.0,
+        "entry_price": 50.0,
+        "stop_loss": 45.0,
+        "risk_pct": 2.0,
+    }
+    arguments[field] = value
+
+    with pytest.raises(ValueError, match=field):
+        await service.get_regime_adjusted_sizing(**arguments)
+
+    assert market_data.history_calls == []
+
+
+@pytest.mark.parametrize(("stop_loss", "risk_pct"), [(45.0, 0.0), (50.0, 2.0)])
+async def test_get_regime_adjusted_sizing_preserves_zero_shares_contract(
+    tmp_path, stop_loss, risk_pct
+):
+    market_data = StubMarketData(frames={"SPY": _spy_frame()})
+    service = _service(tmp_path, market_data=market_data)
+
+    result = await service.get_regime_adjusted_sizing(100000, 50, stop_loss, risk_pct)
+
+    assert result.shares == 0
+    assert market_data.history_calls[0][0] == "SPY"
+
+
 async def test_get_regime_adjusted_sizing_falls_back_to_default_regime_on_fetch_failure(
     tmp_path,
 ):

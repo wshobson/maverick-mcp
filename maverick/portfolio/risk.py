@@ -141,6 +141,9 @@ def check_position_risk(
 ) -> PositionRiskCheck:
     """Current vs. projected dashboard after merging in a prospective new
     (or added-to, if `new_symbol` is already held) position."""
+    for name, value in (("new_shares", new_shares), ("new_price", new_price)):
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be finite and greater than zero")
     current = compute_dashboard(positions, settings)
 
     normalized_symbol = new_symbol.upper()
@@ -203,6 +206,24 @@ def check_position_risk(
 # ---------------------------------------------------------------------------
 
 
+def validate_regime_sizing_inputs(
+    account_size: float,
+    entry_price: float,
+    stop_loss: float,
+    risk_pct: float,
+) -> None:
+    """Validate sizing inputs before market-data I/O or pure calculation."""
+    for name, value in (
+        ("account_size", account_size),
+        ("entry_price", entry_price),
+        ("stop_loss", stop_loss),
+    ):
+        if not math.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be finite and greater than zero")
+    if not math.isfinite(risk_pct) or risk_pct < 0:
+        raise ValueError("risk_pct must be finite and nonnegative")
+
+
 def regime_adjusted_size(
     account_size: float,
     entry_price: float,
@@ -213,6 +234,7 @@ def regime_adjusted_size(
 ) -> RegimeAdjustedSizing:
     """Position size scaled by `regime`'s risk multiplier (bull = full risk,
     choppy/transitional = 75%, bear = 50%, per legacy defaults)."""
+    validate_regime_sizing_inputs(account_size, entry_price, stop_loss, risk_pct)
     multiplier = settings.risk_regime_multipliers.get(regime.lower(), 1.0)
     adjusted_risk_pct = risk_pct * multiplier
     risk_amount = account_size * (adjusted_risk_pct / 100.0)

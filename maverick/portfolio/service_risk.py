@@ -127,6 +127,7 @@ async def get_regime_adjusted_sizing(
     stop_loss: float,
     risk_pct: float,
 ) -> RegimeAdjustedSizing:
+    risk.validate_regime_sizing_inputs(account_size, entry_price, stop_loss, risk_pct)
     regime = await detect_market_regime(market_data, settings)
     return risk.regime_adjusted_size(
         account_size, entry_price, stop_loss, risk_pct, regime, settings

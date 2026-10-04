@@ -51,6 +51,7 @@ def test_source_archive_contains_shipped_tests_and_makefile_assets(source_archiv
         "Dockerfile",
         "docker-compose.yml",
         ".dockerignore",
+        ".gitignore",
         ".env.example",
     } <= names
 
@@ -75,6 +76,7 @@ def test_source_archive_excludes_local_data_and_generated_evals(source_archive):
         if (
             name.startswith("evals/tool_surface/runs/")
             or name.startswith("evals/tool_surface/judges/results/")
+            or name.startswith("tests/e2e/evidence/")
             or Path(name).name == ".agent_case.json"
             or Path(name).suffix in {".db", ".sqlite", ".sqlite3", ".pyc"}
             or (Path(name).name.startswith(".env") and name != ".env.example")
@@ -112,6 +114,8 @@ def test_rebuilt_source_archive_excludes_injected_private_artifacts(
     source_archive, tmp_path
 ):
     root, _ = source_archive
+    # Build exclusions must hold even when VCS ignore metadata is unavailable.
+    (root / ".gitignore").unlink()
     private_paths = [
         "maverick/.env",
         "tools/.env.production",
@@ -128,6 +132,8 @@ def test_rebuilt_source_archive_excludes_injected_private_artifacts(
         "evals/tool_surface/.agent_case.json",
         "evals/tool_surface/runs/private/traces/case.json",
         "evals/tool_surface/judges/results/private.json",
+        "tests/e2e/evidence/private/trace.jsonl",
+        "tests/e2e/evidence/private/coverage.csv",
     ]
     for name in private_paths:
         path = root / name
