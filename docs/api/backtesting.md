@@ -808,3 +808,15 @@ asyncio.run(main())
 1. Use `backtesting_monte_carlo_simulation` to understand the distribution of outcomes, not just the point estimate.
 2. Use `backtesting_backtest_portfolio` to see how one strategy holds up across symbols (each symbol runs on its own; it does not model diversification).
 3. Watch `max_drawdown` and `sortino_ratio` in the `analysis.risk_assessment` block, not just `total_return`.
+
+## Ensemble weight timing
+
+Ensemble weights use lagged strategy returns strictly before each rebalance
+boundary, over the configured lookback. Each set of weights applies from that
+boundary to the bar before the next boundary. Weights stay equal when history
+is insufficient, and each run starts with fresh state.
+
+The return proxy uses the previous bar's entry or exit signal and the current
+bar's price return. It is not a simulation of held-position profit and loss.
+Later prices do not revise earlier ensemble weights or signals when the
+component strategies themselves use only information available at each bar.

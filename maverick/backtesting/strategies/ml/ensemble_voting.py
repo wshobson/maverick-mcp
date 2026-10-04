@@ -1,8 +1,7 @@
 """Weighted signal voting for `StrategyEnsemble`, split out of `ensemble.py` to
 keep that module under this repo's 500-line-per-module cap.
-`StrategyEnsemble.combine_signals` delegates here with its current `weights`
-and `parameters`. The body is the former method's, unchanged except that it
-reads those two values from arguments instead of `self`.
+Accepts either current per-strategy weights or a causal per-bar weight history.
+The voting thresholds and conflict resolution apply independently to each bar.
 """
 
 import logging
@@ -24,7 +23,7 @@ def combine_weighted_signals(
 
     Args:
         individual_signals: Dictionary of individual strategy signals
-        weights: Per-strategy weights, indexed by the same keys
+        weights: Per-strategy vector or (bars, strategies) weight history
         parameters: Ensemble parameters (`voting_method`, `entry_threshold`,
             `exit_threshold`, `min_signal_strength`)
 
@@ -42,28 +41,43 @@ def combine_weighted_signals(
     # Initialize voting arrays
     entry_votes = np.zeros(len(data_index))
     exit_votes = np.zeros(len(data_index))
-    total_weights = 0
+    total_weights = np.zeros(len(data_index))
 
     # Collect votes with weights and confidence scores
     valid_strategies = 0
 
     for i, (entry_signals, exit_signals) in individual_signals.items():
-        weight = weights[i] if i < len(weights) else 0
+        strategy_count = weights.shape[-1]
+        weight = (
+            (weights[i] if weights.ndim == 1 else weights[:, i])
+            if i < strategy_count
+            else 0
+        )
 
-        if weight > 0:
+        if np.any(weight > 0):
             # Add weighted votes
             entry_votes += weight * entry_signals.astype(float)
             exit_votes += weight * exit_signals.astype(float)
             total_weights += weight
             valid_strategies += 1
 
-    if total_weights == 0 or valid_strategies == 0:
+    if not np.any(total_weights > 0) or valid_strategies == 0:
         logger.warning("No valid strategies with positive weights")
         return pd.Series(False, index=data_index), pd.Series(False, index=data_index)
 
     # Normalize votes by total weights
-    entry_votes = entry_votes / total_weights
-    exit_votes = exit_votes / total_weights
+    entry_votes = np.divide(
+        entry_votes,
+        total_weights,
+        out=np.zeros_like(entry_votes),
+        where=total_weights > 0,
+    )
+    exit_votes = np.divide(
+        exit_votes,
+        total_weights,
+        out=np.zeros_like(exit_votes),
+        where=total_weights > 0,
+    )
 
     # Enhanced voting mechanisms
     voting_method = parameters.get("voting_method", "weighted")
