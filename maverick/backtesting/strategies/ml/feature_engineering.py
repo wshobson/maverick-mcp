@@ -108,8 +108,9 @@ class FeatureExtractor:
     def extract_technical_features(self, data: DataFrame) -> DataFrame:
         """Extract technical indicator features.
 
-        Every indicator comes from `maverick.technical.indicators`. Warmup
-        rows are NaN, the same as the other rolling features in this module.
+        Indicators use `maverick.technical.indicators`, with a local stochastic
+        adaptation to keep zero-range handling causal. Warmup rows are NaN,
+        the same as the other rolling features in this module.
 
         Args:
             data: OHLCV price data
