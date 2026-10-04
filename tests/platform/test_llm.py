@@ -275,7 +275,7 @@ def test_get_llm_openai_compatible_constructs_chat_openai(monkeypatch, stub_open
     assert _secret_value(llm.kwargs) == "not-needed"
     assert llm.kwargs["model"] == "local-model"
     assert llm.kwargs["base_url"] == "http://localhost:8080/v1"
-    assert "temperature" not in llm.kwargs
+    assert llm.kwargs["temperature"] is None
 
 
 def test_get_llm_openrouter_constructs_chat_openai(monkeypatch, stub_openai):
@@ -288,7 +288,7 @@ def test_get_llm_openrouter_constructs_chat_openai(monkeypatch, stub_openai):
     assert _secret_value(llm.kwargs) == "key-123"
     assert llm.kwargs["model"] == "openrouter/auto"
     assert llm.kwargs["base_url"] == "https://openrouter.ai/api/v1"
-    assert "temperature" not in llm.kwargs
+    assert llm.kwargs["temperature"] is None
 
 
 def test_get_llm_anthropic_constructs_chat_anthropic(monkeypatch, stub_anthropic):
@@ -321,3 +321,23 @@ def test_provider_enum_values():
         "openrouter",
         "openai_compatible",
     }
+
+
+@pytest.mark.parametrize("temperature", [None, "0.2"])
+def test_get_llm_explicit_temperature_uses_extra_body(
+    monkeypatch, stub_openai, temperature
+):
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("LLM_API_KEY", "offline-key")
+    monkeypatch.setenv("LLM_MODEL", "local-model")
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:8080/v1")
+    if temperature is not None:
+        monkeypatch.setenv("LLM_TEMPERATURE", temperature)
+    client = get_llm()
+    assert isinstance(client, stub_openai)
+    if temperature is None:
+        assert client.kwargs["temperature"] is None
+        assert "extra_body" not in client.kwargs
+    else:
+        assert client.kwargs["temperature"] == float(temperature)
+        assert client.kwargs["extra_body"] == {"temperature": float(temperature)}

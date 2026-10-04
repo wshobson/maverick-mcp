@@ -156,8 +156,11 @@ LLM_BASE_URL=                   # required for openai_compatible; defaults to
   package installed.
 - An unset or blank `LLM_TEMPERATURE` omits the parameter from SDK requests,
   so the selected provider and model choose their default. This replaces the
-  previous forced `0.0`. An explicit value is sent unchanged and must be
-  supported by the model. Check the current
+  previous forced `0.0`. An explicit value is forwarded unchanged, including
+  when an OpenAI-protocol client would otherwise remove it for a model family.
+  The provider can reject unsupported values, and that error is returned rather
+  than silently replacing the setting. Unset `LLM_TEMPERATURE` to use the
+  default. Check the current
   [Anthropic Messages API](https://platform.claude.com/docs/en/api/messages/create)
   or [OpenAI parameter guidance](https://developers.openai.com/api/docs/guides/latest-model)
   before setting an override. Some reasoning configurations reject it.

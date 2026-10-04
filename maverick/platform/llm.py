@@ -63,7 +63,8 @@ class LLMSettings(BaseModel):
     `provider=None` means no LLM is configured; callers should use
     `get_llm()` only after checking `get_llm_settings().provider` or
     handling the not-configured error it raises. An unset `temperature` omits
-    the SDK argument so the provider/model controls its default.
+    the numeric override from outgoing requests so the provider/model controls
+    its default.
     """
 
     provider: LLMProvider | None = Field(default_factory=_resolve_provider)
@@ -163,9 +164,14 @@ def get_llm() -> BaseChatModel:
             f"langchain_openai is required for LLM_PROVIDER={settings.provider.value}. "
             "Install it with: uv sync --extra research"
         ) from exc
+    # Suppress SDK numeric defaults when unset. Forward explicit values through
+    # extra_body because the SDK can drop temperature during model validation
+    # or Responses serialization; the configured provider decides support.
+    extra_body_kwargs = {"extra_body": temperature_kwargs} if temperature_kwargs else {}
     return ChatOpenAI(
         api_key=settings.api_key,
         model=settings.model,
         base_url=settings.base_url,
-        **temperature_kwargs,
+        temperature=settings.temperature,
+        **extra_body_kwargs,
     )

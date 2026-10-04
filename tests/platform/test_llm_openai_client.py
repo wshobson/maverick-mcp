@@ -53,6 +53,7 @@ class _RecordingServer(HTTPServer):
     """`HTTPServer` carrying the request log the handler appends to."""
 
     requests: list[tuple[str, dict]]
+    reject_temperature: bool
 
 
 class _ChatCompletionsHandler(BaseHTTPRequestHandler):
@@ -62,8 +63,43 @@ class _ChatCompletionsHandler(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         server = cast(_RecordingServer, self.server)
         server.requests.append((self.path, body))
-        payload = json.dumps(
-            {
+        if server.reject_temperature:
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(
+                json.dumps(
+                    {
+                        "error": {
+                            "message": "temperature not supported",
+                            "type": "invalid_request_error",
+                        }
+                    }
+                ).encode()
+            )
+            return
+        if self.path == "/v1/responses":
+            response = {
+                "id": "resp-test",
+                "object": "response",
+                "created_at": 0,
+                "status": "completed",
+                "model": body["model"],
+                "output": [
+                    {
+                        "type": "message",
+                        "id": "msg-test",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [
+                            {"type": "output_text", "text": "pong", "annotations": []}
+                        ],
+                    }
+                ],
+                "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2},
+            }
+        else:
+            response = {
                 "id": "chatcmpl-test",
                 "object": "chat.completion",
                 "created": 0,
@@ -81,7 +117,7 @@ class _ChatCompletionsHandler(BaseHTTPRequestHandler):
                     "total_tokens": 2,
                 },
             }
-        ).encode()
+        payload = json.dumps(response).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(payload)))
@@ -96,6 +132,7 @@ class _ChatCompletionsHandler(BaseHTTPRequestHandler):
 def chat_server():
     server = _RecordingServer(("127.0.0.1", 0), _ChatCompletionsHandler)
     server.requests = []
+    server.reject_temperature = False
     thread = threading.Thread(
         target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True
     )
@@ -137,7 +174,7 @@ async def test_get_llm_chat_openai_round_trips_one_request(monkeypatch, chat_ser
 
     reply = await get_llm().ainvoke("ping")
 
-    assert reply.content == "pong"
+    assert reply.text == "pong"
     assert chat_server.requests[0][0] == "/v1/chat/completions"
     assert chat_server.requests[0][1]["model"] == "test-model"
 
@@ -159,3 +196,80 @@ async def test_openai_family_serialized_temperature(
         assert "temperature" not in body
     else:
         assert body["temperature"] == 1.0
+
+
+@pytest.mark.parametrize("provider", ["openai", "openrouter", "openai_compatible"])
+@pytest.mark.parametrize(
+    "model,temperature,path",
+    [
+        ("gpt-5", "0.2", "/v1/chat/completions"),
+        ("gpt-5-mini", "0.2", "/v1/chat/completions"),
+        ("gpt-5.2", "0.2", "/v1/chat/completions"),
+        ("gpt-5-chat-latest", "0.2", "/v1/chat/completions"),
+        ("gpt-5", "1.0", "/v1/chat/completions"),
+        ("gpt-4o-mini", "0.0", "/v1/chat/completions"),
+        ("local-gpt-5-compatible", "0.4", "/v1/chat/completions"),
+        ("gpt-5-pro", "1.0", "/v1/responses"),
+        ("gpt-5.2-pro", "1.0", "/v1/responses"),
+        ("gpt-5-pro", "0.2", "/v1/responses"),
+        ("gpt-5.2-pro", "0.2", "/v1/responses"),
+    ],
+)
+async def test_explicit_temperature_survives_real_client_and_request(
+    monkeypatch, chat_server, provider, model, temperature, path
+):
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    monkeypatch.setenv("LLM_API_KEY", "offline-test-key")
+    monkeypatch.setenv("LLM_MODEL", model)
+    monkeypatch.setenv("LLM_TEMPERATURE", temperature)
+    monkeypatch.setenv("LLM_BASE_URL", f"http://127.0.0.1:{chat_server.server_port}/v1")
+
+    reply = await get_llm().ainvoke("ping")
+    assert reply.text == "pong"
+    assert chat_server.requests[0][0] == path
+    assert chat_server.requests[0][1]["temperature"] == float(temperature)
+
+
+@pytest.mark.parametrize("provider", ["openai", "openrouter", "openai_compatible"])
+@pytest.mark.parametrize("model", ["gpt-5-pro", "gpt-5.2-pro"])
+async def test_unset_temperature_omitted_from_real_responses_request(
+    monkeypatch, chat_server, provider, model
+):
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    monkeypatch.setenv("LLM_API_KEY", "offline-test-key")
+    monkeypatch.setenv("LLM_MODEL", model)
+    monkeypatch.setenv("LLM_BASE_URL", f"http://127.0.0.1:{chat_server.server_port}/v1")
+    await get_llm().ainvoke("ping")
+    assert chat_server.requests[0][0] == "/v1/responses"
+    assert "temperature" not in chat_server.requests[0][1]
+    assert "extra_body" not in chat_server.requests[0][1]
+
+
+@pytest.mark.parametrize("model", ["gpt-5", "gpt-5-pro"])
+async def test_provider_rejection_of_explicit_temperature_surfaces(
+    monkeypatch, chat_server, model
+):
+    from openai import BadRequestError
+
+    chat_server.reject_temperature = True
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("LLM_API_KEY", "offline-test-key")
+    monkeypatch.setenv("LLM_MODEL", model)
+    monkeypatch.setenv("LLM_TEMPERATURE", "0.2")
+    monkeypatch.setenv("LLM_BASE_URL", f"http://127.0.0.1:{chat_server.server_port}/v1")
+    with pytest.raises(BadRequestError, match="temperature not supported"):
+        await get_llm().ainvoke("ping")
+    assert chat_server.requests[0][1]["temperature"] == 0.2
+
+
+@pytest.mark.parametrize("provider", ["openai", "openrouter", "openai_compatible"])
+async def test_unset_temperature_omitted_for_sdk_defaulting_reasoning_model(
+    monkeypatch, chat_server, provider
+):
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    monkeypatch.setenv("LLM_API_KEY", "offline-test-key")
+    monkeypatch.setenv("LLM_MODEL", "o1-mini")
+    monkeypatch.setenv("LLM_BASE_URL", f"http://127.0.0.1:{chat_server.server_port}/v1")
+    await get_llm().ainvoke("ping")
+    assert chat_server.requests[0][0] == "/v1/chat/completions"
+    assert "temperature" not in chat_server.requests[0][1]
