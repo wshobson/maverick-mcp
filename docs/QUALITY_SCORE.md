@@ -1,17 +1,25 @@
 # Quality score
 
-Grades were set at the 2026-07-20 v1.0.0 cutover and re-checked against the
-code on 2026-09-26. The legacy `maverick_mcp/` package (and its grades) is
-deleted; `maverick/` is the whole system now.
-Update the grade in the same change that changes the code, and note why.
+Assessment as of 2026-10-04. These are review judgments, not coverage scores.
+A means no material gap found in the reviewed scope; B means a bounded
+correctness or verification gap; C means reproduced correctness defects;
+D means reproduced silent accounting loss or future-data leakage. Passing
+existing tests does not override a reproduced defect. Reassess each area when
+its linked regressions and implementation fixes land.
 
-| Area | Grade | Why |
+The [project review](design-docs/2026-10-04-project-review.md) records evidence
+and limitations; the [implementation plan](exec-plans/active/2026-10-04-correctness-and-reliability.md)
+sets the acceptance checks. The former all-A grades described architectural
+completion at the v1.0 cutover, not current financial correctness.
+
+| Area | Grade | Current evidence and gap |
 | --- | --- | --- |
-| `maverick/platform/` | A | Platform seam: db, http (circuit breakers), config, telemetry, cache, serde, and (phase 7) `llm.py` -- a single explicit BYOK LLM seam (`LLM_PROVIDER`/`LLM_API_KEY`/`LLM_BASE_URL`/`LLM_MODEL`/`LLM_TEMPERATURE`) collapsing the legacy five-vendor auto-detection surface, with lazy provider imports so the module stays importable with no `langchain*` package installed. The unit suite covers 88% of lines (`cache.py` and `db.py` lowest, at 80%). |
-| `maverick/market_data/` | A | First domain through the seam. Layer contracts enforced, 70+ tests, injectable fetchers. |
-| `maverick/technical/` | A | Full domain: 8 golden-tested indicators, pure analysis rubrics with the legacy outlook bug fixed, a timeout-guarded service, and 4 canonical tools. |
-| `maverick/screening/` | A | Query and compute domain; rubric scores are exact-tested; fresh installs can self-populate. |
-| `maverick/portfolio/` | A | Decimal ledger ported from the tested domain layer; analyses on the seam; FK policy platform-owned. |
-| `maverick/backtesting/` | A | Full domain behind the optional `[backtesting]` extra: 12 read-only tools (phase 7 adds `backtesting_parse_strategy` on the BYOK LLM seam), 12 rule-based templates + 8 ML strategy classes with golden/seeded tests, guarded package exports (base install always importable, extra-only members lazy), zero tools registered when the extra is absent. Store removed (YAGNI, no persisting caller found). |
-| `maverick/research/` | A | Full domain behind the optional `[research]` extra: 3 curated tools (collapsed from 9 legacy `research_*`/`agents_*` tools) on a sequential LangGraph workflow, BYOK LLM seam, Exa or self-hosted SearXNG search (`RESEARCH_SEARCH_BACKEND`, v1.1.0) with shared financial scoring, guarded package exports (base install always importable, extra-only members lazy), zero tools registered when the extra is absent. Fixes two live legacy bugs (router timeout-wrapper key mismatch; dual dispatch on a `Command`-returning graph node) rather than porting them. |
-| `maverick/server/` | A | Single assembly module (`assembly.py`) wires the shared engine/cache and every domain in one documented, deterministic order; `app.py` is a thin CLI entry point with no business logic; nothing imports it, so it sits cleanly above every domain. |
+| `maverick/platform/` | C | Fourteen import contracts hold; cancelled/stale breaker recovery fixed. Redis expiry, HTTP status accounting, and in-memory SQLite remain incorrect. |
+| `maverick/market_data/` | C | Provider injection and normalized tool errors work; stored bars miss finalization/adjustment refresh and concurrent inserts can fail. |
+| `maverick/technical/` | C | Golden-tested indicators; support/resistance mixes unlabeled percentage scenarios with observations and ignores the requested analysis window. |
+| `maverick/screening/` | B | Enforced layering and tested rubric behavior; a fresh database needs an explicitly populated symbol universe. Default-universe choice remains deferred. |
+| `maverick/portfolio/` | D | Decimal ledger exists, but concurrent mutations lose holdings. Journal validation/precision, risk sizing, and perfect-correlation treatment need correction. |
+| `maverick/backtesting/` | D | Optional registration works; ensemble/feature generation leaks future information and annualization/no-loss metrics mislead. |
+| `maverick/research/` | C | Provider abstraction and typed responses exist; citations are dropped, competitive routing is mismatched, and supported-model parameters need validation. |
+| `maverick/server/` | B | Assembly/client tests pass; a built-wheel import-safety smoke passed, but a real core-only installation is not covered in CI. |
+| Packaging and delivery | C | Wheel build and source-to-wheel rebuild pass; source archive tests lack their supporting files, Docker persistence is missing from quick start, and PyPI ownership remains blocked. |

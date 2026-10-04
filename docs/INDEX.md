@@ -37,6 +37,11 @@ rather than the whole knowledge base up front.
 
 ## Designs, Plans, And Engineering State
 
+- `design-docs/2026-10-04-project-review.md` - full review, merged maintenance
+  queue, reproduced correctness findings, and distribution gates.
+- `exec-plans/active/2026-10-04-correctness-and-reliability.md` - proposed
+  prioritized implementation plan with regression checks for the review findings.
+
 - `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
   design and migration plan.
 - `design-docs/2026-09-05-open-items-remediation.md` - approved design for

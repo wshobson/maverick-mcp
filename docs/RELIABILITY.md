@@ -43,12 +43,21 @@ v1.0.0. Update when behavior changes.
   runs without breaker/retry protection by design. Routing it through the
   breaker from a worker thread deadlocked; `_build_yfinance_tier` in
   `maverick/market_data/fetchers.py` records why.
-- A circuit breaker whose half-open probe is cancelled (for example by an
-  `asyncio.wait_for` timeout) stays half-open, so every later call through
-  that breaker fails with `CircuitOpenError` until the server restarts
-  (`CircuitBreaker.reset()` and `reset_breakers()` exist, but only tests
-  call them).
-  `CircuitBreaker.call` in `maverick/platform/http.py` catches `Exception`,
-  which does not include `asyncio.CancelledError`. A call admitted before the
-  breaker opened can also close it when it completes late. Open as #272;
-  draft fix in #273.
+- Concurrent portfolio read/modify/write transactions can overwrite each other;
+  a successful response does not guarantee that every purchase was preserved.
+- Stored price bars are insert-only, so partial current-session bars and later
+  corporate-action corrections are not refreshed; concurrent inserts can fail.
+- Redis reads with TTL zero or an expired-between-reads key can extend a cached
+  value to the global TTL when promoting it into the memory tier.
+- Exhausted retryable HTTP statuses currently count as breaker successes.
+  Cancellation/stale-result recovery was fixed in #273 on 2026-10-04, including
+  the timeout regression's isolated fake clock; status-based failure accounting
+  is a separate remaining defect.
+- In-memory SQLite uses separate connections through NullPool, losing schema
+  and records between connections.
+- The documented Docker quick start does not persist the default SQLite data
+  outside the removable container.
+
+See [the 2026-10-04 review](design-docs/2026-10-04-project-review.md) for
+reproductions, scope, and the ordered correctness plan. These are known defects,
+not hypothetical risks; the default offline suite does not yet prevent them.

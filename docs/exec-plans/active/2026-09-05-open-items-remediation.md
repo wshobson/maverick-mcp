@@ -2395,60 +2395,22 @@ gh pr checks --watch && gh pr merge --squash --delete-branch
 git checkout main && git pull --ff-only
 ```
 
-### Task 22 (P): Tag v1.1.0 and publish (owner go-ahead required)
+### Task 22 (P): Finish v1.1.0 publishing after name transfer
 
-**Files:** `README.md:95-97` after PyPI is live.
+**Status verified 2026-10-04:** the v1.1.0 tag, GitHub release, and GHCR image
+already exist. PyPI and the official MCP Registry remain blocked on
+[pypi/support#12150](https://github.com/pypi/support/issues/12150), because the
+package name belongs to another account. Do not recreate the tag/release or
+add a pending publisher for a nonexistent project.
 
-Stop here and ask the owner. This task pushes a public tag and, through `publish.yml`, publishes to PyPI (permanent), the MCP Registry, and GHCR.
+Use [the release runbook](../../runbooks/releasing.md) as the only operational
+publish procedure. It specifies the trusted publisher's `pypi` environment,
+artifact checks, and the explicit release ref for any resumed dispatch.
 
-- [ ] **Step 1 (owner): Configure PyPI trusted publishing**
-
-The owner, on pypi.org: Account → Publishing → "Add a new pending publisher" (the project does not exist on PyPI yet): PyPI project name `maverick-mcp-server`, owner `wshobson`, repository `maverick-mcp`, workflow `publish.yml`, environment `pypi`. Then confirm the GitHub environment exists:
-
-```bash
-gh api repos/wshobson/maverick-mcp/environments --jq '.environments[].name'
-```
-Expected: `pypi` in the list. If not, create it: repository Settings → Environments → New environment → `pypi` (no protection rules needed).
-
-- [ ] **Step 2: Create the release, which pushes the tag and starts the workflow**
-
-Run:
-```bash
-gh release create v1.1.0 --target main --title "maverick-mcp-server v1.1.0" --notes-file docs/generated/release-notes/v1.1.0.md
-sleep 10
-gh run list --workflow Publish --limit 1
-```
-Then `gh run watch <run-id>` until it finishes. Expected: `build`, `publish-pypi`, `publish-mcp-registry`, and `publish-ghcr` all succeed. If `publish-pypi` fails with `invalid-publisher`, the pending publisher fields do not match the workflow; fix them on PyPI and re-run the job with `gh run rerun <run-id> --failed`.
-
-- [ ] **Step 3: Verify PyPI and the console script from a clean environment**
-
-Run:
-```bash
-curl -s https://pypi.org/pypi/maverick-mcp-server/json | python3 -c 'import sys, json; d = json.load(sys.stdin); print("pypi latest:", d["info"]["version"])'
-uvx --refresh --from maverick-mcp-server==1.1.0 maverick-mcp --help | head -5
-```
-Expected: `pypi latest: 1.1.0` and the CLI usage text.
-
-- [ ] **Step 4: Verify the registry listing and the image**
-
-Follow `docs/runbooks/releasing.md` Step 2 for the registry verification command, and run:
-```bash
-docker run --rm ghcr.io/wshobson/maverick-mcp:1.1.0 --help | head -3
-```
-Expected: the CLI usage text from the container.
-
-- [ ] **Step 5: Remove the "not yet published" README note**
-
-In `README.md`, delete the three-line block starting `> **Note:** v1.0.0 is not yet published to PyPI` and the blank line after it; change the headings `#### Option 1: Run without installing (uvx, once published)` to `#### Option 1: Run without installing (uvx)` and `#### Option 2: pip install (once published)` to `#### Option 2: pip install`. Then:
-
-```bash
-git checkout -b docs/pypi-live main
-git add README.md && git commit -m "docs: maverick-mcp-server is on PyPI"
-git push -u origin docs/pypi-live
-gh pr create --title "docs: package is on PyPI" --body "Removes the install-from-source caveat now that v1.1.0 is published."
-gh pr checks --watch && gh pr merge --squash --delete-branch
-git checkout main && git pull --ff-only
-```
+- [ ] Verify the name transfer and publisher configuration under the owner's account.
+- [ ] Reconfirm the intended release/artifacts and publishing authorization.
+- [ ] Follow the runbook's exact-ref publish and installation verification steps.
+- [ ] Update user-facing install instructions only after artifact provenance and a clean install pass.
 
 ### Task 23 (P): Bundle, Docker catalog, third-party registries (owner go-ahead required)
 
@@ -2605,7 +2567,7 @@ and bump that file's `updated:`.
 In `TODO.md`: when #235 closes, delete the line `- [ ] [[maverick-mcp]] — revisit issue #235 once FastMCP 4 ships stable (needs mcp 2.x)`. Under `## Everything else`, add while it is still true:
 
 ```markdown
-- [ ] [[maverick-mcp]] — configure PyPI trusted publishing for publish.yml (pending publisher for maverick-mcp-server, environment pypi), then tag v1.1.0; the .mcpb bundle and the MCP Registry listing wait on it (plan Task 22)
+- [ ] [[maverick-mcp]] — wait for pypi/support#12150, then configure publishing on the transferred project and follow the exact-ref release runbook; v1.1.0 is already tagged, while PyPI, the bundle, and the MCP Registry remain blocked (plan Task 22)
 ```
 
 - [x] **Step 5: Changelog lines**
@@ -2670,12 +2632,12 @@ Deviations and lessons from executing Tasks 1 to 21 inline in one session.
 10. **Factory tests** in `tests/research/test_service.py` compare against the provider classes held by `maverick.research.service`: `tests/research/test_providers.py` re-imports the provider modules, so `isinstance` against a fresh import fails. The first Task 19 commit landed with that failure because `pytest | tail` hid the exit code; it was amended. Use `set -o pipefail` in gate chains.
 11. **Worktree sequencing.** The SearXNG worktree was cut from the FastMCP 4 branch before #258 merged and replayed onto `main` with `git rebase --onto main <fastmcp-4 tip> feat/searxng-backend`.
 12. **Release runbook.** Option A told the owner to leave the PyPI trusted publisher's environment blank while `publish.yml` runs its PyPI job in the GitHub environment `pypi`; that mismatch is the likely cause of the 2026-07-20 `invalid-publisher` failure. Corrected in #260: the publisher must name environment `pypi`.
-13. **Task 22 outcome.** The tag and GitHub release were created and the GHCR image published, but the PyPI job failed twice with `invalid-publisher`. Root cause: a PyPI project named `maverick-mcp-server` already exists under another account, created by an unrelated product (Day-AI-Labs' agent runtime) that released 0.1.3 to 0.1.6 on 2026-05-29 to 05-31 and removed everything on 2026-06-10; the pending-publisher form reports "This project already exists". The owner chose a PEP 541 transfer request over a rename (filed as https://github.com/pypi/support/issues/12150); until it lands, no install instruction points at the PyPI name (README, release notes, runbooks updated; the v1.0.0 `.mcpb` asset, which launched that name, was removed). Resume with `gh workflow run publish.yml -f confirm=publish` after adding the publisher on the transferred project.
+13. **Task 22 outcome.** The tag and GitHub release were created and the GHCR image published, but the PyPI job failed twice with `invalid-publisher`. Root cause: a PyPI project named `maverick-mcp-server` already exists under another account, created by an unrelated product (Day-AI-Labs' agent runtime) that released 0.1.3 to 0.1.6 on 2026-05-29 to 05-31 and removed everything on 2026-06-10; the pending-publisher form reports "This project already exists". The owner chose a PEP 541 transfer request over a rename (filed as https://github.com/pypi/support/issues/12150); until it lands, no install instruction points at the PyPI name (README, release notes, runbooks updated; the v1.0.0 `.mcpb` asset, which launched that name, was removed). After the transfer and publisher setup, resume using `docs/runbooks/releasing.md`; its dispatch pins `--ref v1.1.0`. Never dispatch post-release main as version 1.1.0.
 14. **Task 24 outcome.** Done in pieces as the workstreams closed (the vault lives outside this repo, so nothing to diff here): project page entries for the sweep, the FastMCP 4 migration, the SearXNG backend, and the v1.1.0 publish attempt; both decision records plus a third, `2026-09-05-pypi-name-claim-over-rename`; people pages for A1-NWS-Dev1 and josephur; the TODO open loop, reworded after the PyPI finding to point at the PEP 541 request and its watcher routine instead of a pending-publisher setup; one changelog line per write.
 
 Merged this session: #255, #256, #242, #243, #244, #248, #250, #251, #252, #253, #257, #258, #259, #260, #261, #262, #263. Closed: #241, #254, #245, #246, #247, #186, #249. Open by design: #235 (upstream tracker). Owner-gated and not started: Tasks 22 and 23.
 
-2026-09-26 (status addendum): #235 closed on 2026-09-26, so it is no longer open by design. Task 22 is partly done, as item 13 records: the tag, the GitHub release, and the GHCR image exist, and the PyPI step waits on pypi/support#12150, which has had no action since 2026-09-05. Task 23 has not started (the Docker catalog draft still pins the v1.0.0 commit). Since this session, #272 (circuit breaker stuck half-open after a cancelled probe) and its draft fix PR #273 have opened, so Task 25's exit criteria do not hold yet. The plan stays active.
+2026-09-26 (status addendum): #235 closed on 2026-09-26, so it is no longer open by design. Task 22 is partly done, as item 13 records: the tag, the GitHub release, and the GHCR image exist, and the PyPI step waits on pypi/support#12150, which has had no action since 2026-09-05. Task 23 has not started (the Docker catalog draft still pins the v1.0.0 commit). #272 and PR #273 were subsequently closed by the verified fix on 2026-10-04. The plan remains active only for the uncompleted distribution work; the new correctness backlog is in `2026-10-04-correctness-and-reliability.md`.
 
 ## Spec coverage
 

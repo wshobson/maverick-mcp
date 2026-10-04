@@ -1,7 +1,7 @@
 # Repository Guidelines
 
-This is the canonical agent entry point for every assistant. `CLAUDE.md` is a
-symlink to this file; there is no separate Claude- or Gemini-specific guidance.
+This is the canonical agent entry point for every assistant. Compatibility
+entry points refer here; there is no separate vendor-specific guidance.
 Keep this file a table of contents, not an encyclopedia -- durable detail lives
 in `docs/`, mapped by `docs/INDEX.md`.
 
@@ -128,6 +128,7 @@ excludes `integration`, `slow`, and `external` tests.
   unless a future plan explicitly changes that scope.
 - Do not reintroduce auth, billing, or hosted SaaS scope without an explicit
   plan.
-- Do not use `.claude/` files as the repository source of truth.
+- Do not use assistant-specific configuration files as the repository source of
+  truth.
 - Keep documentation changes cataloged in `docs/CATALOG.md`; run
   `make docs-check` after adding, moving, or deleting docs.
