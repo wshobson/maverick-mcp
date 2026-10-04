@@ -273,15 +273,27 @@ class RedisTier:
         payload = await self.client.get(key)
         if payload is None:
             return None
-        remaining = self._default_ttl_seconds
-        ttl_method = getattr(self.client, "ttl", None)
-        if ttl_method is not None:
-            reported = await ttl_method(key)
-            if isinstance(reported, int | float) and reported > 0:
-                remaining = reported
-        # Minimal fakes (like the tests' FakeRedis) don't implement TTL, so
-        # `remaining` stays at the cache's global default TTL in that case.
-        return payload, time.time() + remaining
+        ttl_method = getattr(self.client, "pttl", None)
+        unit = 1000.0
+        if ttl_method is None:
+            ttl_method = getattr(self.client, "ttl", None)
+            unit = 1.0
+        if ttl_method is None:
+            # Minimal injected fakes have no expiry API. Real clients do.
+            return payload, time.time() + self._default_ttl_seconds
+        checked_at = time.time()
+        reported = await ttl_method(key)
+        if reported == -1:
+            # Zero marks a nonexpiring Redis value: serve it without adding
+            # an invented lifetime to the memory tier.
+            return payload, 0.0
+        if not isinstance(reported, int | float) or reported <= 0:
+            return None
+        # Anchor before the TTL request so its roundtrip cannot extend life.
+        expiry = checked_at + reported / unit
+        if expiry <= time.time():
+            return None
+        return payload, expiry
 
     async def set(self, key: str, payload: bytes, ttl: float) -> None:
         await self.client.set(key, payload, ex=ttl)

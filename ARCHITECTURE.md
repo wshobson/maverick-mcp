@@ -140,6 +140,10 @@ returned to the client labeled as data, never blended into instructions.
   the cache runs an in-memory tier, then SQLite; with Redis enabled there is
   no SQLite tier, and an unreachable Redis degrades to the memory tier alone.
 
+Redis-backed memory promotion preserves the remaining Redis expiry. Expired or
+missing keys are cache misses. Keys without an expiry may be served directly
+but are not promoted into memory with an invented lifetime.
+
 ## MCP Transports
 
 - STDIO is the default and the preferred Claude Desktop path
