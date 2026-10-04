@@ -15,6 +15,7 @@ from optional_checks import expect, scenario
 
 
 async def run(output, paid, reserved, skip_parser=False):
+    """Run authorized live scenarios with isolated state and saved coverage."""
     output.mkdir(parents=True, exist_ok=True)
     state = Path(tempfile.mkdtemp(prefix="maverick-e2e-live-", dir="/tmp"))
     rows = []
@@ -51,7 +52,7 @@ async def run(output, paid, reserved, skip_parser=False):
                         "backtesting_parse_strategy",
                         "live-parser",
                         {
-                            "description": "Buy when10 day SMA crosses above20 day SMA; sell when it crosses below."
+                            "description": "Buy when 10 day SMA crosses above 20 day SMA; sell when it crosses below."
                         },
                     ),
                     (

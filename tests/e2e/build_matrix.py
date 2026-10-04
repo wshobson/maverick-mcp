@@ -23,6 +23,7 @@ TRANSPORTS = ("stdio", "http")
 
 
 def relative(path: Path) -> str:
+    """Use repository-relative evidence paths when available."""
     resolved = path.resolve()
     try:
         return str(resolved.relative_to(ROOT))
@@ -31,10 +32,12 @@ def relative(path: Path) -> str:
 
 
 def read_json(path: Path) -> Any:
+    """Load a saved JSON evidence document."""
     return json.loads(path.read_text())
 
 
 def records(path: Path) -> list[tuple[int, dict[str, Any]]]:
+    """Read JSONL evidence with one-based source line numbers."""
     if not path.exists():
         return []
     return [
@@ -45,6 +48,7 @@ def records(path: Path) -> list[tuple[int, dict[str, Any]]]:
 
 
 def snapshot(path: Path) -> dict[str, Any]:
+    """Record source existence, size, and digest for reproducibility."""
     if not path.exists():
         return {"path": relative(path), "exists": False}
     data = path.read_bytes()
@@ -57,6 +61,7 @@ def snapshot(path: Path) -> dict[str, Any]:
 
 
 def trace_index(directory: Path) -> dict[tuple[str, str], list[dict[str, Any]]]:
+    """Pair tool requests with their recorded responses or exceptions."""
     index: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for path in sorted(directory.glob("*.jsonl")):
         if any(part in path.name for part in (".wire.", ".lifecycle.", "provider-")):
@@ -80,6 +85,7 @@ def trace_index(directory: Path) -> dict[tuple[str, str], list[dict[str, Any]]]:
 
 
 def trace_fields(trace: dict[str, Any] | None) -> dict[str, Any]:
+    """Extract timing, size, and source references from a tool trace."""
     if trace is None:
         return {
             "timestamp": None,
@@ -105,6 +111,7 @@ def trace_fields(trace: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def compact_actual(value: Any) -> Any:
+    """Summarize large payloads while retaining their evidence pointer."""
     if not isinstance(value, dict) or "payload" not in value:
         return value
     payload = value["payload"]
@@ -133,6 +140,7 @@ def compact_actual(value: Any) -> Any:
 def core_scenarios(
     directory: Path,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Join core assertions to their tool traces for both transports."""
     scenarios, sources = [], []
     for transport in TRANSPORTS:
         path = directory / transport / "summary.json"
@@ -178,6 +186,7 @@ def core_scenarios(
 def covered_scenarios(
     directory: Path, suite: str, tier: str
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Join optional or live coverage rows to recorded tool traces."""
     path = directory / "coverage.json"
     sources = [snapshot(path)]
     if not path.exists():
@@ -227,6 +236,7 @@ def covered_scenarios(
 
 
 def discovery(directory: Path) -> dict[str, Any]:
+    """Recover each transport catalog from saved discovery responses."""
     inventories: dict[str, Any] = {}
     for transport in TRANSPORTS:
         for path in sorted((directory / transport).glob("*.jsonl")):
@@ -247,6 +257,7 @@ def discovery(directory: Path) -> dict[str, Any]:
 
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Export coverage rows while preserving nested fields as JSON."""
     if not rows:
         return
     fields = list(dict.fromkeys(key for row in rows for key in row))
@@ -265,6 +276,7 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def process_completion(directory: Path) -> dict[str, Any]:
+    """Check that each recorded process ended with an accepted status."""
     paths = sorted(directory.rglob("*.lifecycle.jsonl"))
     incomplete = []
     for path in paths:
@@ -283,6 +295,7 @@ def process_completion(directory: Path) -> dict[str, Any]:
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
+    """Reconcile discovery, documented tools, scenarios, and lifecycle evidence."""
     core, sources = core_scenarios(args.core_dir)
     optional, additional = covered_scenarios(args.optional_dir, "optional", "baseline")
     sources.extend(additional)
@@ -477,6 +490,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main() -> None:
+    """Write JSON and CSV matrices and fail incomplete baseline coverage."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--core-dir", type=Path, default=DEFAULT_EVIDENCE / "core/final-v2"

@@ -17,6 +17,7 @@ DATES = {"start_date": "2023-01-03", "end_date": "2025-12-31"}
 
 
 def payload(result):
+    """Extract the domain payload while retaining protocol error text."""
     if result.structured_content is not None:
         return result.structured_content
     text = "\n".join(item.text for item in result.content if hasattr(item, "text"))
@@ -27,6 +28,7 @@ def payload(result):
 
 
 def validate_bounds(value):
+    """Check nested trade counts and configured response-size limits."""
     if isinstance(value, dict):
         if "trades" in value and isinstance(value["trades"], list):
             assert len(value["trades"]) <= 20
@@ -55,6 +57,7 @@ async def scenario(
     mode="synthetic",
     timeout=180,
 ):
+    """Record one tool outcome, payload bounds, and scenario assertions."""
     started = time.monotonic()
     row = {
         "tool": tool,
@@ -121,10 +124,12 @@ async def scenario(
 
 
 def expect(condition, description):
+    """Raise an assertion with the scenario-specific explanation."""
     assert condition, description
 
 
 async def backtesting(transport, output, rows):
+    """Exercise backtesting tools with deterministic market-data fixtures."""
     state = Path(
         tempfile.mkdtemp(prefix=f"maverick-e2e-optional-{transport}-", dir="/tmp")
     )
@@ -343,6 +348,7 @@ async def backtesting(transport, output, rows):
 
 
 async def research(transport, output, rows):
+    """Exercise research and parsing through synthetic loopback providers."""
     with provider_server(output / f"{transport}-provider-requests.jsonl") as provider:
         base = f"http://127.0.0.1:{provider.server_port}"
         env = {
@@ -504,6 +510,7 @@ async def research(transport, output, rows):
 
 
 async def main():
+    """Run requested optional lanes across both transports and report failures."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(

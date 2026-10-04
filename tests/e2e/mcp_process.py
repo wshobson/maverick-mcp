@@ -23,6 +23,7 @@ from typing import Any
 
 import anyio
 import httpx
+import httpx2
 from mcp import ClientSession, types
 from mcp.client.streamable_http import streamable_http_client
 from mcp.shared.message import SessionMessage
@@ -31,6 +32,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 
 def serializable(value: Any) -> Any:
+    """Normalize SDK models and paths for JSON evidence."""
     if hasattr(value, "model_dump"):
         return value.model_dump(mode="json", by_alias=True, exclude_none=True)
     if isinstance(value, dict):
@@ -43,6 +45,7 @@ def serializable(value: Any) -> Any:
 
 
 def record(path: Path, event: str, **fields: Any) -> None:
+    """Append a timestamped evidence event as JSONL."""
     path.parent.mkdir(parents=True, exist_ok=True)
     entry = {"timestamp": datetime.now(UTC).isoformat(), "event": event, **fields}
     with path.open("a") as output:
@@ -79,6 +82,7 @@ def isolated_env(
 
 
 def versions() -> dict[str, str]:
+    """Capture interpreter, platform, and installed MCP package versions."""
     packages = {}
     for name in ("maverick-mcp-server", "fastmcp", "mcp", "httpx", "pydantic"):
         with contextlib.suppress(importlib.metadata.PackageNotFoundError):
@@ -87,6 +91,7 @@ def versions() -> dict[str, str]:
 
 
 def redacted_env(environment: dict[str, str]) -> dict[str, str]:
+    """Mask credential-bearing environment values in lifecycle evidence."""
     return {
         name: "<redacted>"
         if any(part in name.upper() for part in ("KEY", "TOKEN", "SECRET", "PASSWORD"))
@@ -97,11 +102,13 @@ def redacted_env(environment: dict[str, str]) -> dict[str, str]:
 
 class RecordedClient:
     def __init__(self, session: ClientSession, path: Path):
+        """Attach evidence recording to an official SDK session."""
         self.session = session
         self.path = path
         self.initialize_result: types.InitializeResult | None = None
 
     async def request(self, label: str, method: str, **kwargs: Any) -> Any:
+        """Record request arguments, timing, response size, and failures."""
         started = time.monotonic()
         record(self.path, "request", label=label, method=method, arguments=kwargs)
         try:
@@ -135,7 +142,18 @@ class RecordedClient:
 async def http_connection(
     url: str, evidence_dir: Path, label: str = "client"
 ) -> AsyncIterator[RecordedClient]:
-    async with streamable_http_client(url) as (read_stream, write_stream):
+    """Open a recorded SDK session that ignores ambient HTTP proxies."""
+    async with (
+        httpx2.AsyncClient(
+            trust_env=False,
+            follow_redirects=True,
+            timeout=httpx2.Timeout(30, read=300),
+        ) as http_client,
+        streamable_http_client(url, http_client=http_client) as (
+            read_stream,
+            write_stream,
+        ),
+    ):
         async with ClientSession(
             read_stream, write_stream, read_timeout_seconds=30
         ) as session:
@@ -154,6 +172,7 @@ class RunningServer:
         launcher: list[str] | None,
         env_overrides: dict[str, str] | None,
     ):
+        """Prepare an isolated CLI command and transport-specific evidence."""
         self.transport = transport
         self.state_dir = state_dir.resolve()
         self.evidence_dir = evidence_dir.resolve()
@@ -179,6 +198,7 @@ class RunningServer:
         self._stdio_connected = False
 
     async def start(self) -> None:
+        """Launch the CLI and wait for HTTP readiness when applicable."""
         stderr = self.stderr_path.open("wb")
         stdout = self.stdout_path.open("wb")
         self._files.extend([stderr, stdout])
@@ -222,6 +242,7 @@ class RunningServer:
 
     @contextlib.asynccontextmanager
     async def connect(self, label: str = "client") -> AsyncIterator[RecordedClient]:
+        """Connect an SDK client to the running HTTP or STDIO process."""
         if self.transport == "http":
             assert self.url is not None
             async with http_connection(self.url, self.evidence_dir, label) as client:
@@ -242,6 +263,7 @@ class RunningServer:
         wire = self.evidence_dir / f"{self.label}.wire.jsonl"
 
         async def reader() -> None:
+            """Capture STDIO bytes and forward parsed protocol messages."""
             assert self.process and self.process.stdout
             async with incoming_send:
                 while line := await self.process.stdout.readline():
@@ -262,6 +284,7 @@ class RunningServer:
                         await incoming_send.send(SessionMessage(message))
 
         async def writer() -> None:
+            """Capture and write SDK messages as newline-delimited JSON."""
             assert self.process and self.process.stdin
             async with outgoing_receive:
                 async for message in outgoing_receive:
@@ -290,6 +313,7 @@ class RunningServer:
                 group.cancel_scope.cancel()
 
     async def stop(self) -> None:
+        """Stop the owned process, bound shutdown, and close log files."""
         if self.process is None:
             return
         if self.process.returncode is None:
@@ -322,6 +346,7 @@ async def server_process(
     launcher: list[str] | None = None,
     env_overrides: dict[str, str] | None = None,
 ) -> AsyncIterator[RunningServer]:
+    """Own a CLI process and clean it up when the context exits."""
     server = RunningServer(
         transport, state_dir, evidence_dir, label, launcher, env_overrides
     )

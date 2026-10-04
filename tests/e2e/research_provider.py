@@ -22,6 +22,7 @@ class Provider(ThreadingHTTPServer):
     output: Path
 
     def capture(self, data):
+        """Save synthetic provider requests without HTTP headers."""
         self.requests.append(data)
         with self.output.open("a") as stream:
             stream.write(json.dumps(data) + "\n")
@@ -31,6 +32,7 @@ class Handler(BaseHTTPRequestHandler):
     server: Provider
 
     def reply(self, payload, status=200):
+        """Return a finite JSON fixture with explicit length and status."""
         encoded = json.dumps(payload, allow_nan=False).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -39,6 +41,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def do_GET(self):
+        """Serve synthetic search results or the selected search failure."""
         parsed = urlparse(self.path)
         query = parse_qs(parsed.query)
         self.server.capture({"method": "GET", "path": parsed.path, "query": query})
@@ -62,6 +65,7 @@ class Handler(BaseHTTPRequestHandler):
         self.reply({"results": results})
 
     def do_POST(self):
+        """Serve synthetic chat completions or the selected model failure."""
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         self.server.capture({"method": "POST", "path": self.path, "body": body})
         if self.server.mode == "model_failure":
@@ -126,11 +130,13 @@ class Handler(BaseHTTPRequestHandler):
         )
 
     def log_message(self, format, *args):
+        """Suppress default HTTP logs in deterministic fixture runs."""
         pass
 
 
 @contextmanager
 def provider_server(output: Path):
+    """Own a loopback provider server and stop its worker thread."""
     output.parent.mkdir(parents=True, exist_ok=True)
     server = Provider(("127.0.0.1", 0), Handler)
     server.requests = []

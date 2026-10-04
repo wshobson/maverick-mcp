@@ -41,6 +41,7 @@ OPTIONAL_MODULES = (
 
 
 def free_port() -> int:
+    """Select an available loopback port for a disposable service."""
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         return int(sock.getsockname()[1])
@@ -48,17 +49,20 @@ def free_port() -> int:
 
 class Evidence:
     def __init__(self, path: Path) -> None:
+        """Create the delivery evidence directory and in-memory event list."""
         self.path = path
         path.mkdir(parents=True, exist_ok=True)
         self.events: list[dict[str, Any]] = []
 
     def record(self, kind: str, **fields: Any) -> None:
+        """Append a timestamped delivery event to memory and JSONL."""
         event = {"timestamp": time.time(), "kind": kind, **fields}
         self.events.append(event)
         with (self.path / "delivery.jsonl").open("a") as stream:
             stream.write(json.dumps(event, default=str) + "\n")
 
     def command(self, args: list[str], *, cwd: Path | None = None) -> str:
+        """Run a bounded command with isolated home and captured output."""
         started = time.monotonic()
         result = subprocess.run(
             args,
@@ -88,6 +92,7 @@ class Evidence:
         return result.stdout.strip()
 
     def check(self, name: str, actual: Any, expected: Any) -> None:
+        """Record an equality assertion and stop on failure."""
         passed = actual == expected
         self.record(
             "assertion",
@@ -102,6 +107,7 @@ class Evidence:
 async def call(
     client: Any, label: str, tool_name: str, **arguments: Any
 ) -> dict[str, Any]:
+    """Invoke an MCP tool and require a successful domain response."""
     result = await client.request(
         label, "call_tool", name=tool_name, arguments=arguments
     )
@@ -116,6 +122,7 @@ async def call(
 
 
 async def inventory(client: Any, evidence: Evidence, count: int) -> None:
+    """Verify the discovered tool count and optional-domain availability."""
     result = await client.request("tools-list", "list_tools")
     names = sorted(tool.name for tool in result.tools)
     evidence.check("tool count", len(names), count)
@@ -131,6 +138,7 @@ async def inventory(client: Any, evidence: Evidence, count: int) -> None:
 async def create_state(
     client: Any, evidence: Evidence, label: str, include_position: bool = False
 ) -> dict[str, Any]:
+    """Create disposable watchlist, journal, and optional holding state."""
     for operation in ("add", "remove"):
         missing = await client.request(
             f"watchlist-{operation}-missing-id",
@@ -205,6 +213,7 @@ async def create_state(
 
 
 async def verify_state(client: Any, evidence: Evidence, saved: dict[str, Any]) -> None:
+    """Verify persisted state through MCP after process replacement."""
     watchlists = await call(
         client, "watchlist-list-after-restart", "portfolio_watchlist_list"
     )
@@ -254,6 +263,7 @@ async def verify_state(client: Any, evidence: Evidence, saved: dict[str, Any]) -
 
 
 async def wheel_checks(python: Path, state: Path, evidence: Evidence) -> None:
+    """Verify isolated wheel imports, transports, and persisted state."""
     state.mkdir(parents=True)
     probe = (
         "import importlib.util,importlib.metadata,json,sys; import maverick; "
@@ -319,14 +329,17 @@ async def wheel_checks(python: Path, state: Path, evidence: Evidence) -> None:
 
 
 async def docker_checks(image: str, evidence: Evidence) -> None:
+    """Verify container persistence and clean up every owned resource."""
     suffix = uuid.uuid4().hex[:10]
     volume = f"maverick-e2e-delivery-{suffix}"
     created: list[str] = []
-    evidence.command(["docker", "volume", "create", volume])
+    failure: BaseException | None = None
     try:
+        evidence.command(["docker", "volume", "create", volume])
         saved: dict[str, Any] = {}
         for generation in (1, 2):
             container = f"{volume}-{generation}"
+            created.append(container)
             evidence.command(
                 [
                     "docker",
@@ -341,7 +354,6 @@ async def docker_checks(image: str, evidence: Evidence) -> None:
                     image,
                 ]
             )
-            created.append(container)
             mapping = evidence.command(["docker", "port", container, "8000/tcp"])
             port = int(mapping.rsplit(":", 1)[1])
             evidence.check(
@@ -390,16 +402,38 @@ async def docker_checks(image: str, evidence: Evidence) -> None:
             name="Docker HTTP MCP persistence across replacement",
             result="pass",
         )
+    except BaseException as exc:
+        failure = exc
+        raise
     finally:
+        cleanup_errors = []
+        cleanup_commands = []
         for container in created:
-            evidence.command(["docker", "logs", container])
-            evidence.command(["docker", "rm", "--force", container])
-        evidence.command(["docker", "volume", "rm", volume])
-        evidence.record("cleanup", resources=[volume, *created], result="pass")
+            cleanup_commands.extend(
+                [
+                    ["docker", "logs", container],
+                    ["docker", "rm", "--force", container],
+                ]
+            )
+        cleanup_commands.append(["docker", "volume", "rm", volume])
+        for command in cleanup_commands:
+            try:
+                evidence.command(command)
+            except Exception as exc:
+                cleanup_errors.append({"argv": command, "exception": repr(exc)})
+        evidence.record(
+            "cleanup",
+            resources=[volume, *created],
+            result="fail" if cleanup_errors else "pass",
+            errors=cleanup_errors,
+        )
+        if cleanup_errors and failure is None:
+            raise RuntimeError(f"Docker cleanup failed: {cleanup_errors}")
 
 
 async def wait_http(url: str) -> None:
     # Docker's published TCP port opens before the Python server is ready.
+    """Wait for an HTTP response from the disposable MCP endpoint."""
     async with httpx.AsyncClient(trust_env=False) as client:
         for _ in range(180):
             try:
@@ -413,6 +447,7 @@ async def wait_http(url: str) -> None:
 
 
 async def wait_port(port: int) -> None:
+    """Wait for a disposable service to accept a loopback connection."""
     for _ in range(120):
         try:
             reader, writer = await asyncio.open_connection("127.0.0.1", port)
@@ -426,6 +461,7 @@ async def wait_port(port: int) -> None:
 
 
 async def services_checks(python: Path, state: Path, evidence: Evidence) -> None:
+    """Verify isolated PostgreSQL persistence and Redis cache behavior."""
     import redis
 
     state.mkdir(parents=True)
@@ -621,6 +657,7 @@ async def services_checks(python: Path, state: Path, evidence: Evidence) -> None
 
 
 async def main() -> None:
+    """Run requested delivery lanes and record the overall outcome."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--mode", choices=("wheel", "docker", "services", "all"), default="all"

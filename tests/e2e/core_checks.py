@@ -27,6 +27,7 @@ D = Decimal
 
 
 def payload(result: Any) -> dict[str, Any]:
+    """Extract a structured domain payload or retain the protocol error."""
     structured = getattr(result, "structured_content", None)
     if structured is not None:
         return structured
@@ -41,12 +42,14 @@ def payload(result: Any) -> dict[str, Any]:
 
 class Checks:
     def __init__(self, transport: str, evidence: Path) -> None:
+        """Collect assertions and tool coverage for one transport."""
         self.transport = transport
         self.evidence = evidence
         self.rows: list[dict[str, Any]] = []
         self.tools: set[str] = set()
 
     def verify(self, label: str, expected: str, actual: Any, assertion: bool) -> None:
+        """Record one assertion and immediately persist its outcome."""
         self.rows.append(
             {
                 "label": label,
@@ -63,6 +66,7 @@ class Checks:
         )
 
     def save(self) -> None:
+        """Write the current assertion summary and exercised tool names."""
         self.evidence.mkdir(parents=True, exist_ok=True)
         (self.evidence / "summary.json").write_text(
             json.dumps(
@@ -91,6 +95,7 @@ class Checks:
         expected: str = "Successful domain result",
         check: Callable[[dict[str, Any]], bool] | None = None,
     ) -> dict[str, Any]:
+        """Call a tool and verify its domain status and scenario predicate."""
         self.tools.add(tool)
         result = await client.request(
             label, "call_tool", name=tool, arguments=args or {}
@@ -118,6 +123,7 @@ class Checks:
 
 
 def provider_calls(state: Path, operation: str, symbol: str) -> int:
+    """Count matching calls captured at the synthetic provider boundary."""
     path = state / "provider-calls.jsonl"
     rows = (
         [json.loads(line) for line in path.read_text().splitlines()]
@@ -130,10 +136,12 @@ def provider_calls(state: Path, operation: str, symbol: str) -> int:
 
 
 def fixture_control(state: Path, **values: Any) -> None:
+    """Set provider behavior for the next deterministic scenario."""
     (state / "fixture-control.json").write_text(json.dumps(values))
 
 
 def price_rows(state: Path, symbol: str) -> list[tuple[Any, ...]]:
+    """Read ordered stored bars to verify persistence independently."""
     with sqlite3.connect(state / "maverick.db") as conn:
         return conn.execute(
             "SELECT date, open, high, low, close, volume FROM md_price_bars WHERE stock_id=(SELECT id FROM md_stocks WHERE symbol=?) ORDER BY date",
@@ -142,6 +150,7 @@ def price_rows(state: Path, symbol: str) -> list[tuple[Any, ...]]:
 
 
 async def market_checks(c: Checks, client: Any, state: Path) -> None:
+    """Verify market-data payloads, calendars, caches, and provider errors."""
     await c.call(
         client,
         "screens-empty-universe",
@@ -393,6 +402,7 @@ async def market_checks(c: Checks, client: Any, state: Path) -> None:
 
 
 async def screening_technical_checks(c: Checks, client: Any) -> None:
+    """Verify screen filters and indicators against fixture history."""
     await c.call(
         client,
         "screens-populated",
@@ -565,6 +575,7 @@ async def screening_technical_checks(c: Checks, client: Any) -> None:
 
 
 async def portfolio_checks(c: Checks, client: Any, server: Any) -> None:
+    """Verify Decimal accounting, risk checks, and concurrent writes."""
     await c.call(
         client,
         "portfolio-empty",
@@ -874,6 +885,7 @@ async def portfolio_checks(c: Checks, client: Any, server: Any) -> None:
 
 
 async def watchlist_journal_checks(c: Checks, client: Any) -> dict[str, Any]:
+    """Verify watchlist and journal workflows and return restart IDs."""
     await c.call(
         client,
         "watchlist-empty",
@@ -1135,6 +1147,7 @@ async def watchlist_journal_checks(c: Checks, client: Any) -> dict[str, Any]:
 
 
 async def run(transport: str, evidence_root: Path) -> bool:
+    """Exercise every core tool and verify persistence after process restart."""
     state = Path(tempfile.mkdtemp(prefix=f"maverick-e2e-core-{transport}-"))
     evidence = evidence_root / transport
     c = Checks(transport, evidence)
@@ -1214,6 +1227,7 @@ async def run(transport: str, evidence_root: Path) -> bool:
 
 
 async def main() -> None:
+    """Run selected transports and fail if any core assertion fails."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--transport", choices=["stdio", "http", "both"], default="both"

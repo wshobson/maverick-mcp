@@ -31,10 +31,12 @@ _CALENDARS = {
 
 
 def control() -> dict[str, Any]:
+    """Read scenario overrides from the isolated process directory."""
     return json.loads(_CONTROL.read_text()) if _CONTROL.exists() else {}
 
 
 def record(operation: str, symbol: str, **details: Any) -> None:
+    """Serialize synthetic provider calls under a thread lock."""
     with _LOCK, _CALLS.open("a") as stream:
         stream.write(
             json.dumps(
@@ -47,6 +49,7 @@ def record(operation: str, symbol: str, **details: Any) -> None:
 def fixture_history(
     symbol: str, start: Any, end: Any, interval: str = "1d"
 ) -> pd.DataFrame:
+    """Generate exchange-session OHLCV bars with explicit failure modes."""
     record("history", symbol, start=start, end=end, interval=interval)
     controls = control()
     if symbol == "BAD":
@@ -97,6 +100,7 @@ def fixture_history(
 
 
 def fixture_info(symbol: str) -> dict[str, Any]:
+    """Return deterministic company data and configurable quote prices."""
     record("info", symbol)
     if symbol == "BAD":
         raise ValueError("Synthetic provider failure for BAD")
@@ -136,6 +140,7 @@ def fixture_info(symbol: str) -> dict[str, Any]:
 
 
 def fixture_download(symbols: list[str], period: str = "1d") -> dict[str, pd.DataFrame]:
+    """Generate recent bars for batch market-overview requests."""
     record("download", ",".join(symbols), period=period)
     end = date.today() + timedelta(days=1)
     result = {}
@@ -148,6 +153,7 @@ def fixture_download(symbols: list[str], period: str = "1d") -> dict[str, pd.Dat
 
 
 def fixture_movers(kind: str, limit: int) -> list[dict[str, Any]]:
+    """Return a bounded synthetic mover list for the requested direction."""
     record("movers", kind)
     return [
         {
@@ -161,6 +167,7 @@ def fixture_movers(kind: str, limit: int) -> list[dict[str, Any]]:
 
 
 def install() -> None:
+    """Replace only external Yahoo and finviz fetcher bindings."""
     from maverick.market_data import fetchers
 
     for name, replacement in (

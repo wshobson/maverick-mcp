@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import faulthandler
 import json
 import multiprocessing
@@ -34,6 +35,7 @@ THREAD_SETTINGS = (
 
 
 def event(path: Path, stage: str, **fields: Any) -> None:
+    """Append a timestamped process stage to diagnostic evidence."""
     with path.open("a") as output:
         output.write(
             json.dumps(
@@ -79,10 +81,12 @@ def process_add(url: str, shares: str, ready: Any, results: Any, evidence: str):
             original_add = service_module.add_shares
 
             def slow_add(*args: Any, **kwargs: Any):
+                """Delay the write to preserve the original concurrency trigger."""
                 time.sleep(0.1)
                 return original_add(*args, **kwargs)
 
             async def run():
+                """Initialize the schema, await the barrier, and record the write."""
                 service = PortfolioService(engine, AsyncMock())
                 event(path, "before-schema")
                 await service._ensure_schema()
@@ -112,32 +116,45 @@ def process_add(url: str, shares: str, ready: Any, results: Any, evidence: str):
 
 
 def sample_worker(process: Any, evidence: Path) -> None:
+    """Capture worker stacks without masking the original failure."""
     if not process.is_alive():
         return
-    event(evidence / "parent.jsonl", "sampling-worker", child_pid=process.pid)
-    if any(
-        f'"pid": {process.pid},' in file.read_text()
-        for file in evidence.glob("worker-*.jsonl")
-    ):
-        os.kill(process.pid, signal.SIGUSR1)
-    if sys.platform == "darwin":
-        with (evidence / f"sample-{process.pid}-command.log").open("w") as output:
-            subprocess.run(
-                [
-                    "/usr/bin/sample",
-                    str(process.pid),
-                    "1",
-                    "-file",
-                    str(evidence / f"sample-{process.pid}.log"),
-                ],
-                stdout=output,
-                stderr=subprocess.STDOUT,
-                timeout=10,
-                check=False,
+    try:
+        event(evidence / "parent.jsonl", "sampling-worker", child_pid=process.pid)
+        if any(
+            f'"pid": {process.pid},' in file.read_text()
+            for file in evidence.glob("worker-*.jsonl")
+        ):
+            os.kill(process.pid, signal.SIGUSR1)
+        if sys.platform == "darwin":
+            with (evidence / f"sample-{process.pid}-command.log").open("w") as output:
+                subprocess.run(
+                    [
+                        "/usr/bin/sample",
+                        str(process.pid),
+                        "1",
+                        "-file",
+                        str(evidence / f"sample-{process.pid}.log"),
+                    ],
+                    stdout=output,
+                    stderr=subprocess.STDOUT,
+                    timeout=10,
+                    check=False,
+                )
+    except (OSError, subprocess.TimeoutExpired) as error:
+        # Sampling is secondary evidence; preserve the original barrier failure
+        # and allow diagnose() to finish cleanup and write its summary.
+        with contextlib.suppress(OSError):
+            event(
+                evidence / "parent.jsonl",
+                "sampling-error",
+                child_pid=process.pid,
+                error=repr(error),
             )
 
 
 async def diagnose(evidence: Path) -> dict[str, Any]:
+    """Record worker stages and final state around the unchanged barrier."""
     from decimal import Decimal
     from unittest.mock import AsyncMock
 

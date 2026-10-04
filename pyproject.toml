@@ -73,6 +73,7 @@ build-backend = "hatchling.build"
 exclude = [
     "/evals/tool_surface/runs/**",
     "/evals/tool_surface/judges/results/**",
+    "/tests/e2e/evidence/**",
     "**/.agent_case.json",
     "**/.git/**",
     "**/.claude/**",

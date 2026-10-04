@@ -18,6 +18,7 @@ from mcp_process import isolated_env, record, server_process
 
 
 async def run(output: Path):
+    """Verify Codex MCP discovery and persistence in disposable app state."""
     output.mkdir(parents=True, exist_ok=True)
     state = Path(tempfile.mkdtemp(prefix="maverick-e2e-app-client-", dir="/tmp"))
     codex = shutil.which("codex")
@@ -62,6 +63,7 @@ async def run(output: Path):
             counter = 0
 
             async def rpc(method, params):
+                """Send one app-server request and capture its matching response."""
                 nonlocal counter
                 counter += 1
                 request = {"id": counter, "method": method, "params": params}
@@ -104,6 +106,7 @@ async def run(output: Path):
                 assert status["data"] and len(status["data"][0]["tools"]) == 53, status
 
                 async def call(tool, arguments):
+                    """Invoke a Maverick tool through the ephemeral Codex session."""
                     return await rpc(
                         "mcpServer/tool/call",
                         {

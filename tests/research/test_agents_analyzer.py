@@ -17,7 +17,10 @@ pytest.importorskip("langgraph")
 
 from langchain_core.messages import HumanMessage, SystemMessage  # noqa: E402
 
-from maverick.research.agents.analyzer import ContentAnalyzer  # noqa: E402
+from maverick.research.agents.analyzer import (  # noqa: E402
+    ContentAnalyzer,
+    _normalized_score,
+)
 
 from ._fakes import FakeChatModel  # noqa: E402
 
@@ -34,6 +37,12 @@ def _valid_analysis_json() -> str:
             "SUMMARY": "Strong quarter with margin expansion.",
         }
     )
+
+
+@pytest.mark.parametrize("score", [{}, {"foo": 1}])
+def test_score_object_without_score_raises_clear_value_error(score):
+    with pytest.raises(ValueError, match="must contain 'score'"):
+        _normalized_score(score)
 
 
 def test_analyze_content_parses_valid_json() -> None:

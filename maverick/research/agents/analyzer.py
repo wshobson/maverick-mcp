@@ -48,6 +48,8 @@ _CONTENT_CHARS = 3000
 def _normalized_score(value: Any) -> float:
     """Accept numeric scores or a provider's score object, bounded to [0, 1]."""
     if isinstance(value, dict):
+        if "score" not in value:
+            raise ValueError("Analysis score object must contain 'score'")
         value = value["score"]
     if isinstance(value, bool) or not isinstance(value, int | float | str):
         raise ValueError("Analysis score must be numeric")

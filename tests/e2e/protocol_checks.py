@@ -20,6 +20,7 @@ from typing import Any
 import httpx
 from jsonschema import Draft202012Validator
 from mcp import types
+from mcp.shared.exceptions import MCPError
 from mcp_process import (
     REPO,
     RecordedClient,
@@ -32,10 +33,12 @@ from mcp_process import (
 
 class Checks:
     def __init__(self, evidence_dir: Path):
+        """Collect protocol assertions under one evidence directory."""
         self.evidence_dir = evidence_dir
         self.results: list[dict[str, Any]] = []
 
     def check(self, label: str, passed: bool, **detail: Any) -> None:
+        """Record and print a protocol assertion with supporting detail."""
         result = {"check": label, "status": "pass" if passed else "fail", **detail}
         self.results.append(result)
         record(self.evidence_dir / "checks.jsonl", "check", **result)
@@ -44,6 +47,7 @@ class Checks:
     async def paginated(
         self, client: RecordedClient, method: str, field: str
     ) -> list[Any]:
+        """Follow discovery cursors and reject repeated pagination tokens."""
         items = []
         cursors = set()
         cursor = None
@@ -72,21 +76,42 @@ class Checks:
         return items
 
     async def expected_error(
-        self, client: RecordedClient, label: str, method: str, **kwargs: Any
+        self,
+        client: RecordedClient,
+        label: str,
+        method: str,
+        *,
+        error_text: str,
+        error_code: int | None = None,
+        **kwargs: Any,
     ) -> None:
+        """Require the intended MCP code or tool error and message."""
         try:
             result = await client.request(label, method, **kwargs)
-        except Exception as exc:
+        except MCPError as exc:
             self.check(
                 f"{client.path.stem}/{label}",
-                True,
+                error_code is not None
+                and exc.code == error_code
+                and error_text in str(exc),
                 error_type=type(exc).__name__,
+                error_code=exc.code,
                 detail=str(exc),
             )
         else:
+            tool_error = isinstance(result, types.CallToolResult) and result.is_error
+            detail = (
+                " ".join(
+                    item.text
+                    for item in result.content
+                    if isinstance(item, types.TextContent)
+                )
+                if tool_error
+                else ""
+            )
             self.check(
                 f"{client.path.stem}/{label}",
-                bool(getattr(result, "is_error", False)),
+                error_code is None and tool_error and error_text in detail,
                 result=serializable(result),
             )
 
@@ -94,6 +119,7 @@ class Checks:
 async def timeout_and_cancel(
     checks: Checks, client: RecordedClient, state: Path
 ) -> None:
+    """Delay a disposable database read to test timeout and recovery."""
     await client.request(
         "watchlist-schema", "call_tool", name="portfolio_watchlist_list", arguments={}
     )
@@ -107,6 +133,8 @@ async def timeout_and_cancel(
             client,
             "request-timeout",
             "call_tool",
+            error_code=types.REQUEST_TIMEOUT,
+            error_text="Request 'tools/call' timed out",
             name="portfolio_watchlist_list",
             arguments={},
             read_timeout_seconds=0.2,
@@ -159,6 +187,7 @@ async def timeout_and_cancel(
 
 
 async def session_checks(checks: Checks, client: RecordedClient, state: Path) -> None:
+    """Verify discovery, schemas, prompts, tools, and resource behavior."""
     initialized = client.initialize_result
     assert initialized is not None
     prefix = client.path.stem
@@ -224,6 +253,8 @@ async def session_checks(checks: Checks, client: RecordedClient, state: Path) ->
                 client,
                 f"prompt-missing-{prompt.name}",
                 "get_prompt",
+                error_code=types.INTERNAL_ERROR,
+                error_text="Missing required arguments",
                 name=prompt.name,
                 arguments={},
             )
@@ -231,6 +262,8 @@ async def session_checks(checks: Checks, client: RecordedClient, state: Path) ->
         client,
         "unknown-prompt",
         "get_prompt",
+        error_code=types.INVALID_PARAMS,
+        error_text="Unknown prompt: '__e2e_unknown_prompt__'",
         name="__e2e_unknown_prompt__",
         arguments={},
     )
@@ -252,6 +285,7 @@ async def session_checks(checks: Checks, client: RecordedClient, state: Path) ->
         client,
         "tool-missing-required",
         "call_tool",
+        error_text="Missing required argument",
         name="market_data_get_chart_links",
         arguments={},
     )
@@ -259,11 +293,17 @@ async def session_checks(checks: Checks, client: RecordedClient, state: Path) ->
         client,
         "tool-invalid-type",
         "call_tool",
+        error_text="Input should be a valid integer",
         name="portfolio_watchlist_add",
         arguments={"watchlist_id": "not-an-int", "symbol": "AAPL"},
     )
     await checks.expected_error(
-        client, "unknown-tool", "call_tool", name="__e2e_unknown_tool__", arguments={}
+        client,
+        "unknown-tool",
+        "call_tool",
+        error_text="Unknown tool: '__e2e_unknown_tool__'",
+        name="__e2e_unknown_tool__",
+        arguments={},
     )
     domain_error = await client.request(
         "domain-error",
@@ -320,6 +360,7 @@ async def session_checks(checks: Checks, client: RecordedClient, state: Path) ->
 
 
 def sse_payload(response: httpx.Response) -> dict[str, Any]:
+    """Decode a JSON response or the first Streamable HTTP data event."""
     if "text/event-stream" in response.headers.get("content-type", ""):
         for line in response.text.splitlines():
             if line.startswith("data: "):
@@ -329,6 +370,7 @@ def sse_payload(response: httpx.Response) -> dict[str, Any]:
 
 
 async def raw_http_checks(checks: Checks, url: str) -> None:
+    """Verify raw HTTP protocol errors and trailing-slash redirects."""
     headers = {
         "Accept": "application/json, text/event-stream",
         "Content-Type": "application/json",
@@ -350,6 +392,7 @@ async def raw_http_checks(checks: Checks, url: str) -> None:
         async def post(
             label: str, address: str, body: Any, extra: dict[str, str] | None = None
         ) -> httpx.Response:
+            """Capture an HTTP request and response without following redirects."""
             started = time.monotonic()
             response = await client.post(
                 address, json=body, headers={**headers, **(extra or {})}
@@ -429,6 +472,7 @@ async def raw_http_checks(checks: Checks, url: str) -> None:
 
 
 async def transport_checks(checks: Checks, transport: str, state: Path) -> None:
+    """Verify process lifecycle, reconnects, and restart persistence."""
     evidence = checks.evidence_dir / transport
     async with server_process(transport, state, evidence, label="server") as server:
         async with server.connect(f"{transport}-client") as client:
@@ -532,6 +576,7 @@ def clean_shutdown(server: Any) -> bool:
 
 
 async def main() -> None:
+    """Run both transport checks and write a failing exit status if needed."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--transport", choices=("stdio", "http", "both"), default="both"

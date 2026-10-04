@@ -26,11 +26,13 @@ original_search = exa_py.AsyncExa.search
 
 
 def record(**data):
+    """Append reservation and provider-usage evidence without credentials."""
     with OUTPUT.open("a") as stream:
         stream.write(json.dumps(data, default=str) + "\n")
 
 
 def reserve(kind):
+    """Reserve conservative cost before a call and enforce the shared cap."""
     global RESERVED
     amount = Decimal("0.01" if kind == "model" else "0.02")
     if RESERVED + amount > Decimal("0.90"):
@@ -42,6 +44,7 @@ def reserve(kind):
 
 class BudgetModel(OriginalModel):
     def __init__(self, **kwargs):
+        """Restrict the authorized model, output, retries, and timeout."""
         if kwargs.get("model") != "gpt-6-luna":
             raise ValueError("Paid test is authorized only for gpt-6-luna")
         kwargs.update(
@@ -51,6 +54,7 @@ class BudgetModel(OriginalModel):
 
     async def ainvoke(self, input, config=None, **kwargs):
         # UTF-8 byte length is a conservative token ceiling for these text prompts.
+        """Bound input, reserve cost, and capture actual model usage."""
         if len(str(input).encode()) > 50_000:
             raise ValueError("Paid test input exceeds the bounded request size")
         reserve("model")
@@ -65,8 +69,9 @@ class BudgetModel(OriginalModel):
 
 
 async def budget_search(self, query, **kwargs):
+    """Bound search scope, reserve cost, and close the provider client."""
     if kwargs.get("type") != "auto" or not 0 < kwargs.get("num_results", 0) <= 10:
-        raise ValueError("Paid test allows only auto search with at most10 results")
+        raise ValueError("Paid test allows only auto search with at most 10 results")
     if kwargs.get("contents") != {"text": {"max_characters": 5000}}:
         raise ValueError("Paid test allows bounded text only")
     reserve("search")
