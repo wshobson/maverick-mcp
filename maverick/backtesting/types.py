@@ -21,9 +21,11 @@ which execution path produced them:
   vary with a fallback branch), so they are modeled as `dict[str, Any]`.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+ProfitFactorStatus = Literal["finite", "no_losses", "no_trades", "no_realized_pnl"]
 
 # -- Core backtest metrics and trades ---------------------------------------
 
@@ -31,9 +33,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class BacktestMetrics(BaseModel):
     """Full metrics shape from `VectorBTEngine._extract_metrics`.
 
-    Every field is produced via `safe_float_metric`/`int()` casts in the
-    legacy code, so none of these are ever `None` -- invalid values are
-    coerced to `0.0` upstream.
+    Daily bar annualization uses 252 trading sessions. Undefined profit
+    factors are null with an explicit status. `avg_duration` is elapsed
+    calendar days, including open trades through the last observed bar.
     """
 
     total_return: float
@@ -43,7 +45,8 @@ class BacktestMetrics(BaseModel):
     calmar_ratio: float
     max_drawdown: float
     win_rate: float
-    profit_factor: float
+    profit_factor: float | None
+    profit_factor_status: ProfitFactorStatus = "finite"
     expectancy: float
     total_trades: int
     winning_trades: int
@@ -82,7 +85,8 @@ class SimpleBacktestMetrics(BaseModel):
     max_drawdown: float
     win_rate: float
     total_trades: int
-    profit_factor: float
+    profit_factor: float | None
+    profit_factor_status: ProfitFactorStatus = "finite"
 
 
 # -- run_backtest -------------------------------------------------------
@@ -186,7 +190,8 @@ class OptimizationResult(BaseModel):
     strategy: str
     optimization_metric: str
     best_parameters: dict[str, Any]
-    best_metric_value: float
+    best_metric_value: float | None
+    best_metric_status: ProfitFactorStatus | None = None
     top_results: list[OptimizationResultRow]
     total_combinations_tested: int
     valid_combinations: int
@@ -253,7 +258,8 @@ class StrategyComparisonRow(BaseModel):
     sharpe_ratio: float
     max_drawdown: float
     win_rate: float
-    profit_factor: float
+    profit_factor: float | None
+    profit_factor_status: ProfitFactorStatus = "finite"
     total_trades: int
     grade: str
     rank: int

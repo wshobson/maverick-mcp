@@ -53,6 +53,7 @@ for Task 5.
 import gc
 import itertools
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any, cast
 
 import numpy as np
@@ -65,6 +66,7 @@ from maverick.backtesting.types import (
     BacktestResult,
     OptimizationResult,
     OptimizationResultRow,
+    ProfitFactorStatus,
     TradeRecord,
 )
 
@@ -78,14 +80,14 @@ _MIN_ROWS = 2
 # rather than `vbt.Portfolio` so real attribute access isn't flagged.
 _METRIC_FUNCS: dict[str, Callable[[Any], Any]] = {
     "total_return": lambda p: p.total_return(),
-    "sharpe_ratio": lambda p: p.sharpe_ratio(),
-    "sortino_ratio": lambda p: p.sortino_ratio(),
-    "calmar_ratio": lambda p: p.calmar_ratio(),
+    "sharpe_ratio": lambda p: p.sharpe_ratio(year_freq="252D"),
+    "sortino_ratio": lambda p: p.sortino_ratio(year_freq="252D"),
+    "calmar_ratio": lambda p: p.calmar_ratio(year_freq="252D"),
     # Higher is better for every other metric; negate drawdown (a negative
     # number) so "reverse=True" sorting still picks the smallest drawdown.
     "max_drawdown": lambda p: -p.max_drawdown(),
     "win_rate": lambda p: p.trades.win_rate() or 0,
-    "profit_factor": lambda p: p.trades.profit_factor() or 0,
+    "profit_factor": lambda p: _profit_factor(p)[0],
 }
 
 
@@ -205,19 +207,47 @@ def _risk_reward_ratio(portfolio: Any) -> float:
         return 0.0
 
 
+def _profit_factor(portfolio: Any) -> tuple[float | None, ProfitFactorStatus]:
+    """Ratio over vectorbt's trade set, including open marked-to-market P&L."""
+    if portfolio.trades.count() == 0:
+        return None, "no_trades"
+    pnl = [Decimal(str(value)) for value in portfolio.trades.pnl.values]
+    profits = sum((value for value in pnl if value > 0), Decimal(0))
+    losses = -sum((value for value in pnl if value < 0), Decimal(0))
+    if losses == 0:
+        return None, "no_losses" if profits > 0 else "no_realized_pnl"
+    return float(profits / losses), "finite"
+
+
+def _trade_duration(row: Any, last_bar: Any) -> pd.Timedelta:
+    exit_timestamp = last_bar if row["Status"] == "Open" else row["Exit Timestamp"]
+    return cast(
+        pd.Timedelta,
+        pd.Timestamp(exit_timestamp) - pd.Timestamp(row["Entry Timestamp"]),
+    )
+
+
 def _extract_metrics(portfolio: Any) -> BacktestMetrics:
     """Port of `VectorBTEngine._extract_metrics`."""
     winning = portfolio.trades.winning
     losing = portfolio.trades.losing
+    profit_factor, profit_factor_status = _profit_factor(portfolio)
+    durations = [
+        _trade_duration(row, portfolio.wrapper.index[-1]).total_seconds() / 86400
+        for _, row in portfolio.trades.records_readable.iterrows()
+    ]
     return BacktestMetrics(
         total_return=_safe_float(portfolio.total_return),
-        annual_return=_safe_float(portfolio.annualized_return),
-        sharpe_ratio=_safe_float(portfolio.sharpe_ratio),
-        sortino_ratio=_safe_float(portfolio.sortino_ratio),
-        calmar_ratio=_safe_float(portfolio.calmar_ratio),
+        annual_return=_safe_float(
+            lambda: portfolio.annualized_return(year_freq="252D")
+        ),
+        sharpe_ratio=_safe_float(lambda: portfolio.sharpe_ratio(year_freq="252D")),
+        sortino_ratio=_safe_float(lambda: portfolio.sortino_ratio(year_freq="252D")),
+        calmar_ratio=_safe_float(lambda: portfolio.calmar_ratio(year_freq="252D")),
         max_drawdown=_safe_float(portfolio.max_drawdown),
         win_rate=_safe_float(portfolio.trades.win_rate),
-        profit_factor=_safe_float(portfolio.trades.profit_factor),
+        profit_factor=profit_factor,
+        profit_factor_status=profit_factor_status,
         expectancy=_safe_float(portfolio.trades.expectancy),
         total_trades=int(portfolio.trades.count()),
         winning_trades=int(winning.count()),
@@ -232,7 +262,7 @@ def _extract_metrics(portfolio: Any) -> BacktestMetrics:
         worst_trade=_safe_float(
             lambda: portfolio.trades.pnl.min() if portfolio.trades.count() > 0 else None
         ),
-        avg_duration=_safe_float(lambda: portfolio.trades.duration.mean()),
+        avg_duration=float(np.mean(durations)) if durations else 0.0,
         kelly_criterion=_kelly_criterion(portfolio),
         recovery_factor=_recovery_factor(portfolio),
         risk_reward_ratio=_risk_reward_ratio(portfolio),
@@ -260,7 +290,7 @@ def _extract_trades(portfolio: Any) -> list[TradeRecord]:
                 "size": float(row.get("Size", 0)),
                 "pnl": float(row.get("PnL", 0)),
                 "return": float(row.get("Return", 0)),
-                "duration": str(row.get("Duration", "")),
+                "duration": str(_trade_duration(row, portfolio.wrapper.index[-1])),
             }
         )
         for _, row in records.iterrows()
@@ -326,10 +356,12 @@ def run_backtest(
     )
 
 
-def _get_metric_value(portfolio: Any, metric_name: str) -> float:
+def _get_metric_value(portfolio: Any, metric_name: str) -> float | None:
     """Port of `VectorBTEngine._get_metric_value`."""
     if metric_name not in _METRIC_FUNCS:
         raise ValueError(f"Unknown metric: {metric_name}")
+    if metric_name == "profit_factor":
+        return _profit_factor(portfolio)[0]
     return _safe_float(lambda: _METRIC_FUNCS[metric_name](portfolio))
 
 
@@ -414,11 +446,25 @@ def optimize_parameters(
                     "total_return": _safe_float(portfolio.total_return),
                     "max_drawdown": _safe_float(portfolio.max_drawdown),
                     "total_trades": int(portfolio.trades.count()),
+                    **(
+                        {"profit_factor_status": _profit_factor(portfolio)[1]}
+                        if optimization_metric == "profit_factor"
+                        else {}
+                    ),
                 }
             )
         gc.collect()
 
-    results.sort(key=lambda row: row[optimization_metric], reverse=True)
+    def ranking_key(row: dict[str, Any]) -> tuple[int, float]:
+        if optimization_metric == "profit_factor":
+            status = row["profit_factor_status"]
+            return (
+                2 if status == "no_losses" else 1 if status == "finite" else 0,
+                row[optimization_metric] or 0.0,
+            )
+        return 1, row[optimization_metric]
+
+    results.sort(key=ranking_key, reverse=True)
     top_rows = results[:top_n]
     top_results = [OptimizationResultRow(**row) for row in top_rows]
 
@@ -428,6 +474,9 @@ def optimize_parameters(
         optimization_metric=optimization_metric,
         best_parameters=top_rows[0]["parameters"] if top_rows else {},
         best_metric_value=top_rows[0][optimization_metric] if top_rows else 0.0,
+        best_metric_status=top_rows[0].get("profit_factor_status")
+        if top_rows
+        else None,
         top_results=top_results,
         total_combinations_tested=total_combos,
         valid_combinations=len(results),

@@ -6,7 +6,7 @@ call `self._run`/`self._fetch_frame`/`self._settings`, defined on `BacktestingSe
 """
 
 from datetime import date, timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -88,7 +88,8 @@ class _WalkForwardMixin:
                         WalkForwardPeriodResult(
                             period=f"{test_start:%Y-%m-%d} to {test_end:%Y-%m-%d}",
                             parameters=best_params,
-                            in_sample_sharpe=opt_result.best_metric_value,
+                            # Only profit-factor optimization has a nullable best value.
+                            in_sample_sharpe=cast(float, opt_result.best_metric_value),
                             out_sample_return=test_result.metrics.total_return,
                             out_sample_sharpe=test_result.metrics.sharpe_ratio,
                             out_sample_drawdown=test_result.metrics.max_drawdown,

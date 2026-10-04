@@ -132,8 +132,7 @@ def merge_parameters(strategy: str, overrides: dict[str, Any]) -> dict[str, Any]
 
 
 def to_simple_metrics(metrics: BacktestMetrics) -> SimpleBacktestMetrics:
-    """Project `SimpleBacktestMetrics`'s 7 fields straight off the full `BacktestMetrics` --
-    a strict subset, see `types.py`'s module docstring."""
+    """Project the simplified metrics, including undefined profit-factor status."""
     return SimpleBacktestMetrics(
         total_return=metrics.total_return,
         annual_return=metrics.annual_return,
@@ -142,6 +141,7 @@ def to_simple_metrics(metrics: BacktestMetrics) -> SimpleBacktestMetrics:
         win_rate=metrics.win_rate,
         total_trades=metrics.total_trades,
         profit_factor=metrics.profit_factor,
+        profit_factor_status=metrics.profit_factor_status,
     )
 
 

@@ -1,5 +1,6 @@
 """Tests for maverick.backtesting.types."""
 
+import json
 from typing import Any
 
 import pytest
@@ -39,7 +40,7 @@ from maverick.backtesting.types import (
 
 
 def _make_metrics(**overrides) -> BacktestMetrics:
-    fields = {
+    fields: dict[str, Any] = {
         "total_return": 0.35,
         "annual_return": 0.28,
         "sharpe_ratio": 1.42,
@@ -77,6 +78,7 @@ def test_backtest_metrics_round_trips_and_has_exact_fields():
         "max_drawdown",
         "win_rate",
         "profit_factor",
+        "profit_factor_status",
         "expectancy",
         "total_trades",
         "winning_trades",
@@ -93,7 +95,7 @@ def test_backtest_metrics_round_trips_and_has_exact_fields():
     assert BacktestMetrics(**data) == metrics
 
 
-def test_backtest_metrics_never_optional_no_none_allowed():
+def test_backtest_metrics_other_numeric_fields_do_not_allow_none():
     with pytest.raises(ValidationError):
         _make_metrics(sharpe_ratio=None)
 
@@ -123,7 +125,7 @@ def test_trade_record_round_trips_with_return_alias():
 
 
 def _make_simple_metrics(**overrides) -> SimpleBacktestMetrics:
-    fields = {
+    fields: dict[str, Any] = {
         "total_return": 0.12,
         "annual_return": 0.09,
         "sharpe_ratio": 0.8,
@@ -147,6 +149,7 @@ def test_simple_backtest_metrics_round_trips_and_has_exact_fields():
         "win_rate",
         "total_trades",
         "profit_factor",
+        "profit_factor_status",
     }
     assert SimpleBacktestMetrics(**data) == metrics
 
@@ -379,7 +382,7 @@ def test_monte_carlo_result_round_trips_through_model_dump():
 
 
 def _make_comparison_row(**overrides) -> StrategyComparisonRow:
-    fields = {
+    fields: dict[str, Any] = {
         "strategy": "sma_cross",
         "parameters": {"fast_period": 10, "slow_period": 20},
         "total_return": 0.25,
@@ -556,3 +559,15 @@ def test_ensemble_backtest_result_round_trips_through_model_dump():
     data = result.model_dump()
     assert EnsembleBacktestResult(**data) == result
     assert data["individual_results"][0]["symbol"] == "AAPL"
+
+
+@pytest.mark.parametrize("status", ["no_losses", "no_trades", "no_realized_pnl"])
+def test_undefined_profit_factor_round_trips_as_strict_json_null(status):
+    metrics = _make_metrics(profit_factor=None, profit_factor_status=status)
+    data = metrics.model_dump()
+    assert data["profit_factor"] is None
+    assert data["profit_factor_status"] == status
+    assert (
+        BacktestMetrics.model_validate(json.loads(json.dumps(data, allow_nan=False)))
+        == metrics
+    )

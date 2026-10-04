@@ -12,6 +12,7 @@ Numeric assertions are pinned: recorded by actually running this code, per
 the task's characterization-testing brief.
 """
 
+import json
 from typing import Any
 
 import pandas as pd
@@ -26,6 +27,7 @@ from maverick.backtesting.analysis import (
 )
 from maverick.backtesting.config import BacktestingSettings
 from maverick.backtesting.engine import run_backtest
+from maverick.backtesting.service_support import to_simple_metrics
 from maverick.backtesting.types import (
     BacktestAnalysis,
     BacktestMetrics,
@@ -45,7 +47,7 @@ pytestmark = pytest.mark.timeout(300)
 
 
 def _metrics(**overrides) -> BacktestMetrics:
-    fields = {
+    fields: dict[str, Any] = {
         "total_return": 0.2534,
         "annual_return": 0.1892,
         "sharpe_ratio": 1.2345,
@@ -126,14 +128,17 @@ def test_analyze_pins_grade_and_risk_assessment(tiny_backtest_result):
     assert analysis.trade_quality.quality == "Average"
     assert analysis.trade_quality.total_trades == 2
     assert analysis.trade_quality.frequency == "Very Low"
-    assert analysis.weaknesses == ["Insufficient trade signals"]
+    assert analysis.weaknesses == [
+        "Poor risk-adjusted returns",
+        "Insufficient trade signals",
+    ]
     assert "Consider more sensitive parameters for increased signals" in (
         analysis.recommendations
     )
     assert analysis.summary == (
-        "The strategy generated a 0.3% return with a Sharpe ratio of 0.57. "
+        "The strategy generated a 0.3% return with a Sharpe ratio of 0.47. "
         "Maximum drawdown was 4.1% with a 50.0% win rate across 2 trades. "
-        "Performance is moderate and could benefit from optimization."
+        "Performance needs significant improvement before live trading."
     )
 
 
@@ -238,3 +243,31 @@ def test_monte_carlo_simulation_is_deterministic_for_a_fixed_seed(
 def test_monte_carlo_simulation_rejects_empty_trades():
     with pytest.raises(ValueError, match="at least one trade"):
         monte_carlo_simulation([])
+
+
+@pytest.mark.parametrize("status", ["no_losses", "no_trades", "no_realized_pnl"])
+def test_nullable_profit_factor_analysis_and_comparison(status):
+    index = pd.to_datetime(["2024-01-02", "2024-01-05"])
+    frame = pd.DataFrame(
+        {"close": [100, 110 if status == "no_losses" else 100]}, index=index
+    )
+    result = run_backtest(
+        frame,
+        pd.Series([status != "no_trades", False], index=index),
+        pd.Series([False, status != "no_trades"], index=index),
+        settings=BacktestingSettings(fees=0, slippage=0),
+    )
+    analysis = analyze(result)
+    assert "Unprofitable trades overall" not in analysis.weaknesses
+    assert (
+        "Focus on cutting losses quicker and letting winners run"
+        not in analysis.recommendations
+    )
+    comparison = compare_strategies([result])
+    assert comparison.rankings[0].profit_factor is None
+    assert comparison.rankings[0].profit_factor_status == status
+    simplified = to_simple_metrics(result.metrics)
+    assert simplified.profit_factor is None
+    assert simplified.profit_factor_status == status
+    for payload in (analysis, comparison, simplified):
+        json.dumps(payload.model_dump(), allow_nan=False)

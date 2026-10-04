@@ -21,6 +21,7 @@ per the task's characterization-testing brief. A change to this module's
 math should change these numbers and fail the test; that is the point.
 """
 
+import json
 from typing import Any
 
 import numpy as np
@@ -109,8 +110,12 @@ def test_sma_cross_end_to_end_pins_metrics(ohlcv_frame):
     assert metrics.winning_trades == 2
     assert metrics.losing_trades == 6
     assert metrics.total_return == pytest.approx(-0.1939859295537608, rel=1e-6)
-    assert metrics.sharpe_ratio == pytest.approx(-1.1935470172889275, rel=1e-6)
-    assert metrics.sortino_ratio == pytest.approx(-1.6432226726027797, rel=1e-6)
+    assert metrics.sharpe_ratio == pytest.approx(
+        -1.1935470172889275 * np.sqrt(252 / 365), rel=1e-6
+    )
+    assert metrics.sortino_ratio == pytest.approx(
+        -1.6432226726027797 * np.sqrt(252 / 365), rel=1e-6
+    )
     assert metrics.max_drawdown == pytest.approx(-0.25587123351061325, rel=1e-6)
     assert metrics.win_rate == pytest.approx(0.25, rel=1e-6)
     assert metrics.profit_factor == pytest.approx(0.16752545611905578, rel=1e-6)
@@ -131,10 +136,7 @@ def test_sma_cross_first_trade_pinned(ohlcv_frame):
     assert first.exit_price == pytest.approx(107.01805792236328, rel=1e-6)
     assert first.pnl == pytest.approx(59.06643675872606, rel=1e-6)
     assert first.return_ == pytest.approx(0.005912550319548479, rel=1e-6)
-    # No "Duration" column in vectorbt 1.0's `records_readable` -- the
-    # legacy `.get("Duration", "")` fallback is exercised, not a bug in
-    # this port. See `engine.py::_extract_trades`.
-    assert first.duration == ""
+    assert first.duration == "4 days 00:00:00"
 
 
 def test_run_backtest_rejects_empty_frame():
@@ -186,7 +188,9 @@ def test_optimize_parameters_pins_best_result(ohlcv_frame):
     assert result.total_combinations_tested == 6
     assert result.valid_combinations == 6
     assert result.best_parameters == {"fast_period": 15, "slow_period": 20}
-    assert result.best_metric_value == pytest.approx(-0.6870859573334221, rel=1e-6)
+    assert result.best_metric_value == pytest.approx(
+        -0.6870859573334221 * np.sqrt(252 / 365), rel=1e-6
+    )
     assert len(result.top_results) == 3
 
     best_row = result.top_results[0]
@@ -196,7 +200,9 @@ def test_optimize_parameters_pins_best_result(ohlcv_frame):
     assert best_row.total_trades == 12
     # Dynamic key named after `optimization_metric`, preserved via
     # `OptimizationResultRow`'s `extra="allow"`.
-    assert best_row.sharpe_ratio == pytest.approx(-0.6870859573334221, rel=1e-6)  # ty: ignore[unresolved-attribute]
+    assert best_row.model_dump()["sharpe_ratio"] == pytest.approx(
+        -0.6870859573334221 * np.sqrt(252 / 365), rel=1e-6
+    )
 
 
 def test_optimize_parameters_no_slippage_differs_from_run_backtest(ohlcv_frame):
@@ -273,3 +279,118 @@ def test_optimize_parameters_rejects_too_short_frame():
     frame = pd.DataFrame({"close": [100.0]}, index=dates)
     with pytest.raises(ValueError, match="at least"):
         optimize_parameters(frame, _sma_cross_signals, {"fast_period": [10]})
+
+
+@pytest.fixture
+def annualization_frame():
+    index = pd.bdate_range("2024-01-02", periods=252)
+    path = np.linspace(100, 110, 252) + np.sin(np.arange(252))
+    path[-1] = 110
+    return pd.DataFrame({"close": path}, index=index)
+
+
+@pytest.mark.parametrize("metric", ["sharpe_ratio", "sortino_ratio"])
+def test_daily_metrics_use_252_sessions_locally(annualization_frame, metric):
+    frame = annualization_frame
+    entries = pd.Series(False, index=frame.index)
+    entries.iloc[0] = True
+    exits = pd.Series(False, index=frame.index)
+    exits.iloc[-1] = True
+    settings = BacktestingSettings(fees=0, slippage=0)
+    global_year_freq = vbt.settings["returns"]["year_freq"]
+    result = run_backtest(frame, entries, exits, settings=settings)
+    prices = frame.close.astype(np.float32).astype(float)
+    returns = prices.pct_change().fillna(0).to_numpy()
+    denominator = (
+        returns.std(ddof=1)
+        if metric == "sharpe_ratio"
+        else np.sqrt(np.mean(np.minimum(returns, 0) ** 2))
+    )
+    expected = returns.mean() / denominator * np.sqrt(252)
+    assert result.metrics.annual_return == pytest.approx(0.10)
+    assert getattr(result.metrics, metric) == pytest.approx(expected)
+    optimized = optimize_parameters(
+        frame,
+        lambda _frame, _params: (entries, exits),
+        {"candidate": [1]},
+        optimization_metric=metric,
+        settings=settings,
+    )
+    assert optimized.best_metric_value == pytest.approx(expected)
+    assert vbt.settings["returns"]["year_freq"] == global_year_freq
+
+
+@pytest.mark.parametrize("chunk_threshold", [1, 100])
+def test_profit_factor_optimization_ranks_actual_trade_evidence(chunk_threshold):
+    index = pd.bdate_range("2024-01-02", periods=6)
+    frame = pd.DataFrame({"close": [100, 120, 100, 90, 100, 100]}, index=index)
+    candidates = {
+        "no_losses": ([0], [1]),
+        "finite": ([0, 2], [1, 3]),
+        "no_trades": ([], []),
+        "no_realized_pnl": ([4], [5]),
+    }
+
+    def signals(_frame, params):
+        entry_positions, exit_positions = candidates[params["candidate"]]
+        entries = pd.Series(False, index=index)
+        exits = pd.Series(False, index=index)
+        entries.iloc[entry_positions] = True
+        exits.iloc[exit_positions] = True
+        return entries, exits
+
+    result = optimize_parameters(
+        frame,
+        signals,
+        {"candidate": list(reversed(candidates))},
+        optimization_metric="profit_factor",
+        top_n=4,
+        settings=BacktestingSettings(
+            fees=0,
+            slippage=0,
+            optimization_chunk_threshold=chunk_threshold,
+            optimization_chunk_size_min=1,
+            optimization_chunk_size_max=2,
+        ),
+    )
+    rows = result.model_dump()["top_results"]
+    assert [row["parameters"]["candidate"] for row in rows[:2]] == [
+        "no_losses",
+        "finite",
+    ]
+    assert {row["parameters"]["candidate"] for row in rows[2:]} == {
+        "no_trades",
+        "no_realized_pnl",
+    }
+    assert result.best_metric_value is None
+    assert result.best_metric_status == "no_losses"
+    assert rows[1]["profit_factor"] == pytest.approx(5 / 3)
+    for row in rows:
+        assert row["profit_factor_status"] == row["parameters"]["candidate"]
+        assert (row["profit_factor"] is not None) == (
+            row["profit_factor_status"] == "finite"
+        )
+        entries, exits = signals(frame, row["parameters"])
+        backtest = run_backtest(
+            frame, entries, exits, settings=BacktestingSettings(fees=0, slippage=0)
+        )
+        assert backtest.metrics.profit_factor_status == row["profit_factor_status"]
+        assert backtest.metrics.profit_factor == row["profit_factor"]
+        json.dumps(backtest.model_dump(), allow_nan=False)
+    json.dumps(result.model_dump(), allow_nan=False)
+
+
+@pytest.mark.parametrize("close_trade", [True, False])
+def test_trade_duration_uses_elapsed_timestamps(close_trade):
+    index = pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-05"])
+    frame = pd.DataFrame({"close": [100, 105, 110]}, index=index)
+    result = run_backtest(
+        frame,
+        pd.Series([True, False, False], index=index),
+        pd.Series([False, False, close_trade], index=index),
+        settings=BacktestingSettings(fees=0, slippage=0),
+    )
+    assert result.trades[0].duration == "3 days 00:00:00"
+    assert result.metrics.avg_duration == 3.0
+    assert result.metrics.profit_factor is None
+    assert result.metrics.profit_factor_status == "no_losses"
