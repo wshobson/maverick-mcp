@@ -1,0 +1,100 @@
+  + Exception Group Traceback (most recent call last):
+  |   File "<frozen runpy>", line 198, in _run_module_as_main
+  |   File "<frozen runpy>", line 88, in _run_code
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 591, in <module>
+  |     asyncio.run(main())
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 579, in main
+  |     await docker_checks(args.image, evidence)
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 345, in docker_checks
+  |     async with http_connection(
+  |                ^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+  |     return await anext(self.gen)
+  |            ^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/mcp_process.py", line 132, in http_connection
+  |     async with streamable_http_client(url) as (read_stream, write_stream):
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 231, in __aexit__
+  |     await self.gen.athrow(value)
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/streamable_http.py", line 688, in streamable_http_client
+  |     anyio.create_task_group() as tg,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 815, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_transports/default.py", line 98, in map_httpcore_exceptions
+    |     yield
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_transports/default.py", line 388, in handle_async_request
+    |     resp = await self._pool.handle_async_request(req)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/connection_pool.py", line 242, in handle_async_request
+    |     raise exc from None
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/connection_pool.py", line 224, in handle_async_request
+    |     response = await connection.handle_async_request(pool_request.request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/connection.py", line 96, in handle_async_request
+    |     return await self._connection.handle_async_request(request)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/http11.py", line 125, in handle_async_request
+    |     raise exc
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/http11.py", line 97, in handle_async_request
+    |     ) = await self._receive_response_headers(**kwargs)
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/http11.py", line 167, in _receive_response_headers
+    |     event = await self._receive_event(timeout=timeout)
+    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpcore2/_async/http11.py", line 212, in _receive_event
+    |     raise RemoteProtocolError(msg)
+    | httpcore2.RemoteProtocolError: Server disconnected without sending a response.
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 275, in _run_coro
+    |     retval = await self._coro
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/streamable_http.py", line 308, in _run_request_post
+    |     await post_fn()
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/streamable_http.py", line 589, in handle_request_async
+    |     await self._handle_post_request(ctx)
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/streamable_http.py", line 323, in _handle_post_request
+    |     async with ctx.client.stream(
+    |                ^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+    |     return await anext(self.gen)
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_client.py", line 1678, in stream
+    |     response = await self.send(
+    |                ^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_client.py", line 1818, in send
+    |     response = await self._send_handling_auth(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_client.py", line 1846, in _send_handling_auth
+    |     response = await self._send_handling_redirects(
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_client.py", line 1881, in _send_handling_redirects
+    |     response = await self._send_single_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_client.py", line 1915, in _send_single_request
+    |     response = await transport.handle_async_request(request)
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_transports/default.py", line 387, in handle_async_request
+    |     with map_httpcore_exceptions():
+    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/httpx2/_transports/default.py", line 115, in map_httpcore_exceptions
+    |     raise mapped_exc(message) from exc
+    | httpx2.RemoteProtocolError: Server disconnected without sending a response.
+    +------------------------------------

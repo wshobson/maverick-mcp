@@ -1,0 +1,1 @@
+WARNING: proceeding, even though we could not create PATH aliases: Refusing to create helper binaries under temporary dir "/private/var/folders/4s/t97d19rd00dccqypgk8gw4_w0000gn/T/maverick-e2e-app-client-e4tf5k4a/client" (codex_home: AbsolutePathBuf("/private/var/folders/4s/t97d19rd00dccqypgk8gw4_w0000gn/T/maverick-e2e-app-client-e4tf5k4a/client/home/.codex"))

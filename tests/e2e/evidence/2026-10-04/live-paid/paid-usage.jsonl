@@ -1,0 +1,39 @@
+{"event": "reserved", "kind": "model", "reserved_usd": "0.01", "counts": {"model": 1, "search": 0}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.03", "counts": {"model": 1, "search": 1}}
+{"event": "search_response", "query": "Microsoft latest annual report revenue and risks financial analysis", "results": 5, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.04", "counts": {"model": 2, "search": 1}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.05", "counts": {"model": 3, "search": 1}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.06", "counts": {"model": 4, "search": 1}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.07", "counts": {"model": 5, "search": 1}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.09", "counts": {"model": 5, "search": 2}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.11", "counts": {"model": 5, "search": 3}}
+{"event": "search_response", "query": "MSFT company financial analysis and outlook investment research", "results": 5, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "search_response", "query": "MSFT company financial analysis and outlook financial analysis", "results": 5, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.12", "counts": {"model": 6, "search": 3}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.13", "counts": {"model": 7, "search": 3}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.14", "counts": {"model": 8, "search": 3}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.15", "counts": {"model": 9, "search": 3}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.16", "counts": {"model": 10, "search": 3}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.18", "counts": {"model": 10, "search": 4}}
+{"event": "search_response", "query": "market sentiment analysis: Microsoft earnings financial analysis", "results": 5, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.19", "counts": {"model": 11, "search": 4}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.20", "counts": {"model": 12, "search": 4}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.21", "counts": {"model": 13, "search": 4}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.23", "counts": {"model": 13, "search": 5}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.25", "counts": {"model": 13, "search": 6}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.27", "counts": {"model": 13, "search": 7}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.29", "counts": {"model": 13, "search": 8}}
+{"event": "reserved", "kind": "search", "reserved_usd": "0.31", "counts": {"model": 13, "search": 9}}
+{"event": "search_response", "query": "market sentiment analysis: Microsoft earnings social sentiment reddit twitter discussion", "results": 2, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "search_response", "query": "market sentiment analysis: Microsoft earnings market sentiment investor opinion", "results": 2, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "search_response", "query": "market sentiment analysis: Microsoft earnings news sentiment positive negative", "results": 2, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "search_response", "query": "market sentiment analysis: Microsoft earnings institutional investor sentiment", "results": 2, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "search_response", "query": "market sentiment analysis: Microsoft earnings analyst rating recommendation upgrade downgrade", "results": 2, "cost": "CostDollars(total=0.007, search={'neural': 0.007}, contents=None)"}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.32", "counts": {"model": 14, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.33", "counts": {"model": 15, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.34", "counts": {"model": 16, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.35", "counts": {"model": 17, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.36", "counts": {"model": 18, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.37", "counts": {"model": 19, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.38", "counts": {"model": 20, "search": 9}}
+{"event": "reserved", "kind": "model", "reserved_usd": "0.39", "counts": {"model": 21, "search": 9}}

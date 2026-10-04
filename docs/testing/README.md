@@ -105,5 +105,7 @@ There is no speed or benchmark suite.
 
 ## Related Testing Docs
 
+- [Process E2E report and reproduction](mcp-e2e-2026-10-04.md): real STDIO/HTTP,
+  all-tool matrix, installed package/container, and separate live-provider evidence.
 - `in-memory.md`
 - `exa-research.md`

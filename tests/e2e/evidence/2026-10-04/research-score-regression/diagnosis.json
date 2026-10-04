@@ -1,0 +1,15 @@
+{
+  "observed_live_error": "ResearchAgentError: unsupported operand type(s) for +: 'float' and 'dict'",
+  "live_evidence": "tests/e2e/evidence/2026-10-04/live-paid-final/client.jsonl",
+  "model_response_captured": false,
+  "inference": "Object-valued analyzer CREDIBILITY can flow to calculate_source_credibility and fail float addition; exact live model JSON is unknown.",
+  "regression_provider_payload": "Synthetic numeric scalars, numeric strings, score objects, and malformed values; no paid requests.",
+  "red": {
+    "failed": 40,
+    "passed": 10
+  },
+  "focused_green": {
+    "passed": 95
+  },
+  "scope": "Validate credibility, relevance, and sentiment confidence before synthesis. Unsupported values select existing explicit fallback."
+}

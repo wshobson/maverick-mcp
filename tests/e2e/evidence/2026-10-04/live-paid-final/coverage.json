@@ -1,0 +1,34 @@
+[
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "http",
+    "scenario": "live-parser",
+    "arguments": {
+      "description": "Buy when10 day SMA crosses above20 day SMA; sell when it crosses below."
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 330,
+    "evidence": "http-live-parser.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 3.5047
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "live-comprehensive",
+    "arguments": {
+      "query": "Microsoft latest annual report revenue and risks",
+      "research_scope": "basic",
+      "persona": "conservative"
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "fail",
+    "response_bytes": 341,
+    "evidence": "http-live-comprehensive.json",
+    "actual": "AssertionError: {'success': False, 'error': \"Research error: Deep research failed: unsupported operand type(s) for +: 'float' and 'dict'\", 'error_type': 'ResearchAgentError', 'request_id': 'de5ba588-c0cb-48e8-acfe-4cc21a776256', 'timestamp': '2026-10-04T18:30:15.390890+00:00', 'query': 'Microsoft latest annual report revenue and risks', 'status': 'error'}",
+    "duration_seconds": 7.669
+  }
+]

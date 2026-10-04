@@ -1,0 +1,69 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- /Users/wshobson/workspace/major7apps/maverick-mcp/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/wshobson/workspace/major7apps/maverick-mcp
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, timeout-2.4.0, anyio-4.14.2, asyncio-1.3.0, langsmith-0.8.18
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 53 items
+
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[-1-account_size] PASSED [  1%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[-1-entry_price] PASSED [  3%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[-1-stop_loss] PASSED [  5%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[0-account_size] PASSED [  7%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[0-entry_price] PASSED [  9%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[0-stop_loss] PASSED [ 11%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[nan-account_size] PASSED [ 13%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[nan-entry_price] PASSED [ 15%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[nan-stop_loss] PASSED [ 16%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[inf-account_size] PASSED [ 18%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[inf-entry_price] PASSED [ 20%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[inf-stop_loss] PASSED [ 22%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[-inf-account_size] PASSED [ 24%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[-inf-entry_price] PASSED [ 26%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_positive_inputs[-inf-stop_loss] PASSED [ 28%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_risk_percentage[-1] PASSED [ 30%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_risk_percentage[nan] PASSED [ 32%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_risk_percentage[inf] PASSED [ 33%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_rejects_invalid_risk_percentage[-inf] PASSED [ 35%]
+tests/portfolio/test_risk_validation.py::test_regime_sizing_keeps_zero_risk_and_equal_stop_contract PASSED [ 37%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[-1-new_shares] PASSED [ 39%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[-1-new_price] PASSED [ 41%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[0-new_shares] PASSED [ 43%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[0-new_price] PASSED [ 45%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[nan-new_shares] PASSED [ 47%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[nan-new_price] PASSED [ 49%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[inf-new_shares] PASSED [ 50%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[inf-new_price] PASSED [ 52%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[-inf-new_shares] PASSED [ 54%]
+tests/portfolio/test_risk_validation.py::test_pretrade_risk_rejects_invalid_position_inputs[-inf-new_price] PASSED [ 56%]
+tests/portfolio/test_risk.py::test_compute_dashboard_empty_positions_returns_zeroed_dashboard PASSED [ 58%]
+tests/portfolio/test_risk.py::test_compute_dashboard_single_position_var_and_pnl PASSED [ 60%]
+tests/portfolio/test_risk.py::test_compute_dashboard_two_sectors_concentration_split PASSED [ 62%]
+tests/portfolio/test_risk.py::test_check_position_risk_new_ticker_not_previously_held PASSED [ 64%]
+tests/portfolio/test_risk.py::test_check_position_risk_merges_into_existing_holding PASSED [ 66%]
+tests/portfolio/test_risk.py::test_regime_adjusted_size_bull_full_risk PASSED [ 67%]
+tests/portfolio/test_risk.py::test_regime_adjusted_size_bear_halves_risk PASSED [ 69%]
+tests/portfolio/test_risk.py::test_regime_adjusted_size_choppy_and_transitional_are_75_pct PASSED [ 71%]
+tests/portfolio/test_risk.py::test_regime_adjusted_size_unknown_regime_defaults_to_full_risk PASSED [ 73%]
+tests/portfolio/test_risk.py::test_regime_adjusted_size_zero_risk_per_share_returns_zero_shares PASSED [ 75%]
+tests/portfolio/test_risk.py::test_generate_alerts_empty_positions_returns_no_alerts PASSED [ 77%]
+tests/portfolio/test_risk.py::test_generate_alerts_well_diversified_no_thresholds_breached PASSED [ 79%]
+tests/portfolio/test_risk.py::test_generate_alerts_sector_concentration_critical_and_warning PASSED [ 81%]
+tests/portfolio/test_risk.py::test_generate_alerts_unknown_sector_never_creates_concentration_alert PASSED [ 83%]
+tests/portfolio/test_risk.py::test_generate_alerts_oversized_position_warning PASSED [ 84%]
+tests/portfolio/test_risk.py::test_generate_alerts_drawdown_warning PASSED [ 86%]
+tests/portfolio/test_risk.py::test_classify_regime_flat_prices_low_vix_is_transitional PASSED [ 88%]
+tests/portfolio/test_risk.py::test_classify_regime_strong_uptrend_low_vix_is_bull PASSED [ 90%]
+tests/portfolio/test_risk.py::test_classify_regime_strong_downtrend_high_vix_is_bear PASSED [ 92%]
+tests/portfolio/test_risk.py::test_classify_regime_short_series_trend_and_momentum_neutral PASSED [ 94%]
+tests/portfolio/test_risk.py::test_classify_regime_breadth_ratio_bullish_and_bearish PASSED [ 96%]
+tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[add] PASSED [ 98%]
+tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[remove] PASSED [100%]
+
+============================= slowest 10 durations =============================
+0.02s call     tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[add]
+0.01s call     tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[remove]
+
+(8 durations < 0.005s hidden.  Use -vv to show these durations.)
+============================== 53 passed in 0.16s ==============================

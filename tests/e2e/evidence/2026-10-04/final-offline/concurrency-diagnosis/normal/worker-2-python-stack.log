@@ -1,0 +1,97 @@
+Current thread 0x00000001ed963f80 (most recent call first):
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1108 in match_type
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1043 in _generate_schema_inner
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 2231 in inner_handler
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_schema_generation_shared.py", line 83 in __call__
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 2252 in _apply_annotations
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1299 in _common_field_schema
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1245 in _generate_md_field_schema
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 868 in _model_schema
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 1038 in _generate_schema_inner
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py", line 744 in generate_schema
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_model_construction.py", line 667 in complete_model_class
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/pydantic/_internal/_model_construction.py", line 256 in __new__
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp_types/_v2025_11_25/__init__.py", line 3054 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp_types/methods.py", line 21 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/types/methods.py", line 12 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1415 in _handle_fromlist
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/types/__init__.py", line 30 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1415 in _handle_fromlist
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/__init__.py", line 63 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1310 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1310 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1310 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/fastmcp/server/server.py", line 32 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/fastmcp/__init__.py", line 73 in __getattr__
+  File "<frozen importlib._bootstrap>", line 1412 in _handle_fromlist
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/maverick/market_data/tools.py", line 8 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/maverick/market_data/__init__.py", line 11 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap>", line 1310 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/maverick/portfolio/service.py", line 31 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/maverick/portfolio/__init__.py", line 15 in <module>
+  File "<frozen importlib._bootstrap>", line 488 in _call_with_frames_removed
+  File "<frozen importlib._bootstrap_external>", line 999 in exec_module
+  File "<frozen importlib._bootstrap>", line 935 in _load_unlocked
+  File "<frozen importlib._bootstrap>", line 1331 in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 1360 in _find_and_load
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/concurrency_diagnosis.py", line 71 in process_add
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/multiprocessing/process.py", line 108 in run
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/multiprocessing/process.py", line 314 in _bootstrap
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/multiprocessing/spawn.py", line 135 in _main
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/multiprocessing/spawn.py", line 122 in spawn_main
+  File "<string>", line 1 in <module>

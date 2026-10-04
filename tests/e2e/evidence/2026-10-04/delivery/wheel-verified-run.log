@@ -1,0 +1,57 @@
+  + Exception Group Traceback (most recent call last):
+  |   File "<frozen runpy>", line 198, in _run_module_as_main
+  |   File "<frozen runpy>", line 88, in _run_code
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 578, in <module>
+  |     asyncio.run(main())
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+  |     return runner.run(main)
+  |            ^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+  |     return self._loop.run_until_complete(task)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+  |     return future.result()
+  |            ^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 562, in main
+  |     await wheel_checks(
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 261, in wheel_checks
+  |     async with server.connect(f"wheel-{transport}-writer") as client:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/contextlib.py", line 210, in __aenter__
+  |     return await anext(self.gen)
+  |            ^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/mcp_process.py", line 232, in connect
+  |     async with anyio.create_task_group() as group:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 815, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Exception Group Traceback (most recent call last):
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/mcp_process.py", line 236, in connect
+    |     async with ClientSession(incoming, outgoing, read_timeout_seconds=30) as session:
+    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/session.py", line 521, in __aexit__
+    |     result = await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 815, in __aexit__
+    |     raise BaseExceptionGroup(
+    | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+    +-+---------------- 1 ----------------
+      | Traceback (most recent call last):
+      |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/mcp_process.py", line 238, in connect
+      |     client.initialize_result = await client.request("initialize", "initialize")
+      |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/mcp_process.py", line 98, in request
+      |     result = await getattr(self.session, method)(**kwargs)
+      |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/session.py", line 661, in initialize
+      |     result = await self.send_request(
+      |              ^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/client/session.py", line 593, in send_request
+      |     raw = await self._dispatcher.send_raw_request(method, data.get("params"), opts)
+      |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      |   File "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/lib/python3.12/site-packages/mcp/shared/jsonrpc_dispatcher.py", line 425, in send_raw_request
+      |     raise MCPError(code=REQUEST_TIMEOUT, message=f"Request {method!r} timed out") from None
+      | mcp.shared.exceptions.MCPError: Request 'initialize' timed out
+      +------------------------------------

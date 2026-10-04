@@ -53,6 +53,7 @@ Status labels:
 | `runbooks/migrating-to-v1.md` | current | operations | Config/database migration guide from pre-v1.0 installs. |
 | `runbooks/releasing.md` | current | operations | Owner-run publish sequence: PyPI, official MCP Registry, GHCR, third-party registries, `.mcpb` release asset. |
 | `testing/README.md` | current | engineering | Canonical test commands and marker policy. |
+| `testing/mcp-e2e-2026-10-04.md` | current | engineering | Real-process MCP verification, defects, coverage matrix, and reproduction. |
 | `testing/in-memory.md` | current | engineering | FastMCP in-memory test patterns. |
 | `testing/exa-research.md` | current | engineering | Exa/research provider test strategy. |
 | `references/llm-documentation-hygiene.md` | current | docs | Agent-legible documentation rules. |

@@ -4,6 +4,7 @@ One line per item. Remove the line in the same change that removes the debt.
 
 | Item | Where | Phase to fix |
 | --- | --- | --- |
+| Multiprocess portfolio regression intermittently misses its 15-second readiness deadline; diagnostic reproductions remained in MCP/Pydantic imports, while the original test discards queued initialization errors on barrier failure. Underlying import slowness remains unproven; see `docs/testing/mcp-e2e-2026-10-04.md` | `tests/portfolio/test_service_concurrency.py` | test robustness |
 | `server.json` declares the PyPI package `maverick-mcp-server`, which this project has never published: the name is held by another account until pypi/support#12150 resolves | repo root | distribution |
 | Daily-history validation has calendars for US stocks and `.L`, `.T`, `.TO`, `.AX`, `.HK`, `.DE` only; other exchange suffixes need verified mappings before history and dependent tools can accept them | `maverick/market_data/service.py` | market data |
 | MCP Apps chart rendering | `maverick/` | deferred |

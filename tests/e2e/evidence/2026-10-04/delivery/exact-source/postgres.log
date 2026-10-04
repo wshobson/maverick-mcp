@@ -1,0 +1,11 @@
+2026-10-04 14:28:44.924 EDT [19001] LOG:  starting PostgreSQL 17.9 (Postgres.app) on aarch64-apple-darwin23.6.0, compiled by Apple clang version 15.0.0 (clang-1500.3.9.4), 64-bit
+2026-10-04 14:28:44.924 EDT [19001] LOG:  listening on IPv4 address "127.0.0.1", port 54685
+2026-10-04 14:28:44.925 EDT [19001] LOG:  listening on Unix socket "/tmp/maverick-e2e-delivery-exact-source/services/.s.PGSQL.54685"
+2026-10-04 14:28:44.927 EDT [19005] LOG:  database system was shut down at 2026-10-04 14:28:44 EDT
+2026-10-04 14:28:44.930 EDT [19001] LOG:  database system is ready to accept connections
+2026-10-04 14:28:49.407 EDT [19001] LOG:  received smart shutdown request
+2026-10-04 14:28:49.409 EDT [19001] LOG:  background worker "logical replication launcher" (PID 19008) exited with exit code 1
+2026-10-04 14:28:49.409 EDT [19003] LOG:  shutting down
+2026-10-04 14:28:49.409 EDT [19003] LOG:  checkpoint starting: shutdown immediate
+2026-10-04 14:28:49.451 EDT [19003] LOG:  checkpoint complete: wrote 1008 buffers (6.2%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.032 s, sync=0.010 s, total=0.043 s; sync files=343, longest=0.001 s, average=0.001 s; distance=4524 kB, estimate=4524 kB; lsn=0/197B758, redo lsn=0/197B758
+2026-10-04 14:28:49.454 EDT [19001] LOG:  database system is shut down

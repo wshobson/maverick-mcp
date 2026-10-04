@@ -1,0 +1,34 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0 -- /Users/wshobson/workspace/major7apps/maverick-mcp/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/wshobson/workspace/major7apps/maverick-mcp
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, timeout-2.4.0, anyio-4.14.2, asyncio-1.3.0, langsmith-0.8.18
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+
+tests/portfolio/test_service_concurrency.py::test_concurrent_processes_preserve_every_acknowledged_share[sqlite] FAILED [100%]
+
+=================================== FAILURES ===================================
+_____ test_concurrent_processes_preserve_every_acknowledged_share[sqlite] ______
+tests/portfolio/test_service_concurrency.py:247: in test_concurrent_processes_preserve_every_acknowledged_share
+    await asyncio.to_thread(ready.wait, 15)
+../../../.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/threads.py:25: in to_thread
+    return await loop.run_in_executor(None, func_call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/concurrent/futures/thread.py:59: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/threading.py:725: in wait
+    self._wait(timeout)
+../../../.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/threading.py:763: in _wait
+    raise BrokenBarrierError
+E   threading.BrokenBarrierError
+- generated xml file: /Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/evidence/2026-10-04/final-offline/concurrency-rerun.xml -
+============================= slowest 10 durations =============================
+15.34s call     tests/portfolio/test_service_concurrency.py::test_concurrent_processes_preserve_every_acknowledged_share[sqlite]
+0.14s setup    tests/portfolio/test_service_concurrency.py::test_concurrent_processes_preserve_every_acknowledged_share[sqlite]
+0.02s teardown tests/portfolio/test_service_concurrency.py::test_concurrent_processes_preserve_every_acknowledged_share[sqlite]
+=========================== short test summary info ============================
+FAILED tests/portfolio/test_service_concurrency.py::test_concurrent_processes_preserve_every_acknowledged_share[sqlite]
+============================== 1 failed in 19.84s ==============================

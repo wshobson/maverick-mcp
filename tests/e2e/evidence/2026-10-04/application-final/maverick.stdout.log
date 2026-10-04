@@ -1,0 +1,19 @@
+INFO:     127.0.0.1:57699 - "GET /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57709 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57710 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:57710 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57711 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57713 - "GET /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57713 - "GET /.well-known/oauth-protected-resource/mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57713 - "GET /mcp/.well-known/oauth-protected-resource HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57713 - "GET /.well-known/oauth-protected-resource HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57713 - "GET /.well-known/oauth-authorization-server/mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57713 - "GET /.well-known/openid-configuration/mcp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57713 - "GET /mcp/.well-known/openid-configuration HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57713 - "GET /.well-known/oauth-authorization-server HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57711 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57716 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57718 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57718 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57720 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57720 - "DELETE /mcp HTTP/1.1" 200 OK

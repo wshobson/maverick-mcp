@@ -1,0 +1,12 @@
+37062:C 04 Oct 2026 14:20:19.548 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
+37062:C 04 Oct 2026 14:20:19.548 * Redis version=8.10.2, bits=64, commit=00000000, modified=1, pid=37062, just started
+37062:C 04 Oct 2026 14:20:19.548 * Configuration loaded
+37062:M 04 Oct 2026 14:20:19.548 * monotonic clock: ARM CNTVCT @ 24 ticks/us
+37062:M 04 Oct 2026 14:20:19.549 * Running mode=standalone, port=51644.
+37062:M 04 Oct 2026 14:20:19.550 # WARNING: The TCP backlog setting of 511 cannot be enforced because kern.ipc.somaxconn is set to the lower value of 128.
+37062:M 04 Oct 2026 14:20:19.551 * Server initialized
+37062:M 04 Oct 2026 14:20:19.552 * Ready to accept connections tcp
+37062:M 04 Oct 2026 14:20:19.552 # WARNING: Redis does not require authentication. Redis will accept connections from any local client.
+37062:signal-handler (1791138026) Received SIGTERM scheduling shutdown...
+37062:M 04 Oct 2026 14:20:27.028 * User requested shutdown...
+37062:M 04 Oct 2026 14:20:27.028 # Redis is now ready to exit, bye bye...

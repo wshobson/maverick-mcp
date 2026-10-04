@@ -1,0 +1,41 @@
+Running linter...
+All checks passed!
+241 files already formatted
+
+╔══╗─────────▶╔╗ ╔╗      ╔╗◀───┐
+╚╣╠╝◀─────┐  ╔╝╚╗║║────▶╔╝╚╗   │
+ ║║   ╔══╦══╦╩╗╔╝║║  ╔╦═╩╗╔╝╔═╦══╗
+ ║║╔══╣╔╗║╔╗║╔╣║ ║║ ╔╬╣╔╗║║ ║│║╔═╝
+╔╣╠╣║║║╚╝║╚╝║║║╚╗║╚═╝║║║║║╚╗║═╣║
+╚══╩╩╩╣╔═╩══╩╝╚═╝╚═══╩╩╝╚╩═╩╩═╩╝
+  └──▶║║                    ▲ 
+      ╚╝────────────────────┘
+
+
+---------
+Contracts
+---------
+
+Analyzed 98 files, 260 dependencies.
+------------------------------------
+
+Market data layers are forward-only KEPT
+Screening layers are forward-only KEPT
+Portfolio layers are forward-only KEPT
+Technical layers are forward-only KEPT
+Backtesting layers are forward-only KEPT
+The platform never imports domains KEPT
+Nothing imports the server KEPT
+The technical indicator core never imports domains KEPT
+Technical service and tools never import screening or portfolio KEPT
+The backtesting core never imports domains KEPT
+Backtesting service and tools never import screening or portfolio KEPT
+Research layers are forward-only KEPT
+The research core never imports domains KEPT
+Research service and tools never import other domains KEPT
+
+Contracts: 14 kept, 0 broken.
+Running type checker...
+All checks passed!
+Checking documentation catalog...
+Documentation catalog check passed (63 docs/text files).

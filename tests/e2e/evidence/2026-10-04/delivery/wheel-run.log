@@ -1,0 +1,22 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 578, in <module>
+    asyncio.run(main())
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/wshobson/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 562, in main
+    await wheel_checks(
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 243, in wheel_checks
+    evidence.check(
+  File "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/delivery_checks.py", line 97, in check
+    assert passed, (name, actual, expected)
+           ^^^^^^
+AssertionError: ('installed package under isolated venv', False, True)

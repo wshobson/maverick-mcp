@@ -1,0 +1,7 @@
+INFO:     127.0.0.1:57428 - "GET /mcp HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:57429 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57430 - "POST /mcp HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:57431 - "GET /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57432 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57433 - "POST /mcp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57434 - "DELETE /mcp HTTP/1.1" 200 OK

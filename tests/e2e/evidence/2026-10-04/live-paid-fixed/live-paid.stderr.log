@@ -1,0 +1,43 @@
+
+
+╭──────────────────────────────────────────────────────────────────────────────╮
+│                                                                              │
+│                                                                              │
+│                         ▄▀▀ ▄▀█ █▀▀ ▀█▀ █▀▄▀█ █▀▀ █▀█                        │
+│                         █▀  █▀█ ▄▄█  █  █ ▀ █ █▄▄ █▀▀                        │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                FastMCP 4.0.10                                │
+│                            https://gofastmcp.com                             │
+│                                                                              │
+│                  🖥  Server:      maverick-mcp, 4.0.10                        │
+│                  🚀 Deploy free: https://horizon.prefect.io                  │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭──────────────────────────────────────────────────────────────────────────────╮
+│                         🎉 Update available: 4.0.11                          │
+│                      Run: pip install --upgrade fastmcp                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+[10/04/26 14:37:37] INFO     Starting MCP server 'maverick-mcp' transport.py:363
+                             with transport 'http' on                           
+                             http://127.0.0.1:57446/mcp                         
+INFO:     Started server process [29199]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:57446 (Press CTRL+C to quit)
+{"timestamp": "2026-10-04T18:37:38.147923+00:00", "level": "INFO", "logger": "maverick.research.providers.exa", "message": "Initialized ExaSearchProvider with financial optimization", "module": "exa", "function": "__init__", "line": 127}
+{"timestamp": "2026-10-04T18:37:38.677771+00:00", "level": "INFO", "logger": "maverick.research.agents.graph", "message": "Search completed: 3 unique results from 5 total", "module": "graph", "function": "_execute_searches", "line": 365}
+{"timestamp": "2026-10-04T18:37:44.601521+00:00", "level": "INFO", "logger": "maverick.research.agents.analyzer", "message": "Batch content analysis completed: 3 items processed in 1 batches", "module": "analyzer", "function": "analyze_content_batch", "line": 259}
+{"timestamp": "2026-10-04T18:37:52.500797+00:00", "level": "INFO", "logger": "maverick.research.providers.exa", "message": "Initialized ExaSearchProvider with financial optimization", "module": "exa", "function": "__init__", "line": 127}
+{"timestamp": "2026-10-04T18:37:52.762245+00:00", "level": "INFO", "logger": "maverick.research.agents.graph", "message": "Search completed: 5 unique results from 10 total", "module": "graph", "function": "_execute_searches", "line": 365}
+{"timestamp": "2026-10-04T18:38:05.127041+00:00", "level": "INFO", "logger": "maverick.research.agents.analyzer", "message": "Batch content analysis completed: 5 items processed in 2 batches", "module": "analyzer", "function": "analyze_content_batch", "line": 259}
+{"timestamp": "2026-10-04T18:38:12.298976+00:00", "level": "INFO", "logger": "maverick.research.providers.exa", "message": "Initialized ExaSearchProvider with financial optimization", "module": "exa", "function": "__init__", "line": 127}
+{"timestamp": "2026-10-04T18:38:12.480301+00:00", "level": "INFO", "logger": "maverick.research.agents.graph", "message": "Search completed: 3 unique results from 5 total", "module": "graph", "function": "_execute_searches", "line": 365}
+{"timestamp": "2026-10-04T18:38:18.899472+00:00", "level": "INFO", "logger": "maverick.research.agents.analyzer", "message": "Batch content analysis completed: 3 items processed in 1 batches", "module": "analyzer", "function": "analyze_content_batch", "line": 259}
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [29199]

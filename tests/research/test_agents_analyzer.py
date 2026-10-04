@@ -149,3 +149,88 @@ def test_analyze_content_batch_empty_input_returns_empty() -> None:
     import asyncio
 
     assert asyncio.run(analyzer.analyze_content_batch([], "moderate")) == []
+
+
+@pytest.mark.parametrize("field", ["CREDIBILITY", "RELEVANCE", "confidence"])
+@pytest.mark.parametrize("score", [0.8, "0.8", {"score": 0.8}, {"score": "0.8"}])
+def test_analyze_content_normalizes_provider_scores_before_synthesis(field, score):
+    """Synthetic object-score reproduction of the observed float-plus-dict error.
+
+    The live provider response body was not captured; its exact JSON shape is
+    unknown. This fixture exercises the inferred analyzer-to-synthesis path.
+    """
+    import asyncio
+
+    from maverick.research.agents.synthesis import calculate_source_credibility
+
+    analysis = json.loads(_valid_analysis_json())
+    if field == "confidence":
+        analysis["SENTIMENT"][field] = score
+    else:
+        analysis[field] = score
+    analyzer = ContentAnalyzer(
+        FakeChatModel(responder=lambda _messages: json.dumps(analysis))
+    )
+    result = asyncio.run(analyzer.analyze_content("some content", "moderate"))
+
+    assert "fallback_used" not in result
+    actual = {
+        "CREDIBILITY": result["credibility_score"],
+        "RELEVANCE": result["relevance_score"],
+        "confidence": result["sentiment"]["confidence"],
+    }[field]
+    assert isinstance(actual, float)
+    assert actual == 0.8
+    credibility = calculate_source_credibility({"analysis": result})
+    assert isinstance(credibility, float)
+    assert 0 <= credibility <= 1
+
+
+@pytest.mark.parametrize("field", ["CREDIBILITY", "RELEVANCE", "confidence"])
+@pytest.mark.parametrize(
+    "invalid_score",
+    [None, True, [], {}, {"score": {}}, "high", -0.1, 1.1, float("nan"), float("inf")],
+)
+def test_analyze_content_uses_predictable_fallback_for_invalid_scores(
+    field, invalid_score
+):
+    import asyncio
+
+    analysis = json.loads(_valid_analysis_json())
+    if field == "confidence":
+        analysis["SENTIMENT"][field] = invalid_score
+    else:
+        analysis[field] = invalid_score
+    analyzer = ContentAnalyzer(
+        FakeChatModel(responder=lambda _messages: json.dumps(analysis))
+    )
+    result = asyncio.run(
+        analyzer.analyze_content("strong growth and profit ahead", "moderate")
+    )
+
+    assert result["fallback_used"] is True
+    assert result["credibility_score"] == 0.5
+    assert result["sentiment"] == {"direction": "bullish", "confidence": 0.6}
+    assert 0 <= result["relevance_score"] <= 1
+
+
+def test_analyze_content_batch_isolates_malformed_scores():
+    import asyncio
+
+    invalid = json.loads(_valid_analysis_json())
+    invalid["CREDIBILITY"] = {"score": "unavailable"}
+
+    def responder(messages):
+        human = next(m.content for m in messages if isinstance(m, HumanMessage))
+        return json.dumps(invalid) if "bad source" in human else _valid_analysis_json()
+
+    analyzer = ContentAnalyzer(FakeChatModel(responder=responder))
+    results = asyncio.run(
+        analyzer.analyze_content_batch(
+            [("good source", "good"), ("bad source", "bad")], "moderate"
+        )
+    )
+
+    assert [result["source_identifier"] for result in results] == ["good", "bad"]
+    assert "fallback_used" not in results[0]
+    assert results[1]["fallback_used"] is True

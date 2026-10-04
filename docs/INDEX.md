@@ -66,6 +66,8 @@ rather than the whole knowledge base up front.
 
 ## Testing Docs
 
+- `testing/mcp-e2e-2026-10-04.md` - process E2E results and reproduction; read for
+  transport, full tool coverage, live-provider, and application-client evidence.
 - `testing/README.md` - canonical test guide, including integration/external
   test policy and timeouts.
 - `testing/in-memory.md` - FastMCP in-memory testing patterns.

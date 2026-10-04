@@ -1,0 +1,86 @@
+{
+  "summary": {
+    "tools": 53,
+    "transports": [
+      "stdio",
+      "http"
+    ],
+    "cells": 106,
+    "cell_status_counts": {
+      "pass": 106
+    },
+    "baseline_complete": true,
+    "source_completion": {
+      "core": {
+        "complete": true,
+        "process_logs": 8,
+        "incomplete": []
+      },
+      "optional": {
+        "complete": true,
+        "process_logs": 6,
+        "incomplete": []
+      },
+      "core_final_assertions": true,
+      "optional_final_scenarios": true
+    },
+    "scenario_count": 376,
+    "scenario_status_counts": {
+      "pass": 376
+    },
+    "baseline_scenario_count": 376,
+    "supplemental_live_scenario_count": 0
+  },
+  "readme_reconciliation": {
+    "readme_tool_count": 53,
+    "discovered_tool_count": 53,
+    "readme_only": [],
+    "discovery_only": [],
+    "inventories_match": true,
+    "unknown_scenario_tools": []
+  },
+  "sources": [
+    {
+      "path": "tests/e2e/evidence/2026-10-04/core/final-v2/stdio/summary.json",
+      "exists": true,
+      "sha256": "298c1279e68b41ce9b27e9150395db7a1f9c5b07c67a04f0b8560d697cf3821b",
+      "size_bytes": 1179341
+    },
+    {
+      "path": "tests/e2e/evidence/2026-10-04/core/final-v2/http/summary.json",
+      "exists": true,
+      "sha256": "20b1235fb29fd1d28117085b66212e6890fb1a87e69f883b37c593b2b8f94b00",
+      "size_bytes": 1179203
+    },
+    {
+      "path": "tests/e2e/evidence/2026-10-04/optional-final-v2/coverage.json",
+      "exists": true,
+      "sha256": "47ace8f651253a167cc88a86d674ad4dcc814a5ca71ab5293ee6ff97e9171be5",
+      "size_bytes": 44708
+    },
+    {
+      "path": "README.md",
+      "exists": true,
+      "sha256": "3bb57750de25eff21d39cc48af2bd284c5cae0ae1ecf7235342ed64733503a80",
+      "size_bytes": 16799
+    },
+    {
+      "path": "tests/e2e/build_matrix.py",
+      "exists": true,
+      "sha256": "bd5075295230955c96d14ccf5d881ec958e7fe86d47c9dfb588fabebdbac0884",
+      "size_bytes": 19411
+    },
+    {
+      "path": "tests/e2e/evidence/2026-10-04/protocol/final-v2/summary.json",
+      "exists": true,
+      "sha256": "7af24af5eca07b5582b4218ab641a44e91215b80e242d8c3b2be7bbadf92ecc5",
+      "size_bytes": 12966
+    },
+    {
+      "path": "tests/e2e/evidence/2026-10-04/application-final/result.json",
+      "exists": true,
+      "sha256": "a46fce9dbd8ca4fb82f30615e881109262632990ebdb4d3e6aff4a670aad56cc",
+      "size_bytes": 1588
+    }
+  ]
+}

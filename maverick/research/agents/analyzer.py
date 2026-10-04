@@ -2,8 +2,9 @@
 
 Ported from `maverick_mcp/agents/deep_research.py`'s `ContentAnalyzer`
 (lines 134-351). `analyze_content`, `_fallback_analysis`,
-`_coerce_message_content`, and `analyze_content_batch` port verbatim
-(batching logic, fallback heuristics, and prompt text unchanged).
+`_coerce_message_content`, and `analyze_content_batch` retain their
+batching and fallback behavior. Provider scores are normalized and validated
+before they reach synthesis arithmetic.
 
 Three legacy methods do NOT port: `analyze_content_items`,
 `_analyze_single_content`, `_extract_themes`. Each is explicitly
@@ -28,6 +29,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 from datetime import UTC, datetime
 from typing import Any
 
@@ -41,6 +43,18 @@ logger = logging.getLogger(__name__)
 
 _BATCH_SIZE = 4
 _CONTENT_CHARS = 3000
+
+
+def _normalized_score(value: Any) -> float:
+    """Accept numeric scores or a provider's score object, bounded to [0, 1]."""
+    if isinstance(value, dict):
+        value = value["score"]
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        raise ValueError("Analysis score must be numeric")
+    score = float(value)
+    if not math.isfinite(score) or not 0 <= score <= 1:
+        raise ValueError("Analysis score must be finite and between 0 and 1")
+    return score
 
 
 class ContentAnalyzer:
@@ -98,6 +112,8 @@ class ContentAnalyzer:
         6. RELEVANCE: How relevant is this to {persona} investment strategy (0-1 score)
         7. SUMMARY: 2-3 sentence summary for {persona} investors
 
+        Return CREDIBILITY and RELEVANCE as numeric scores, not objects.
+        SENTIMENT must be an object with direction and numeric confidence fields.
         Format as JSON with clear structure.
         """
 
@@ -120,12 +136,16 @@ class ContentAnalyzer:
                     "direction": analysis.get("SENTIMENT", {}).get(
                         "direction", "neutral"
                     ),
-                    "confidence": analysis.get("SENTIMENT", {}).get("confidence", 0.5),
+                    "confidence": _normalized_score(
+                        analysis.get("SENTIMENT", {}).get("confidence", 0.5)
+                    ),
                 },
                 "risk_factors": analysis.get("RISK_FACTORS", []),
                 "opportunities": analysis.get("OPPORTUNITIES", []),
-                "credibility_score": analysis.get("CREDIBILITY", 0.5),
-                "relevance_score": analysis.get("RELEVANCE", 0.5),
+                "credibility_score": _normalized_score(
+                    analysis.get("CREDIBILITY", 0.5)
+                ),
+                "relevance_score": _normalized_score(analysis.get("RELEVANCE", 0.5)),
                 "summary": analysis.get("SUMMARY", ""),
                 "analysis_timestamp": datetime.now(UTC),
             }

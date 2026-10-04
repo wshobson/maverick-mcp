@@ -1,0 +1,30 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/wshobson/workspace/major7apps/maverick-mcp
+configfile: pyproject.toml
+plugins: cov-7.1.0, xdist-3.8.0, timeout-2.4.0, anyio-4.14.2, asyncio-1.3.0, langsmith-0.8.18
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 2 items
+
+tests/portfolio/test_watchlist_missing_id.py FF                          [100%]
+
+=================================== FAILURES ===================================
+_______ test_watchlist_mutation_rejects_missing_id_without_writing[add] ________
+tests/portfolio/test_watchlist_missing_id.py:24: in test_watchlist_mutation_rejects_missing_id_without_writing
+    with pytest.raises(ValueError, match="Watchlist 999999 not found"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+______ test_watchlist_mutation_rejects_missing_id_without_writing[remove] ______
+tests/portfolio/test_watchlist_missing_id.py:24: in test_watchlist_mutation_rejects_missing_id_without_writing
+    with pytest.raises(ValueError, match="Watchlist 999999 not found"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ValueError
+============================= slowest 10 durations =============================
+0.01s call     tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[add]
+0.01s call     tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[remove]
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[add]
+FAILED tests/portfolio/test_watchlist_missing_id.py::test_watchlist_mutation_rejects_missing_id_without_writing[remove]
+============================== 2 failed in 0.13s ===============================

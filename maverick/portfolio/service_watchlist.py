@@ -78,6 +78,8 @@ async def add_item(
 
     def _write() -> WatchlistItemPayload:
         with session_scope(session_factory) as session:
+            if not watchlist.watchlist_exists(session, watchlist_id):
+                raise ValueError(f"Watchlist {watchlist_id} not found")
             return watchlist.add_item(session, watchlist_id, symbol, notes)
 
     return await asyncio.to_thread(_write)
@@ -93,6 +95,8 @@ async def remove_item(
 
     def _write() -> bool:
         with session_scope(session_factory) as session:
+            if not watchlist.watchlist_exists(session, watchlist_id):
+                raise ValueError(f"Watchlist {watchlist_id} not found")
             return watchlist.remove_item(session, watchlist_id, symbol)
 
     removed = await asyncio.to_thread(_write)

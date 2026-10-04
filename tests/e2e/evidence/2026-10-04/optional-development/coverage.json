@@ -1,0 +1,1542 @@
+[
+  {
+    "tool": "backtesting_list_strategies",
+    "transport": "stdio",
+    "scenario": "list_strategies",
+    "arguments": {},
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 4291,
+    "evidence": "stdio-list_strategies.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0317
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "stdio",
+    "scenario": "run_backtest",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "fast_period": 2,
+      "slow_period": 3
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 12409,
+    "evidence": "stdio-run_backtest.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 3.7296
+  },
+  {
+    "tool": "backtesting_compare_strategies",
+    "transport": "stdio",
+    "scenario": "compare_strategies",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "strategies": [
+        "sma_cross",
+        "rsi"
+      ]
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 2639,
+    "evidence": "stdio-compare_strategies.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.3568
+  },
+  {
+    "tool": "backtesting_backtest_portfolio",
+    "transport": "stdio",
+    "scenario": "backtest_portfolio",
+    "arguments": {
+      "symbols": [
+        "AAPL",
+        "MSFT",
+        "BAD"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 21072,
+    "evidence": "stdio-backtest_portfolio.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.5942
+  },
+  {
+    "tool": "backtesting_optimize_strategy",
+    "transport": "stdio",
+    "scenario": "optimize_strategy",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "optimization_level": "coarse",
+      "top_n": 2
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 698,
+    "evidence": "stdio-optimize_strategy.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.3761
+  },
+  {
+    "tool": "backtesting_walk_forward_analysis",
+    "transport": "stdio",
+    "scenario": "walk_forward_analysis",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2024-09-30",
+      "window_size": 120,
+      "step_size": 120
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 919,
+    "evidence": "stdio-walk_forward_analysis.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.0068
+  },
+  {
+    "tool": "backtesting_monte_carlo_simulation",
+    "transport": "stdio",
+    "scenario": "monte_carlo_simulation",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "num_simulations": 20
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 768,
+    "evidence": "stdio-monte_carlo_simulation.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.133
+  },
+  {
+    "tool": "backtesting_train_ml_predictor",
+    "transport": "stdio",
+    "scenario": "train_ml_predictor",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5,
+      "max_depth": 3
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 2360,
+    "evidence": "stdio-train_ml_predictor.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.171
+  },
+  {
+    "tool": "backtesting_run_ml_strategy_backtest",
+    "transport": "stdio",
+    "scenario": "run_ml_strategy_backtest",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5,
+      "max_depth": 3
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 7103,
+    "evidence": "stdio-run_ml_strategy_backtest.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.4804
+  },
+  {
+    "tool": "backtesting_analyze_market_regimes",
+    "transport": "stdio",
+    "scenario": "analyze_market_regimes",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "method": "kmeans"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1958,
+    "evidence": "stdio-analyze_market_regimes.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.8781
+  },
+  {
+    "tool": "backtesting_create_strategy_ensemble",
+    "transport": "stdio",
+    "scenario": "create_strategy_ensemble",
+    "arguments": {
+      "symbols": [
+        "AAPL",
+        "BAD",
+        "SHORT",
+        "MSFT",
+        "SPY",
+        "QQQ"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "base_strategies": [
+        "sma_cross",
+        "rsi"
+      ]
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 25842,
+    "evidence": "stdio-create_strategy_ensemble.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.8201
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "stdio",
+    "scenario": "parse_strategy",
+    "arguments": {
+      "description": "SMA crosses 10 and 20"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 200,
+    "evidence": "stdio-parse_strategy.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0033
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "stdio",
+    "scenario": "run_backtest-error",
+    "arguments": {
+      "symbol": "EMPTY",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 104,
+    "evidence": "stdio-run_backtest-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.2033
+  },
+  {
+    "tool": "backtesting_compare_strategies",
+    "transport": "stdio",
+    "scenario": "compare_strategies-error",
+    "arguments": {
+      "symbol": "BAD",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 288,
+    "evidence": "stdio-compare_strategies-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.6701
+  },
+  {
+    "tool": "backtesting_backtest_portfolio",
+    "transport": "stdio",
+    "scenario": "backtest_portfolio-error",
+    "arguments": {
+      "symbols": [
+        "BAD"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 120,
+    "evidence": "stdio-backtest_portfolio-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1307
+  },
+  {
+    "tool": "backtesting_optimize_strategy",
+    "transport": "stdio",
+    "scenario": "optimize_strategy-error",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "strategy": "nonexistent"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 66,
+    "evidence": "stdio-optimize_strategy-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1091
+  },
+  {
+    "tool": "backtesting_walk_forward_analysis",
+    "transport": "stdio",
+    "scenario": "walk_forward_analysis-error",
+    "arguments": {
+      "symbol": "BAD",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "step_size": 500
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "stdio-walk_forward_analysis-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0991
+  },
+  {
+    "tool": "backtesting_monte_carlo_simulation",
+    "transport": "stdio",
+    "scenario": "monte_carlo_simulation-error",
+    "arguments": {
+      "symbol": "EMPTY",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "num_simulations": 2
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "stdio-monte_carlo_simulation-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1148
+  },
+  {
+    "tool": "backtesting_train_ml_predictor",
+    "transport": "stdio",
+    "scenario": "train_ml_predictor-error",
+    "arguments": {
+      "symbol": "SHORT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "stdio-train_ml_predictor-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.2766
+  },
+  {
+    "tool": "backtesting_run_ml_strategy_backtest",
+    "transport": "stdio",
+    "scenario": "run_ml_strategy_backtest-error",
+    "arguments": {
+      "symbol": "SHORT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "stdio-run_ml_strategy_backtest-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.2488
+  },
+  {
+    "tool": "backtesting_analyze_market_regimes",
+    "transport": "stdio",
+    "scenario": "analyze_market_regimes-error",
+    "arguments": {
+      "symbol": "EMPTY",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "stdio-analyze_market_regimes-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1514
+  },
+  {
+    "tool": "backtesting_create_strategy_ensemble",
+    "transport": "stdio",
+    "scenario": "create_strategy_ensemble-error",
+    "arguments": {
+      "symbols": [
+        "EMPTY"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "stdio-create_strategy_ensemble-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1855
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "stdio",
+    "scenario": "parse_strategy-error",
+    "arguments": {
+      "description": {
+        "invalid": "object"
+      }
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 295,
+    "evidence": "stdio-parse_strategy-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0127
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "stdio",
+    "scenario": "no-trades",
+    "arguments": {
+      "symbol": "FLAT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "fail",
+    "response_bytes": 83,
+    "evidence": "stdio-no-trades.json",
+    "actual": "AssertionError: {'status': 'error', 'error': \"Circuit breaker 'yfinance' is open; retry in 58.40s\"}",
+    "duration_seconds": 0.2631
+  },
+  {
+    "tool": "backtesting_optimize_strategy",
+    "transport": "stdio",
+    "scenario": "no-valid-optimization",
+    "arguments": {
+      "symbol": "FLAT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "optimization_level": "coarse"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "fail",
+    "response_bytes": 83,
+    "evidence": "stdio-no-valid-optimization.json",
+    "actual": "AssertionError: {'status': 'error', 'error': \"Circuit breaker 'yfinance' is open; retry in 58.23s\"}",
+    "duration_seconds": 0.1679
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "stdio",
+    "scenario": "invalid-dates",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "invalid"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 67,
+    "evidence": "stdio-invalid-dates.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0054
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "stdio",
+    "scenario": "research_run_comprehensive-unconfigured",
+    "arguments": {
+      "query": "Synthetic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "fail",
+    "response_bytes": 494,
+    "evidence": "stdio-research_run_comprehensive-unconfigured.json",
+    "actual": "AssertionError: typed configuration error",
+    "duration_seconds": 0.0045
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "stdio",
+    "scenario": "research_analyze_company-unconfigured",
+    "arguments": {
+      "symbol": "AAPL"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "fail",
+    "response_bytes": 532,
+    "evidence": "stdio-research_analyze_company-unconfigured.json",
+    "actual": "AssertionError: typed configuration error",
+    "duration_seconds": 0.0053
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "stdio",
+    "scenario": "research_analyze_sentiment-unconfigured",
+    "arguments": {
+      "topic": "Synthetic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "fail",
+    "response_bytes": 531,
+    "evidence": "stdio-research_analyze_sentiment-unconfigured.json",
+    "actual": "AssertionError: typed configuration error",
+    "duration_seconds": 0.0061
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "stdio",
+    "scenario": "llm-parser-None",
+    "arguments": {
+      "description": "SMA crosses 10 and 20"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 188,
+    "evidence": "stdio-llm-parser-None.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.1278
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "stdio",
+    "scenario": "comprehensive",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1228,
+    "evidence": "stdio-comprehensive.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0384
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "stdio",
+    "scenario": "company",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1321,
+    "evidence": "stdio-company.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0273
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "stdio",
+    "scenario": "competitive",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": true
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1321,
+    "evidence": "stdio-competitive.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.053
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "stdio",
+    "scenario": "sentiment",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1195,
+    "evidence": "stdio-sentiment.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.046
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "stdio",
+    "scenario": "comprehensive-empty",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 291,
+    "evidence": "stdio-comprehensive-empty.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0167
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "stdio",
+    "scenario": "company-empty",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 314,
+    "evidence": "stdio-company-empty.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0193
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "stdio",
+    "scenario": "sentiment-empty",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 319,
+    "evidence": "stdio-sentiment-empty.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0356
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "stdio",
+    "scenario": "comprehensive-search_failure",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 291,
+    "evidence": "stdio-comprehensive-search_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0157
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "stdio",
+    "scenario": "company-search_failure",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 314,
+    "evidence": "stdio-company-search_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0188
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "stdio",
+    "scenario": "sentiment-search_failure",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 319,
+    "evidence": "stdio-sentiment-search_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0384
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "stdio",
+    "scenario": "comprehensive-model_failure",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 376,
+    "evidence": "stdio-comprehensive-model_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0204
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "stdio",
+    "scenario": "company-model_failure",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 399,
+    "evidence": "stdio-company-model_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0236
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "stdio",
+    "scenario": "sentiment-model_failure",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 404,
+    "evidence": "stdio-sentiment-model_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.044
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "stdio",
+    "scenario": "parser-provider-failure",
+    "arguments": {
+      "description": "SMA 10 20"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 143,
+    "evidence": "stdio-parser-provider-failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0062
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "stdio",
+    "scenario": "llm-parser-0.3",
+    "arguments": {
+      "description": "SMA crosses 10 and 20"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 188,
+    "evidence": "stdio-llm-parser-0.3.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.8926
+  },
+  {
+    "tool": "backtesting_list_strategies",
+    "transport": "http",
+    "scenario": "list_strategies",
+    "arguments": {},
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 4291,
+    "evidence": "http-list_strategies.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0067
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "http",
+    "scenario": "run_backtest",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "fast_period": 2,
+      "slow_period": 3
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 12409,
+    "evidence": "http-run_backtest.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 4.2614
+  },
+  {
+    "tool": "backtesting_compare_strategies",
+    "transport": "http",
+    "scenario": "compare_strategies",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "strategies": [
+        "sma_cross",
+        "rsi"
+      ]
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 2639,
+    "evidence": "http-compare_strategies.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.3694
+  },
+  {
+    "tool": "backtesting_backtest_portfolio",
+    "transport": "http",
+    "scenario": "backtest_portfolio",
+    "arguments": {
+      "symbols": [
+        "AAPL",
+        "MSFT",
+        "BAD"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 21072,
+    "evidence": "http-backtest_portfolio.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.7521
+  },
+  {
+    "tool": "backtesting_optimize_strategy",
+    "transport": "http",
+    "scenario": "optimize_strategy",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "optimization_level": "coarse",
+      "top_n": 2
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 698,
+    "evidence": "http-optimize_strategy.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.4733
+  },
+  {
+    "tool": "backtesting_walk_forward_analysis",
+    "transport": "http",
+    "scenario": "walk_forward_analysis",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2024-09-30",
+      "window_size": 120,
+      "step_size": 120
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 919,
+    "evidence": "http-walk_forward_analysis.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.0168
+  },
+  {
+    "tool": "backtesting_monte_carlo_simulation",
+    "transport": "http",
+    "scenario": "monte_carlo_simulation",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "num_simulations": 20
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 770,
+    "evidence": "http-monte_carlo_simulation.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.1321
+  },
+  {
+    "tool": "backtesting_train_ml_predictor",
+    "transport": "http",
+    "scenario": "train_ml_predictor",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5,
+      "max_depth": 3
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 2360,
+    "evidence": "http-train_ml_predictor.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.149
+  },
+  {
+    "tool": "backtesting_run_ml_strategy_backtest",
+    "transport": "http",
+    "scenario": "run_ml_strategy_backtest",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5,
+      "max_depth": 3
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 7103,
+    "evidence": "http-run_ml_strategy_backtest.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.5058
+  },
+  {
+    "tool": "backtesting_analyze_market_regimes",
+    "transport": "http",
+    "scenario": "analyze_market_regimes",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "method": "kmeans"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1943,
+    "evidence": "http-analyze_market_regimes.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.9176
+  },
+  {
+    "tool": "backtesting_create_strategy_ensemble",
+    "transport": "http",
+    "scenario": "create_strategy_ensemble",
+    "arguments": {
+      "symbols": [
+        "AAPL",
+        "BAD",
+        "SHORT",
+        "MSFT",
+        "SPY",
+        "QQQ"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "base_strategies": [
+        "sma_cross",
+        "rsi"
+      ]
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 25842,
+    "evidence": "http-create_strategy_ensemble.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.9981
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "http",
+    "scenario": "parse_strategy",
+    "arguments": {
+      "description": "SMA crosses 10 and 20"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 200,
+    "evidence": "http-parse_strategy.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0045
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "http",
+    "scenario": "run_backtest-error",
+    "arguments": {
+      "symbol": "EMPTY",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 104,
+    "evidence": "http-run_backtest-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.2413
+  },
+  {
+    "tool": "backtesting_compare_strategies",
+    "transport": "http",
+    "scenario": "compare_strategies-error",
+    "arguments": {
+      "symbol": "BAD",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 288,
+    "evidence": "http-compare_strategies-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 1.0772
+  },
+  {
+    "tool": "backtesting_backtest_portfolio",
+    "transport": "http",
+    "scenario": "backtest_portfolio-error",
+    "arguments": {
+      "symbols": [
+        "BAD"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 120,
+    "evidence": "http-backtest_portfolio-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.184
+  },
+  {
+    "tool": "backtesting_optimize_strategy",
+    "transport": "http",
+    "scenario": "optimize_strategy-error",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "strategy": "nonexistent"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 66,
+    "evidence": "http-optimize_strategy-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1139
+  },
+  {
+    "tool": "backtesting_walk_forward_analysis",
+    "transport": "http",
+    "scenario": "walk_forward_analysis-error",
+    "arguments": {
+      "symbol": "BAD",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "step_size": 500
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "http-walk_forward_analysis-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.5874
+  },
+  {
+    "tool": "backtesting_monte_carlo_simulation",
+    "transport": "http",
+    "scenario": "monte_carlo_simulation-error",
+    "arguments": {
+      "symbol": "EMPTY",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "num_simulations": 2
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "http-monte_carlo_simulation-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.2282
+  },
+  {
+    "tool": "backtesting_train_ml_predictor",
+    "transport": "http",
+    "scenario": "train_ml_predictor-error",
+    "arguments": {
+      "symbol": "SHORT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "http-train_ml_predictor-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1264
+  },
+  {
+    "tool": "backtesting_run_ml_strategy_backtest",
+    "transport": "http",
+    "scenario": "run_ml_strategy_backtest-error",
+    "arguments": {
+      "symbol": "SHORT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "n_estimators": 5
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "http-run_ml_strategy_backtest-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1227
+  },
+  {
+    "tool": "backtesting_analyze_market_regimes",
+    "transport": "http",
+    "scenario": "analyze_market_regimes-error",
+    "arguments": {
+      "symbol": "EMPTY",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "http-analyze_market_regimes-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1509
+  },
+  {
+    "tool": "backtesting_create_strategy_ensemble",
+    "transport": "http",
+    "scenario": "create_strategy_ensemble-error",
+    "arguments": {
+      "symbols": [
+        "EMPTY"
+      ],
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 83,
+    "evidence": "http-create_strategy_ensemble-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.1394
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "http",
+    "scenario": "parse_strategy-error",
+    "arguments": {
+      "description": {
+        "invalid": "object"
+      }
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 295,
+    "evidence": "http-parse_strategy-error.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0085
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "http",
+    "scenario": "no-trades",
+    "arguments": {
+      "symbol": "FLAT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "fail",
+    "response_bytes": 83,
+    "evidence": "http-no-trades.json",
+    "actual": "AssertionError: {'status': 'error', 'error': \"Circuit breaker 'yfinance' is open; retry in 58.21s\"}",
+    "duration_seconds": 0.1209
+  },
+  {
+    "tool": "backtesting_optimize_strategy",
+    "transport": "http",
+    "scenario": "no-valid-optimization",
+    "arguments": {
+      "symbol": "FLAT",
+      "start_date": "2023-01-03",
+      "end_date": "2025-12-31",
+      "optimization_level": "coarse"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "fail",
+    "response_bytes": 83,
+    "evidence": "http-no-valid-optimization.json",
+    "actual": "AssertionError: {'status': 'error', 'error': \"Circuit breaker 'yfinance' is open; retry in 58.10s\"}",
+    "duration_seconds": 0.1062
+  },
+  {
+    "tool": "backtesting_run_backtest",
+    "transport": "http",
+    "scenario": "invalid-dates",
+    "arguments": {
+      "symbol": "AAPL",
+      "start_date": "invalid"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 67,
+    "evidence": "http-invalid-dates.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0033
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "research_run_comprehensive-unconfigured",
+    "arguments": {
+      "query": "Synthetic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "fail",
+    "response_bytes": 494,
+    "evidence": "http-research_run_comprehensive-unconfigured.json",
+    "actual": "AssertionError: typed configuration error",
+    "duration_seconds": 0.0047
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "research_analyze_company-unconfigured",
+    "arguments": {
+      "symbol": "AAPL"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "fail",
+    "response_bytes": 532,
+    "evidence": "http-research_analyze_company-unconfigured.json",
+    "actual": "AssertionError: typed configuration error",
+    "duration_seconds": 0.004
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "http",
+    "scenario": "research_analyze_sentiment-unconfigured",
+    "arguments": {
+      "topic": "Synthetic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "fail",
+    "response_bytes": 531,
+    "evidence": "http-research_analyze_sentiment-unconfigured.json",
+    "actual": "AssertionError: typed configuration error",
+    "duration_seconds": 0.004
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "http",
+    "scenario": "llm-parser-None",
+    "arguments": {
+      "description": "SMA crosses 10 and 20"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 188,
+    "evidence": "http-llm-parser-None.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.1802
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "comprehensive",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1228,
+    "evidence": "http-comprehensive.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0393
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "company",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1322,
+    "evidence": "http-company.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0364
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "competitive",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": true
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1321,
+    "evidence": "http-competitive.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0522
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "http",
+    "scenario": "sentiment",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1206,
+    "evidence": "http-sentiment.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.0595
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "comprehensive-empty",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 291,
+    "evidence": "http-comprehensive-empty.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0171
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "company-empty",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 314,
+    "evidence": "http-company-empty.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0216
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "http",
+    "scenario": "sentiment-empty",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 319,
+    "evidence": "http-sentiment-empty.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0796
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "comprehensive-search_failure",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 291,
+    "evidence": "http-comprehensive-search_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0189
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "company-search_failure",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 314,
+    "evidence": "http-company-search_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0221
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "http",
+    "scenario": "sentiment-search_failure",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 319,
+    "evidence": "http-sentiment-search_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0428
+  },
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "comprehensive-model_failure",
+    "arguments": {
+      "query": "Synthetic company outlook",
+      "research_scope": "basic"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 376,
+    "evidence": "http-comprehensive-model_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0243
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "company-model_failure",
+    "arguments": {
+      "symbol": "SYNTH",
+      "include_competitive_analysis": false
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 399,
+    "evidence": "http-company-model_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0309
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "http",
+    "scenario": "sentiment-model_failure",
+    "arguments": {
+      "topic": "Synthetic sector"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 404,
+    "evidence": "http-sentiment-model_failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0509
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "http",
+    "scenario": "parser-provider-failure",
+    "arguments": {
+      "description": "SMA 10 20"
+    },
+    "mode": "synthetic",
+    "expected": "structured error",
+    "status": "pass",
+    "response_bytes": 143,
+    "evidence": "http-parser-provider-failure.json",
+    "actual": "expected error received",
+    "duration_seconds": 0.0088
+  },
+  {
+    "tool": "backtesting_parse_strategy",
+    "transport": "http",
+    "scenario": "llm-parser-0.3",
+    "arguments": {
+      "description": "SMA crosses 10 and 20"
+    },
+    "mode": "synthetic",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 188,
+    "evidence": "http-llm-parser-0.3.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.1118
+  }
+]

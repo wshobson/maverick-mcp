@@ -1,0 +1,51 @@
+[
+  {
+    "tool": "market_data_get_quote",
+    "transport": "http",
+    "scenario": "yahoo-quote",
+    "arguments": {
+      "ticker": "MSFT"
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 192,
+    "evidence": "http-yahoo-quote.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 3.9373
+  },
+  {
+    "tool": "market_data_get_price_history",
+    "transport": "http",
+    "scenario": "yahoo-history",
+    "arguments": {
+      "ticker": "MSFT",
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-30"
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1610,
+    "evidence": "http-yahoo-history.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 1.0043
+  },
+  {
+    "tool": "market_data_get_price_history",
+    "transport": "http",
+    "scenario": "yahoo-history-cached",
+    "arguments": {
+      "ticker": "MSFT",
+      "start_date": "2026-09-01",
+      "end_date": "2026-09-30"
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 1610,
+    "evidence": "http-yahoo-history-cached.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 0.1604
+  }
+]

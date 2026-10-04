@@ -1,0 +1,498 @@
+{
+  "versions": {
+    "python": "3.12.13 (main, Mar  3 2026, 15:35:03) [Clang 21.1.4 ]",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "maverick-mcp-server": "1.1.0",
+    "fastmcp": "4.0.10",
+    "mcp": "2.1.1",
+    "httpx": "0.28.1",
+    "pydantic": "2.13.5"
+  },
+  "transport_scope": [
+    "stdio",
+    "http"
+  ],
+  "checks": [
+    {
+      "check": "stdio-client/handshake",
+      "status": "pass",
+      "protocol_version": "2025-11-25",
+      "server_info": {
+        "name": "maverick-mcp",
+        "version": "4.0.10"
+      }
+    },
+    {
+      "check": "stdio-client/capabilities",
+      "status": "pass",
+      "capabilities": {
+        "logging": {},
+        "prompts": {
+          "listChanged": false
+        },
+        "resources": {
+          "subscribe": false,
+          "listChanged": false
+        },
+        "tools": {
+          "listChanged": true
+        }
+      }
+    },
+    {
+      "check": "stdio-client/list_tools/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 53,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "stdio-client/list_prompts/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 3,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "stdio-client/tools-unique",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/prompts-unique",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/all-tool-schemas-annotations",
+      "status": "pass",
+      "count": 53
+    },
+    {
+      "check": "stdio-client/prompt/analyze_stock",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/prompt-missing-analyze_stock",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Error rendering prompt 'analyze_stock': Missing required arguments: {'ticker'}"
+    },
+    {
+      "check": "stdio-client/prompt/review_portfolio",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/prompt/run_backtest_workflow",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/prompt-missing-run_backtest_workflow",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Error rendering prompt 'run_backtest_workflow': Missing required arguments: {'ticker'}"
+    },
+    {
+      "check": "stdio-client/unknown-prompt",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Unknown prompt: '__e2e_unknown_prompt__'"
+    },
+    {
+      "check": "stdio-client/tool-success",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/structured-output-schema",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/tool-missing-required",
+      "status": "pass",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "1 validation error for call[get_chart_links]\nticker\n  Missing required argument [type=missing_argument, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing_argument"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      }
+    },
+    {
+      "check": "stdio-client/tool-invalid-type",
+      "status": "pass",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "1 validation error for call[portfolio_watchlist_add]\nwatchlist_id\n  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='not-an-int', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_parsing"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      }
+    },
+    {
+      "check": "stdio-client/unknown-tool",
+      "status": "pass",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Unknown tool: '__e2e_unknown_tool__'"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      }
+    },
+    {
+      "check": "stdio-client/domain-error-envelope",
+      "status": "pass",
+      "mcp_is_error": false,
+      "note": "Application returns structured status:error; distinguish it from MCP isError"
+    },
+    {
+      "check": "stdio-client/concurrent-requests",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/list_resources/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 1,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "stdio-client/list_resource_templates/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 0,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "stdio-client/resource/portfolio://my-holdings",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/resource-capability",
+      "status": "pass",
+      "resources": 1,
+      "templates": 0
+    },
+    {
+      "check": "stdio-client/request-timeout",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Request 'tools/call' timed out"
+    },
+    {
+      "check": "stdio-client/timeout-bounded",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/after-timeout",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/cancellation-inflight",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/caller-cancellation",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/after-cancel",
+      "status": "pass"
+    },
+    {
+      "check": "stdio/stdout-only-jsonrpc",
+      "status": "pass",
+      "messages": 31
+    },
+    {
+      "check": "stdio/cancellation-notifications",
+      "status": "pass",
+      "notifications": [
+        {
+          "jsonrpc": "2.0",
+          "method": "notifications/cancelled",
+          "params": {
+            "requestId": 28,
+            "reason": "timed out after 0.2s"
+          }
+        },
+        {
+          "jsonrpc": "2.0",
+          "method": "notifications/cancelled",
+          "params": {
+            "requestId": 30,
+            "reason": "caller cancelled"
+          }
+        }
+      ]
+    },
+    {
+      "check": "stdio/graceful-shutdown",
+      "status": "pass",
+      "returncode": 0
+    },
+    {
+      "check": "stdio/logs-on-stderr",
+      "status": "pass"
+    },
+    {
+      "check": "stdio/restart-persistence",
+      "status": "pass"
+    },
+    {
+      "check": "stdio/restart-shutdown",
+      "status": "pass",
+      "returncode": 0
+    },
+    {
+      "check": "http-client/handshake",
+      "status": "pass",
+      "protocol_version": "2025-11-25",
+      "server_info": {
+        "name": "maverick-mcp",
+        "version": "4.0.10"
+      }
+    },
+    {
+      "check": "http-client/capabilities",
+      "status": "pass",
+      "capabilities": {
+        "logging": {},
+        "prompts": {
+          "listChanged": true
+        },
+        "resources": {
+          "subscribe": false,
+          "listChanged": true
+        },
+        "tools": {
+          "listChanged": true
+        }
+      }
+    },
+    {
+      "check": "http-client/list_tools/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 53,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "http-client/list_prompts/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 3,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "http-client/tools-unique",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/prompts-unique",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/all-tool-schemas-annotations",
+      "status": "pass",
+      "count": 53
+    },
+    {
+      "check": "http-client/prompt/analyze_stock",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/prompt-missing-analyze_stock",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Error rendering prompt 'analyze_stock': Missing required arguments: {'ticker'}"
+    },
+    {
+      "check": "http-client/prompt/review_portfolio",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/prompt/run_backtest_workflow",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/prompt-missing-run_backtest_workflow",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Error rendering prompt 'run_backtest_workflow': Missing required arguments: {'ticker'}"
+    },
+    {
+      "check": "http-client/unknown-prompt",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Unknown prompt: '__e2e_unknown_prompt__'"
+    },
+    {
+      "check": "http-client/tool-success",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/structured-output-schema",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/tool-missing-required",
+      "status": "pass",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "1 validation error for call[get_chart_links]\nticker\n  Missing required argument [type=missing_argument, input_value={}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing_argument"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      }
+    },
+    {
+      "check": "http-client/tool-invalid-type",
+      "status": "pass",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "1 validation error for call[portfolio_watchlist_add]\nwatchlist_id\n  Input should be a valid integer, unable to parse string as an integer [type=int_parsing, input_value='not-an-int', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/int_parsing"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      }
+    },
+    {
+      "check": "http-client/unknown-tool",
+      "status": "pass",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Unknown tool: '__e2e_unknown_tool__'"
+          }
+        ],
+        "isError": true,
+        "resultType": "complete"
+      }
+    },
+    {
+      "check": "http-client/domain-error-envelope",
+      "status": "pass",
+      "mcp_is_error": false,
+      "note": "Application returns structured status:error; distinguish it from MCP isError"
+    },
+    {
+      "check": "http-client/concurrent-requests",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/list_resources/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 1,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "http-client/list_resource_templates/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 0,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "http-client/resource/portfolio://my-holdings",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/resource-capability",
+      "status": "pass",
+      "resources": 1,
+      "templates": 0
+    },
+    {
+      "check": "http-client/request-timeout",
+      "status": "pass",
+      "error_type": "MCPError",
+      "detail": "Request 'tools/call' timed out"
+    },
+    {
+      "check": "http-client/timeout-bounded",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/after-timeout",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/cancellation-inflight",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/caller-cancellation",
+      "status": "pass"
+    },
+    {
+      "check": "http-client/after-cancel",
+      "status": "pass"
+    },
+    {
+      "check": "http/concurrent-clients",
+      "status": "pass"
+    },
+    {
+      "check": "http/disconnect-reconnect",
+      "status": "pass"
+    },
+    {
+      "check": "http/raw-mcp",
+      "status": "pass"
+    },
+    {
+      "check": "http/raw-mcp-slash-redirect",
+      "status": "pass",
+      "http_status": 307,
+      "location": "http://127.0.0.1:57206/mcp",
+      "redirects_followed": false
+    },
+    {
+      "check": "http/sessionless-revision",
+      "status": "pass"
+    },
+    {
+      "check": "http/unknown-method-error",
+      "status": "pass",
+      "code": -32601
+    },
+    {
+      "check": "http/graceful-shutdown",
+      "status": "pass",
+      "returncode": -15
+    },
+    {
+      "check": "http/logs-on-stderr",
+      "status": "pass"
+    },
+    {
+      "check": "http/restart-persistence",
+      "status": "pass"
+    },
+    {
+      "check": "http/restart-shutdown",
+      "status": "pass",
+      "returncode": -15
+    }
+  ],
+  "passed": 76,
+  "failed": 0,
+  "formal_conformance": false,
+  "provider_calls": "none; offline DB/chart-link/prompt operations only"
+}

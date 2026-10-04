@@ -1,0 +1,9 @@
+{
+  "state_dir": "/var/folders/4s/t97d19rd00dccqypgk8gw4_w0000gn/T/maverick-e2e-core-http-4822d3yi",
+  "database": "/var/folders/4s/t97d19rd00dccqypgk8gw4_w0000gn/T/maverick-e2e-core-http-4822d3yi/maverick.db",
+  "isolation": "Temporary test-only state; retained for debugging",
+  "launcher": [
+    "/Users/wshobson/workspace/major7apps/maverick-mcp/.venv/bin/python",
+    "/Users/wshobson/workspace/major7apps/maverick-mcp/tests/e2e/fixture_provider.py"
+  ]
+}

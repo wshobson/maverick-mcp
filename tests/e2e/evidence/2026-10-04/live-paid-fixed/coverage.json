@@ -1,0 +1,52 @@
+[
+  {
+    "tool": "research_run_comprehensive",
+    "transport": "http",
+    "scenario": "live-comprehensive",
+    "arguments": {
+      "query": "Microsoft latest annual report revenue and risks",
+      "research_scope": "basic",
+      "persona": "conservative"
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 7662,
+    "evidence": "http-live-comprehensive.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 14.4977
+  },
+  {
+    "tool": "research_analyze_company",
+    "transport": "http",
+    "scenario": "live-company",
+    "arguments": {
+      "symbol": "MSFT",
+      "persona": "conservative",
+      "include_competitive_analysis": false
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 7841,
+    "evidence": "http-live-company.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 19.8036
+  },
+  {
+    "tool": "research_analyze_sentiment",
+    "transport": "http",
+    "scenario": "live-sentiment",
+    "arguments": {
+      "topic": "Microsoft earnings",
+      "persona": "conservative"
+    },
+    "mode": "live",
+    "expected": "successful structured response",
+    "status": "pass",
+    "response_bytes": 2607,
+    "evidence": "http-live-sentiment.json",
+    "actual": "response and assertions passed",
+    "duration_seconds": 55.3989
+  }
+]

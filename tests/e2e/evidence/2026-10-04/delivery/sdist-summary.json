@@ -1,0 +1,27 @@
+{
+  "timestamp": "2026-10-04T18:47:34.592031+00:00",
+  "status": "pass",
+  "passed": 6,
+  "failed": 0,
+  "skipped": 0,
+  "duration_seconds": 187.73,
+  "source_archive": "/tmp/maverick-e2e-delivery-final/artifacts/maverick_mcp_server-1.1.0.tar.gz",
+  "source_archive_sha256": "cb0c550305c4c699c9cf00cb684cdde744930bcab25cd4ff2d96ebf9fcf6d87d",
+  "wheel": "/tmp/maverick-e2e-delivery-final/artifacts/maverick_mcp_server-1.1.0-py3-none-any.whl",
+  "wheel_sha256": "4a759e8debd3497b6768944237a8f0becc737d883e15a9f8f4b86fcdca27d704",
+  "runtime_python_files_match_final_wheel": 98,
+  "archive_includes_new_e2e_report": false,
+  "archive_documentation_sha256": {
+    "docs/CATALOG.md": "7974f76cc8a010e10308122c91c9c4f16776cfb2afc4caee4511d24a433b0e60",
+    "docs/testing/README.md": "9deb3e9b6df8bd809e667275108dc66e97f5adebd8b9bcab434e5670a09a3ba5"
+  },
+  "scope_note": "Source archive contains final runtime fixes and passed all six structure checks, including extracted docs checking and offline rebuild/private-file exclusions. It was built before the new E2E report/catalog update, so it is not evidence for final documentation packaging. Final checkout docs-check is separate.",
+  "commands": [
+    "UV_CACHE_DIR=/tmp/maverick-e2e-uv-cache uv build --sdist --offline --out-dir /tmp/maverick-e2e-delivery-final/artifacts",
+    "UV_CACHE_DIR=/tmp/maverick-e2e-uv-cache MAVERICK_SDIST=/tmp/maverick-e2e-delivery-final/artifacts/maverick_mcp_server-1.1.0.tar.gz MAVERICK_WHEEL=/tmp/maverick-e2e-delivery-final/artifacts/maverick_mcp_server-1.1.0-py3-none-any.whl .venv/bin/pytest tests/structure/test_sdist.py --maxfail=1"
+  ],
+  "logs": [
+    "final-sdist-build.log",
+    "final-sdist-tests.log"
+  ]
+}

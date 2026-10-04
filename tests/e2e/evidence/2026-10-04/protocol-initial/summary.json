@@ -1,0 +1,74 @@
+{
+  "versions": {
+    "python": "3.12.13 (main, Mar  3 2026, 15:35:03) [Clang 21.1.4 ]",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "maverick-mcp-server": "1.1.0",
+    "fastmcp": "4.0.10",
+    "mcp": "2.1.1",
+    "httpx": "0.28.1",
+    "pydantic": "2.13.5"
+  },
+  "transport_scope": [
+    "stdio"
+  ],
+  "checks": [
+    {
+      "check": "stdio-client/handshake",
+      "status": "pass",
+      "protocol_version": "2025-11-25",
+      "server_info": {
+        "name": "maverick-mcp",
+        "version": "4.0.10"
+      }
+    },
+    {
+      "check": "stdio-client/capabilities",
+      "status": "pass",
+      "capabilities": {
+        "logging": {},
+        "prompts": {
+          "listChanged": false
+        },
+        "resources": {
+          "subscribe": false,
+          "listChanged": false
+        },
+        "tools": {
+          "listChanged": true
+        }
+      }
+    },
+    {
+      "check": "stdio-client/list_tools/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 53,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "stdio-client/list_prompts/pagination",
+      "status": "pass",
+      "pages": 1,
+      "count": 3,
+      "note": "Followed every returned cursor; server fits current catalog in one page"
+    },
+    {
+      "check": "stdio-client/tools-unique",
+      "status": "pass"
+    },
+    {
+      "check": "stdio-client/prompts-unique",
+      "status": "pass"
+    },
+    {
+      "check": "stdio/unexpected-exception",
+      "status": "fail",
+      "type": "ExceptionGroup",
+      "detail": "unhandled errors in a TaskGroup (1 sub-exception)"
+    }
+  ],
+  "passed": 6,
+  "failed": 1,
+  "formal_conformance": false,
+  "provider_calls": "none; offline DB/chart-link/prompt operations only"
+}
