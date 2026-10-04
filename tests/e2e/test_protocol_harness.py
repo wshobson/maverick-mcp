@@ -1,6 +1,10 @@
 """Offline regressions for protocol evidence and HTTP client isolation."""
 
+import argparse
+import importlib
+import json
 from contextlib import asynccontextmanager
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock
 
 import httpx2
@@ -9,6 +13,105 @@ import pytest
 from mcp import types
 from mcp.shared.exceptions import MCPError
 from protocol_checks import Checks
+
+
+@pytest.mark.parametrize("exists", [False, True])
+def test_prepare_evidence_dir_accepts_fresh_directory(tmp_path, exists):
+    """Accept a new or existing empty output directory without adding artifacts."""
+    output = tmp_path / "evidence"
+    if exists:
+        output.mkdir()
+
+    mcp_process.prepare_evidence_dir(output)
+
+    assert output.is_dir()
+    assert list(output.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    "artifact", ["result.json", ".hidden", "stdio/server.wire.jsonl", "empty-dir/"]
+)
+def test_prepare_evidence_dir_preserves_existing_artifacts(tmp_path, artifact):
+    """Reject every nonempty output directory without changing prior evidence."""
+    output = tmp_path / "evidence"
+    entry = output / artifact
+    if artifact.endswith("/"):
+        entry.mkdir(parents=True)
+    else:
+        entry.parent.mkdir(parents=True)
+        entry.write_bytes(b"prior evidence\n")
+
+    with pytest.raises(ValueError, match="not empty"):
+        mcp_process.prepare_evidence_dir(output)
+
+    assert (
+        entry.is_dir()
+        if artifact.endswith("/")
+        else entry.read_bytes() == b"prior evidence\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "runner", ["protocol", "core", "optional", "live", "application", "delivery"]
+)
+async def test_runner_rejects_reused_evidence_before_side_effects(
+    tmp_path, monkeypatch, runner
+):
+    """Reject stale evidence before creating state, processes, or provider calls."""
+    module = importlib.import_module(
+        "application_client" if runner == "application" else f"{runner}_checks"
+    )
+    output = tmp_path / "evidence"
+    target = output / "stdio" if runner == "core" else output
+    target.mkdir(parents=True)
+    marker = target / "previous.jsonl"
+    previous = b'{"event":"response","method":"list_tools","result":{"tools":[]}}\n'
+    marker.write_bytes(previous)
+    wire = target / "server.wire.jsonl"
+    wire.write_text(
+        json.dumps(
+            {"event": "send", "raw": json.dumps({"method": "notifications/cancelled"})}
+        )
+        + "\n"
+    )
+    old_wire = wire.read_bytes()
+    blocked = Mock(side_effect=AssertionError("side effect before evidence preflight"))
+    monkeypatch.setattr("tempfile.mkdtemp", blocked)
+    monkeypatch.setattr(module, "server_process", blocked)
+    if runner == "live":
+        monkeypatch.setattr(module, "dotenv_values", blocked)
+    if runner == "optional":
+        monkeypatch.setattr(module, "provider_server", blocked)
+    if runner == "delivery":
+        monkeypatch.setattr(module, "Evidence", blocked)
+    monkeypatch.setattr(
+        argparse.ArgumentParser,
+        "parse_args",
+        lambda self: argparse.Namespace(
+            transport="both",
+            evidence_dir=output,
+            output=output,
+            lane="all",
+            state_dir=Path("/tmp/maverick-e2e-delivery-guard-test"),
+            mode="all",
+            wheel_python=Path("/unused/python"),
+            image="unused",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="not empty"):
+        if runner == "core":
+            await module.run("stdio", output)
+        elif runner == "application":
+            await module.run(output)
+        elif runner == "live":
+            await module.run(output, paid=True, reserved="0")
+        else:
+            await module.main()
+
+    blocked.assert_not_called()
+    assert marker.read_bytes() == previous
+    assert wire.read_bytes() == old_wire
 
 
 async def test_expected_error_rejects_unrelated_client_exception(tmp_path):

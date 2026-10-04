@@ -24,6 +24,7 @@ from mcp.shared.exceptions import MCPError
 from mcp_process import (
     REPO,
     RecordedClient,
+    prepare_evidence_dir,
     record,
     serializable,
     server_process,
@@ -587,8 +588,8 @@ async def main() -> None:
         default=REPO / "tests/e2e/evidence/2026-10-04/protocol",
     )
     args = parser.parse_args()
+    prepare_evidence_dir(args.evidence_dir)
     checks = Checks(args.evidence_dir)
-    args.evidence_dir.mkdir(parents=True, exist_ok=True)
     transports = ("stdio", "http") if args.transport == "both" else (args.transport,)
     for transport in transports:
         state = Path(

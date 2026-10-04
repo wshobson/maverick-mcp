@@ -11,10 +11,9 @@ import pytest
 
 
 @pytest.fixture
-def app_process(tmp_path, monkeypatch):
+def app_process(tmp_path_factory, monkeypatch):
     """Supply successful app-server replies without starting any process."""
-    state = tmp_path / "state"
-    state.mkdir()
+    state = tmp_path_factory.mktemp("app-state")
     monkeypatch.setattr(application_client.tempfile, "mkdtemp", lambda **kw: str(state))
     monkeypatch.setattr(application_client.shutil, "which", lambda name: "/fake/codex")
     watchlist = {"id": 7, "name": "Codex disposable compatibility"}

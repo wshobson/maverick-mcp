@@ -10,13 +10,13 @@ import tempfile
 from pathlib import Path
 
 from dotenv import dotenv_values
-from mcp_process import REPO, server_process
+from mcp_process import REPO, prepare_evidence_dir, server_process
 from optional_checks import expect, scenario
 
 
 async def run(output, paid, reserved, skip_parser=False):
     """Run authorized live scenarios with isolated state and saved coverage."""
-    output.mkdir(parents=True, exist_ok=True)
+    prepare_evidence_dir(output)
     state = Path(tempfile.mkdtemp(prefix="maverick-e2e-live-", dir="/tmp"))
     rows = []
     if paid:

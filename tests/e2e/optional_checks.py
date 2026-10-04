@@ -9,7 +9,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from mcp_process import server_process
+from mcp_process import prepare_evidence_dir, server_process
 from research_provider import provider_server
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -517,7 +517,7 @@ async def main():
         "--lane", choices=["all", "backtesting", "research"], default="all"
     )
     args = parser.parse_args()
-    args.output.mkdir(parents=True, exist_ok=True)
+    prepare_evidence_dir(args.output)
     rows = []
     for transport in ["stdio", "http"]:
         if args.lane in {"all", "backtesting"}:

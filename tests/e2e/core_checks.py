@@ -19,7 +19,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
-from mcp_process import server_process
+from mcp_process import prepare_evidence_dir, server_process
 
 ROOT = Path(__file__).resolve().parents[2]
 LAUNCHER = [str(ROOT / ".venv/bin/python"), str(ROOT / "tests/e2e/fixture_provider.py")]
@@ -1148,8 +1148,9 @@ async def watchlist_journal_checks(c: Checks, client: Any) -> dict[str, Any]:
 
 async def run(transport: str, evidence_root: Path) -> bool:
     """Exercise every core tool and verify persistence after process restart."""
-    state = Path(tempfile.mkdtemp(prefix=f"maverick-e2e-core-{transport}-"))
     evidence = evidence_root / transport
+    prepare_evidence_dir(evidence)
+    state = Path(tempfile.mkdtemp(prefix=f"maverick-e2e-core-{transport}-"))
     c = Checks(transport, evidence)
     async with server_process(
         transport, state, evidence, label="core", launcher=LAUNCHER

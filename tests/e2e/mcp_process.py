@@ -52,6 +52,15 @@ def record(path: Path, event: str, **fields: Any) -> None:
         output.write(json.dumps(serializable(entry), default=str) + "\n")
 
 
+def prepare_evidence_dir(path: Path) -> None:
+    """Require an empty output directory so prior runs cannot affect evidence."""
+    path.mkdir(parents=True, exist_ok=True)
+    if any(path.iterdir()):
+        raise ValueError(
+            f"Evidence directory is not empty: {path}; choose a new directory"
+        )
+
+
 def isolated_env(
     state_dir: Path, overrides: dict[str, str] | None = None
 ) -> dict[str, str]:

@@ -15,12 +15,12 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from mcp_process import isolated_env, record, server_process
+from mcp_process import isolated_env, prepare_evidence_dir, record, server_process
 
 
 async def run(output: Path):
     """Verify Codex MCP discovery and persistence in disposable app state."""
-    output.mkdir(parents=True, exist_ok=True)
+    prepare_evidence_dir(output)
     state = Path(tempfile.mkdtemp(prefix="maverick-e2e-app-client-", dir="/tmp"))
     codex = shutil.which("codex")
     if not codex:

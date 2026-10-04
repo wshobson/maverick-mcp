@@ -26,7 +26,11 @@ from typing import Any
 
 import httpx
 
-from tests.e2e.mcp_process import http_connection, server_process
+from tests.e2e.mcp_process import (
+    http_connection,
+    prepare_evidence_dir,
+    server_process,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 OPTIONAL_MODULES = (
@@ -746,6 +750,7 @@ async def main() -> None:
         ("/tmp/maverick-e2e-delivery-", "/private/tmp/maverick-e2e-delivery-")
     ):
         raise ValueError("Use a new /tmp/maverick-e2e-delivery-* state directory")
+    prepare_evidence_dir(args.evidence_dir.resolve())
     evidence = Evidence(args.evidence_dir.resolve())
     evidence.record(
         "run",
