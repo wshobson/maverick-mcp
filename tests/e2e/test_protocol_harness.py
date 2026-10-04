@@ -114,6 +114,28 @@ async def test_runner_rejects_reused_evidence_before_side_effects(
     assert wire.read_bytes() == old_wire
 
 
+async def test_core_both_rejects_reused_http_before_stdio_run(tmp_path, monkeypatch):
+    """Reject stale HTTP evidence before starting either requested core transport."""
+    module = importlib.import_module("core_checks")
+    output = tmp_path / "core"
+    old_http = output / "http" / "previous.jsonl"
+    old_http.parent.mkdir(parents=True)
+    old_http.write_bytes(b"previous HTTP evidence\n")
+    run = AsyncMock(side_effect=AssertionError("transport started before preflight"))
+    monkeypatch.setattr(module, "run", run)
+    monkeypatch.setattr(
+        argparse.ArgumentParser,
+        "parse_args",
+        lambda self: argparse.Namespace(transport="both", evidence=output),
+    )
+
+    with pytest.raises(ValueError, match="not empty"):
+        await module.main()
+
+    run.assert_not_awaited()
+    assert old_http.read_bytes() == b"previous HTTP evidence\n"
+
+
 async def test_expected_error_rejects_unrelated_client_exception(tmp_path):
     """Ensure unrelated client exceptions cannot count as expected MCP errors."""
     client = Mock(path=tmp_path / "client.jsonl")

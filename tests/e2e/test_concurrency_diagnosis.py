@@ -1,13 +1,43 @@
 """Sampling failures must not replace the original concurrency diagnosis."""
 
 import json
+import runpy
 import subprocess
+import sys
 from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
 
 from tests.e2e import concurrency_diagnosis as diagnosis
+
+
+def test_diagnostic_cli_rejects_reused_evidence_before_starting(
+    tmp_path, monkeypatch, capsys
+):
+    """Reject mixed diagnostic output before running workers and preserve files."""
+    parent = tmp_path / "parent.jsonl"
+    summary = tmp_path / "summary.json"
+    parent.write_bytes(b'{"stage":"previous-run"}\n')
+    summary.write_bytes(b'{"label":"previous summary"}\n')
+
+    def blocked_run(coroutine):
+        """Prevent a red test from executing the diagnostic or starting workers."""
+        coroutine.close()
+        raise AssertionError("diagnostic started before preflight")
+
+    run = Mock(side_effect=blocked_run)
+    monkeypatch.setattr(diagnosis.asyncio, "run", run)
+    monkeypatch.setattr(sys, "argv", [diagnosis.__file__, "--evidence", str(tmp_path)])
+
+    with pytest.raises(SystemExit) as caught:
+        runpy.run_path(diagnosis.__file__, run_name="__main__")
+
+    assert caught.value.code == 2
+    assert "Evidence directory is not empty" in capsys.readouterr().err
+    run.assert_not_called()
+    assert parent.read_bytes() == b'{"stage":"previous-run"}\n'
+    assert summary.read_bytes() == b'{"label":"previous summary"}\n'
 
 
 @pytest.mark.parametrize("failure_stage", ["signal", "evidence-read", "native-sample"])

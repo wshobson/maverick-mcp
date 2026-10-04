@@ -1238,6 +1238,8 @@ async def main() -> None:
     )
     args = parser.parse_args()
     transports = ["stdio", "http"] if args.transport == "both" else [args.transport]
+    for transport in transports:
+        prepare_evidence_dir(args.evidence / transport)
     results = []
     for transport in transports:
         results.append(await run(transport, args.evidence))

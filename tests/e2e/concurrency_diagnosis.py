@@ -248,4 +248,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     output_dir = args.evidence.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    if any(output_dir.iterdir()):
+        parser.error("Evidence directory is not empty; choose a new directory")
     print(json.dumps(asyncio.run(diagnose(output_dir)), indent=2))
