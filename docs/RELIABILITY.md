@@ -1,7 +1,7 @@
 # Reliability
 
-Current state and known gaps for `maverick/`, the whole system as of
-v1.0.0. Update when behavior changes.
+Current source behavior and remaining limits, verified on October 4, 2026.
+The published v1.1.0 release predates the correctness changes below.
 
 ## What exists
 
@@ -43,21 +43,34 @@ v1.0.0. Update when behavior changes.
   runs without breaker/retry protection by design. Routing it through the
   breaker from a worker thread deadlocked; `_build_yfinance_tier` in
   `maverick/market_data/fetchers.py` records why.
-- Concurrent portfolio read/modify/write transactions can overwrite each other;
-  a successful response does not guarantee that every purchase was preserved.
-- Stored price bars are insert-only, so partial current-session bars and later
-  corporate-action corrections are not refreshed; concurrent inserts can fail.
-- Redis reads with TTL zero or an expired-between-reads key can extend a cached
-  value to the global TTL when promoting it into the memory tier.
-- Exhausted retryable HTTP statuses currently count as breaker successes.
-  Cancellation/stale-result recovery was fixed in #273 on 2026-10-04, including
-  the timeout regression's isolated fake clock; status-based failure accounting
-  is a separate remaining defect.
-- In-memory SQLite uses separate connections through NullPool, losing schema
-  and records between connections.
-- The documented Docker quick start does not persist the default SQLite data
-  outside the removable container.
+- Adjusted history refreshes on access after 24 hours, or sooner for expanded
+  coverage and provisional current-day bars. It is not an immediate corporate-action
+  feed. Full-union refreshes can be expensive; pre-listing ranges can refetch.
+- Market-provider availability and research answer quality are not established
+  by offline tests. Final synthesis errors when no usable evidence survives.
 
-See [the 2026-10-04 review](design-docs/2026-10-04-project-review.md) for
-reproductions, scope, and the ordered correctness plan. These are known defects,
-not hypothetical risks; the default offline suite does not yet prevent them.
+## Verified correctness contracts
+
+Portfolio mutations serialize across independent SQLite/PostgreSQL service
+instances and processes. Memory SQLite retains one exclusively checked-out
+connection; reset cancellation does not release it prematurely or block future
+borrowers forever. A cancelled portfolio caller can still have a committed
+worker transaction, so callers must inspect state before retrying.
+
+History refreshes reserve generations and atomically replace complete adjusted
+snapshots. Older responses cannot overwrite newer reservations. Partial or failed
+responses preserve the prior snapshot and allow retry. Native upserts handle
+concurrent date conflicts, and existing schemas gain only nullable metadata.
+
+Redis promotion preserves remaining expiry, and the composed HTTP helper counts
+exhausted retryable statuses as breaker failures. Docker defaults use `/data`;
+the documented volume command survived a real container replacement with stored
+holdings, watchlists, journal entries, and cache records intact.
+
+The integrated offline suite passed 1,599 tests, with built-artifact checks and
+14 PostgreSQL cases handled separately. All 28 combined SQLite/PostgreSQL cases
+passed. A real core-only wheel installation and a Git-free extracted source
+archive passed their distinct checks. See the
+[completed correctness plan](exec-plans/completed/2026-10-04-correctness-and-reliability.md)
+for exact evidence and limits. These checks do not establish live-provider
+accuracy, human eval labels, or release publication.

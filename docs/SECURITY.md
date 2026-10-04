@@ -11,6 +11,6 @@ carried) is deleted. Vulnerability reporting lives in the root `SECURITY.md`.
   tool descriptions, or prompts.
 - Tool annotations are UX hints, not security guarantees.
 - No secrets in tool output, logs, or error messages. API keys live in
-  environment variables and never leave the process.
+  environment variables and are used only for configured provider authentication.
 - Integrations with third-party data services require maintainer review of
   the provider itself, not just the code. See PR #209 for the precedent.
