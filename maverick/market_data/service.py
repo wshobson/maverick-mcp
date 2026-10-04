@@ -41,13 +41,30 @@ _MOVER_KINDS = ("gainers", "losers", "most_active")
 _DEFAULT_HISTORY_LOOKBACK_DAYS = 365
 _HISTORY_REFRESH_INTERVAL = timedelta(hours=24)
 _MARKET_TIMEZONE = ZoneInfo("America/New_York")
+_CALENDAR_BY_SUFFIX = {
+    "L": "LSE",
+    "T": "JPX",
+    "TO": "TSX",
+    "AX": "ASX",
+    "HK": "HKEX",
+    "DE": "XETR",
+}
 
 
-def _default_calendar() -> Any:
-    """Lazily import pandas-market-calendars and return the NYSE calendar."""
+def _default_calendar(symbol: str) -> Any:
+    """Resolve supported Yahoo exchange suffixes; US/class-share symbols use NYSE."""
     import pandas_market_calendars as mcal
 
-    return mcal.get_calendar("NYSE")
+    _, separator, suffix = symbol.rpartition(".")
+    if not separator or suffix in {"A", "B"}:
+        return mcal.get_calendar("NYSE")
+    if suffix not in _CALENDAR_BY_SUFFIX:
+        raise ValueError(
+            f"Unsupported daily-history calendar for {symbol} (.{suffix}); "
+            "a matching trading calendar is required. Quotes and fundamentals "
+            "remain available."
+        )
+    return mcal.get_calendar(_CALENDAR_BY_SUFFIX[suffix])
 
 
 def _to_plain_date(value: Any) -> date:
@@ -193,14 +210,13 @@ class MarketDataService:
 
     # -- price history --------------------------------------------------
 
-    def _trading_days(self, start: date, end: date) -> list[date]:
-        """Resolve NYSE trading days in `[start, end]` via the injected/real calendar.
+    def _trading_days(self, start: date, end: date, calendar: Any) -> list[date]:
+        """Resolve exchange trading days in `[start, end]` via the chosen calendar.
 
         Accepts either an object exposing `schedule(start_date, end_date) ->
         DataFrame` (the real pandas-market-calendars shape, and its fakes)
         or a plain callable returning an iterable of trading days.
         """
-        calendar = self._calendar if self._calendar is not None else _default_calendar()
         schedule_fn = getattr(calendar, "schedule", None)
         if schedule_fn is not None:
             schedule = schedule_fn(start_date=start, end_date=end)
@@ -299,14 +315,19 @@ class MarketDataService:
         """
         symbol = symbol.upper()
         now = self._clock().astimezone(UTC)
-        today = now.astimezone(_MARKET_TIMEZONE).date()
+        calendar = (
+            self._calendar
+            if self._calendar is not None
+            else await asyncio.to_thread(_default_calendar, symbol)
+        )
+        today = now.astimezone(getattr(calendar, "tz", _MARKET_TIMEZONE)).date()
         resolved_end = end or today
         resolved_start = start or (
             resolved_end - timedelta(days=_DEFAULT_HISTORY_LOOKBACK_DAYS)
         )
         requested = (
             await asyncio.to_thread(
-                self._trading_days, resolved_start, min(resolved_end, today)
+                self._trading_days, resolved_start, min(resolved_end, today), calendar
             )
             if resolved_start <= min(resolved_end, today)
             else []
@@ -317,7 +338,7 @@ class MarketDataService:
             )
             if refresh is not None:
                 sessions = await asyncio.to_thread(
-                    self._trading_days, refresh.start, refresh.end
+                    self._trading_days, refresh.start, refresh.end, calendar
                 )
                 frame = await self._yf.history(
                     symbol, refresh.start, refresh.end + timedelta(days=1)

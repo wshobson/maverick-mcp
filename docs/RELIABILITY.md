@@ -46,6 +46,9 @@ The published v1.1.0 release predates the correctness changes below.
 - Adjusted history refreshes on access after 24 hours, or sooner for expanded
   coverage and provisional current-day bars. It is not an immediate corporate-action
   feed. Full-union refreshes can be expensive; pre-listing ranges can refetch.
+- Daily-history calendars cover US stocks and `.L`, `.T`, `.TO`, `.AX`, `.HK`,
+  and `.DE` exchange suffixes. Other suffixes error before history fetches or
+  writes. Quote and fundamentals lookups retain their provider symbol coverage.
 - Market-provider availability and research answer quality are not established
   by offline tests. Final synthesis errors when no usable evidence survives.
 

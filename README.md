@@ -34,6 +34,12 @@ optional research tools. The published `v1.1.0` release has 37 core tools and
 predates the current correctness fixes. Follow the source installation below
 for the behavior documented here.
 
+Daily history supports US stock symbols and the exchange suffixes `.L`, `.T`,
+`.TO`, `.AX`, `.HK`, and `.DE`. Other exchange suffixes return a calendar error
+for history and tools that depend on it. Quote and fundamentals lookups still
+use the symbols accepted by Yahoo Finance. See the
+[history coverage and freshness guide](docs/runbooks/database-setup.md#adjusted-history-freshness).
+
 ## Quick start
 
 Install [Python 3.12 or later](https://www.python.org/downloads/) and

@@ -153,11 +153,16 @@ non-retryable statuses remain available to callers for provider-specific errors.
 
 Price-history reads refresh the complete stored/requested date union when the
 snapshot is older than 24 hours, the requested coverage expands, or a current
-New York market-date bar is provisional. Each refresh reserves a generation in
+exchange-local market-date bar is provisional. Each refresh reserves a generation in
 a short database transaction before fetching. A complete provider response is
 upserted atomically only if that generation is still current. An older response
 cannot replace a newer reservation's snapshot. Incomplete or failed responses
 preserve the previous snapshot and freshness, and a later request can retry.
+
+Daily history selects the exchange calendar and timezone for `.L`, `.T`, `.TO`,
+`.AX`, `.HK`, and `.DE`. US symbols use NYSE sessions. Other exchange suffixes
+return an unsupported-calendar error before fetching or reserving a generation;
+quote and fundamentals lookups do not use this calendar restriction.
 
 SQLite and PostgreSQL use native conflict-safe inserts and updates. The data
 layer's `write_price_bars` count is the number of distinct supplied dates,

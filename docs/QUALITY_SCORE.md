@@ -13,7 +13,7 @@ remains historical evidence of the reproduced failures.
 | Area | Grade | Current evidence and remaining limit |
 | --- | --- | --- |
 | `maverick/platform/` | A | Redis expiry, status-based breaker failures, and memory SQLite lifetime/cancellation have regressions; all 14 import contracts hold. |
-| `maverick/market_data/` | B | SQLite/PostgreSQL upserts, snapshot generations, partial-response preservation, and additive migration verified. Provider accuracy, 24-hour refresh latency, and leading-gap ambiguity remain limits. |
+| `maverick/market_data/` | B | SQLite/PostgreSQL upserts, snapshot generations, partial-response preservation, and additive migration verified. Exchange holidays and local dates are tested for the supported suffixes. Additional calendars, provider accuracy, 24-hour refresh latency, and leading-gap ambiguity remain limits. |
 | `maverick/technical/` | A | Golden indicator tests and requested-window observed levels pass; synthetic percentage levels removed. |
 | `maverick/screening/` | B | Layering and rubric behavior tested; default-universe choice remains deferred. |
 | `maverick/portfolio/` | A | Concurrent writes, journal precision/validation, ATR units, correlation diagonals, and watchlist discovery verified. Existing documented storage precision limits still apply. |

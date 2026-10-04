@@ -5,6 +5,7 @@ One line per item. Remove the line in the same change that removes the debt.
 | Item | Where | Phase to fix |
 | --- | --- | --- |
 | `server.json` declares the PyPI package `maverick-mcp-server`, which this project has never published: the name is held by another account until pypi/support#12150 resolves | repo root | distribution |
+| Daily-history validation has calendars for US stocks and `.L`, `.T`, `.TO`, `.AX`, `.HK`, `.DE` only; other exchange suffixes need verified mappings before history and dependent tools can accept them | `maverick/market_data/service.py` | market data |
 | MCP Apps chart rendering | `maverick/` | deferred |
 | Tasks extension for long-running backtests | `maverick/backtesting/` | deferred |
 | Macro (FRED) port deferred; zero live consumers today; no macro domain exists yet | not ported | macro port |

@@ -151,10 +151,28 @@ or a provisional current-day bar triggers a refresh sooner. The fetch covers
 the complete stored/requested union so old and new bars share one adjustment
 basis. Long stored histories can therefore require larger provider requests.
 
-The existing New York/NYSE calendar defines completed sessions. A current New
-York date remains provisional, even after the scheduled close; a later-date
-refresh can mark it fresh. Leading pre-listing gaps are accepted. Those absent
-dates are not memoized, so a request starting before listing may fetch again.
+Daily history uses NYSE sessions for US symbols, including class-share forms
+such as `BRK.B` and `BRK-B`. Supported exchange suffixes select these calendars:
+
+| Yahoo suffix | Calendar | Calendar timezone |
+| --- | --- | --- |
+| `.L` | LSE | Europe/London |
+| `.T` | JPX | Asia/Tokyo |
+| `.TO` | TSX | Canada/Eastern |
+| `.AX` | ASX | Australia/Sydney |
+| `.HK` | HKEX | Asia/Shanghai |
+| `.DE` | XETR | Europe/Berlin |
+
+Other exchange suffixes return an unsupported-calendar error before fetching or
+changing history state. The limit applies to history and tools that consume it;
+quote and fundamentals lookups still pass through to Yahoo Finance. Additional
+exchanges need a verified calendar mapping before history can validate their
+completed sessions.
+
+The current date in the selected exchange timezone remains provisional, even
+after the scheduled close; a later-date refresh can mark it fresh. Leading
+pre-listing gaps are accepted. Absent leading dates are not memoized, so a
+request starting before listing may fetch again.
 Without previously stored prices, a leading provider omission cannot be
 distinguished from a pre-listing gap using OHLCV alone.
 
