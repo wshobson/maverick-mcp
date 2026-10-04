@@ -152,7 +152,8 @@ jobs:
           uv sync --extra dev --frozen --no-editable
           uv run --no-sync python -m pytest tests/evals --collect-only
           make docs-check
-          export MAVERICK_SDIST="$RUNNER_TEMP/source-artifacts/$(basename "$RUNNER_TEMP/source-artifacts/"*.tar.gz)"
-          export MAVERICK_WHEEL="$RUNNER_TEMP/source-artifacts/$(basename "$RUNNER_TEMP/source-artifacts/"*.whl)"
+          MAVERICK_SDIST="$RUNNER_TEMP/source-artifacts/$(basename "$RUNNER_TEMP/source-artifacts/"*.tar.gz)"
+          MAVERICK_WHEEL="$RUNNER_TEMP/source-artifacts/$(basename "$RUNNER_TEMP/source-artifacts/"*.whl)"
+          export MAVERICK_SDIST MAVERICK_WHEEL
           uv run --no-sync pytest tests/structure/test_sdist.py tests/structure/test_docs_catalog.py
           uv build --offline --out-dir "$RUNNER_TEMP/rebuilt-source-artifacts"
