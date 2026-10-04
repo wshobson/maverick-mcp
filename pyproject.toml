@@ -68,6 +68,31 @@ maverick-mcp-server = "maverick.server.app:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+# Apply private-file exclusions to direct wheel builds as well as source archives.
+exclude = [
+    "/evals/tool_surface/runs/**",
+    "/evals/tool_surface/judges/results/**",
+    "**/.agent_case.json",
+    "**/.git/**",
+    "**/.claude/**",
+    "**/.venv/**",
+    "**/__pycache__/**",
+    "**/.pytest_cache/**",
+    "**/.ruff_cache/**",
+    "**/*.pyc",
+    "**/*.db",
+    "**/*.db-*",
+    "**/*.sqlite*",
+    "**/*.pem",
+    "**/*.key",
+    "**/secrets.*",
+    "**/credentials.*",
+    "**/.env",
+    "**/.env.*",
+    "!/.env.example",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["maverick"]
 
@@ -79,6 +104,22 @@ include = [
     "maverick",
     "tests",
     "docs",
+    "evals",
+    "tools",
+    "scripts",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
+    "Dockerfile",
+    "docker-compose.yml",
+    ".dockerignore",
+    ".gitignore",
+    ".python-version",
+    ".github/workflows/ci.yml",
+    "uv.lock",
     "pyproject.toml",
     "README.md",
     "LICENSE",
@@ -86,6 +127,7 @@ include = [
     "Makefile",
     "server.json",
 ]
+
 
 [tool.pytest.ini_options]
 minversion = "8.0"
