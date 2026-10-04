@@ -1,12 +1,15 @@
 """Persistent price-bar storage. Third layer: imports config and types."""
 
-from datetime import date
+from datetime import UTC, date, datetime
+from decimal import Decimal
+from typing import cast
 
 import pandas as pd
 from sqlalchemy import (
     BigInteger,
     Column,
     Date,
+    DateTime,
     ForeignKey,
     Integer,
     MetaData,
@@ -17,11 +20,14 @@ from sqlalchemy import (
     func,
     insert,
     select,
+    update,
 )
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from maverick.market_data.types import PRICE_COLUMNS
+from maverick.market_data.types import PRICE_COLUMNS, HistoryState
 
 METADATA = MetaData()
 
@@ -31,6 +37,8 @@ MD_STOCKS = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("symbol", String(20), nullable=False, unique=True, index=True),
     Column("company_name", String(255), nullable=True),
+    Column("history_refreshed_at", DateTime(timezone=True), nullable=True),
+    Column("history_generation", Integer, nullable=True),
 )
 
 MD_PRICE_BARS = Table(
@@ -70,28 +78,26 @@ def _find_stock_id(session: Session, symbol: str) -> int | None:
 
 
 def get_or_create_stock(session: Session, symbol: str) -> int:
-    """Return the ``md_stocks`` row id for ``symbol``, creating it if absent.
-
-    Guards against a concurrent first-create race: if another session's
-    insert for the same ``symbol`` commits between this session's check and
-    its own insert, the unique-constraint violation raises ``IntegrityError``
-    here. That's caught, the insert is rolled back to a savepoint taken just
-    before it (so the outer transaction stays usable), and the winner's row
-    is re-selected instead.
-    """
+    """Return the stock id, using conflict-safe insertion for supported backends."""
     stock_id = _find_stock_id(session, symbol)
     if stock_id is not None:
         return stock_id
 
-    try:
-        with session.begin_nested():
-            session.execute(insert(MD_STOCKS).values(symbol=symbol))
-            session.flush()
-    except IntegrityError:
-        stock_id = _find_stock_id(session, symbol)
-        if stock_id is None:
-            raise
-        return stock_id
+    dialect = session.get_bind().dialect.name
+    if dialect in ("sqlite", "postgresql"):
+        statement = (sqlite_insert if dialect == "sqlite" else pg_insert)(MD_STOCKS)
+        session.execute(
+            statement.values(symbol=symbol).on_conflict_do_nothing(
+                index_elements=[MD_STOCKS.c.symbol]
+            )
+        )
+    else:
+        try:
+            with session.begin_nested():
+                session.execute(insert(MD_STOCKS).values(symbol=symbol))
+        except IntegrityError:
+            if _find_stock_id(session, symbol) is None:
+                raise
 
     stock_id = _find_stock_id(session, symbol)
     if stock_id is None:
@@ -159,51 +165,92 @@ def read_price_range(
 
 
 def write_price_bars(session: Session, symbol: str, df: pd.DataFrame) -> int:
-    """Insert new price bars for ``symbol``, skipping dates already cached.
+    """Upsert bars; return the number of distinct supplied dates, including updates.
 
-    Accepts a yfinance-cased OHLCV DataFrame (``Open``/``High``/``Low``/
-    ``Close``/``Volume``) indexed by date. Returns the count of newly
-    inserted rows; existing dates are left untouched.
+    SQLite/PostgreSQL resolve concurrent date conflicts in the database.
+    Duplicate input dates use the last supplied bar. Financial values reach
+    Numeric columns through Decimal rather than float arithmetic.
     """
     if df.empty:
         return 0
-
     stock_id = get_or_create_stock(session, symbol)
-
-    incoming = [(ts, _to_date(ts)) for ts in df.index]
-    incoming_dates = [bar_date for _, bar_date in incoming]
-    existing_dates = set(
+    rows = {}
+    for ts, row in df.iterrows():
+        bar_date = _to_date(cast(pd.Timestamp, ts))
+        rows[bar_date] = {
+            "stock_id": stock_id,
+            "date": bar_date,
+            **{name.lower(): Decimal(str(row[name])) for name in PRICE_COLUMNS[:-1]},
+            "volume": int(row["Volume"]),
+        }
+    dialect = session.get_bind().dialect.name
+    if dialect in ("sqlite", "postgresql"):
+        statement = (sqlite_insert if dialect == "sqlite" else pg_insert)(MD_PRICE_BARS)
         session.execute(
-            select(MD_PRICE_BARS.c.date).where(
-                MD_PRICE_BARS.c.stock_id == stock_id,
-                MD_PRICE_BARS.c.date.in_(incoming_dates),
-            )
+            statement.on_conflict_do_update(
+                index_elements=[MD_PRICE_BARS.c.stock_id, MD_PRICE_BARS.c.date],
+                set_={
+                    name.lower(): statement.excluded[name.lower()]
+                    for name in PRICE_COLUMNS
+                },
+            ),
+            [rows[day] for day in sorted(rows)],
+        )
+    else:
+        raise ValueError("Price history storage requires SQLite or PostgreSQL")
+    return len(rows)
+
+
+def lock_history_state(session: Session, symbol: str) -> HistoryState:
+    """Read stored coverage under the stock row lock (SQLite uses BEGIN IMMEDIATE)."""
+    stock_id = get_or_create_stock(session, symbol)
+    refreshed_at = session.execute(
+        select(MD_STOCKS.c.history_refreshed_at)
+        .where(MD_STOCKS.c.id == stock_id)
+        .with_for_update()
+    ).scalar_one()
+    if refreshed_at is not None and refreshed_at.tzinfo is None:
+        refreshed_at = refreshed_at.replace(tzinfo=UTC)
+    dates = tuple(
+        session.execute(
+            select(MD_PRICE_BARS.c.date)
+            .where(MD_PRICE_BARS.c.stock_id == stock_id)
+            .order_by(MD_PRICE_BARS.c.date)
         ).scalars()
     )
+    return HistoryState(stock_id, refreshed_at, dates)
 
-    rows_to_insert = []
-    for ts, bar_date in incoming:
-        if bar_date in existing_dates:
-            continue
-        row = df.loc[ts]
-        rows_to_insert.append(
-            {
-                "stock_id": stock_id,
-                "date": bar_date,
-                "open": float(row["Open"]),
-                "high": float(row["High"]),
-                "low": float(row["Low"]),
-                "close": float(row["Close"]),
-                "volume": int(row["Volume"]),
-            }
+
+def reserve_history_generation(session: Session, stock_id: int) -> int:
+    """Reserve a monotonically increasing generation in the caller's transaction."""
+    return session.execute(
+        update(MD_STOCKS)
+        .where(MD_STOCKS.c.id == stock_id)
+        .values(history_generation=func.coalesce(MD_STOCKS.c.history_generation, 0) + 1)
+        .returning(MD_STOCKS.c.history_generation)
+    ).scalar_one()
+
+
+def commit_history_snapshot(
+    session: Session,
+    symbol: str,
+    generation: int,
+    frame: pd.DataFrame,
+    refreshed_at: datetime | None,
+) -> bool:
+    """Atomically accept only the latest reserved generation and its entire snapshot."""
+    stock_id = session.execute(
+        update(MD_STOCKS)
+        .where(
+            MD_STOCKS.c.symbol == symbol, MD_STOCKS.c.history_generation == generation
         )
-        existing_dates.add(bar_date)
-
-    if not rows_to_insert:
-        return 0
-
-    session.execute(insert(MD_PRICE_BARS), rows_to_insert)
-    return len(rows_to_insert)
+        .values(history_refreshed_at=refreshed_at)
+        .returning(MD_STOCKS.c.id)
+    ).scalar_one_or_none()
+    if stock_id is None:
+        return False
+    write_price_bars(session, symbol, frame)
+    return True
 
 
 def cached_date_range(session: Session, symbol: str) -> tuple[date, date] | None:

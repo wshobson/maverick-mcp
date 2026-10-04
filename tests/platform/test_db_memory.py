@@ -14,6 +14,8 @@ from sqlalchemy.pool import NullPool, StaticPool
 
 from maverick.platform.config import DatabaseSettings, PlatformSettings
 from maverick.platform.db import (
+    _AsyncSerializedStaticPool,
+    _SerializedStaticPool,
     async_session_scope,
     create_async_engine_from_settings,
     create_engine_from_settings,
@@ -189,6 +191,7 @@ async def test_memory_service_worker_keeps_connection_until_cancelled_write_fini
     await first.add_position("u", "p", "AAPL", Decimal("10"), Decimal("100"))
     entered, waiting, release = (threading.Event() for _ in range(3))
     original_upsert = service_module.upsert_position
+    assert isinstance(engine.pool, _SerializedStaticPool)
     original_acquire = engine.pool._acquire
 
     def held_upsert(session, portfolio_id, position):
@@ -358,6 +361,7 @@ async def test_memory_async_cancelled_reset_releases_only_after_termination(
     connection = await engine.connect()
     driver = (await connection.get_raw_connection()).driver_connection
     rollback_entered, close_entered, release_close = (asyncio.Event() for _ in range(3))
+    assert driver is not None
     original_close = driver.close
 
     async def held_rollback():
@@ -392,6 +396,7 @@ async def test_memory_async_cancelled_reset_releases_only_after_termination(
         assert (await replacement.get_raw_connection()).driver_connection is not driver
         # A stale close/checkin must not unlock the replacement borrower's lock.
         await connection.close()
+        assert isinstance(engine.pool, _AsyncSerializedStaticPool)
         assert engine.pool._async_checkout_lock.locked()
         await replacement.close()
     finally:

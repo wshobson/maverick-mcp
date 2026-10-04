@@ -1,19 +1,30 @@
 """Market data business logic. Fourth layer: imports data, fetchers, config, and types."""
 
 import asyncio
+import math
+from collections.abc import Callable
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, cast
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 from maverick.market_data.config import MarketDataSettings, get_market_data_settings
-from maverick.market_data.data import METADATA, read_price_range, write_price_bars
+from maverick.market_data.data import (
+    METADATA,
+    commit_history_snapshot,
+    lock_history_state,
+    read_price_range,
+    reserve_history_generation,
+)
 from maverick.market_data.fetchers import MoverFetcher, YFinanceFetcher, info_price
 from maverick.market_data.types import (
+    PRICE_COLUMNS,
     CompanyInfo,
     Fundamentals,
+    HistoryRefresh,
     IndexQuote,
     MarketNumbers,
     MarketOverview,
@@ -28,6 +39,8 @@ from maverick.platform.db import ensure_schema, read_only_session_scope, session
 
 _MOVER_KINDS = ("gainers", "losers", "most_active")
 _DEFAULT_HISTORY_LOOKBACK_DAYS = 365
+_HISTORY_REFRESH_INTERVAL = timedelta(hours=24)
+_MARKET_TIMEZONE = ZoneInfo("America/New_York")
 
 
 def _default_calendar() -> Any:
@@ -162,6 +175,7 @@ class MarketDataService:
         movers: MoverFetcher,
         settings: MarketDataSettings | None = None,
         calendar: Any = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self._engine = engine
         self._cache = cache
@@ -169,6 +183,7 @@ class MarketDataService:
         self._movers = movers
         self._settings = settings or get_market_data_settings()
         self._calendar = calendar
+        self._clock = clock or (lambda: datetime.now(UTC))
         self._session_factory = sessionmaker(bind=engine)
         ensure_schema(engine, METADATA)
 
@@ -198,59 +213,136 @@ class MarketDataService:
         with read_only_session_scope(self._session_factory) as session:
             return read_price_range(session, symbol, start, end)
 
-    def _write_bars(self, symbol: str, frame: pd.DataFrame) -> int:
-        with session_scope(self._session_factory) as session:
-            return write_price_bars(session, symbol, frame)
+    def _prepare_history(
+        self, symbol: str, requested: list[date], now: datetime, today: date
+    ) -> HistoryRefresh | None:
+        with session_scope(self._session_factory, sqlite_immediate=True) as session:
+            state = lock_history_state(session, symbol)
+            stale = state.refreshed_at is None or not (
+                timedelta(0) <= now - state.refreshed_at < _HISTORY_REFRESH_INTERVAL
+            )
+            missing = not set(requested) <= set(state.dates)
+            current = today in requested or today in state.dates
+            if not (stale or missing or current):
+                return None
+            generation = reserve_history_generation(session, state.stock_id)
+            return HistoryRefresh(
+                generation,
+                min((requested[0], *state.dates)),
+                max((requested[-1], *state.dates)),
+                state.dates,
+            )
+
+    @staticmethod
+    def _validate_history(
+        symbol: str,
+        frame: pd.DataFrame,
+        refresh: HistoryRefresh,
+        sessions: list[date],
+        today: date,
+    ) -> None:
+        """Require all stored dates and the listed session suffix on one basis.
+
+        Leading gaps can precede listing. Missing stored/interior/completed
+        trailing sessions are partial responses; today's uncompleted bar may
+        be absent, but an already stored current bar cannot disappear.
+        """
+        message = (
+            f"Incomplete price history refresh for {symbol}; cached snapshot preserved"
+        )
+        if frame.empty or not set(PRICE_COLUMNS) <= set(frame.columns):
+            raise ValueError(message)
+        dates = [_to_plain_date(ts) for ts in frame.index]
+        supplied = set(dates)
+        first = min(dates)
+        required = set(refresh.cached_dates) | {
+            day for day in sessions if first <= day < today
+        }
+        if (
+            len(supplied) != len(dates)
+            or not required <= supplied
+            or not supplied <= set(sessions) | set(refresh.cached_dates)
+        ):
+            raise ValueError(message)
+        try:
+            finite = all(
+                math.isfinite(float(value))
+                for name in PRICE_COLUMNS
+                for value in frame[name]
+            )
+        except (TypeError, ValueError):
+            finite = False
+        if not finite:
+            raise ValueError(message)
+
+    def _commit_history(
+        self,
+        symbol: str,
+        refresh: HistoryRefresh,
+        frame: pd.DataFrame,
+        refreshed_at: datetime | None,
+    ) -> bool:
+        with session_scope(self._session_factory, sqlite_immediate=True) as session:
+            return commit_history_snapshot(
+                session, symbol, refresh.generation, frame, refreshed_at
+            )
 
     async def get_price_history(
         self, symbol: str, start: date | None, end: date | None
     ) -> pd.DataFrame:
-        """Smart-cache price history: serve from the DB, fetching only the gap.
+        """Refresh full adjusted snapshots on expansion, provisional bars, or 24h age.
 
-        Resolves the requested range to actual NYSE trading days, reads
-        whatever is already cached for that span, and only calls out to
-        `yf` for the missing trading days (if any) before writing them back
-        and returning the merged frame. Weekends and holidays are never
-        treated as gaps because they are never trading days.
+        Reserve a generation before provider I/O, then commit only a complete
+        response that has not been superseded. Failures leave the prior bars
+        and freshness intact. A current market-date bar stays provisional
+        until a later date's refresh, conservatively including after hours.
         """
         symbol = symbol.upper()
-        resolved_end = end or date.today()
+        now = self._clock().astimezone(UTC)
+        today = now.astimezone(_MARKET_TIMEZONE).date()
+        resolved_end = end or today
         resolved_start = start or (
             resolved_end - timedelta(days=_DEFAULT_HISTORY_LOOKBACK_DAYS)
         )
-
-        trading_days = await asyncio.to_thread(
-            self._trading_days, resolved_start, resolved_end
+        requested = (
+            await asyncio.to_thread(
+                self._trading_days, resolved_start, min(resolved_end, today)
+            )
+            if resolved_start <= min(resolved_end, today)
+            else []
         )
-        cached = await asyncio.to_thread(
+        if requested:
+            refresh = await asyncio.to_thread(
+                self._prepare_history, symbol, requested, now, today
+            )
+            if refresh is not None:
+                sessions = await asyncio.to_thread(
+                    self._trading_days, refresh.start, refresh.end
+                )
+                frame = await self._yf.history(
+                    symbol, refresh.start, refresh.end + timedelta(days=1)
+                )
+                if frame.empty and not refresh.cached_dates:
+                    # An entirely pre-listing range can legitimately be empty.
+                    # Leave freshness unset so later requests can retry.
+                    return await asyncio.to_thread(
+                        self._read_range, symbol, resolved_start, resolved_end
+                    )
+                self._validate_history(symbol, frame, refresh, sessions, today)
+                accepted = await asyncio.to_thread(
+                    self._commit_history,
+                    symbol,
+                    refresh,
+                    frame,
+                    None if today in sessions else now,
+                )
+                if not accepted:
+                    raise ValueError(
+                        "Price history refresh superseded by a newer request; retry"
+                    )
+        return await asyncio.to_thread(
             self._read_range, symbol, resolved_start, resolved_end
         )
-
-        if trading_days:
-            cached_dates = {ts.date() for ts in cached.index}
-            missing = [day for day in trading_days if day not in cached_dates]
-            if missing:
-                # Fetch the envelope of the missing dates (missing[0] ..
-                # missing[-1]), not each missing day individually. Any
-                # already-cached trading day inside that span gets
-                # re-fetched too -- a deliberate simplicity trade-off, kept
-                # safe because `write_price_bars` dedupes on existing
-                # dates, so re-fetching a cached interior day is wasted
-                # bandwidth, never a correctness or duplicate-row risk.
-                # yfinance's `end` is exclusive, so the envelope's own last
-                # day would never come back without pushing `end` one day
-                # past it -- a window ending today re-fetches today's bar on
-                # every call until it settles after market close (inherent,
-                # acceptable).
-                fetch_end = missing[-1] + timedelta(days=1)
-                fetched = await self._yf.history(symbol, missing[0], fetch_end)
-                if not fetched.empty:
-                    await asyncio.to_thread(self._write_bars, symbol, fetched)
-                cached = await asyncio.to_thread(
-                    self._read_range, symbol, resolved_start, resolved_end
-                )
-
-        return cached
 
     # -- quotes -----------------------------------------------------------
 

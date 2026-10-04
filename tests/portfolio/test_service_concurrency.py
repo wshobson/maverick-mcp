@@ -7,7 +7,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from decimal import Decimal
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy import select
@@ -214,8 +214,6 @@ def _process_add(url, shares, ready, results):
         time.sleep(0.1)
         return original_add(*args, **kwargs)
 
-    service_module.add_shares = slow_add
-
     async def run():
         service = PortfolioService(engine, AsyncMock())
         await service._ensure_schema()
@@ -223,7 +221,8 @@ def _process_add(url, shares, ready, results):
         await service.add_position("u", "p", "AAPL", Decimal(shares), Decimal("100"))
 
     try:
-        asyncio.run(run())
+        with patch.object(service_module, "add_shares", slow_add):
+            asyncio.run(run())
         results.put("ok")
     except Exception as error:
         results.put(repr(error))

@@ -76,7 +76,7 @@ def test_read_price_range_index_is_nanosecond_resolution(factory):
     assert cast(pd.DatetimeIndex, frame.index).unit == "ns"
 
 
-def test_overlapping_write_dedupes_and_returns_new_count(factory):
+def test_overlapping_write_updates_and_returns_supplied_count(factory):
     first_dates = pd.date_range("2026-01-05", periods=5, freq="B")
     with session_scope(factory) as session:
         write_price_bars(session, "MSFT", _bars(first_dates))
@@ -89,7 +89,7 @@ def test_overlapping_write_dedupes_and_returns_new_count(factory):
         inserted = write_price_bars(
             session, "MSFT", _bars(overlap_dates, start_value=200.0)
         )
-    assert inserted == 2
+    assert inserted == 5
 
     with session_scope(factory) as session:
         frame = read_price_range(
@@ -98,9 +98,8 @@ def test_overlapping_write_dedupes_and_returns_new_count(factory):
 
     assert len(frame) == 7
     assert frame.index.is_unique
-    # Existing rows keep their original values -- the overlapping write's
-    # values for already-cached dates must not overwrite them.
-    original_overlap = _bars(first_dates).loc[first_dates[-3:]]
+    # Existing dates are revised on the same basis as the new dates.
+    original_overlap = _bars(overlap_dates, start_value=200.0).loc[first_dates[-3:]]
     pd.testing.assert_frame_equal(
         frame.loc[first_dates[-3:]], original_overlap, check_freq=False
     )
@@ -180,17 +179,7 @@ def test_get_or_create_stock_is_idempotent(factory):
 
 
 def test_get_or_create_stock_handles_concurrent_first_create_race(factory, monkeypatch):
-    """Simulate a concurrent first-create race: another session's insert for
-    the same symbol has already committed by the time this session's own
-    insert runs, so it hits the unique-constraint `IntegrityError`.
-
-    A real race can't be reproduced deterministically in a single-threaded
-    test, so the "another session already won" half is a genuine pre-insert
-    row, and the "this session's initial check missed it" half is simulated
-    by monkeypatching `_find_stock_id` to return `None` on its first call
-    only -- exercising the exact `IntegrityError` recovery path in
-    `get_or_create_stock` without needing real concurrency.
-    """
+    """A missed first read still resolves the winner through native ON CONFLICT."""
     from maverick.market_data import data as data_module
 
     with session_scope(factory) as session:
@@ -221,3 +210,12 @@ def test_get_or_create_stock_handles_concurrent_first_create_race(factory, monke
         ).scalar_one()
 
     assert count == 1
+
+
+def test_duplicate_input_dates_use_last_bar_and_count_once(factory):
+    dates = pd.DatetimeIndex(["2026-01-05", "2026-01-05"])
+    with session_scope(factory) as session:
+        assert write_price_bars(session, "AAPL", _bars(dates)) == 1
+    with session_scope(factory) as session:
+        result = read_price_range(session, "AAPL", dates[0].date(), dates[0].date())
+    assert result.Close.tolist() == [101.5]

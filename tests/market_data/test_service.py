@@ -74,7 +74,7 @@ def _weekday_calendar(start: date, end: date) -> _FakeNyseCalendar:
 # ---------------------------------------------------------------------------
 
 
-async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
+async def test_trading_day_cache_refreshes_full_union_then_serves_from_db(
     tmp_path,
 ):
     engine = _engine(tmp_path)
@@ -86,7 +86,7 @@ async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
         write_price_bars(session, "AAPL", _bars([monday, tuesday, wednesday]))
 
     history_calls: list[tuple[str, date, date]] = []
-    available = _bars([thursday, friday], start_value=200.0)
+    available = _bars([monday, tuesday, wednesday, thursday, friday], start_value=200.0)
 
     def fake_history(symbol, start, end, interval="1d"):
         # Honor yfinance's contract: `end` is exclusive, so only bars with
@@ -110,7 +110,7 @@ async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
     assert len(result) == 5
     assert len(history_calls) == 1
     _, called_start, called_end = history_calls[0]
-    assert called_start == thursday
+    assert called_start == monday
     assert called_end == friday + timedelta(days=1)
 
     # Second identical request is fully served from the DB: no new fetch.
@@ -119,7 +119,7 @@ async def test_trading_day_cache_fetches_only_missing_span_then_serves_from_db(
     assert len(history_calls) == 1
 
 
-async def test_weekend_inclusive_range_skips_fetch_when_weekdays_cached(tmp_path):
+async def test_weekend_range_refreshes_legacy_bars_then_skips_holiday_gaps(tmp_path):
     engine = _engine(tmp_path)
     monday = date(2026, 7, 6)
     sunday = date(2026, 7, 12)
@@ -132,7 +132,7 @@ async def test_weekend_inclusive_range_skips_fetch_when_weekdays_cached(tmp_path
 
     def fake_history(symbol, start, end, interval="1d"):
         history_calls.append((symbol, start, end))
-        raise AssertionError("yf.history should not be called")
+        return _bars(weekdays)
 
     service = MarketDataService(
         engine,
@@ -144,8 +144,11 @@ async def test_weekend_inclusive_range_skips_fetch_when_weekdays_cached(tmp_path
 
     result = await service.get_price_history("MSFT", monday, sunday)
 
-    assert history_calls == []
+    assert history_calls == [("MSFT", monday, weekdays[-1] + timedelta(days=1))]
     assert len(result) == 5
+    again = await service.get_price_history("MSFT", monday, sunday)
+    assert len(again) == 5
+    assert len(history_calls) == 1
 
 
 async def test_price_history_respects_plain_callable_calendar(tmp_path):
@@ -162,7 +165,7 @@ async def test_price_history_respects_plain_callable_calendar(tmp_path):
         write_price_bars(session, "GOOG", _bars([monday, tuesday, wednesday]))
 
     history_calls: list[tuple[str, date, date]] = []
-    available = _bars([thursday, friday], start_value=300.0)
+    available = _bars([monday, tuesday, wednesday, thursday, friday], start_value=300.0)
 
     def fake_history(symbol, start, end, interval="1d"):
         # Honor yfinance's exclusive-`end` contract -- see the analogous
@@ -194,7 +197,7 @@ async def test_price_history_respects_plain_callable_calendar(tmp_path):
     assert len(result) == 5
     assert len(history_calls) == 1
     _, called_start, called_end = history_calls[0]
-    assert called_start == thursday
+    assert called_start == monday
     assert called_end == friday + timedelta(days=1)
 
 

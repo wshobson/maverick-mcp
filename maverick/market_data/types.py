@@ -1,8 +1,26 @@
 """Market data payload types. Bottom layer: imports nothing from this domain."""
 
+from dataclasses import dataclass
+from datetime import date, datetime
+
 from pydantic import BaseModel
 
 PRICE_COLUMNS = ("Open", "High", "Low", "Close", "Volume")
+
+
+@dataclass(frozen=True)
+class HistoryState:
+    stock_id: int
+    refreshed_at: datetime | None
+    dates: tuple[date, ...]
+
+
+@dataclass(frozen=True)
+class HistoryRefresh:
+    generation: int
+    start: date
+    end: date
+    cached_dates: tuple[date, ...]
 
 
 class Quote(BaseModel):

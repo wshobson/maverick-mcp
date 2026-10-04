@@ -141,3 +141,30 @@ or exiting the process loses it. A later schema setup creates an empty database.
 Do not hold one connection while requesting another from the same memory engine.
 Async engines belong to the event loop that created them. The CI configuration
 uses an in-memory database unless a test supplies an explicit URL.
+
+
+## Adjusted-history freshness
+
+Stored adjusted prices refresh on the next access after 24 hours. There is no
+background refresh or instant corporate-action feed. Requesting a larger range
+or a provisional current-day bar triggers a refresh sooner. The fetch covers
+the complete stored/requested union so old and new bars share one adjustment
+basis. Long stored histories can therefore require larger provider requests.
+
+The existing New York/NYSE calendar defines completed sessions. A current New
+York date remains provisional, even after the scheduled close; a later-date
+refresh can mark it fresh. Leading pre-listing gaps are accepted. Those absent
+dates are not memoized, so a request starting before listing may fetch again.
+Without previously stored prices, a leading provider omission cannot be
+distinguished from a pre-listing gap using OHLCV alone.
+
+Failed or incomplete responses produce an error without changing the previous
+snapshot or its freshness. A response superseded by a newer refresh reservation
+also errors with a retry instruction. These errors do not disable future reads.
+An entirely empty initial range returns an empty frame and remains eligible for
+refresh. Existing stored dates may not disappear from an accepted snapshot.
+
+Two nullable columns, `history_refreshed_at` and `history_generation`, are added
+to `md_stocks` through the existing additive schema setup. Old bars and company
+metadata remain intact until a complete refresh succeeds. No portfolio,
+watchlist, or journal tables are rewritten by this change.
