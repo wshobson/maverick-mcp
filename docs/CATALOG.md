@@ -30,6 +30,8 @@ Status labels:
 | `design-docs/2026-09-13-pandas-ta-removal.md` | current | engineering | Approved design for removing pandas-ta and moving numpy, numba, pandas, and vectorbt. |
 | `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
 | `exec-plans/active/2026-09-05-open-items-remediation.md` | current | engineering | Execution plan for the 2026-09 open-items remediation (25 tasks: triage, contributor fixes, deps, FastMCP 4, SearXNG, v1.1.0). |
+| `design-docs/2026-10-04-project-review.md` | current | engineering | Review evidence, maintenance outcomes, financial/runtime findings, and distribution gates. |
+| `exec-plans/active/2026-10-04-correctness-and-reliability.md` | current | engineering | Proposed correctness and reliability implementation plan; no roadmap fixes claimed complete. |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index; no specs written yet. |
 | `generated/README.md` | current | docs | Describes `generated/`: hand-written registry drafts and release notes. |
