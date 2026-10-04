@@ -489,8 +489,6 @@ async def services_checks(python: Path, state: Path, evidence: Evidence) -> None
             "e2e",
         ]
     )
-    pg_log = (evidence.path / "postgres.log").open("w")
-    redis_log = (evidence.path / "redis.log").open("w")
     pg_args = [
         postgres,
         "-D",
@@ -516,7 +514,14 @@ async def services_checks(python: Path, state: Path, evidence: Evidence) -> None
         "no",
     ]
     processes = []
+    logs = []
+    cache = None
+    failure: BaseException | None = None
     try:
+        pg_log = (evidence.path / "postgres.log").open("w")
+        logs.append(pg_log)
+        redis_log = (evidence.path / "redis.log").open("w")
+        logs.append(redis_log)
         for command, log in ((pg_args, pg_log), (redis_args, redis_log)):
             process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
             processes.append(process)
@@ -632,28 +637,98 @@ async def services_checks(python: Path, state: Path, evidence: Evidence) -> None
                 evidence.check(
                     "Redis quote removed", cache.exists("v1:md_quote:symbol=AAPL"), 0
                 )
-        cache.close()
         evidence.record(
             "scenario",
             name="PostgreSQL persistence and Redis write/read/invalidation through MCP",
             result="pass",
         )
+    except BaseException as exc:
+        failure = exc
+        raise
     finally:
+        cleanup_errors = []
         for process in reversed(processes):
-            process.terminate()
+            try:
+                process.terminate()
+            except Exception as exc:
+                cleanup_errors.append(
+                    {
+                        "pid": process.pid,
+                        "operation": "terminate",
+                        "exception": repr(exc),
+                    }
+                )
             try:
                 process.wait(timeout=15)
             except subprocess.TimeoutExpired:
-                process.kill()
-                process.wait(timeout=5)
+                pass
+            except Exception as exc:
+                cleanup_errors.append(
+                    {"pid": process.pid, "operation": "wait", "exception": repr(exc)}
+                )
+            if process.returncode is None:
+                try:
+                    process.kill()
+                except Exception as exc:
+                    cleanup_errors.append(
+                        {
+                            "pid": process.pid,
+                            "operation": "kill",
+                            "exception": repr(exc),
+                        }
+                    )
+                try:
+                    process.wait(timeout=5)
+                except Exception as exc:
+                    cleanup_errors.append(
+                        {
+                            "pid": process.pid,
+                            "operation": "final_wait",
+                            "exception": repr(exc),
+                        }
+                    )
+            try:
+                evidence.record(
+                    "process-stop",
+                    pid=process.pid,
+                    returncode=process.returncode,
+                    result="pass" if process.returncode is not None else "fail",
+                )
+            except Exception as exc:
+                cleanup_errors.append(
+                    {
+                        "pid": process.pid,
+                        "operation": "record-process-stop",
+                        "exception": repr(exc),
+                    }
+                )
+        if cache is not None:
+            try:
+                cache.close()
+            except Exception as exc:
+                cleanup_errors.append(
+                    {"operation": "cache-close", "exception": repr(exc)}
+                )
+        for log in logs:
+            try:
+                log.close()
+            except Exception as exc:
+                cleanup_errors.append(
+                    {"path": log.name, "operation": "log-close", "exception": repr(exc)}
+                )
+        try:
             evidence.record(
-                "process-stop", pid=process.pid, returncode=process.returncode
+                "cleanup",
+                own_service_pids=[p.pid for p in processes],
+                result="fail" if cleanup_errors else "pass",
+                errors=cleanup_errors,
             )
-        pg_log.close()
-        redis_log.close()
-        evidence.record(
-            "cleanup", own_service_pids=[p.pid for p in processes], result="pass"
-        )
+        except Exception as exc:
+            cleanup_errors.append(
+                {"operation": "record-cleanup", "exception": repr(exc)}
+            )
+        if cleanup_errors and failure is None:
+            raise RuntimeError(f"Service cleanup failed: {cleanup_errors}")
 
 
 async def main() -> None:

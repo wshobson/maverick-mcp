@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import json
 import shutil
 import tempfile
@@ -82,6 +83,7 @@ async def run(output: Path):
                             raise RuntimeError(response["error"])
                         return response.get("result")
 
+            scenario_failed = False
             try:
                 initialized = await rpc(
                     "initialize",
@@ -158,18 +160,50 @@ async def run(output: Path):
                     )
                     + "\n"
                 )
+            except BaseException:
+                scenario_failed = True
+                raise
             finally:
-                if process.returncode is None:
-                    assert process.stdin
-                    process.stdin.close()
+                cleanup_error = None
+                try:
+                    if process.returncode is None:
+                        assert process.stdin is not None
+                        for attempt, stop in enumerate(
+                            (process.stdin.close, process.terminate, process.kill)
+                        ):
+                            with contextlib.suppress(ProcessLookupError):
+                                stop()
+                            try:
+                                await asyncio.wait_for(process.wait(), 10)
+                                break
+                            except TimeoutError:
+                                if attempt == 2:
+                                    raise
+                except Exception as error:
+                    cleanup_error = error
+                finally:
+                    if cleanup_error is not None:
+                        with contextlib.suppress(OSError):
+                            (output / "result.json").unlink(missing_ok=True)
+                        with contextlib.suppress(OSError):
+                            record(
+                                output / "app-client.jsonl",
+                                "cleanup-error",
+                                error=repr(cleanup_error),
+                            )
                     try:
-                        await asyncio.wait_for(process.wait(), 10)
-                    except TimeoutError:
-                        process.terminate()
-                        await asyncio.wait_for(process.wait(), 10)
-                record(
-                    output / "app-client.jsonl", "exit", returncode=process.returncode
-                )
+                        record(
+                            output / "app-client.jsonl",
+                            "exit",
+                            returncode=process.returncode,
+                        )
+                    except OSError as error:
+                        with contextlib.suppress(OSError):
+                            (output / "result.json").unlink(missing_ok=True)
+                        if cleanup_error is None:
+                            cleanup_error = error
+                    if cleanup_error is not None and not scenario_failed:
+                        raise cleanup_error
 
 
 if __name__ == "__main__":
