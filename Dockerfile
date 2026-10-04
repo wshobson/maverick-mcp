@@ -42,12 +42,11 @@ FROM python:3.12-slim
 # MCP registry identity label (Docker MCP Catalog / GHCR discovery)
 LABEL io.modelcontextprotocol.server.name="io.github.wshobson/maverick-mcp"
 
-# Non-root user. /app is its working directory and must be writable: the
-# default SQLite database (maverick.db) and cache (maverick_cache.db) are
-# created there. The venv stays root-owned and read-only.
+# The runtime user owns /data for persistent databases and /app for its
+# working directory. The installed virtual environment remains root-owned.
 RUN groupadd -g 1000 maverick && \
     useradd -u 1000 -g maverick -s /bin/sh -m maverick && \
-    install -d -o maverick -g maverick /app
+    install -d -o maverick -g maverick /app /data
 
 WORKDIR /app
 
@@ -55,7 +54,9 @@ COPY --from=builder /app/.venv /app/.venv
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    DATABASE_URL=sqlite:////data/maverick.db \
+    CACHE_SQLITE_PATH=/data/maverick_cache.db
 
 USER maverick
 

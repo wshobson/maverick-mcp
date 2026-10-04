@@ -104,13 +104,32 @@ uvx --from "maverick-mcp-server[backtesting,research] @ git+https://github.com/w
 Drop `[backtesting,research]` for a smaller, core-only install (37 tools,
 no backtesting/research tools registered).
 
-#### Option 2: Docker image (GHCR)
+### Docker with persistent data
+
+Build the current source to include the fixes documented here. The existing
+published `1.1.0` image predates them.
 
 ```bash
-# Streamable HTTP on port 8000 inside the container, mapped to 8003 here;
-# --env-file is optional (core tools need no keys)
-docker run --rm -p 8003:8000 --env-file .env ghcr.io/wshobson/maverick-mcp:1.1.0
+cp .env.example .env
+docker build -t maverick-mcp:local .
+docker run --rm --name maverick-mcp \
+  -p 127.0.0.1:8003:8000 \
+  --env-file .env \
+  --mount source=maverick-data,target=/data \
+  maverick-mcp:local
 ```
+
+The named volume keeps your database and cache when the container is replaced.
+The image stores them at `/data/maverick.db` and `/data/maverick_cache.db` and
+runs as user 1000. A bind-mounted directory must be writable by that user.
+For PostgreSQL, set `DATABASE_URL` explicitly. The `POSTGRES_URL` fallback
+does not override the image's `DATABASE_URL` default.
+The image includes both optional packages.
+
+If you used an older container, back up its databases under `/app` before
+removing it. See [Docker data storage and migration](docs/runbooks/database-setup.md#docker-data-storage)
+for backup instructions and PostgreSQL overrides. Do not mount a volume over
+`/app`, which contains the installed application.
 
 #### Option 3: From source with uv (for development)
 
@@ -616,27 +635,8 @@ uv run ty check maverick tests   # Type checking (Astral's ty); same scope as CI
 
 ## Docker (Optional)
 
-For containerized deployment:
-
-```bash
-# Copy and configure environment
-cp .env.example .env
-
-# Using uv in Docker (recommended for faster builds)
-docker build -t maverick-mcp-server .
-docker run -p 8003:8000 --env-file .env maverick-mcp-server
-
-# Or start with docker-compose
-docker-compose up -d
-```
-
-**Note**: The Dockerfile installs dependencies with `uv` in a builder stage
-and copies only the finished virtual environment into the runtime image, so
-the image carries no `uv` or build toolchain. The image ships the
-`[backtesting]` and `[research]` extras by default; drop
-`--extra backtesting --extra research` from both `uv sync` lines in the
-Dockerfile for a smaller, core-only image. There is no HTTP `/health`
-endpoint or `HEALTHCHECK` -- this is an MCP server, not a REST API.
+See [Docker with persistent data](#docker-with-persistent-data) for the source build
+and persistent volume command.
 
 ## Troubleshooting
 

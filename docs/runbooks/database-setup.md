@@ -31,6 +31,44 @@ make dev-stdio
 
 SQLite is the lowest-friction path and is enough for normal local MCP use.
 
+## Docker data storage
+
+Build the current source and mount a named volume at `/data`, as shown in the
+[README Docker instructions](../../README.md#docker-with-persistent-data).
+The image uses `sqlite:////data/maverick.db` and `/data/maverick_cache.db`.
+Copying `.env.example` unchanged does not override these defaults. Set
+`DATABASE_URL` explicitly to use PostgreSQL or another database location.
+If an older Docker configuration uses `POSTGRES_URL`, rename that setting to
+`DATABASE_URL` before replacing the container. The fallback `POSTGRES_URL`
+is used only when `DATABASE_URL` is absent, and the corrected image supplies
+a `DATABASE_URL` default.
+
+The container runs as UID/GID 1000. A named volume inherits ownership from the
+image's `/data` directory on first use. A bind-mounted host directory must be
+writable by that user. Keep the application and its virtual environment under
+`/app`; do not mount a data volume over that directory.
+
+### Move data from an older container
+
+The published `1.1.0` image stores SQLite files under `/app`. Back up the
+portfolio database before stopping a container started with `--rm`, because
+stopping it also removes its writable filesystem. Use SQLite's backup API to
+copy a consistent database while the old container is still running.
+
+Replace `OLD_CONTAINER` with the existing container name. Run this against each
+user database you intentionally configured, after checking its path.
+
+```bash
+docker exec OLD_CONTAINER python -c "import sqlite3; source = sqlite3.connect('file:/app/maverick.db?mode=ro', uri=True); backup = sqlite3.connect('/app/maverick-backup.db'); source.backup(backup); backup.close(); source.close()"
+docker cp OLD_CONTAINER:/app/maverick-backup.db ./maverick-backup.db
+```
+
+Check the copied database before removing the old container. Restore the backup
+as `maverick.db` inside a new, empty data volume owned by UID/GID 1000, then
+start the corrected image with that volume. Keep the backup until holdings,
+watchlists, and journal entries have been checked in the replacement container.
+The cache can be rebuilt; it is separate from user portfolio data.
+
 ## PostgreSQL
 
 ```bash
@@ -77,10 +115,9 @@ make dev
 
 ## Troubleshooting
 
-- Missing/empty database file: it is created on first tool call; if it looks
-  wrong, delete it and let `ensure_schema` recreate it on the next call
-  (SQLite only -- do not do this against a PostgreSQL database with data you
-  want to keep).
+- Missing/empty database file: it is created on first tool call. Check the
+  configured path and preserve a backup before changing an existing database.
+  Do not delete a database to troubleshoot missing holdings.
 - Empty screening results: fetch price history for a few tickers via
   `market_data_get_price_history`/`market_data_get_price_history_batch`
   first, then call `screening_run_screens`.
