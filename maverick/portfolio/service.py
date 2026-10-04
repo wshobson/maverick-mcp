@@ -2,7 +2,7 @@
 
 CRUD (`add_position`/`remove_position`/`clear_portfolio`) and `get_portfolio`
 compose the ledger's pure Decimal math with `data.py`'s persistence inside
-single `session_scope`/`read_only_session_scope` transactions. The three
+database-serialized write transactions and read-only scopes. The three
 portfolio-aware analyses (`correlation_analysis`, `compare_tickers`,
 `risk_adjusted_analysis`) delegate their market-data/technical-indicator
 work to `analysis.py`; this module's job for those three is portfolio
@@ -37,7 +37,8 @@ from maverick.portfolio.data import (
     METADATA,
     clear_positions,
     delete_position,
-    get_or_create_portfolio,
+    find_portfolio_id,
+    lock_portfolio,
     read_positions,
     upsert_position,
 )
@@ -161,8 +162,8 @@ class PortfolioService:
         resolved_date = self._normalize_purchase_date(
             purchase_date or date.today().isoformat()
         )
-        # Pre-read only gates the slow sector lookup; the merge re-reads inside
-        # the write transaction so a concurrent add can't be lost to staleness.
+        # This read only gates the network lookup; the transaction locks before
+        # re-reading and merging holdings, including across processes.
         pre_read = find_position(
             await self._read_positions(user_id, portfolio_name), normalized_ticker
         )
@@ -173,8 +174,8 @@ class PortfolioService:
             )
 
         def _write() -> PositionPayload:
-            with session_scope(self._session_factory) as session:
-                portfolio_id = get_or_create_portfolio(session, user_id, portfolio_name)
+            with session_scope(self._session_factory, sqlite_immediate=True) as session:
+                portfolio_id = lock_portfolio(session, user_id, portfolio_name)
                 existing = find_position(
                     read_positions(session, portfolio_id), normalized_ticker
                 )
@@ -203,8 +204,8 @@ class PortfolioService:
         normalized_ticker = self._normalize_ticker(ticker)
 
         def _write() -> RemoveResult:
-            with session_scope(self._session_factory) as session:
-                portfolio_id = get_or_create_portfolio(session, user_id, portfolio_name)
+            with session_scope(self._session_factory, sqlite_immediate=True) as session:
+                portfolio_id = lock_portfolio(session, user_id, portfolio_name)
                 existing = find_position(
                     read_positions(session, portfolio_id), normalized_ticker
                 )
@@ -225,8 +226,8 @@ class PortfolioService:
         await self._ensure_schema()
 
         def _write() -> int:
-            with session_scope(self._session_factory) as session:
-                portfolio_id = get_or_create_portfolio(session, user_id, portfolio_name)
+            with session_scope(self._session_factory, sqlite_immediate=True) as session:
+                portfolio_id = lock_portfolio(session, user_id, portfolio_name)
                 return clear_positions(session, portfolio_id)
 
         return await asyncio.to_thread(_write)
@@ -238,8 +239,8 @@ class PortfolioService:
     ) -> list[PositionPayload]:
         def _read() -> list[PositionPayload]:
             with read_only_session_scope(self._session_factory) as session:
-                portfolio_id = get_or_create_portfolio(session, user_id, portfolio_name)
-                return read_positions(session, portfolio_id)
+                portfolio_id = find_portfolio_id(session, user_id, portfolio_name)
+                return read_positions(session, portfolio_id) if portfolio_id else []
 
         return await asyncio.to_thread(_read)
 

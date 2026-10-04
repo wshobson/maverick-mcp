@@ -270,10 +270,19 @@ def ensure_schema(engine: Engine, metadata: MetaData, *, force: bool = False) ->
 @contextmanager
 def session_scope(
     factory: Callable[[], Session],
+    *,
+    sqlite_immediate: bool = False,
 ) -> Generator[Session, None, None]:
-    """Sync session scope: commit on success, rollback on exception, always close."""
+    """Commit on success, roll back on error, and always close.
+
+    ``sqlite_immediate`` reserves the SQLite writer before any reads, so a
+    read/modify/write transaction cannot overwrite another writer's result.
+    Other backends use their normal transaction and domain-level row locks.
+    """
     session = factory()
     try:
+        if sqlite_immediate and session.get_bind().dialect.name == "sqlite":
+            session.connection().exec_driver_sql("BEGIN IMMEDIATE")
         yield session
         session.commit()
     except Exception:

@@ -135,3 +135,17 @@ total cost to 4, half-up, the same scales the columns declare. SQLite and
 Postgres therefore both store exactly what the ledger computed. SQLite stores
 floats, so its exactness holds up to 15 significant digits: shares below
 10,000,000 and costs below 100,000,000,000.
+
+## Concurrent position changes
+
+Adding shares, removing shares, and clearing a portfolio each run in a single
+serialized transaction. SQLite reserves its database write lock before reading
+positions. PostgreSQL locks the parent portfolio row. Service instances and
+processes using the same database therefore preserve acknowledged changes.
+The sector lookup happens before the transaction, so a network request does
+not hold a database lock. Failed transactions roll back.
+
+Reading a missing portfolio does not create a portfolio row. A cancelled call
+can still commit if its database worker has already started. Read the current
+holdings before retrying a cancelled mutation because its outcome may be
+unknown to the caller.
