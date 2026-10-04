@@ -714,3 +714,23 @@ async def test_ensemble_no_successes_error_names_all_skips():
         await _service(market_data).create_strategy_ensemble(["BROKEN", "SHORT"])
     assert "BROKEN (fetch_failed)" in str(caught.value)
     assert "SHORT (insufficient_history)" in str(caught.value)
+
+
+async def test_walk_forward_rejects_no_valid_optimization_candidates(
+    ohlcv, monkeypatch
+):
+    from maverick.backtesting import service_walk_forward
+
+    def invalid_signals(frame, parameters):
+        raise ValueError("invalid candidate")
+
+    monkeypatch.setattr(
+        service_walk_forward, "signal_fn_for", lambda strategy: invalid_signals
+    )
+    market_data = StubMarketData(ohlcv)
+    service = _service(market_data)
+    with pytest.raises(ValueError, match="No valid optimization candidates"):
+        await service.walk_forward_analysis(
+            "AAPL", start_date="2022-01-01", end_date="2023-09-01"
+        )
+    assert len(market_data.calls) == 1

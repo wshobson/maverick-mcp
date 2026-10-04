@@ -378,10 +378,14 @@ def support_resistance(df: pd.DataFrame, settings: TechnicalSettings) -> LevelsR
         return LevelsResult(support=[], resistance=[])
 
     window = df.iloc[-settings.sr_lookback :]
+    if window[["High", "Low"]].isna().any().any():
+        raise ValueError("Incomplete price history for observed range levels")
+    if not all(
+        math.isfinite(value) for column in ("High", "Low") for value in window[column]
+    ):
+        raise ValueError("Insufficient price history for observed range levels")
     min_low = float(window["Low"].min())
     max_high = float(window["High"].max())
-    if not all(math.isfinite(value) for value in (min_low, max_high)):
-        raise ValueError("Insufficient price history for observed range levels")
     return LevelsResult(
         support=[min_low], resistance=[max_high], bars_analyzed=len(window)
     )

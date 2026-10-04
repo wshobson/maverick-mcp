@@ -473,7 +473,7 @@ def optimize_parameters(
         strategy=strategy,
         optimization_metric=optimization_metric,
         best_parameters=top_rows[0]["parameters"] if top_rows else {},
-        best_metric_value=top_rows[0][optimization_metric] if top_rows else 0.0,
+        best_metric_value=top_rows[0][optimization_metric] if top_rows else None,
         best_metric_status=top_rows[0].get("profit_factor_status")
         if top_rows
         else None,

@@ -868,6 +868,9 @@ or substituted with zero. Profit-factor optimization ranks `no_losses` first,
 then finite ratios from highest to lowest, then no-trade and breakeven-only
 results tied last. A no-loss winner has `best_metric_value: null` and
 `best_metric_status: no_losses`; other optimization metrics have a null status.
+If every candidate fails, the best value is also null and the result reports
+zero valid combinations. Walk-forward analysis returns an error for such a
+training window before evaluating an out-of-sample period.
 
 
 ## Trade records in tool responses

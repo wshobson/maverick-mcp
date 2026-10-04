@@ -394,3 +394,23 @@ def test_trade_duration_uses_elapsed_timestamps(close_trade):
     assert result.metrics.avg_duration == 3.0
     assert result.metrics.profit_factor is None
     assert result.metrics.profit_factor_status == "no_losses"
+
+
+@pytest.mark.parametrize("metric", ["profit_factor", "sharpe_ratio"])
+def test_optimization_without_valid_candidates_has_no_best_value(ohlcv_frame, metric):
+    def invalid_signals(frame, parameters):
+        raise ValueError("invalid candidate")
+
+    result = optimize_parameters(
+        ohlcv_frame,
+        invalid_signals,
+        {"candidate": [1, 2]},
+        optimization_metric=metric,
+    )
+    assert result.valid_combinations == 0
+    assert result.total_combinations_tested == 2
+    assert result.best_parameters == {}
+    assert result.top_results == []
+    assert result.best_metric_value is None
+    assert result.best_metric_status is None
+    json.dumps(result.model_dump(), allow_nan=False)

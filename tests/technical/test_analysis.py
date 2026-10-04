@@ -709,3 +709,28 @@ def test_support_resistance_preserves_observed_subcent_prices():
     result = support_resistance(df, SETTINGS)
     assert result.support == [0.0027]
     assert result.resistance == [0.0031]
+
+
+@pytest.mark.parametrize("column", ["High", "Low"])
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), -float("inf"), None])
+def test_observed_range_rejects_every_incomplete_bar(column, invalid):
+    frame = pd.DataFrame(
+        {"High": [110.0, 115.0], "Low": [90.0, 95.0], "Close": [100.0, 105.0]}
+    )
+    frame.loc[0, column] = invalid
+    with pytest.raises(ValueError, match="price history for observed range"):
+        support_resistance(frame, SETTINGS)
+
+
+def test_observed_range_ignores_incomplete_bars_before_selected_window():
+    frame = pd.DataFrame(
+        {
+            "High": [float("nan"), 115.0],
+            "Low": [float("nan"), 95.0],
+            "Close": [100.0, 105.0],
+        }
+    )
+    result = support_resistance(frame, TechnicalSettings(sr_lookback=1))
+    assert result.support == [95.0]
+    assert result.resistance == [115.0]
+    assert result.bars_analyzed == 1
