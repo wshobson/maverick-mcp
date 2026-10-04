@@ -190,3 +190,90 @@ async def test_request_resilient_opens_breaker_and_short_circuits_transport():
         )
     # Breaker short-circuited before reaching the transport.
     assert calls == 2
+
+
+@pytest.mark.parametrize("status", [429, 500, 502, 503, 504])
+async def test_exhausted_status_opens_breaker_and_failed_probe_reopens(
+    status, monkeypatch
+):
+    from types import SimpleNamespace
+
+    from maverick.platform import http
+
+    clock = [100.0]
+    monkeypatch.setattr(http, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    calls = 0
+    returned_status = status
+
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(returned_status)
+
+    settings = _settings(retries=0, breaker_failure_threshold=1)
+    name = f"exhausted-{status}"
+    async with create_client(
+        settings, transport=httpx.MockTransport(handler)
+    ) as client:
+
+        async def call():
+            return await request_resilient(
+                name, client, "GET", "https://example.invalid", settings=settings
+            )
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await call()
+        with pytest.raises(CircuitOpenError):
+            await call()
+        assert calls == 1
+        clock[0] += 1
+        with pytest.raises(httpx.HTTPStatusError):
+            await call()
+        assert get_breaker(name).state == "open"
+        assert calls == 2
+        clock[0] += 1
+        returned_status = 200
+        assert (await call()).status_code == 200
+        assert get_breaker(name).state == "closed"
+        assert calls == 3
+
+
+async def test_nonretryable_status_keeps_response_for_provider_hint():
+    settings = _settings(retries=0, breaker_failure_threshold=1)
+    async with create_client(
+        settings, transport=httpx.MockTransport(lambda request: httpx.Response(403))
+    ) as client:
+        response = await request_resilient(
+            "forbidden-hint",
+            client,
+            "GET",
+            "https://example.invalid",
+            settings=settings,
+        )
+    assert response.status_code == 403
+    assert get_breaker("forbidden-hint").state == "closed"
+
+
+async def test_resilient_custom_retry_status_exhaustion_uses_same_policy():
+    settings = _settings(retries=1, breaker_failure_threshold=1)
+    calls = 0
+
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(418)
+
+    async with create_client(
+        settings, transport=httpx.MockTransport(handler)
+    ) as client:
+        with pytest.raises(httpx.HTTPStatusError):
+            await request_resilient(
+                "custom-status",
+                client,
+                "GET",
+                "https://example.invalid",
+                settings=settings,
+                retry_statuses={418},
+            )
+    assert calls == 2
+    assert get_breaker("custom-status").state == "open"

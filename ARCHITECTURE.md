@@ -144,6 +144,11 @@ Redis-backed memory promotion preserves the remaining Redis expiry. Expired or
 missing keys are cache misses. Keys without an expiry may be served directly
 but are not promoted into memory with an invented lifetime.
 
+The composed resilient HTTP request counts an exhausted retryable status as a
+circuit-breaker failure. A failed probe reopens the breaker; a successful probe
+closes it. The lower-level retry helper still returns its final response, and
+non-retryable statuses remain available to callers for provider-specific errors.
+
 ## MCP Transports
 
 - STDIO is the default and the preferred Claude Desktop path
