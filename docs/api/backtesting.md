@@ -820,3 +820,12 @@ The return proxy uses the previous bar's entry or exit signal and the current
 bar's price return. It is not a simulation of held-position profit and loss.
 Later prices do not revise earlier ensemble weights or signals when the
 component strategies themselves use only information available at each bar.
+
+## Feature warm-up
+
+Machine learning features use earlier observations to fill missing values, then
+use zero when no earlier value is available. RSI features wait for their full
+warm-up period before exposing a value or threshold flag. Stochastic features
+handle a zero price range at that row, so a later flat period cannot change
+earlier features. The separate technical-indicator compatibility formulas stay
+unchanged. Prediction uses the scaler fitted on training data.

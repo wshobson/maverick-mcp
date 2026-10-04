@@ -138,7 +138,12 @@ class FeatureExtractor:
                 features[f"sma_ema_diff_{period}"] = 0.0
 
         # RSI
-        rsi = indicators.rsi(close, 14)
+        rsi_period = 14
+        rsi = indicators.rsi(close, rsi_period)
+        # The indicator returns all NaN when the whole input is short, but
+        # emits partial-history values for longer inputs. Keep those prefixes
+        # consistent regardless of how many future bars are present.
+        rsi.iloc[: rsi_period - 1] = np.nan
         features["rsi"] = rsi
         features["rsi_oversold"] = (rsi < 30).astype(int)
         features["rsi_overbought"] = (rsi > 70).astype(int)
@@ -165,9 +170,14 @@ class FeatureExtractor:
 
         # Stochastic
         if high is not None and low is not None and close is not None:
-            stoch = indicators.stochastic(high, low, close)
-            features["stoch_k"] = stoch["k"]
-            features["stoch_d"] = stoch["d"]
+            lowest_low = low.rolling(window=14, min_periods=14).min()
+            highest_high = high.rolling(window=14, min_periods=14).max()
+            price_range = highest_high - lowest_low
+            price_range = price_range.mask(price_range == 0, np.finfo(float).eps)
+            raw_k = 100 * (close - lowest_low) / price_range
+            stoch_k = raw_k.rolling(window=3, min_periods=3).mean()
+            features["stoch_k"] = stoch_k
+            features["stoch_d"] = stoch_k.rolling(window=3, min_periods=3).mean()
         else:
             features["stoch_k"] = 50
             features["stoch_d"] = 50
@@ -382,8 +392,8 @@ class FeatureExtractor:
 
             # Handle missing values with robust method
             if not all_features.empty:
-                # Forward fill, then backward fill, then zero fill
-                all_features = all_features.ffill().bfill().fillna(0)
+                # Fill from past observations only, then use zero for warmup rows.
+                all_features = all_features.ffill().fillna(0)
 
                 # Replace any infinite values
                 all_features = all_features.replace([np.inf, -np.inf], 0)
