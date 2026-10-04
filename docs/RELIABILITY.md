@@ -49,6 +49,8 @@ The published v1.1.0 release predates the correctness changes below.
 - Daily-history calendars cover US stocks and `.L`, `.T`, `.TO`, `.AX`, `.HK`,
   and `.DE` exchange suffixes. Other suffixes error before history fetches or
   writes. Quote and fundamentals lookups retain their provider symbol coverage.
+  A missing completed session, including a full-session halt, still fails
+  completeness validation because OHLCV alone cannot establish the gap cause.
 - Market-provider availability and research answer quality are not established
   by offline tests. Final synthesis errors when no usable evidence survives.
 
@@ -70,7 +72,7 @@ exhausted retryable statuses as breaker failures. Docker defaults use `/data`;
 the documented volume command survived a real container replacement with stored
 holdings, watchlists, journal entries, and cache records intact.
 
-The integrated offline suite passed 1,599 tests, with built-artifact checks and
+The integrated offline suite passed 1,693 tests, with built-artifact checks and
 14 PostgreSQL cases handled separately. All 28 combined SQLite/PostgreSQL cases
 passed. A real core-only wheel installation and a Git-free extracted source
 archive passed their distinct checks. See the

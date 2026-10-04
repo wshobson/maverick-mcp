@@ -180,7 +180,11 @@ Failed or incomplete responses produce an error without changing the previous
 snapshot or its freshness. A response superseded by a newer refresh reservation
 also errors with a retry instruction. These errors do not disable future reads.
 An entirely empty initial range returns an empty frame and remains eligible for
-refresh. Existing stored dates may not disappear from an accepted snapshot.
+refresh. Existing stored dates may not disappear from an accepted snapshot. Missing
+completed sessions still fail validation, including full-session trading halts
+or provider omissions. OHLCV alone does not distinguish those gaps from a
+partial response; the server preserves the earlier snapshot and reports the
+error.
 
 Two nullable columns, `history_refreshed_at` and `history_generation`, are added
 to `md_stocks` through the existing additive schema setup. Old bars and company

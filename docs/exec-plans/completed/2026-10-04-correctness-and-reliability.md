@@ -255,8 +255,12 @@ The recommended implementation method is specialist subagents with fresh indepen
 ## Completion record
 
 Every task received an independent specification and code-quality review. A fresh
-cumulative review found no remaining actionable findings after the packaging
-corrections. Regression checks cover the accepted contracts, not every possible
+cumulative review passed after the packaging corrections. The later pull-request
+review found that history validation incorrectly used NYSE sessions for foreign
+stocks. A follow-up correction selects supported exchange calendars and local
+dates, with offline holiday and completeness regressions. Unmapped exchange
+suffixes now report the calendar limit explicitly before any fetch or history
+mutation. Regression checks cover the accepted contracts, not every possible
 financial strategy, provider response, or hardware environment.
 
 | Task | Completed behavior | Commit |
@@ -266,15 +270,15 @@ financial strategy, provider response, or hardware environment.
 | 3 | Past-only ensemble weights and reset between runs. | `a256ed5` |
 | 4 | Causal feature warm-up, including local stochastic handling. | `04dd99c` |
 | 5 | Persistent container defaults and migration guidance. | `8223f09` |
-| 6 | Complete adjusted-history snapshots, generations, and safe upserts. | `f03cff2` |
-| 7 | 252-session metrics, nullable profit factors, and timestamp durations. | `8e01a84` |
+| 6 | Complete adjusted-history snapshots, generations, and safe upserts. | `f03cff2`, `9edf2f3` |
+| 7 | 252-session metrics, nullable profit factors, and timestamp durations. | `8e01a84`, `b3ba129` |
 | 8 | Decimal ATR risk sizing and positional correlation mask. | `2069fb0` |
 | 9 | Redis remaining-expiry preservation. | `33fc745` |
 | 10 | Exhausted retry statuses count as breaker failures. | `8d791f6` |
 | 11 | Retained, exclusively used in-memory SQLite connections. | `494cd44` |
-| 12 | Preserved citations, working routing, evidence errors, optional temperature. | `b68cd6f` |
+| 12 | Preserved citations, working routing, evidence errors, optional temperature. | `b68cd6f`, `25ceeac` |
 | 13 | Real core-wheel installs and complete, private-file-filtered archives. | `c5c2da8` |
-| 14 | Observed support/resistance over the requested calendar window. | `d516886` |
+| 14 | Observed support/resistance over the requested calendar window. | `d516886`, `b3ba129` |
 | 15 | Bounded MCP trades, visible omissions, and watchlist discovery. | `466559b` |
 | 16 | Explicit synthetic eval provenance and Decimal fixture checks. | `ed1b2c3` |
 
@@ -284,7 +288,7 @@ DataForSEO query basis. The search work makes no ranking or traffic claim.
 
 ### Verification on the integrated source
 
-- The final offline suite passed 1,599 tests; six built-artifact checks were
+- The final offline suite after the pull-request corrections passed 1,693 tests; six built-artifact checks were
   skipped there and run separately, and 14 PostgreSQL cases were deselected.
 - The combined portfolio/history database suite passed all 28 SQLite and
   PostgreSQL cases, including independent processes, cancellation, rollback,
@@ -313,7 +317,12 @@ Review caught and corrected cancellation during SQLite reset, SQLite URI boolean
 parsing, a Docker PostgreSQL-alias migration warning, citation metadata loss,
 core-smoke database isolation, a missing source-archive CI asset, and private
 files entering direct wheel builds. Each correction has focused regression or
-configuration evidence.
+configuration evidence. The pull-request review also led to the six exchange
+calendar mappings (`9edf2f3`), null results for failed optimization and rejection
+of incomplete observed-range bars (`b3ba129`), and actual request-body
+temperature forwarding across Chat and Responses APIs (`25ceeac`). The latter
+includes omitted-default cases and explicit provider rejection, with 88 focused
+offline SDK checks. Independent review passed the follow-up changes.
 
 ### Next work and separate gates
 
