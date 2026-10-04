@@ -20,7 +20,7 @@
 - Preserve graceful optional-extra behavior: core installation registers no backtesting/research tools and performs no paid calls.
 - Unit tests use injected providers, synthetic prices, disposable databases, and captured HTTP requests. No live providers or paid evaluations without separate authorization.
 - New APIs, fields, policies, and constants labeled **proposed** below become requirements only when this plan is accepted; existing signatures otherwise stay unchanged.
-- Use Codex subagents matched to database, quantitative, runtime, research, or delivery work; there is no vendor-specific executor requirement.
+- Use specialist subagents matched to database, quantitative, runtime, research, or delivery work; there is no vendor-specific executor requirement.
 - Implement only the assigned task; preserve unrelated changes. Commit each verified task separately and obtain independent review before merging.
 - Update the nearest feature/API/runbook documentation and remove resolved debt in the same implementation change; catalog added documentation and run `make docs-check`.
 - Do not publish a package, image, tag, registry entry, or bundle from this plan. PyPI ownership/provenance and Docker catalog command/pin remain separate release gates.
@@ -249,4 +249,4 @@ The insufficient-evidence decision in task 12 remains a separate gate even if th
 - [ ] Recheck tasks 3–4 with suffix-mutation/prefix-invariance tests, tasks 1–2 against acknowledged writes and Decimal arithmetic, and task 15 against serialized MCP output rather than service objects alone.
 - [ ] Update the review/debt/reliability documents to distinguish fixed, verified, unverified, and deferred items. Keep the screening-universe decision and external publishing blockers open until their actual acceptance criteria are met.
 
-The recommended implementation method is specialist Codex subagents with fresh independent reviewers per task and a final combined review. This document authorizes no execution by itself; the current deliverable is the proposed plan.
+The recommended implementation method is specialist subagents with fresh independent reviewers per task and a final combined review. This document authorizes no execution by itself; the current deliverable is the proposed plan.
