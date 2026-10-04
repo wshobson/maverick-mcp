@@ -58,6 +58,8 @@ Status labels:
 | `testing/exa-research.md` | current | engineering | Exa/research provider test strategy. |
 | `references/llm-documentation-hygiene.md` | current | docs | Agent-legible documentation rules. |
 
+| `references/readme-search-research.md` | current | docs | DataForSEO evidence and README wording decisions from October 4, 2026. |
+
 ## Historical
 
 | Path | Status | Notes |
