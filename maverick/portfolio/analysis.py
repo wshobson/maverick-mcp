@@ -30,7 +30,9 @@ here rather than at each call site:
 """
 
 import asyncio
+import math
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
@@ -149,6 +151,8 @@ async def correlation_analysis(
         )
 
     corr = returns_df.corr()
+    if not all(math.isfinite(float(value)) for value in corr.to_numpy().flat):
+        raise ValueError("Undefined correlation: prices need varying finite returns")
     matrix = {
         row: {col: float(corr.loc[row, col]) for col in used_tickers}
         for row in used_tickers
@@ -177,8 +181,13 @@ async def correlation_analysis(
                     }
                 )
 
-    off_diagonal = corr.values[corr.values != 1]
-    avg_correlation = float(off_diagonal.mean()) if len(off_diagonal) > 0 else 0.0
+    off_diagonal = [
+        matrix[a][b]
+        for i, a in enumerate(used_tickers)
+        for j, b in enumerate(used_tickers)
+        if i != j
+    ]
+    avg_correlation = sum(off_diagonal) / len(off_diagonal)
     diversification_score = round((1 - avg_correlation) * 100, 1)
     recommendation = (
         "Well diversified"
@@ -342,45 +351,56 @@ async def risk_adjusted_analysis(
     if pd.isna(latest_atr):
         raise ValueError(f"Insufficient history to compute ATR for {ticker}")
 
-    current_atr = float(latest_atr)
-    current_price = float(frame["Close"].iloc[-1])
-    risk_factor = risk_level / 100
-    account_size = settings.risk_account_size
+    current_atr = Decimal(str(latest_atr))
+    current_price = Decimal(str(frame["Close"].iloc[-1]))
+    level = Decimal(str(risk_level))
+    if not level.is_finite() or not 0 <= level <= 100:
+        raise ValueError("risk_level must be finite and between 0 and 100")
+    if any(
+        not value.is_finite() or value <= 0 for value in (current_price, current_atr)
+    ):
+        raise ValueError("Price and ATR must be finite and positive")
+    risk_factor = level / 100
+    account_size = Decimal(str(settings.risk_account_size))
+    if account_size <= 0:
+        raise ValueError("Account size must be positive")
+    risk_budget = account_size * Decimal("0.01") * risk_factor
+    distance = current_atr * (2 - risk_factor)
+    stop = current_price - distance
+    target = current_price + current_atr * 3 * risk_factor
+    if stop <= 0:
+        raise ValueError("ATR stop must be positive for long position sizing")
+    shares = int(min(account_size / current_price, risk_budget / distance))
+    value = shares * current_price
+    cash_risk = shares * distance
 
     position_sizing = {
-        "suggested_position_size": round(account_size * 0.01 * risk_factor, 2),
-        "max_shares": (
-            int((account_size * 0.01 * risk_factor) / current_price)
-            if current_price
-            else 0
-        ),
-        "position_value": round(account_size * 0.01 * risk_factor, 2),
-        "percent_of_portfolio": round(1 * risk_factor, 2),
+        "suggested_position_size": float(value.quantize(Decimal("0.01"))),
+        "max_shares": shares,
+        "position_value": float(value.quantize(Decimal("0.01"))),
+        "percent_of_portfolio": float(round(value / account_size * 100, 2)),
     }
     stop_loss = {
-        "stop_loss": round(current_price - (current_atr * (2 - risk_factor)), 2),
-        "stop_loss_percent": (
-            round(((current_atr * (2 - risk_factor)) / current_price) * 100, 2)
-            if current_price
-            else 0.0
-        ),
-        "max_risk_amount": round(account_size * 0.01 * risk_factor, 2),
+        "stop_loss": float(stop),
+        "stop_loss_percent": float(round(distance / current_price * 100, 2)),
+        "max_risk_amount": float(cash_risk.quantize(Decimal("0.01"))),
     }
     entry_strategy = {
-        "immediate_entry": round(current_price, 2),
+        "immediate_entry": float(current_price),
         "scale_in_levels": [
-            round(current_price, 2),
-            round(current_price - (current_atr * 0.5), 2),
-            round(current_price - current_atr, 2),
+            float(current_price),
+            float(current_price - current_atr * Decimal("0.5")),
+            float(current_price - current_atr),
         ],
     }
     targets = {
-        "price_target": round(current_price + (current_atr * 3 * risk_factor), 2),
-        "profit_potential": round(current_atr * 3 * risk_factor, 2),
-        "risk_reward_ratio": round(3 * risk_factor, 2),
+        "price_target": float(target),
+        "profit_potential": float(target - current_price),
+        "risk_reward_ratio": float(round((target - current_price) / distance, 2)),
     }
     analysis = {
-        "confidence_score": round(70 * risk_factor, 2),
+        "confidence_score": None,
+        "confidence_explanation": "ATR sizing is a heuristic, not a calibrated probability.",
         "strategy_type": (
             "aggressive"
             if risk_level > 70
@@ -399,8 +419,8 @@ async def risk_adjusted_analysis(
 
     return RiskAnalysis(
         ticker=ticker,
-        current_price=round(current_price, 2),
-        atr=round(current_atr, 2),
+        current_price=float(current_price),
+        atr=float(current_atr),
         risk_level=risk_level,
         position_sizing=position_sizing,
         stop_loss=stop_loss,

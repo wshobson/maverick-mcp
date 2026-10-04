@@ -105,7 +105,7 @@ def _risk_result() -> RiskAnalysis:
         stop_loss={"stop_loss": 170.0},
         entry_strategy={"immediate_entry": 175.50},
         targets={"price_target": 190.0},
-        analysis={"confidence_score": 35.0},
+        analysis={"confidence_score": None},
         existing_position=None,
     )
 

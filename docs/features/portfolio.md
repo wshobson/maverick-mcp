@@ -167,3 +167,27 @@ Exit dates cannot precede entry dates. Date-only and naive timestamps mean UTC,
 and explicit offsets are converted to UTC before storage. Historical SQLite
 rows without timezone information are interpreted as UTC because their original
 offsets cannot be recovered.
+
+
+## ATR position sizing and correlation
+
+The ATR sizing tool uses a cash-risk budget of `account × 1% × risk_level/100`.
+It divides that budget by the returned entry-to-stop distance, rounds down to
+whole shares, and caps the position at available account cash. Position value
+is shares times entry price; `max_risk_amount` is shares times stop distance.
+Reward/risk is the target-to-entry distance divided by the entry-to-stop distance.
+These calculations use Decimal until response serialization.
+
+For an account of 100,000, price of 100, ATR of 2, and risk level 50, the tool
+returns a stop of 97, target of 103, 166 shares, position value of 16,600,
+maximum price-distance risk of 498, and reward/risk of 1.0. Doubling ATR halves
+the whole-share limit to 83. Risk level zero sizes zero shares. Invalid or
+nonpositive prices, ATR, account values, or stops return an error.
+
+`confidence_score` is null, with an explanation that this is a sizing heuristic,
+not a calibrated probability. It does not estimate execution gaps or slippage.
+Unit prices retain sub-cent precision; cash amounts are displayed to cents.
+
+Correlation excludes matrix diagonals by position, so a correlation of exactly
+1.0 between two distinct symbols remains in the average. Constant prices or
+other undefined correlations produce an error instead of a diversification score.
