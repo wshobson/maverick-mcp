@@ -149,3 +149,21 @@ Reading a missing portfolio does not create a portfolio row. A cancelled call
 can still commit if its database worker has already started. Read the current
 holdings before retrying a cancelled mutation because its outcome may be
 unknown to the caller.
+
+## Trade journal validation and precision
+
+Journal sides accept `long` or `short`, without regard to letter case. Entry
+prices, exit prices, and share quantities must be finite and greater than zero.
+Invalid service calls raise `ValueError`; MCP tools return an error without
+changing the trade. A closed trade cannot be closed again.
+
+Unit prices keep sub-cent precision within the existing Float storage limits.
+The service calculates profit or loss with `Decimal` and rounds the final
+amount to cents using half-up rounding. For example, 10,000 long shares entered
+at $0.0041 and closed at $0.0051 produce $10.00 of profit. Existing journal rows
+and column types are not rewritten.
+
+Exit dates cannot precede entry dates. Date-only and naive timestamps mean UTC,
+and explicit offsets are converted to UTC before storage. Historical SQLite
+rows without timezone information are interpreted as UTC because their original
+offsets cannot be recovered.

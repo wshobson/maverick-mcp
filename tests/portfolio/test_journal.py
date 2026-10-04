@@ -7,6 +7,7 @@ pattern.
 """
 
 from datetime import UTC, datetime
+from decimal import Decimal
 
 import pytest
 from sqlalchemy.orm import sessionmaker
@@ -435,3 +436,33 @@ def test_read_closed_trades_excludes_open(factory):
 
     assert [e.id for e in closed] == [closed_id]
     assert open_id not in [e.id for e in closed]
+
+
+def test_decimal_prices_and_shares_round_trip_through_legacy_float_columns(factory):
+    with session_scope(factory) as session:
+        entry = insert_trade(
+            session,
+            symbol="PENNY",
+            side="long",
+            entry_price=Decimal("0.0041"),
+            shares=Decimal("10000.5"),
+            entry_date=_entry_date(),
+            rationale=None,
+            tags=[],
+            notes=None,
+        )
+        update_trade_close(
+            session,
+            entry.id,
+            exit_price=Decimal("0.0051"),
+            exit_date=_entry_date(),
+            pnl=Decimal("10.00"),
+            notes=None,
+        )
+    with session_scope(factory) as session:
+        stored = read_trade(session, entry.id)
+    assert stored is not None
+    assert Decimal(str(stored.entry_price)) == Decimal("0.0041")
+    assert Decimal(str(stored.exit_price)) == Decimal("0.0051")
+    assert Decimal(str(stored.shares)) == Decimal("10000.5")
+    assert Decimal(str(stored.pnl)) == Decimal("10.00")

@@ -51,7 +51,9 @@ async def portfolio_journal_add_trade(
 ) -> dict[str, Any]:
     """Add an open trade to the journal. `entry_date` is an ISO 8601 date or
     datetime (for example `2026-03-15` or `2026-03-15T14:30:00Z`) for a trade
-    made earlier; omit it to record the trade as entered now."""
+    made earlier; omit it to record the trade as entered now. Naive dates
+    are UTC. Side is long or short (case-insensitive); prices and shares
+    must be finite and positive. Unit prices retain subcent precision."""
     if entry_date is not None:
         try:
             datetime.fromisoformat(entry_date)
@@ -88,8 +90,9 @@ async def portfolio_journal_close_trade(
     notes: str | None = None,
 ) -> dict[str, Any]:
     """Close an open trade by entry ID. PnL is computed automatically
-    (long: exit-entry, short: entry-exit) and strategy performance is
-    recomputed for every tag on the trade."""
+    (long: exit-entry, short: entry-exit), multiplied by shares, then
+    rounded to cents with ROUND_HALF_UP. Exit price must be finite and
+    positive. Strategy performance is recomputed for every trade tag."""
     try:
         journal_service = _require_journal_service()
         entry = await journal_service.close_trade(

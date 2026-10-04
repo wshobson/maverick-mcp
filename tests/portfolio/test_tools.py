@@ -1504,3 +1504,67 @@ def test_journal_add_trade_keeps_its_old_positional_order() -> None:
         "notes",
     ]
     assert names[-1] == "entry_date"
+
+
+@pytest.fixture
+def real_journal_service(tmp_path, stub_service):
+    from maverick.platform.config import DatabaseSettings
+    from maverick.platform.db import create_engine_from_settings
+    from maverick.portfolio.service_journal import JournalService
+
+    engine = create_engine_from_settings(
+        DatabaseSettings(url=f"sqlite:///{tmp_path}/journal.db")
+    )
+    service = JournalService(engine)
+    tools.configure(stub_service, service)
+    yield service
+    engine.dispose()
+
+
+async def test_journal_tools_preserve_subcent_prices_and_profit(real_journal_service):
+    opened = await tools.portfolio_journal_add_trade("PENNY", "LONG", 0.0041, 10000)
+    assert opened["status"] == "success"
+    assert opened["entry_price"] == 0.0041
+    closed = await tools.portfolio_journal_close_trade(opened["id"], 0.0051)
+    assert closed["status"] == "success"
+    assert closed["exit_price"] == 0.0051
+    assert closed["pnl"] == 10.0
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("side", "buy"),
+        ("entry_price", 0.0),
+        ("entry_price", float("nan")),
+        ("shares", -1.0),
+        ("shares", float("inf")),
+    ],
+)
+async def test_journal_add_tool_invalid_inputs_return_errors_without_writes(
+    real_journal_service, field, value
+):
+    inputs: dict[str, Any] = {
+        "symbol": "AAPL",
+        "side": "long",
+        "entry_price": 100.0,
+        "shares": 1.0,
+    }
+    inputs[field] = value
+    result = await tools.portfolio_journal_add_trade(**inputs)
+    assert result["status"] == "error"
+    assert field in result["error"]
+    assert await real_journal_service.list_trades() == []
+
+
+@pytest.mark.parametrize("exit_price", [0.0, -1.0, float("nan"), float("inf")])
+async def test_journal_close_tool_invalid_prices_leave_trade_open(
+    real_journal_service, exit_price
+):
+    entry = await real_journal_service.add_trade(
+        "AAPL", "long", Decimal("100"), Decimal("1")
+    )
+    result = await tools.portfolio_journal_close_trade(entry.id, exit_price)
+    assert result["status"] == "error"
+    assert "exit_price" in result["error"]
+    assert await real_journal_service.get_trade(entry.id) == entry
