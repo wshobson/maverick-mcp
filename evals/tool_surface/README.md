@@ -17,9 +17,40 @@ batch 3 adds a fourth, `gap`: what the request leaves out or gets wrong
   unsupported.
 - data state: `empty` (schema only), `seeded` (a five-position portfolio,
   nine symbols registered for the screener with no prices or screening
-  results, one watchlist, and four journal trades), or `edge` (the seeded
+  results, one watchlist, and four synthetic journal trades), or `edge` (the seeded
   data with an unusual query). `seed.py` builds these offline. A trace that
   runs the screens fetches live prices for those nine symbols.
+
+## Fixture provenance and correctness reruns
+
+The current seed is `synthetic-v2-2026-10-04`. Every position and journal price
+and date is a synthetic test input, not a historical market observation or a
+real transaction. The basis is stored with each position's notes and each
+journal entry's rationale, and in the watchlist description and item notes.
+Comparisons with live quotes describe hypothetical gains or losses.
+
+The NVDA position uses 120 shares at 180.005, for a Decimal total cost of
+21,600.60. The closed NVDA journal example buys 50 at 100.005 and closes at
+101.015, for 50.50 profit after aggregation. These values test sub-cent unit
+prices; they make no claim about NVDA's price on the fixture dates. All other
+seed values share the same synthetic basis in `seed.py`.
+
+Offline tests build all three states twice and compare business records. Domain
+APIs generate UUIDs and audit timestamps, so those identifiers/timestamps are
+excluded from equivalence checks. Purchase, entry, and exit dates remain part
+of the comparison. No market provider or model runs during seed construction.
+
+`cases_correctness.json` prepares nine affected cases: q14/q15, b01/b05/b12/b15/
+b18, and c15/c16. Each retains its original case file and ID, records the new
+fixture version, and explicitly tells the client that returns are hypothetical.
+This subset covers sizing, backtest output/metrics, cost basis, observed levels,
+correlation, journal input, watchlist discovery, and parallel history requests.
+The original case files and historical traces remain unchanged.
+
+These reruns have not been executed. A future authorized run must record its
+model, input case file, fixture version, server commit, and live-provider timing.
+Any generated verdicts, including batch-3 labels, still require the owner's
+review in the UI. This correction adds no model scores or invented human labels.
 
 ## Running it
 
