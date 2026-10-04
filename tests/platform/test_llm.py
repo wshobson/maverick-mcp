@@ -77,11 +77,11 @@ def test_defaults_unset_provider():
     assert s.api_key is None
     assert s.base_url is None
     assert s.model is None
-    assert s.temperature == 0.0
+    assert s.temperature is None
 
 
-def test_temperature_default_is_zero_and_overridable(monkeypatch):
-    assert LLMSettings().temperature == 0.0
+def test_temperature_default_is_unset_and_overridable(monkeypatch):
+    assert LLMSettings().temperature is None
     monkeypatch.setenv("LLM_TEMPERATURE", "0.7")
     assert LLMSettings().temperature == 0.7
 
@@ -275,7 +275,7 @@ def test_get_llm_openai_compatible_constructs_chat_openai(monkeypatch, stub_open
     assert _secret_value(llm.kwargs) == "not-needed"
     assert llm.kwargs["model"] == "local-model"
     assert llm.kwargs["base_url"] == "http://localhost:8080/v1"
-    assert llm.kwargs["temperature"] == 0.0
+    assert "temperature" not in llm.kwargs
 
 
 def test_get_llm_openrouter_constructs_chat_openai(monkeypatch, stub_openai):
@@ -288,7 +288,7 @@ def test_get_llm_openrouter_constructs_chat_openai(monkeypatch, stub_openai):
     assert _secret_value(llm.kwargs) == "key-123"
     assert llm.kwargs["model"] == "openrouter/auto"
     assert llm.kwargs["base_url"] == "https://openrouter.ai/api/v1"
-    assert llm.kwargs["temperature"] == 0.0
+    assert "temperature" not in llm.kwargs
 
 
 def test_get_llm_anthropic_constructs_chat_anthropic(monkeypatch, stub_anthropic):
@@ -301,7 +301,7 @@ def test_get_llm_anthropic_constructs_chat_anthropic(monkeypatch, stub_anthropic
     assert _secret_value(llm.kwargs) == "sk-ant-123"
     assert llm.kwargs["model_name"] == "claude-3-5-sonnet-latest"
     assert llm.kwargs["base_url"] is None
-    assert llm.kwargs["temperature"] == 0.0
+    assert "temperature" not in llm.kwargs
 
 
 # --- singleton / reset -------------------------------------------------------

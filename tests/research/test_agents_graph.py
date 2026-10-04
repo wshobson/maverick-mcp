@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -24,7 +25,10 @@ from maverick.research.agents.graph import (  # noqa: E402
     DeepResearchAgent,
     ResearchAgentError,
 )
-from maverick.research.types import ResearchReport  # noqa: E402
+from maverick.research.types import (  # noqa: E402
+    InsufficientEvidenceError,
+    ResearchReport,
+)
 
 from ._fakes import FakeChatModel, FakeSearchClient, make_source  # noqa: E402
 
@@ -163,18 +167,14 @@ class TestErrorPropagation:
             asyncio.run(agent.research_comprehensive(topic="AAPL", session_id="s-7"))
 
     def test_all_providers_failing_completes_without_hanging(self) -> None:
-        """A search client that always raises must not hang or crash the
-        graph -- it degrades to zero sources, matching `_safe_search`'s
-        swallow-and-continue behavior."""
+        """Failed providers must stop before synthesis."""
         llm = FakeChatModel(responder=_dispatching_responder)
         failing_client = FakeSearchClient(fail=True)
         agent = DeepResearchAgent(llm=llm, search_clients=[failing_client])
 
-        report = asyncio.run(
-            agent.research_comprehensive(topic="AAPL", session_id="s-8")
-        )
-        assert report.sources_analyzed == 0
-        assert report.confidence_score == 0.0
+        with pytest.raises(InsufficientEvidenceError):
+            asyncio.run(agent.research_comprehensive(topic="AAPL", session_id="s-8"))
+        assert not llm.captured_prompts
 
     def test_llm_failure_during_synthesis_raises_research_agent_error(self) -> None:
         def failing_synth_responder(messages: list) -> str:
@@ -205,3 +205,39 @@ class TestDefaultLlmSeam:
 
         with pytest.raises(ValueError, match="No LLM configured"):
             DeepResearchAgent(search_clients=[_fixture_search_client()])
+
+
+@pytest.mark.parametrize("include_competitive_analysis", [True, False])
+def test_company_competitive_flag_runs_actual_specialized_agent_once(
+    monkeypatch, include_competitive_analysis
+):
+    from maverick.research.agents import subagents
+
+    competitive = AsyncMock(wraps=subagents.run_competitive_research)
+    monkeypatch.setattr(subagents, "run_competitive_research", competitive)
+    report = asyncio.run(
+        _agent().research_company_comprehensive(
+            "AAPL",
+            "competitive",
+            include_competitive_analysis=include_competitive_analysis,
+        )
+    )
+    assert report.status == "success"
+    assert competitive.await_count == int(include_competitive_analysis)
+
+
+def test_all_rejected_sources_stop_before_synthesis(monkeypatch):
+    from maverick.research.agents import synthesis
+
+    llm = FakeChatModel(responder=_dispatching_responder)
+    agent = DeepResearchAgent(llm=llm, search_clients=[_fixture_search_client()])
+    monkeypatch.setattr(synthesis, "meets_credibility_threshold", lambda score: False)
+    with pytest.raises(InsufficientEvidenceError):
+        asyncio.run(agent.research_comprehensive("AAPL", "rejected"))
+    assert llm.captured_prompts
+    assert not any(
+        isinstance(message, SystemMessage)
+        and "financial research synthesizer" in message.content
+        for messages in llm.captured_prompts
+        for message in messages
+    )

@@ -287,6 +287,7 @@ class ResearchService:
             research_metadata=metadata,
             request_id=request_id,
             timestamp=now_iso(),
+            citations=report.citations,
         )
         if metadata.timeout_warning:
             result.warning = ResearchWarning(
@@ -371,6 +372,7 @@ class ResearchService:
             analysis_metadata=metadata,
             request_id=request_id,
             timestamp=now_iso(),
+            citations=report.citations,
         )
 
     async def analyze_sentiment(
@@ -438,4 +440,5 @@ class ResearchService:
             analysis_metadata=metadata,
             request_id=request_id,
             timestamp=now_iso(),
+            citations=report.citations,
         )

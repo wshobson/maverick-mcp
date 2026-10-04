@@ -101,6 +101,7 @@ from maverick.research.agents.constants import (
 )
 from maverick.research.agents.state import DeepResearchState, SearchClient
 from maverick.research.types import (
+    InsufficientEvidenceError,
     Persona,
     ResearchDepth,
     ResearchFindings,
@@ -202,11 +203,8 @@ class DeepResearchAgent:
     ) -> ResearchReport:
         """Run the full research workflow and return a typed `ResearchReport`.
 
-        Raises `ResearchAgentError` when no search clients are configured
-        or the graph run fails -- callers (the service tier) build
-        whatever error envelope they need from that, rather than this
-        layer fabricating one (see module docstring's routing-bug note
-        and this task's directive to return real typed structures).
+        Raises `InsufficientEvidenceError` when validation yields no sources;
+        otherwise graph failures raise `ResearchAgentError` for the service to map.
         """
         if not self.search_clients:
             raise ResearchAgentError(
@@ -241,6 +239,8 @@ class DeepResearchAgent:
         start = datetime.now(UTC)
         try:
             result = await self.graph.ainvoke(initial_state)
+        except InsufficientEvidenceError:
+            raise
         except Exception as e:
             logger.error(f"Deep research failed for topic '{topic[:60]}': {e}")
             raise ResearchAgentError(f"Deep research failed: {e}") from e
@@ -291,9 +291,7 @@ class DeepResearchAgent:
         `research_company_comprehensive`)."""
         topic = f"{symbol} company financial analysis and outlook"
         focus_areas = (
-            ["competitive_analysis", "market_position"]
-            if include_competitive_analysis
-            else None
+            ["competitive", "market"] if include_competitive_analysis else None
         )
         return await self.research_comprehensive(
             topic=topic, session_id=session_id, depth=depth, focus_areas=focus_areas
@@ -438,6 +436,10 @@ class DeepResearchAgent:
             if synthesis.meets_credibility_threshold(score):
                 validated_sources.append(content)
 
+        if not validated_sources:
+            raise InsufficientEvidenceError(
+                "No usable research sources passed validation."
+            )
         return Command(
             goto="synthesize_findings",
             update={

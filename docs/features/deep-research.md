@@ -140,7 +140,7 @@ LLM_API_KEY=your_llm_api_key
 LLM_MODEL=claude-sonnet-4-6
 LLM_BASE_URL=                   # required for openai_compatible; defaults to
                                  # https://openrouter.ai/api/v1 for openrouter
-LLM_TEMPERATURE=0.0             # optional, defaults to 0.0
+# LLM_TEMPERATURE=1.0           # optional explicit override; otherwise omitted
 ```
 
 - `LLM_PROVIDER` unset means "no LLM configured" -- `research_*` tools
@@ -154,10 +154,14 @@ LLM_TEMPERATURE=0.0             # optional, defaults to 0.0
   three speak the OpenAI wire protocol) is imported lazily inside
   `get_llm()`, so `maverick.platform` stays importable with no `langchain*`
   package installed.
-- `get_llm()` always sends `LLM_TEMPERATURE` (default `0.0`). Claude models
-  released after Claude Opus 4.6 (Claude Sonnet 5, Claude Opus 4.7 and
-  later) accept only `temperature=1.0` and reject any other value with a
-  400, so set `LLM_TEMPERATURE=1.0` when `LLM_MODEL` names one of them.
+- An unset or blank `LLM_TEMPERATURE` omits the parameter from SDK requests,
+  so the selected provider and model choose their default. This replaces the
+  previous forced `0.0`. An explicit value is sent unchanged and must be
+  supported by the model. Check the current
+  [Anthropic Messages API](https://platform.claude.com/docs/en/api/messages/create)
+  or [OpenAI parameter guidance](https://developers.openai.com/api/docs/guides/latest-model)
+  before setting an override. Some reasoning configurations reject it.
+
 
 BYOK settings design adapted from PR #132 by ne0ark (credit preserved in
 `maverick/platform/llm.py`'s module docstring).
@@ -235,6 +239,17 @@ search or LLM, timeout, or an agent error) come back as a typed
 yields the bare `{"status": "error", "error": "..."}`. None of the three
 persist anything server-side.
 
+Every successful envelope includes top-level `citations`. Entries can be typed
+source citations or supplied dictionaries, including minimal `{url, date}`
+entries. Order, duplicates, and supplied metadata are preserved.
+
+If searches produce no usable sources or every source fails validation, the
+server returns `success: false`, `status: error`, and
+`error_type: insufficient_evidence`, with request diagnostics. Final synthesis
+does not run. This error describes absent evidence, not a negative finding about
+the requested company or sector. An injected report may still have an empty
+citation list; citations alone are not the graph's source-validation check.
+
 ## Workflow
 
 1. Validate configuration (the selected search backend's `EXA_API_KEY` or
@@ -249,6 +264,8 @@ persist anything server-side.
    relevance, domain authoritativeness), optionally routes to a specialized
    subagent (fundamental/sentiment/competitive), and synthesizes findings
    with the configured LLM.
+   The company tool selects the competitive branch when
+   `include_competitive_analysis=true`.
 5. Adapt the typed `ResearchReport` into the tool-facing envelope (or a
    typed timeout/execution error) and return it with citations, confidence
    score, and source diversity.

@@ -29,7 +29,7 @@ called out at the field.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 ResearchDepth = Literal["basic", "standard", "comprehensive", "exhaustive"]
 """Research depth/scope value set. Called `research_depth` on the agent side
@@ -41,6 +41,10 @@ docstring; `maverick_mcp/api/routers/research.py:144-153`
 
 Persona = Literal["conservative", "moderate", "aggressive", "day_trader"]
 """`maverick_mcp/agents/base.py:48-112` `INVESTOR_PERSONAS` keys."""
+
+
+class InsufficientEvidenceError(Exception):
+    """Research found no sources that passed content and credibility validation."""
 
 
 # -- Internal research vocabulary (agents/deep_research.py) -----------------
@@ -118,8 +122,8 @@ class ResearchReport(BaseModel):
     ...}` dicts instead, which fail `SourceCitation` validation (missing
     `id`/`title`/`credibility_score`/`relevance_score`). Each item is typed
     `SourceCitation | dict[str, Any]` so both shapes validate; pydantic's
-    union resolution tries `SourceCitation` first and falls back to the raw
-    dict when it doesn't match.
+    union resolution keeps supplied dictionaries intact before considering
+    `SourceCitation`, preserving cache shapes and additional provider metadata.
     """
 
     status: str
@@ -130,7 +134,7 @@ class ResearchReport(BaseModel):
     findings: dict[str, Any]
     sources_analyzed: int
     confidence_score: float
-    citations: list[SourceCitation | dict[str, Any]]
+    citations: list[dict[str, Any] | SourceCitation]
     execution_time_ms: float
     search_queries_used: list[str]
     source_diversity: float
@@ -213,6 +217,7 @@ class ComprehensiveResearchResult(BaseModel):
 
     success: Literal[True] = True
     query: str
+    citations: list[dict[str, Any] | SourceCitation] = Field(default_factory=list)
     research_results: ResearchResultSummary
     research_metadata: ResearchMetadata
     request_id: str
@@ -248,6 +253,7 @@ class CompanyResearchResult(BaseModel):
 
     success: Literal[True] = True
     symbol: str
+    citations: list[dict[str, Any] | SourceCitation] = Field(default_factory=list)
     company_analysis: CompanyAnalysis
     analysis_metadata: CompanyAnalysisMetadata
     request_id: str
@@ -280,6 +286,7 @@ class SentimentAnalysisResult(BaseModel):
 
     success: Literal[True] = True
     topic: str
+    citations: list[dict[str, Any] | SourceCitation] = Field(default_factory=list)
     sentiment_analysis: SentimentAnalysis
     analysis_metadata: SentimentAnalysisMetadata
     request_id: str

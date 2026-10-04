@@ -52,7 +52,7 @@ def _fresh_settings(monkeypatch):
 class _RecordingServer(HTTPServer):
     """`HTTPServer` carrying the request log the handler appends to."""
 
-    requests: list[tuple[str, str]]
+    requests: list[tuple[str, dict]]
 
 
 class _ChatCompletionsHandler(BaseHTTPRequestHandler):
@@ -61,7 +61,7 @@ class _ChatCompletionsHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         server = cast(_RecordingServer, self.server)
-        server.requests.append((self.path, body["model"]))
+        server.requests.append((self.path, body))
         payload = json.dumps(
             {
                 "id": "chatcmpl-test",
@@ -138,4 +138,24 @@ async def test_get_llm_chat_openai_round_trips_one_request(monkeypatch, chat_ser
     reply = await get_llm().ainvoke("ping")
 
     assert reply.content == "pong"
-    assert chat_server.requests == [("/v1/chat/completions", "test-model")]
+    assert chat_server.requests[0][0] == "/v1/chat/completions"
+    assert chat_server.requests[0][1]["model"] == "test-model"
+
+
+@pytest.mark.parametrize("provider", ["openai", "openrouter", "openai_compatible"])
+@pytest.mark.parametrize("temperature", [None, "1.0"])
+async def test_openai_family_serialized_temperature(
+    monkeypatch, chat_server, provider, temperature
+):
+    monkeypatch.setenv("LLM_PROVIDER", provider)
+    monkeypatch.setenv("LLM_API_KEY", "offline-test-key")
+    monkeypatch.setenv("LLM_MODEL", "test-model")
+    monkeypatch.setenv("LLM_BASE_URL", f"http://127.0.0.1:{chat_server.server_port}/v1")
+    if temperature is not None:
+        monkeypatch.setenv("LLM_TEMPERATURE", temperature)
+    await get_llm().ainvoke("ping")
+    body = chat_server.requests[0][1]
+    if temperature is None:
+        assert "temperature" not in body
+    else:
+        assert body["temperature"] == 1.0
