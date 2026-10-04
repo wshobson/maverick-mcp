@@ -77,9 +77,10 @@ async def technical_get_macd_analysis(
 async def technical_get_support_resistance(
     ticker: str, days: int | None = None
 ) -> dict[str, Any]:
-    """Support/resistance levels for `ticker` (simple lookback-window algorithm).
+    """Observed low/high range for `ticker`, a support/resistance heuristic.
 
-    `days` left `None` falls back to `TechnicalSettings.default_days`.
+    `days` selects calendar history; `None` uses `sr_lookback` bars (default 30).
+    Returns the method and number of bars used, without synthetic price levels.
     """
     try:
         service = _require_service()
@@ -97,7 +98,8 @@ async def technical_get_full_technical_analysis(
 ) -> dict[str, Any]:
     """Full technical analysis for `ticker`: trend, outlook, and every indicator.
 
-    `days` left `None` falls back to `TechnicalSettings.default_days`.
+    Levels use the requested calendar `days`, or 30 trailing bars by default.
+    Indicators fetch additional history for warm-up.
     """
     try:
         service = _require_service()

@@ -36,7 +36,7 @@ def _macd() -> MACDAnalysis:
 
 
 def _levels() -> LevelsResult:
-    return LevelsResult(support=[123.66, 130.53, 132.0], resistance=[138.0, 144.27])
+    return LevelsResult(support=[132.0], resistance=[138.0], bars_analyzed=30)
 
 
 def _full() -> FullTechnicalAnalysis:
@@ -238,8 +238,10 @@ async def test_get_support_resistance_returns_model_dump_plus_ticker_and_status(
 
     assert result["status"] == "success"
     assert result["ticker"] == "AAPL"
-    assert result["support"] == [123.66, 130.53, 132.0]
-    assert result["resistance"] == [138.0, 144.27]
+    assert result["support"] == [132.0]
+    assert result["method"] == "observed_range"
+    assert result["bars_analyzed"] == 30
+    assert result["resistance"] == [138.0]
     assert stub_service.support_resistance_calls == [("aapl", 100)]
 
 
@@ -328,3 +330,16 @@ async def test_register_in_memory_client_round_trips_get_rsi(stub_service):
     assert result.data["ticker"] == "AAPL"
     assert result.data["signal"] == "bullish"
     assert stub_service.rsi_calls == [("AAPL", None, 10)]
+
+
+async def test_mcp_levels_include_observed_method_and_window(stub_service):
+    mcp = FastMCP("test")
+    tools.register(mcp)
+    async with Client(mcp) as client:
+        result = await client.call_tool(
+            "technical_get_support_resistance", {"ticker": "AAPL", "days": 90}
+        )
+    assert result.data["method"] == "observed_range"
+    assert result.data["bars_analyzed"] == 30
+    assert result.data["support"] == [132.0]
+    assert stub_service.support_resistance_calls == [("AAPL", 90)]

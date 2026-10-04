@@ -10,7 +10,7 @@ rather than "one of these outcomes".
 """
 
 import asyncio
-from datetime import date
+from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
@@ -183,8 +183,9 @@ async def test_get_trend_bullish_frame():
 async def test_get_support_resistance_bullish_frame():
     result = await _service(_bullish_frame()).get_support_resistance("AAPL")
 
-    assert result.support == [123.66, 130.53, 132.0]
-    assert result.resistance == [138.0, 144.27, 151.14]
+    assert result.support == pytest.approx([132.0])
+    assert result.bars_analyzed == SETTINGS.sr_lookback
+    assert result.resistance == pytest.approx([138.0])
 
 
 async def test_get_full_analysis_bullish_frame():
@@ -200,7 +201,7 @@ async def test_get_full_analysis_bullish_frame():
     assert result.stochastic.signal == "bullish"
     assert result.bollinger.position == "above middle band"
     assert result.volume.signal == "bullish (high volume on up move)"
-    assert result.levels.support == [123.66, 130.53, 132.0]
+    assert result.levels.support == pytest.approx([132.0])
     assert result.analysis_metadata["bars_analyzed"] == 247
     assert result.analysis_metadata["as_of"] == "2020-12-10"
 
@@ -328,3 +329,38 @@ async def test_slow_fetch_raises_value_error_not_hang():
 
     with pytest.raises(ValueError, match="timed out"):
         await service.get_rsi("AAPL")
+
+
+@pytest.mark.parametrize("composite", [False, True])
+async def test_levels_use_requested_calendar_window_not_indicator_padding(composite):
+    frame = _bullish_frame()
+    frame.index = pd.date_range(end=date.today(), periods=len(frame), freq="D")
+    frame["High"] = 150.0
+    frame["Low"] = 100.0
+    frame.loc[pd.Timestamp(date.today() - timedelta(days=60)), ["High", "Low"]] = [
+        200.0,
+        50.0,
+    ]
+    service = _service(frame)
+    getter = service.get_full_analysis if composite else service.get_support_resistance
+    short, long = await getter("AAPL", days=20), await getter("AAPL", days=90)
+    if composite:
+        short, long = short.levels, long.levels
+    assert short.support == [100.0]
+    assert short.resistance == [150.0]
+    assert short.bars_analyzed == 21
+    assert long.support == [50.0]
+    assert long.resistance == [200.0]
+    assert long.bars_analyzed == 91
+    assert short.method == long.method == "observed_range"
+
+
+async def test_levels_no_bars_in_requested_window_raise():
+    with pytest.raises(ValueError, match="Insufficient price history"):
+        await _service(_bullish_frame()).get_support_resistance("AAPL", days=20)
+
+
+@pytest.mark.parametrize("days", [0, -1])
+async def test_levels_reject_nonpositive_window(days):
+    with pytest.raises(ValueError, match="positive"):
+        await _service(_bullish_frame()).get_support_resistance("AAPL", days=days)

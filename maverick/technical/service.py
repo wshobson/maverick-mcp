@@ -137,6 +137,22 @@ def _require(
         )
 
 
+def _levels(
+    df: pd.DataFrame, ticker: str, days: int | None, settings: TechnicalSettings
+) -> LevelsResult:
+    """Select the requested range independently of indicator warm-up padding."""
+    if days is not None:
+        if days <= 0:
+            raise ValueError("days must be positive")
+        end = date.today()
+        start = end - timedelta(days=days)
+        dates = pd.DatetimeIndex(df.index).date  # ty: ignore[unresolved-attribute]  # pandas exposes date, absent from stubs
+        df = df.loc[(dates >= start) & (dates <= end)]
+        settings = settings.model_copy(update={"sr_lookback": len(df)})
+    _require(df, ticker, ("Close", "High", "Low"), "support/resistance levels")
+    return support_resistance(df, settings)
+
+
 class TechnicalService:
     """Domain service: fetches price history via the injected
     `MarketDataService`, prepares indicator-annotated frames (see
@@ -294,8 +310,7 @@ class TechnicalService:
 
         async def _impl() -> LevelsResult:
             df = await self._prepared_frame(ticker, days, settings)
-            _require(df, ticker, ("Close", "High", "Low"), "support/resistance levels")
-            return support_resistance(df, settings)
+            return _levels(df, ticker, days, settings)
 
         return await self._run(_impl())
 
@@ -326,7 +341,7 @@ class TechnicalService:
             stochastic = analyze_stochastic(df, settings)
             bollinger = analyze_bollinger(df, settings)
             volume = analyze_volume(df, settings)
-            levels = support_resistance(df, settings)
+            levels = _levels(df, ticker, days, settings)
             outlook = generate_outlook(trend, rsi, macd, stochastic)
 
             return FullTechnicalAnalysis(

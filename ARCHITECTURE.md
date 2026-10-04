@@ -149,6 +149,15 @@ circuit-breaker failure. A failed probe reopens the breaker; a successful probe
 closes it. The lower-level retry helper still returns its final response, and
 non-retryable statuses remain available to callers for provider-specific errors.
 
+## Observed price levels
+
+Technical support and resistance are an observed-range heuristic: the lowest
+low and highest high in the selected history. An explicit `days` value selects
+that calendar window through today; omitting it uses `sr_lookback` bars (30 by
+default). Both the level tool and full analysis return `method: observed_range`
+and `bars_analyzed`. Indicator warm-up history does not widen an explicit level
+window. Levels retain observed price precision and contain no percentage offsets.
+
 ## MCP Transports
 
 - STDIO is the default and the preferred Claude Desktop path
