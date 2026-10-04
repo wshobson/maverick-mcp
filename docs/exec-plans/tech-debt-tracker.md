@@ -28,6 +28,5 @@ One line per item. Remove the line in the same change that removes the debt.
 | Docker quick start uses `--rm` without a data volume; stopping/removing the container deletes the default SQLite portfolio/watchlist/journal database (review R4) | `README.md`, `Dockerfile` | correctness task 5 |
 | Redis TTL zero/expired-between-reads falls back to the global TTL and can promote a nearly expired quote into memory for a week (review R5) | `maverick/platform/cache.py` | correctness task 9 |
 | Exhausted retryable HTTP status responses count as breaker successes; repeated 503s never open it (review R6) | `maverick/platform/http.py` | correctness task 10 |
-| In-memory SQLite uses NullPool and loses schema/data when a new connection is opened (review R7) | `maverick/platform/db.py` | correctness task 11 |
 | Research response envelopes drop citations, and competitive-analysis focus names do not match the router (review R8/R9) | `maverick/research/service.py`, `agents/graph.py` | correctness task 12 |
 | Source archives ship tests/Makefile without required evals/tools/scripts sources; extracted-sdist tests fail, and CI lacks a real core-only wheel install lane (review R10) | `pyproject.toml`, `.github/workflows/ci.yml` | correctness task 13 |

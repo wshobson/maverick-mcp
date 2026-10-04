@@ -263,3 +263,34 @@ def test_immediate_scope_rolls_back_failed_transaction(tmp_path):
     with read_only_session_scope(factory) as session:
         assert session.execute(select(ITEMS)).all() == []
     engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "url", ["sqlite:///:memory:", "sqlite://", "sqlite+pysqlite://"]
+)
+def test_memory_schema_survives_connections(url):
+    engine = create_engine_from_settings(DatabaseSettings(url=url))
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("CREATE TABLE retained (id INTEGER)")
+            connection.exec_driver_sql("INSERT INTO retained VALUES (1)")
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql("SELECT * FROM retained").all() == [(1,)]
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "url", ["sqlite:///:memory:", "sqlite://", "sqlite+aiosqlite://"]
+)
+async def test_async_memory_schema_survives_connections(url):
+    engine = create_async_engine_from_settings(DatabaseSettings(url=url))
+    try:
+        async with engine.begin() as connection:
+            await connection.exec_driver_sql("CREATE TABLE retained (id INTEGER)")
+            await connection.exec_driver_sql("INSERT INTO retained VALUES (1)")
+        async with engine.connect() as connection:
+            rows = (await connection.exec_driver_sql("SELECT * FROM retained")).all()
+            assert rows == [(1,)]
+    finally:
+        await engine.dispose()

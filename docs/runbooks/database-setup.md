@@ -89,3 +89,18 @@ make dev
 - Carrying data forward from a pre-v1.0 install: see
   [`migrating-to-v1.md`](migrating-to-v1.md) for the inert-legacy-tables
   note.
+
+
+## In-memory SQLite
+
+`sqlite:///:memory:` and `sqlite://` retain one connection per engine. Sessions,
+raw connections, and schema operations take turns using that connection so an
+uncommitted transaction cannot leak into another caller. File SQLite databases
+continue to use separate connections.
+
+Anonymous memory databases are local to one engine and process. Closing a
+session preserves the data; disposing the engine, invalidating its connection,
+or exiting the process loses it. A later schema setup creates an empty database.
+Do not hold one connection while requesting another from the same memory engine.
+Async engines belong to the event loop that created them. The CI configuration
+uses an in-memory database unless a test supplies an explicit URL.
