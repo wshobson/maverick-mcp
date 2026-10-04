@@ -40,7 +40,10 @@ class CircuitBreaker:
     `asyncio.Lock` guards state/counter transitions so that only the
     task that performs the open->half_open transition becomes the
     probe; every other concurrently-waiting caller fails fast with
-    `CircuitOpenError` instead of queueing behind the probe.
+    `CircuitOpenError` instead of queueing behind the probe. Cancelling
+    that probe reopens the breaker with a fresh recovery window. Results
+    from calls admitted before a newer open or explicit reset are ignored
+    for breaker state transitions.
     """
 
     def __init__(self, name: str, settings: HttpSettings) -> None:
@@ -50,6 +53,7 @@ class CircuitBreaker:
         self._failure_count = 0
         self._opened_at: float | None = None
         self._lock = asyncio.Lock()
+        self._generation = 0
 
     @property
     def state(self) -> str:
@@ -60,6 +64,13 @@ class CircuitBreaker:
         self._state = "closed"
         self._failure_count = 0
         self._opened_at = None
+        self._generation += 1
+
+    def _open(self) -> None:
+        """Start a new recovery window, invalidating older in-flight calls."""
+        self._state = "open"
+        self._opened_at = time.monotonic()
+        self._generation += 1
 
     def _seconds_until_half_open(self) -> float:
         if self._opened_at is None:
@@ -84,24 +95,34 @@ class CircuitBreaker:
                 # queueing behind its outcome.
                 raise CircuitOpenError(self.name, self._seconds_until_half_open())
 
+            generation = self._generation
+
         try:
             result = await fn(*args, **kwargs)
+        except asyncio.CancelledError:
+            async with self._lock:
+                if is_probe and generation == self._generation:
+                    self._open()
+            raise
         except Exception:
             async with self._lock:
-                if is_probe:
-                    self._state = "open"
-                    self._opened_at = time.monotonic()
-                else:
-                    self._failure_count += 1
-                    if self._failure_count >= self._settings.breaker_failure_threshold:
-                        self._state = "open"
-                        self._opened_at = time.monotonic()
+                if generation == self._generation:
+                    if is_probe:
+                        self._open()
+                    else:
+                        self._failure_count += 1
+                        if (
+                            self._failure_count
+                            >= self._settings.breaker_failure_threshold
+                        ):
+                            self._open()
             raise
         else:
             async with self._lock:
-                self._failure_count = 0
-                self._state = "closed"
-                self._opened_at = None
+                if generation == self._generation:
+                    self._failure_count = 0
+                    self._state = "closed"
+                    self._opened_at = None
             return result
 
 
