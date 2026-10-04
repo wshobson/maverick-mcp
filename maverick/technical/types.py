@@ -1,6 +1,6 @@
 """Technical payload types. Bottom layer: imports nothing from this domain."""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -54,6 +54,8 @@ class TrendAnalysis(BaseModel):
 
 
 class LevelsResult(BaseModel):
+    method: Literal["observed_range"] = "observed_range"
+    bars_analyzed: int = 0
     support: list[float]
     resistance: list[float]
 

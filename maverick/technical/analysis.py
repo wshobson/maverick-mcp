@@ -29,9 +29,11 @@ Expected columns, read only when the corresponding analysis needs them:
 
 Every threshold/labeling decision below is made against the *unrounded*
 value, matching the legacy `maverick_mcp.core.technical_analysis` behavior
-exactly; values are rounded to 2 decimal places only when stored on the
-returned typed model.
+exactly; indicator values are rounded to 2 decimal places only when stored on
+the returned typed model. Observed range levels retain their source precision.
 """
+
+import math
 
 import pandas as pd
 
@@ -368,27 +370,25 @@ def analyze_trend(df: pd.DataFrame, settings: TechnicalSettings) -> TrendAnalysi
 
 
 def support_resistance(df: pd.DataFrame, settings: TechnicalSettings) -> LevelsResult:
-    """The legacy simple algorithm, verbatim: a `settings.sr_lookback`-bar
-    high/low window (or the whole frame when shorter) plus synthetic
-    +-5%/+-10% levels around the current close. Real pivot detection is a
-    future feature -- this is deliberately simple, not parity with
-    professional S/R analysis."""
+    """Observed low/high range over the configured number of trailing bars.
+
+    This range heuristic does not predict pivots or add price offsets.
+    """
     if df.empty or not {"High", "Low", "Close"}.issubset(df.columns):
         return LevelsResult(support=[], resistance=[])
 
-    lookback = settings.sr_lookback
-    window = df.iloc[-lookback:] if len(df) >= lookback else df
+    window = df.iloc[-settings.sr_lookback :]
+    if window[["High", "Low"]].isna().any().any():
+        raise ValueError("Incomplete price history for observed range levels")
+    if not all(
+        math.isfinite(value) for column in ("High", "Low") for value in window[column]
+    ):
+        raise ValueError("Insufficient price history for observed range levels")
     min_low = float(window["Low"].min())
     max_high = float(window["High"].max())
-    close = float(df["Close"].iloc[-1])
-
-    support = sorted(
-        {round(min_low, 2), round(close * 0.95, 2), round(close * 0.90, 2)}
+    return LevelsResult(
+        support=[min_low], resistance=[max_high], bars_analyzed=len(window)
     )
-    resistance = sorted(
-        {round(max_high, 2), round(close * 1.05, 2), round(close * 1.10, 2)}
-    )
-    return LevelsResult(support=support, resistance=resistance)
 
 
 def generate_outlook(

@@ -52,9 +52,10 @@ class StrategyEnsemble(Strategy):
 
         # Initialize strategy weights
         self.weights = np.ones(len(strategies)) / len(strategies)
-        self.strategy_returns = {}
+        self.strategy_returns: dict[int, list[float]] = {}
         self.strategy_signals = {}
         self.last_rebalance = 0
+        self._weight_history = pd.DataFrame(columns=range(len(strategies)))
 
     @property
     def name(self) -> str:
@@ -76,21 +77,19 @@ class StrategyEnsemble(Strategy):
         Returns:
             Array of strategy weights
         """
-        if len(self.strategy_returns) < 2:
-            return self.weights
+        if any(
+            len(self.strategy_returns.get(i, [])) < self.lookback_period
+            for i in range(len(self.strategies))
+        ):
+            return np.ones(len(self.strategies)) / len(self.strategies)
 
         # Calculate Sharpe ratios for each strategy
         sharpe_ratios = []
         for i, _strategy in enumerate(self.strategies):
-            if (
-                i in self.strategy_returns
-                and len(self.strategy_returns[i]) >= self.lookback_period
-            ):
-                returns = pd.Series(self.strategy_returns[i][-self.lookback_period :])
-                sharpe = returns.mean() / (returns.std() + 1e-8) * np.sqrt(252)
-                sharpe_ratios.append(max(0, sharpe))  # Ensure non-negative
-            else:
-                sharpe_ratios.append(0.1)  # Small positive weight for new strategies
+            returns = pd.Series(self.strategy_returns[i][-self.lookback_period :])
+            std = returns.std(ddof=1 if len(returns) > 1 else 0)
+            sharpe = returns.mean() / (std + 1e-8) * np.sqrt(252)
+            sharpe_ratios.append(max(0, sharpe))  # Ensure non-negative
 
         # Convert to weights (softmax-like normalization)
         sharpe_array = np.array(sharpe_ratios)
@@ -98,7 +97,7 @@ class StrategyEnsemble(Strategy):
             weights = np.ones(len(self.strategies)) / len(self.strategies)
         else:
             # Exponential weighting to emphasize better performers
-            exp_sharpe = np.exp(sharpe_array * 2)
+            exp_sharpe = np.exp((sharpe_array - sharpe_array.max()) * 2)
             weights = exp_sharpe / exp_sharpe.sum()
 
         return weights
@@ -112,21 +111,18 @@ class StrategyEnsemble(Strategy):
         Returns:
             Array of strategy weights
         """
-        if len(self.strategy_returns) < 2:
-            return self.weights
+        if any(
+            len(self.strategy_returns.get(i, [])) < self.lookback_period
+            for i in range(len(self.strategies))
+        ):
+            return np.ones(len(self.strategies)) / len(self.strategies)
 
         # Calculate volatilities for each strategy
         volatilities = []
         for i, _strategy in enumerate(self.strategies):
-            if (
-                i in self.strategy_returns
-                and len(self.strategy_returns[i]) >= self.lookback_period
-            ):
-                returns = pd.Series(self.strategy_returns[i][-self.lookback_period :])
-                vol = returns.std() * np.sqrt(252)
-                volatilities.append(max(0.01, vol))  # Minimum volatility
-            else:
-                volatilities.append(0.2)  # Default volatility assumption
+            returns = pd.Series(self.strategy_returns[i][-self.lookback_period :])
+            vol = returns.std(ddof=1 if len(returns) > 1 else 0) * np.sqrt(252)
+            volatilities.append(max(0.01, vol))  # Minimum volatility
 
         # Inverse volatility weighting
         vol_array = np.array(volatilities)
@@ -202,33 +198,6 @@ class StrategyEnsemble(Strategy):
 
                 signals[i] = (entry_signals, exit_signals)
 
-                # Calculate strategy returns for weight updates (with error handling)
-                try:
-                    positions = entry_signals.astype(int) - exit_signals.astype(int)
-                    price_returns = data["close"].pct_change()
-                    returns = positions.shift(1) * price_returns
-
-                    # Remove invalid returns
-                    valid_returns = returns.dropna()
-                    valid_returns = valid_returns[np.isfinite(valid_returns)]
-
-                    if i not in self.strategy_returns:
-                        self.strategy_returns[i] = []
-
-                    if len(valid_returns) > 0:
-                        self.strategy_returns[i].extend(valid_returns.tolist())
-
-                        # Keep only recent returns for performance calculation
-                        if len(self.strategy_returns[i]) > self.lookback_period * 2:
-                            self.strategy_returns[i] = self.strategy_returns[i][
-                                -self.lookback_period * 2 :
-                            ]
-
-                except Exception as return_error:
-                    logger.debug(
-                        f"Error calculating returns for strategy {strategy.name}: {return_error}"
-                    )
-
                 logger.debug(
                     f"Strategy {strategy.name}: {entry_signals.sum()} entries, {exit_signals.sum()} exits"
                 )
@@ -281,6 +250,20 @@ class StrategyEnsemble(Strategy):
         Returns:
             Tuple of (entry_signals, exit_signals) as boolean Series
         """
+        # Each run starts from equal weights, including reused and empty runs.
+        self.weights = np.ones(len(self.strategies)) / len(self.strategies)
+        self.strategy_returns = {}
+        self.strategy_signals = {}
+        self.last_rebalance = 0
+        self._weight_history = pd.DataFrame(
+            index=data.index, columns=range(len(self.strategies)), dtype=float
+        )
+
+        if data.empty:
+            return pd.Series(False, index=data.index), pd.Series(
+                False, index=data.index
+            )
+
         try:
             # Generate signals from all individual strategies
             individual_signals = self.generate_individual_signals(data)
@@ -290,14 +273,34 @@ class StrategyEnsemble(Strategy):
                     False, index=data.index
                 )
 
-            # Update weights periodically
-            for idx in range(
-                self.rebalance_frequency, len(data), self.rebalance_frequency
-            ):
-                self.update_weights(data.iloc[:idx], idx)
+            price_returns = data["close"].pct_change()
+            returns = {
+                i: (entry.astype(int) - exit_.astype(int)).shift(1) * price_returns
+                for i, (entry, exit_) in individual_signals.items()
+            }
+            for start in range(0, len(data), self.rebalance_frequency):
+                if start:
+                    # Return at t uses the signal at t-1. A boundary at b can
+                    # use only returns in [b-lookback, b), never return b.
+                    self.strategy_returns = {}
+                    for i, strategy_returns in returns.items():
+                        window = strategy_returns.iloc[
+                            max(0, start - self.lookback_period) : start
+                        ]
+                        self.strategy_returns[i] = window[np.isfinite(window)].tolist()
+                    self.update_weights(data.iloc[:start], start)
+                stop = min(start + self.rebalance_frequency, len(data))
+                self._weight_history.iloc[start:stop] = self.weights
 
-            # Combine signals
-            entry_signals, exit_signals = self.combine_signals(individual_signals)
+            entry_signals, exit_signals = combine_weighted_signals(
+                individual_signals, self._weight_history.to_numpy(), self.parameters
+            )
+            # Keep recent run-local returns for the public performance summary;
+            # these are populated only after every historical weight is fixed.
+            self.strategy_returns = {}
+            for i, strategy_returns in returns.items():
+                window = strategy_returns.iloc[-self.lookback_period * 2 :]
+                self.strategy_returns[i] = window[np.isfinite(window)].tolist()
 
             logger.info(
                 f"Generated ensemble signals: {entry_signals.sum()} entries, {exit_signals.sum()} exits"

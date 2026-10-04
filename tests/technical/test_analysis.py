@@ -444,8 +444,10 @@ class TestSupportResistance:
         )
         result = support_resistance(df, SETTINGS)
 
-        assert result.support == [92.7, 95.0, 97.85]
-        assert result.resistance == [108.15, 110.0, 113.3]
+        assert result.support == [95.0]
+        assert result.method == "observed_range"
+        assert result.bars_analyzed == 3
+        assert result.resistance == [110.0]
 
     def test_lookback_window_excludes_older_bars(self):
         # sr_lookback defaults to 30: the first 5 rows carry an extreme
@@ -459,8 +461,9 @@ class TestSupportResistance:
         )
         result = support_resistance(df, SETTINGS)
 
-        assert result.support == [90.0, 95.0]
-        assert result.resistance == [105.0, 110.0]
+        assert result.support == [95.0]
+        assert result.bars_analyzed == 30
+        assert result.resistance == [110.0]
 
     def test_missing_columns_returns_empty_levels(self):
         df = pd.DataFrame({"Close": [100, 101]})
@@ -699,3 +702,35 @@ class TestNaNWarmupTolerance:
 
         assert len(result.support) > 0
         assert len(result.resistance) > 0
+
+
+def test_support_resistance_preserves_observed_subcent_prices():
+    df = pd.DataFrame({"High": [0.0031], "Low": [0.0027], "Close": [0.003]})
+    result = support_resistance(df, SETTINGS)
+    assert result.support == [0.0027]
+    assert result.resistance == [0.0031]
+
+
+@pytest.mark.parametrize("column", ["High", "Low"])
+@pytest.mark.parametrize("invalid", [float("nan"), float("inf"), -float("inf"), None])
+def test_observed_range_rejects_every_incomplete_bar(column, invalid):
+    frame = pd.DataFrame(
+        {"High": [110.0, 115.0], "Low": [90.0, 95.0], "Close": [100.0, 105.0]}
+    )
+    frame.loc[0, column] = invalid
+    with pytest.raises(ValueError, match="price history for observed range"):
+        support_resistance(frame, SETTINGS)
+
+
+def test_observed_range_ignores_incomplete_bars_before_selected_window():
+    frame = pd.DataFrame(
+        {
+            "High": [float("nan"), 115.0],
+            "Low": [float("nan"), 95.0],
+            "Close": [100.0, 105.0],
+        }
+    )
+    result = support_resistance(frame, TechnicalSettings(sr_lookback=1))
+    assert result.support == [95.0]
+    assert result.resistance == [115.0]
+    assert result.bars_analyzed == 1

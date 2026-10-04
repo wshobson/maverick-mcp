@@ -12,15 +12,19 @@ importorskip("sklearn") is kept for consistency with the sibling `test_ml_*`
 suites (this module is part of the same `ml/` package split).
 """
 
+from copy import deepcopy
+
 import numpy as np
 import pandas as pd
 import pytest
 
 pytest.importorskip("sklearn")
+vbt = pytest.importorskip("vectorbt")
 
+from maverick.backtesting.service_support import TemplateStrategy  # noqa: E402
 from maverick.backtesting.strategies.ml.ensemble import StrategyEnsemble  # noqa: E402
 
-from .conftest import MockStrategy, SilentStrategy
+from .conftest import MockStrategy, SilentStrategy, _make_ohlcv  # noqa: E402
 
 
 class TestStrategyEnsemble:
@@ -127,3 +131,147 @@ class TestStrategyEnsemble:
         assert not StrategyEnsemble(
             [SilentStrategy("S1")], weighting_method="bogus"
         ).validate_parameters()
+
+
+@pytest.fixture
+def causal_prices():
+    return _make_ohlcv(n=300)
+
+
+def _template_ensemble(weighting_method):
+    return StrategyEnsemble(
+        [TemplateStrategy(kind) for kind in ("sma_cross", "rsi", "macd")],
+        weighting_method=weighting_method,
+        parameters={"entry_threshold": 0.3, "exit_threshold": 0.3},
+    )
+
+
+@pytest.mark.parametrize("weighting_method", ["performance", "volatility", "equal"])
+@pytest.mark.parametrize("reuse", [False, True])
+def test_future_suffix_cannot_change_prefix_signals(
+    causal_prices, weighting_method, reuse
+):
+    changed = causal_prices.copy()
+    suffix = np.arange(100)
+    changed.iloc[200:, changed.columns.get_loc("close")] = causal_prices["close"].iloc[
+        199
+    ] * (1 + 0.005 * suffix) + 12 * np.sin(suffix / 2)
+    ensemble = _template_ensemble(weighting_method)
+    before = ensemble.generate_signals(causal_prices)
+    if not reuse:
+        ensemble = _template_ensemble(weighting_method)
+    after = ensemble.generate_signals(changed)
+    for original, mutated in zip(before, after, strict=True):
+        pd.testing.assert_series_equal(original.iloc[:200], mutated.iloc[:200])
+
+
+@pytest.mark.parametrize("weighting_method", ["performance", "volatility", "equal"])
+@pytest.mark.parametrize("prefix_length", [197, 200])
+def test_appending_data_cannot_change_prefix_signals(
+    causal_prices, weighting_method, prefix_length
+):
+    ensemble = _template_ensemble(weighting_method)
+    prefix = ensemble.generate_signals(causal_prices.iloc[:prefix_length])
+    appended = ensemble.generate_signals(causal_prices)
+    for original, extended in zip(prefix, appended, strict=True):
+        pd.testing.assert_series_equal(original, extended.iloc[:prefix_length])
+
+
+@pytest.mark.parametrize("weighting_method", ["performance", "volatility", "equal"])
+def test_reuse_matches_fresh_instance(causal_prices, weighting_method):
+    reused = _template_ensemble(weighting_method)
+    reused.generate_signals(_make_ohlcv(n=400, seed=11))
+    actual = reused.generate_signals(causal_prices)
+    fresh = _template_ensemble(weighting_method)
+    expected = fresh.generate_signals(causal_prices)
+    for result, reference in zip(actual, expected, strict=True):
+        pd.testing.assert_series_equal(result, reference)
+    np.testing.assert_allclose(reused.weights, fresh.weights)
+    assert reused.last_rebalance == fresh.last_rebalance
+    assert reused.strategy_returns == fresh.strategy_returns
+
+
+@pytest.mark.parametrize("weighting_method", ["performance", "volatility"])
+def test_weights_use_only_returns_before_segment_boundary(
+    causal_prices, weighting_method
+):
+    ensemble = _template_ensemble(weighting_method)
+    ensemble.lookback_period = 10
+    ensemble.rebalance_frequency = 20
+    individual = {
+        i: strategy.generate_signals(causal_prices)
+        for i, strategy in enumerate(ensemble.strategies)
+    }
+    actual = ensemble.generate_signals(causal_prices)
+    price_returns = causal_prices["close"].pct_change()
+    reference = _template_ensemble(weighting_method)
+    reference.lookback_period = 10
+    expected_entry = pd.Series(False, index=causal_prices.index)
+    expected_exit = pd.Series(False, index=causal_prices.index)
+    for start in range(0, len(causal_prices), 20):
+        if start:
+            reference.strategy_returns = {
+                i: ((entry.astype(int) - exit_.astype(int)).shift(1) * price_returns)
+                .iloc[start - 10 : start]
+                .tolist()
+                for i, (entry, exit_) in individual.items()
+            }
+            if weighting_method == "performance":
+                reference.weights = reference.calculate_performance_weights(
+                    pd.DataFrame()
+                )
+            else:
+                reference.weights = reference.calculate_volatility_weights(
+                    pd.DataFrame()
+                )
+        stop = min(start + 20, len(causal_prices))
+        segment = {
+            i: (entry.iloc[start:stop], exit_.iloc[start:stop])
+            for i, (entry, exit_) in individual.items()
+        }
+        entries, exits = reference.combine_signals(segment)
+        expected_entry.iloc[start:stop] = entries.to_numpy()
+        expected_exit.iloc[start:stop] = exits.to_numpy()
+        np.testing.assert_allclose(
+            ensemble._weight_history.iloc[start:stop],
+            np.tile(reference.weights, (stop - start, 1)),
+        )
+    pd.testing.assert_series_equal(actual[0], expected_entry)
+    pd.testing.assert_series_equal(actual[1], expected_exit)
+    assert np.isfinite(ensemble._weight_history.to_numpy()).all()
+    np.testing.assert_allclose(ensemble._weight_history.sum(axis=1), 1)
+
+
+def test_performance_weights_stay_finite_for_constant_positive_returns():
+    ensemble = StrategyEnsemble(
+        [SilentStrategy("S1"), SilentStrategy("S2")], lookback_period=10
+    )
+    ensemble.strategy_returns = {0: [0.01] * 10, 1: [0.02] * 10}
+    weights = ensemble.calculate_performance_weights(pd.DataFrame())
+    assert np.isfinite(weights).all()
+    np.testing.assert_allclose(weights.sum(), 1)
+    assert weights[1] > weights[0]
+
+
+@pytest.mark.parametrize("weighting_method", ["performance", "volatility", "equal"])
+def test_warmup_and_empty_reuse_reset_state(causal_prices, weighting_method):
+    ensemble = _template_ensemble(weighting_method)
+    ensemble.generate_signals(causal_prices)
+    short = causal_prices.iloc[:45]
+    ensemble.generate_signals(short)
+    np.testing.assert_allclose(ensemble._weight_history, 1 / 3)
+    assert ensemble.last_rebalance == 40
+    empty = ensemble.generate_signals(causal_prices.iloc[:0])
+    assert all(signal.empty for signal in empty)
+    assert ensemble.strategy_returns == {}
+    assert ensemble.last_rebalance == 0
+    assert ensemble._weight_history.empty
+
+
+@pytest.mark.parametrize("weighting_method", ["performance", "volatility", "equal"])
+def test_ensemble_leaves_global_vectorbt_settings_unchanged(
+    causal_prices, weighting_method
+):
+    before = deepcopy(vbt.settings)
+    _template_ensemble(weighting_method).generate_signals(causal_prices)
+    assert vbt.settings == before

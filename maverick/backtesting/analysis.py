@@ -102,13 +102,15 @@ def _grade_performance(metrics: BacktestMetrics) -> str:
         score += 4
 
     profit_factor = metrics.profit_factor
-    if profit_factor >= 2.0:
+    if metrics.profit_factor_status == "no_losses":
         score += 10
-    elif profit_factor >= 1.5:
+    elif profit_factor is not None and profit_factor >= 2.0:
+        score += 10
+    elif profit_factor is not None and profit_factor >= 1.5:
         score += 8
-    elif profit_factor >= 1.2:
+    elif profit_factor is not None and profit_factor >= 1.2:
         score += 5
-    elif profit_factor > 1.0:
+    elif profit_factor is not None and profit_factor > 1.0:
         score += 3
 
     percentage = score
@@ -175,9 +177,15 @@ def _analyze_trades(
     else:
         frequency = "Very High"
 
-    if win_rate >= 0.60 and metrics.profit_factor >= 1.5:
+    no_losses = metrics.profit_factor_status == "no_losses"
+    profit_factor = metrics.profit_factor
+    if win_rate >= 0.60 and (
+        no_losses or (profit_factor is not None and profit_factor >= 1.5)
+    ):
         quality = "Excellent"
-    elif win_rate >= 0.50 and metrics.profit_factor >= 1.2:
+    elif win_rate >= 0.50 and (
+        no_losses or (profit_factor is not None and profit_factor >= 1.2)
+    ):
         quality = "Good"
     elif win_rate >= 0.40:
         quality = "Average"
@@ -207,7 +215,9 @@ def _identify_strengths(metrics: BacktestMetrics) -> list[str]:
         strengths.append("High win rate")
     if abs(metrics.max_drawdown) <= 0.15:
         strengths.append("Low maximum drawdown")
-    if metrics.profit_factor >= 1.5:
+    if metrics.profit_factor_status == "no_losses":
+        strengths.append("Profitable trades with no observed losses")
+    elif metrics.profit_factor is not None and metrics.profit_factor >= 1.5:
         strengths.append("Strong profit factor")
     if metrics.sortino_ratio >= 2.0:
         strengths.append("Excellent downside protection")
@@ -229,7 +239,7 @@ def _identify_weaknesses(metrics: BacktestMetrics) -> list[str]:
         weaknesses.append("Low win rate")
     if abs(metrics.max_drawdown) > 0.30:
         weaknesses.append("High maximum drawdown")
-    if metrics.profit_factor < 1.0:
+    if metrics.profit_factor is not None and metrics.profit_factor < 1.0:
         weaknesses.append("Unprofitable trades overall")
     if metrics.total_trades < 10:
         weaknesses.append("Insufficient trade signals")
@@ -255,7 +265,7 @@ def _generate_recommendations(metrics: BacktestMetrics) -> list[str]:
         recommendations.append("Filter signals to reduce overtrading")
     if metrics.risk_reward_ratio < 1.5:
         recommendations.append("Adjust exit strategy for better risk-reward ratio")
-    if metrics.profit_factor < 1.2:
+    if metrics.profit_factor is not None and metrics.profit_factor < 1.2:
         recommendations.append(
             "Focus on cutting losses quicker and letting winners run"
         )
@@ -346,6 +356,7 @@ def compare_strategies(results: list[BacktestResult]) -> StrategyComparisonResul
             max_drawdown=abs(result.metrics.max_drawdown),
             win_rate=result.metrics.win_rate,
             profit_factor=result.metrics.profit_factor,
+            profit_factor_status=result.metrics.profit_factor_status,
             total_trades=result.metrics.total_trades,
             grade=_grade_performance(result.metrics),
             rank=0,

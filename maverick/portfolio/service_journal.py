@@ -15,8 +15,9 @@ Decimal discipline matches the rest of this domain (see `ledger.py`):
 `entry_price`/`exit_price` are ingressed as `Decimal` by the caller
 (`tools.py`, `Decimal(str(x))`) and every money computation here (pnl,
 pnl_pct, and each strategy-performance aggregate) is done via `Decimal`
-quantized to 0.01 with `ROUND_HALF_UP` before converting back to `float`
-for storage and payloads -- `journal_entries`/`strategy_performance` are
+quantized to 0.01 with `ROUND_HALF_UP`. Unit prices and shares remain
+unquantized until the persistence layer converts them to legacy `Float`
+storage and payloads -- `journal_entries`/`strategy_performance` are
 legacy-shaped `Float` columns, not `Numeric` (see `journal.py`'s module
 docstring), so Decimal never touches the database directly. `shares` is
 `Decimal(str(x))`-ingressed but left unquantized (a quantity, not money),
@@ -56,6 +57,23 @@ def _to_decimal(value: float | None) -> Decimal:
 
 def _quantize(value: Decimal) -> Decimal:
     return value.quantize(_MONEY_QUANT, rounding=ROUND_HALF_UP)
+
+
+def _validate_positive(value: Decimal, name: str) -> None:
+    if not value.is_finite() or value <= 0:
+        raise ValueError(f"{name} must be finite and greater than zero")
+
+
+def _resolve_date(value: str | None) -> datetime:
+    """Treat date-only/naive dates as UTC; normalize offsets before storage.
+
+    SQLite drops timezone information, so legacy naive stored dates must
+    also be interpreted as UTC when checking the entry/exit ordering.
+    """
+    parsed = datetime.fromisoformat(value) if value is not None else datetime.now(UTC)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 class JournalService:
@@ -98,23 +116,22 @@ class JournalService:
         tags: list[str] | None = None,
         notes: str | None = None,
     ) -> JournalEntryPayload:
+        normalized_side = side.lower()
+        if normalized_side not in {"long", "short"}:
+            raise ValueError("side must be long or short")
+        _validate_positive(entry_price, "entry_price")
+        _validate_positive(shares, "shares")
+        resolved_date = _resolve_date(entry_date)
         await self._ensure_schema()
-        resolved_date = (
-            datetime.fromisoformat(entry_date)
-            if entry_date is not None
-            else datetime.now(UTC)
-        )
-        quantized_entry_price = float(_quantize(entry_price))
-        shares_float = float(shares)
 
         def _write() -> JournalEntryPayload:
             with session_scope(self._session_factory) as session:
                 return journal.insert_trade(
                     session,
                     symbol=symbol,
-                    side=side,
-                    entry_price=quantized_entry_price,
-                    shares=shares_float,
+                    side=normalized_side,
+                    entry_price=entry_price,
+                    shares=shares,
                     entry_date=resolved_date,
                     rationale=rationale,
                     tags=list(tags) if tags else [],
@@ -130,13 +147,9 @@ class JournalService:
         exit_date: str | None = None,
         notes: str | None = None,
     ) -> JournalEntryPayload:
+        _validate_positive(exit_price, "exit_price")
+        resolved_exit_date = _resolve_date(exit_date)
         await self._ensure_schema()
-        resolved_exit_date = (
-            datetime.fromisoformat(exit_date)
-            if exit_date is not None
-            else datetime.now(UTC)
-        )
-        quantized_exit_price = _quantize(exit_price)
 
         def _write() -> tuple[JournalEntryPayload, list[str]]:
             with session_scope(self._session_factory) as session:
@@ -145,13 +158,15 @@ class JournalService:
                     raise ValueError(f"JournalEntry {entry_id} not found")
                 if entry.status == "closed":
                     raise ValueError(f"JournalEntry {entry_id} is already closed")
+                if resolved_exit_date < _resolve_date(entry.entry_date):
+                    raise ValueError("exit_date must not precede entry_date")
 
                 entry_price_dec = _to_decimal(entry.entry_price)
                 shares_dec = _to_decimal(entry.shares)
                 if entry.side == "long":
-                    pnl_dec = (quantized_exit_price - entry_price_dec) * shares_dec
+                    pnl_dec = (exit_price - entry_price_dec) * shares_dec
                 else:
-                    pnl_dec = (entry_price_dec - quantized_exit_price) * shares_dec
+                    pnl_dec = (entry_price_dec - exit_price) * shares_dec
                 pnl_dec = _quantize(pnl_dec)
 
                 # Matches legacy: notes only change when the caller actually
@@ -164,9 +179,9 @@ class JournalService:
                 updated = journal.update_trade_close(
                     session,
                     entry_id,
-                    exit_price=float(quantized_exit_price),
+                    exit_price=exit_price,
                     exit_date=resolved_exit_date,
-                    pnl=float(pnl_dec),
+                    pnl=pnl_dec,
                     notes=merged_notes,
                 )
                 return updated, list(updated.tags or [])

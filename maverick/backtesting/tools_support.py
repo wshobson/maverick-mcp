@@ -12,7 +12,8 @@ other.
 `success_payload()` is where every service-backed tool builds its response. It cuts each
 `equity_curve`/`drawdown_series` (at any depth) to `MAX_SERIES_POINTS` points: a multi-year
 daily series is ~100K characters per result, past what MCP clients will show a model (eval
-q15). Service results and analysis keep the full series; only the tool response is cut.
+q15). Each nested `trades` list is also limited to 20 records with explicit
+counts/truncation metadata. Service results and analysis retain full data.
 """
 
 from __future__ import annotations
@@ -31,6 +32,7 @@ logger = logging.getLogger(__name__)
 READ_ONLY_ANNOTATIONS = {"read_only_hint": True}
 
 MAX_SERIES_POINTS = 60
+MAX_TRADE_RECORDS = 20
 _SERIES_KEYS = frozenset({"equity_curve", "drawdown_series"})
 
 _service: BacktestingService | None = None
@@ -65,12 +67,22 @@ def downsample_series(series: dict[str, float]) -> dict[str, float]:
 
 def _downsample_nested(value: Any) -> Any:
     if isinstance(value, dict):
-        return {
+        payload = {
             key: downsample_series(item)
             if key in _SERIES_KEYS and isinstance(item, dict)
             else _downsample_nested(item)
             for key, item in value.items()
+            if key != "trades" or not isinstance(item, list)
         }
+        if isinstance(value.get("trades"), list):
+            trades = value["trades"]
+            payload.update(
+                trades=_downsample_nested(trades[:MAX_TRADE_RECORDS]),
+                trades_total=len(trades),
+                trades_returned=min(len(trades), MAX_TRADE_RECORDS),
+                trades_truncated=len(trades) > MAX_TRADE_RECORDS,
+            )
+        return payload
     if isinstance(value, list):
         return [_downsample_nested(item) for item in value]
     return value
@@ -78,7 +90,7 @@ def _downsample_nested(value: Any) -> Any:
 
 def success_payload(result: BaseModel) -> dict[str, Any]:
     """The JSON response for a successful tool call: `result` dumped, every nested
-    `equity_curve`/`drawdown_series` downsampled, and `status: "success"` added."""
+    series downsampled, trades limited with counts, and `status: "success"` added."""
     payload = _downsample_nested(result.model_dump(mode="json"))
     payload["status"] = "success"
     return payload

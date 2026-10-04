@@ -237,3 +237,60 @@ def test_plain_sqlalchemy_engine_is_not_touched_by_the_fk_listener(tmp_path):
         pragma_value = conn.exec_driver_sql("PRAGMA foreign_keys").scalar()
 
     assert pragma_value == 0
+
+
+def test_immediate_scope_reserves_sqlite_writer_before_yielding(tmp_path):
+    engine = create_engine_from_settings(_settings(tmp_path))
+    factory = sessionmaker(bind=engine)
+    with session_scope(factory, sqlite_immediate=True):
+        with engine.connect() as contender:
+            contender.exec_driver_sql("PRAGMA busy_timeout=1")
+            with pytest.raises(sqlalchemy.exc.OperationalError, match="locked"):
+                contender.exec_driver_sql("BEGIN IMMEDIATE")
+    with engine.connect() as contender:
+        contender.exec_driver_sql("BEGIN IMMEDIATE")
+    engine.dispose()
+
+
+def test_immediate_scope_rolls_back_failed_transaction(tmp_path):
+    engine = create_engine_from_settings(_settings(tmp_path))
+    ensure_schema(engine, METADATA)
+    factory = sessionmaker(bind=engine)
+    with pytest.raises(ValueError, match="abort"):
+        with session_scope(factory, sqlite_immediate=True) as session:
+            session.execute(insert(ITEMS).values(name="not committed"))
+            raise ValueError("abort")
+    with read_only_session_scope(factory) as session:
+        assert session.execute(select(ITEMS)).all() == []
+    engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "url", ["sqlite:///:memory:", "sqlite://", "sqlite+pysqlite://"]
+)
+def test_memory_schema_survives_connections(url):
+    engine = create_engine_from_settings(DatabaseSettings(url=url))
+    try:
+        with engine.begin() as connection:
+            connection.exec_driver_sql("CREATE TABLE retained (id INTEGER)")
+            connection.exec_driver_sql("INSERT INTO retained VALUES (1)")
+        with engine.connect() as connection:
+            assert connection.exec_driver_sql("SELECT * FROM retained").all() == [(1,)]
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "url", ["sqlite:///:memory:", "sqlite://", "sqlite+aiosqlite://"]
+)
+async def test_async_memory_schema_survives_connections(url):
+    engine = create_async_engine_from_settings(DatabaseSettings(url=url))
+    try:
+        async with engine.begin() as connection:
+            await connection.exec_driver_sql("CREATE TABLE retained (id INTEGER)")
+            await connection.exec_driver_sql("INSERT INTO retained VALUES (1)")
+        async with engine.connect() as connection:
+            rows = (await connection.exec_driver_sql("SELECT * FROM retained")).all()
+            assert rows == [(1,)]
+    finally:
+        await engine.dispose()

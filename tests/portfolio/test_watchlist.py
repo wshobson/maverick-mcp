@@ -14,8 +14,10 @@ from maverick.platform.config import DatabaseSettings
 from maverick.platform.db import (
     create_engine_from_settings,
     ensure_schema,
+    read_only_session_scope,
     session_scope,
 )
+from maverick.portfolio import watchlist as watchlist_data
 from maverick.portfolio.watchlist import (
     METADATA,
     WATCHLIST_ITEMS,
@@ -295,3 +297,19 @@ def test_read_items_preserves_none_notes(factory):
         items = read_items(session, watchlist_id)
 
     assert items[0].notes is None
+
+
+def test_list_watchlists_exposes_ids_names_and_description_in_insertion_order(factory):
+    with session_scope(factory) as session:
+        first = create_watchlist(session, "Zeta", "First created")
+        second = create_watchlist(session, "Alpha", None)
+        add_item(session, first.id, "AAPL", None)
+    with read_only_session_scope(factory) as session:
+        assert watchlist_data.list_watchlists(session) == [first, second]
+    with read_only_session_scope(factory) as session:
+        assert read_items(session, first.id)[0].symbol == "AAPL"
+
+
+def test_list_watchlists_empty_database_returns_empty_list(factory):
+    with read_only_session_scope(factory) as session:
+        assert watchlist_data.list_watchlists(session) == []

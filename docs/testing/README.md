@@ -28,18 +28,50 @@ The default pytest `addopts` excludes:
 - `slow`
 - `external`
 
-No test currently carries any of these three markers, so `make test-all`
-collects the same tests as `make test`.
+PostgreSQL concurrency and migration cases carry `integration`; the default
+suite runs their SQLite counterparts.
 
 ## Integration And External Tests
 
-There is no `tests/integration/` directory. The nearest coverage runs in the
-default unit suite: service tests for portfolio, screening, and market data
-write to a tmp-file SQLite database, and `tests/server` builds the full server
-and calls it through an in-memory FastMCP client. A future real-provider
-research test is marked `external` and needs `EXA_API_KEY` (or
-`RESEARCH_SEARCH_BACKEND=searxng` with `SEARXNG_BASE_URL`) plus
-`LLM_PROVIDER`, `LLM_API_KEY`, and `LLM_MODEL`.
+Database tests live beside their domains. Portfolio and market-data concurrency
+tests use independent engines, and portfolio tests also use separate processes.
+Run both SQLite and PostgreSQL cases with:
+
+```bash
+uv run pytest tests/portfolio/test_service_concurrency.py tests/market_data/test_history_concurrency.py -m "integration or not integration"
+```
+
+The PostgreSQL fixture starts a disposable local cluster using `initdb` and
+`pg_ctl`, with per-test databases and teardown. It skips when those executables
+are unavailable or the host cannot safely run the cluster. These checks call
+no market provider. In-memory SQLite tests cover retained schema, exclusive
+connection use, cancellation, and disposal.
+
+`tests/server` builds the server and calls it through an in-memory FastMCP client.
+Research request tests use mocked providers or loopback request capture with
+synthetic keys. A future external-provider test must use the `external` marker,
+explicit credentials, and authorization.
+
+## Built package checks
+
+CI has separate `core-wheel` and `extracted-sdist` jobs in
+[ci.yml](../../.github/workflows/ci.yml). The first builds a wheel, installs only
+its core dependencies in a fresh environment outside the checkout, confirms
+imports come from site-packages and optional packages are absent, then calls
+an offline portfolio tool through MCP. It expects 38 core tools and no research
+or backtesting tools.
+
+The source-archive job builds and extracts an sdist outside the checkout, installs
+it without editable imports, collects the shipped eval tests, checks documentation
+without Git metadata, and rebuilds the packages offline. Archive tests verify
+required source assets and exclude local secrets, databases, caches, pointer
+files, and generated eval runs/results. They also inject private files into the
+extracted tree and confirm that rebuilding still excludes them.
+
+`tests/structure/test_sdist.py` needs built artifacts supplied through
+`MAVERICK_SDIST` and `MAVERICK_WHEEL`; without those paths, artifact checks skip.
+The CI workflow contains the complete reproducible commands. A passing ordinary
+unit run alone does not establish these package-installation checks.
 
 ## Timeouts And Durations
 

@@ -20,7 +20,7 @@ This is educational tooling only. It is not investment, tax, or trading advice.
 ## MCP Surfaces
 
 `maverick/portfolio/tools.py` (positions/risk/watchlist) and
-`tools_journal.py` (trade journal) register 20 `portfolio_*` tools total,
+`tools_journal.py` (trade journal) register 21 `portfolio_*` tools total,
 including:
 
 - `portfolio_add_position`
@@ -135,3 +135,71 @@ total cost to 4, half-up, the same scales the columns declare. SQLite and
 Postgres therefore both store exactly what the ledger computed. SQLite stores
 floats, so its exactness holds up to 15 significant digits: shares below
 10,000,000 and costs below 100,000,000,000.
+
+## Concurrent position changes
+
+Adding shares, removing shares, and clearing a portfolio each run in a single
+serialized transaction. SQLite reserves its database write lock before reading
+positions. PostgreSQL locks the parent portfolio row. Service instances and
+processes using the same database therefore preserve acknowledged changes.
+The sector lookup happens before the transaction, so a network request does
+not hold a database lock. Failed transactions roll back.
+
+Reading a missing portfolio does not create a portfolio row. A cancelled call
+can still commit if its database worker has already started. Read the current
+holdings before retrying a cancelled mutation because its outcome may be
+unknown to the caller.
+
+## Trade journal validation and precision
+
+Journal sides accept `long` or `short`, without regard to letter case. Entry
+prices, exit prices, and share quantities must be finite and greater than zero.
+Invalid service calls raise `ValueError`; MCP tools return an error without
+changing the trade. A closed trade cannot be closed again.
+
+Unit prices keep sub-cent precision within the existing Float storage limits.
+The service calculates profit or loss with `Decimal` and rounds the final
+amount to cents using half-up rounding. For example, 10,000 long shares entered
+at $0.0041 and closed at $0.0051 produce $10.00 of profit. Existing journal rows
+and column types are not rewritten.
+
+Exit dates cannot precede entry dates. Date-only and naive timestamps mean UTC,
+and explicit offsets are converted to UTC before storage. Historical SQLite
+rows without timezone information are interpreted as UTC because their original
+offsets cannot be recovered.
+
+
+## ATR position sizing and correlation
+
+The ATR sizing tool uses a cash-risk budget of `account × 1% × risk_level/100`.
+It divides that budget by the returned entry-to-stop distance, rounds down to
+whole shares, and caps the position at available account cash. Position value
+is shares times entry price; `max_risk_amount` is shares times stop distance.
+Reward/risk is the target-to-entry distance divided by the entry-to-stop distance.
+These calculations use Decimal until response serialization.
+
+For an account of 100,000, price of 100, ATR of 2, and risk level 50, the tool
+returns a stop of 97, target of 103, 166 shares, position value of 16,600,
+maximum price-distance risk of 498, and reward/risk of 1.0. Doubling ATR halves
+the whole-share limit to 83. Risk level zero sizes zero shares. Invalid or
+nonpositive prices, ATR, account values, or stops return an error.
+
+`confidence_score` is null, with an explanation that this is a sizing heuristic,
+not a calibrated probability. It does not estimate execution gaps or slippage.
+Unit prices retain sub-cent precision; cash amounts are displayed to cents.
+
+Correlation excludes matrix diagonals by position, so a correlation of exactly
+1.0 between two distinct symbols remains in the average. Constant prices or
+other undefined correlations produce an error instead of a diversification score.
+
+
+## Watchlist discovery
+
+`portfolio_watchlist_list` is read-only and returns `watchlists`, ordered by
+creation ID, with each list's ID, name, and description, plus the total count. It performs
+no quote lookup. Use an existing ID for additions, removals, and briefings.
+An empty database returns an empty list.
+
+`portfolio_watchlist_brief` returns success with no items for an existing empty
+watchlist. An unknown ID returns an error before fetching quotes, so a client
+can distinguish a missing list from an empty one.

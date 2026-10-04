@@ -40,6 +40,18 @@ async def _ensure_watchlist_schema(engine: Engine) -> None:
     await asyncio.to_thread(ensure_schema, engine, watchlist.METADATA)
 
 
+async def list_watchlists(
+    engine: Engine, session_factory: sessionmaker[Session]
+) -> list[WatchlistPayload]:
+    await _ensure_watchlist_schema(engine)
+
+    def _read() -> list[WatchlistPayload]:
+        with read_only_session_scope(session_factory) as session:
+            return watchlist.list_watchlists(session)
+
+    return await asyncio.to_thread(_read)
+
+
 async def create_watchlist(
     engine: Engine,
     session_factory: sessionmaker[Session],
@@ -135,6 +147,8 @@ async def brief(
 
     def _read() -> list[WatchlistItemPayload]:
         with read_only_session_scope(session_factory) as session:
+            if not watchlist.watchlist_exists(session, watchlist_id):
+                raise ValueError(f"Watchlist {watchlist_id} not found")
             return watchlist.read_items(session, watchlist_id)
 
     items = await asyncio.to_thread(_read)
@@ -153,3 +167,40 @@ async def brief(
     return WatchlistBrief(
         watchlist_id=watchlist_id, count=len(brief_items), items=brief_items
     )
+
+
+class WatchlistServiceMixin:
+    """Public watchlist delegates, shared with PortfolioService to respect its line cap."""
+
+    _engine: Engine
+    _session_factory: sessionmaker[Session]
+    _market_data: MarketDataService
+
+    async def list_watchlists(self) -> list[WatchlistPayload]:
+        return await list_watchlists(self._engine, self._session_factory)
+
+    async def create_watchlist(
+        self, name: str, description: str | None = None
+    ) -> WatchlistPayload:
+        return await create_watchlist(
+            self._engine, self._session_factory, name, description
+        )
+
+    async def add_watchlist_item(
+        self, watchlist_id: int, symbol: str, notes: str | None = None
+    ) -> WatchlistItemPayload:
+        return await add_item(
+            self._engine, self._session_factory, watchlist_id, symbol, notes
+        )
+
+    async def remove_watchlist_item(
+        self, watchlist_id: int, symbol: str
+    ) -> WatchlistRemoveResult:
+        return await remove_item(
+            self._engine, self._session_factory, watchlist_id, symbol
+        )
+
+    async def watchlist_brief(self, watchlist_id: int) -> WatchlistBrief:
+        return await brief(
+            self._engine, self._session_factory, self._market_data, watchlist_id
+        )

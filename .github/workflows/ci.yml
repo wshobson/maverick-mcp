@@ -102,3 +102,58 @@ jobs:
             -m "not integration and not slow and not external" \
             --maxfail=5 \
             --timeout=60
+
+
+  core-wheel:
+    name: Installed core wheel (no extras)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Build and install the core wheel outside the checkout
+        run: |
+          uv build --wheel --out-dir "$RUNNER_TEMP/core-artifacts"
+          uv venv --python 3.12 "$RUNNER_TEMP/core-wheel-venv"
+          uv pip install --python "$RUNNER_TEMP/core-wheel-venv/bin/python" "$RUNNER_TEMP/core-artifacts/"*.whl
+          cp tests/structure/test_package.py "$RUNNER_TEMP/core-wheel-smoke.py"
+      - name: Verify installed imports, absent optional packages/tools, and offline core call
+        run: |
+          cd "$RUNNER_TEMP"
+          env -u PYTHONPATH "$RUNNER_TEMP/core-wheel-venv/bin/python" -I "$RUNNER_TEMP/core-wheel-smoke.py"
+
+  extracted-sdist:
+    name: Extracted source archive
+    runs-on: ubuntu-latest
+    env:
+      UV_NO_EDITABLE: "1"
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Build and extract archives outside the checkout
+        run: |
+          uv build --out-dir "$RUNNER_TEMP/source-artifacts"
+          mkdir "$RUNNER_TEMP/extracted-source"
+          tar -xzf "$RUNNER_TEMP/source-artifacts/"*.tar.gz -C "$RUNNER_TEMP/extracted-source"
+      - name: Validate shipped tests, docs, build assets, and private-file exclusions
+        run: |
+          unset PYTHONPATH
+          source_roots=("$RUNNER_TEMP/extracted-source/"*)
+          cd "${source_roots[0]}"
+          uv sync --extra dev --frozen --no-editable
+          uv run --no-sync python -m pytest tests/evals --collect-only
+          make docs-check
+          MAVERICK_SDIST="$RUNNER_TEMP/source-artifacts/$(basename "$RUNNER_TEMP/source-artifacts/"*.tar.gz)"
+          MAVERICK_WHEEL="$RUNNER_TEMP/source-artifacts/$(basename "$RUNNER_TEMP/source-artifacts/"*.whl)"
+          export MAVERICK_SDIST MAVERICK_WHEEL
+          uv run --no-sync pytest tests/structure/test_sdist.py tests/structure/test_docs_catalog.py
+          uv build --offline --out-dir "$RUNNER_TEMP/rebuilt-source-artifacts"

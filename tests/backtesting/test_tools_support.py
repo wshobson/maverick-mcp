@@ -1,9 +1,18 @@
 """Tests for `maverick.backtesting.tools_support`. No `importorskip`: like `tools.py`, this
 module never imports vectorbt/sklearn."""
 
-import pandas as pd
+import json
+from typing import Any
 
-from maverick.backtesting.tools_support import MAX_SERIES_POINTS, downsample_series
+import pandas as pd
+import pytest
+from pydantic import BaseModel
+
+from maverick.backtesting.tools_support import (
+    MAX_SERIES_POINTS,
+    downsample_series,
+    success_payload,
+)
 
 
 def _daily_series(n: int) -> dict[str, float]:
@@ -51,3 +60,61 @@ def test_downsample_series_just_over_the_cap():
     assert len(result) == MAX_SERIES_POINTS
     assert list(result)[0] == keys[0]
     assert list(result)[-1] == keys[-1]
+
+
+class LargeTradeFixture(BaseModel):
+    individual_results: list[dict[str, Any]]
+
+
+@pytest.mark.parametrize("ensemble_shape", [True, False])
+def test_nested_mcp_trade_output_is_bounded_without_mutating_models(ensemble_shape):
+    results = []
+    for symbol in ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN"]:
+        member = {
+            "symbol": symbol,
+            "metrics": {"total_trades": 200},
+            "trades": [
+                {
+                    "entry_date": f"trade-{i}",
+                    "exit_date": f"exit-{i}",
+                    "entry_price": 100.0,
+                    "exit_price": 110.0,
+                    "size": 1.0,
+                    "pnl": 10.0,
+                    "return": 0.1,
+                    "duration": "3 days 00:00:00",
+                }
+                for i in range(200)
+            ],
+            "equity_curve": _daily_series(1304),
+            "drawdown_series": _daily_series(1304),
+        }
+        results.append(
+            {"symbol": symbol, "results": member} if ensemble_shape else member
+        )
+    source = LargeTradeFixture(individual_results=results)
+    snapshot = source.model_dump()
+    payload = success_payload(source)
+    assert payload["status"] == "success"
+    for item in payload["individual_results"]:
+        member = item["results"] if ensemble_shape else item
+        assert len(member["trades"]) == 20
+        assert member["trades_total"] == 200
+        assert member["trades_returned"] == 20
+        assert member["trades_truncated"] is True
+        assert member["metrics"]["total_trades"] == 200
+        assert len(member["equity_curve"]) == 60
+        assert len(member["drawdown_series"]) == 60
+        assert member["trades"][0]["entry_date"] == "trade-0"
+    serialized = json.dumps(payload, allow_nan=False)
+    assert len(serialized.encode()) < 80_000
+    assert source.model_dump() == snapshot
+
+
+@pytest.mark.parametrize("count", [0, 19, 20, 21])
+def test_trade_truncation_metadata_distinguishes_complete_lists(count):
+    source = LargeTradeFixture(individual_results=[{"trades": [{"pnl": 1}] * count}])
+    item = success_payload(source)["individual_results"][0]
+    assert item["trades_total"] == count
+    assert item["trades_returned"] == min(count, 20)
+    assert item["trades_truncated"] is (count > 20)

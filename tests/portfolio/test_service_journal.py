@@ -68,7 +68,7 @@ async def test_add_trade_records_a_past_entry_date(tmp_path):
     assert entry.entry_date.startswith("2026-03-15")
 
 
-async def test_add_trade_quantizes_entry_price_to_cents(tmp_path):
+async def test_add_trade_preserves_entry_price_precision(tmp_path):
     service = _service(tmp_path)
 
     entry = await service.add_trade(
@@ -78,7 +78,7 @@ async def test_add_trade_quantizes_entry_price_to_cents(tmp_path):
         shares=Decimal("1"),
     )
 
-    assert entry.entry_price == 150.01  # ROUND_HALF_UP
+    assert entry.entry_price == 150.005
 
 
 async def test_close_trade_long_computes_pnl(tmp_path):
@@ -128,10 +128,12 @@ async def test_close_trade_already_closed_raises(tmp_path):
     entry = await service.add_trade(
         symbol="AAPL", side="long", entry_price=Decimal("100"), shares=Decimal("1")
     )
-    await service.close_trade(entry.id, exit_price=Decimal("110"))
+    closed = await service.close_trade(entry.id, exit_price=Decimal("110"))
 
     with pytest.raises(ValueError, match="already closed"):
         await service.close_trade(entry.id, exit_price=Decimal("120"))
+
+    assert await service.get_trade(entry.id) == closed
 
 
 async def test_close_trade_appends_notes_when_provided(tmp_path):
@@ -537,3 +539,127 @@ async def test_journal_operations_carry_over_against_a_preexisting_legacy_databa
 
     ranked = await service.compare_strategies()
     assert [r.strategy_tag for r in ranked] == ["momentum"]
+
+
+@pytest.mark.parametrize(
+    "entry_price,exit_price", [("0.004", "0.005"), ("0.0041", "0.0051")]
+)
+@pytest.mark.parametrize("side", ["long", "short"])
+async def test_subcent_trade_preserves_ten_dollar_profit(
+    tmp_path, entry_price, exit_price, side
+):
+    service = _service(tmp_path)
+    if side == "short":
+        entry_price, exit_price = exit_price, entry_price
+    entry = await service.add_trade(
+        symbol="PENNY",
+        side=side,
+        entry_price=Decimal(entry_price),
+        shares=Decimal("10000"),
+        tags=["subcent"],
+    )
+    closed = await service.close_trade(entry.id, exit_price=Decimal(exit_price))
+
+    assert Decimal(str(closed.pnl)) == Decimal("10.00")
+    stored = await service.get_trade(entry.id)
+    assert stored is not None
+    assert Decimal(str(stored.entry_price)) == Decimal(entry_price)
+    assert Decimal(str(stored.exit_price)) == Decimal(exit_price)
+    performance = await service.get_strategy_performance("subcent")
+    assert performance is not None
+    assert performance.total_pnl == 10.0
+    assert performance.avg_win == 10.0
+    assert performance.win_count == 1
+
+
+@pytest.mark.parametrize("side", ["", "buy", "sell", "other", " long "])
+async def test_add_trade_rejects_invalid_side_without_writing(tmp_path, side):
+    service = _service(tmp_path)
+    before = await service.list_trades()
+    with pytest.raises(ValueError, match="side"):
+        await service.add_trade("AAPL", side, Decimal("100"), Decimal("1"))
+    assert await service.list_trades() == before
+
+
+@pytest.mark.parametrize("field", ["entry_price", "shares"])
+@pytest.mark.parametrize("value", ["0", "-1", "NaN", "sNaN", "Infinity", "-Infinity"])
+async def test_add_trade_rejects_invalid_numbers_without_writing(
+    tmp_path, field, value
+):
+    service = _service(tmp_path)
+    before = await service.list_trades()
+    numbers = {"entry_price": Decimal("100"), "shares": Decimal("1")}
+    numbers[field] = Decimal(value)
+    with pytest.raises(ValueError, match=field):
+        await service.add_trade(
+            "AAPL", "long", numbers["entry_price"], numbers["shares"]
+        )
+    assert await service.list_trades() == before
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "NaN", "sNaN", "Infinity", "-Infinity"])
+async def test_close_trade_rejects_invalid_price_without_mutation(tmp_path, value):
+    service = _service(tmp_path)
+    entry = await service.add_trade(
+        "AAPL", "long", Decimal("100"), Decimal("1"), tags=["valid"]
+    )
+    with pytest.raises(ValueError, match="exit_price"):
+        await service.close_trade(entry.id, Decimal(value), notes="must not persist")
+    assert await service.get_trade(entry.id) == entry
+    assert len(await service.list_trades()) == 1
+    assert await service.get_strategy_performance("valid") is None
+
+
+@pytest.mark.parametrize(
+    "entry_date,exit_date",
+    [
+        ("2026-03-15", "2026-03-14"),
+        ("2026-03-15T14:30:00Z", "2026-03-15T14:29:59Z"),
+        ("2026-03-15T14:30:00+02:00", "2026-03-15T12:29:59Z"),
+    ],
+)
+async def test_close_trade_rejects_exit_before_entry_without_mutation(
+    tmp_path, entry_date, exit_date
+):
+    service = _service(tmp_path)
+    entry = await service.add_trade(
+        "AAPL", "long", Decimal("100"), Decimal("1"), entry_date=entry_date
+    )
+    with pytest.raises(ValueError, match="exit_date"):
+        await service.close_trade(entry.id, Decimal("110"), exit_date=exit_date)
+    assert await service.get_trade(entry.id) == entry
+
+
+async def test_close_trade_compares_dates_as_utc_instants(tmp_path):
+    service = _service(tmp_path)
+    entry = await service.add_trade(
+        "AAPL",
+        "long",
+        Decimal("100"),
+        Decimal("1"),
+        entry_date="2026-03-15T14:30:00+02:00",
+    )
+    closed = await service.close_trade(
+        entry.id, Decimal("110"), exit_date="2026-03-15T12:30:00Z"
+    )
+    assert closed.status == "closed"
+
+
+@pytest.mark.parametrize(
+    "side,exit_price,expected",
+    [
+        ("long", "1.005", "0.01"),
+        ("short", "0.995", "0.01"),
+        ("long", "0.995", "-0.01"),
+        ("short", "1.005", "-0.01"),
+    ],
+)
+async def test_fractional_shares_round_pnl_only_after_multiplication(
+    tmp_path, side, exit_price, expected
+):
+    service = _service(tmp_path)
+    entry = await service.add_trade("AAPL", side, Decimal("1"), Decimal("1.5"))
+    closed = await service.close_trade(entry.id, Decimal(exit_price))
+    assert closed.shares == 1.5
+    assert Decimal(str(closed.pnl)) == Decimal(expected)
+    assert Decimal(str(closed.exit_price)) == Decimal(exit_price)

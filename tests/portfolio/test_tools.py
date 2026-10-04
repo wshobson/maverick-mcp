@@ -1,5 +1,6 @@
 """Tests for maverick.portfolio.tools."""
 
+import json
 from decimal import Decimal
 from typing import Any
 
@@ -105,7 +106,7 @@ def _risk_result() -> RiskAnalysis:
         stop_loss={"stop_loss": 170.0},
         entry_strategy={"immediate_entry": 175.50},
         targets={"price_target": 190.0},
-        analysis={"confidence_score": 35.0},
+        analysis={"confidence_score": None},
         existing_position=None,
     )
 
@@ -1245,7 +1246,7 @@ async def test_get_strategy_performance_service_exception_returns_error_payload(
 
 
 # ---------------------------------------------------------------------------
-# register: twenty tools + resource, honest annotations
+# register: twenty-one tools + resource, honest annotations
 # ---------------------------------------------------------------------------
 
 
@@ -1265,6 +1266,7 @@ _EXPECTED_TOOL_NAMES = {
     "portfolio_watchlist_add",
     "portfolio_watchlist_remove",
     "portfolio_watchlist_brief",
+    "portfolio_watchlist_list",
     "portfolio_journal_add_trade",
     "portfolio_journal_close_trade",
     "portfolio_journal_list_trades",
@@ -1282,13 +1284,14 @@ _READ_ONLY_NAMES = {
     "portfolio_get_regime_adjusted_sizing",
     "portfolio_get_risk_alerts",
     "portfolio_watchlist_brief",
+    "portfolio_watchlist_list",
     "portfolio_journal_list_trades",
     "portfolio_journal_review",
     "portfolio_get_strategy_performance",
 }
 
 
-async def test_register_attaches_twenty_tools(stub_service):
+async def test_register_attaches_twenty_one_tools(stub_service):
     mcp = FastMCP("test")
     tools.register(mcp)
 
@@ -1504,3 +1507,114 @@ def test_journal_add_trade_keeps_its_old_positional_order() -> None:
         "notes",
     ]
     assert names[-1] == "entry_date"
+
+
+@pytest.fixture
+def real_journal_service(tmp_path, stub_service):
+    from maverick.platform.config import DatabaseSettings
+    from maverick.platform.db import create_engine_from_settings
+    from maverick.portfolio.service_journal import JournalService
+
+    engine = create_engine_from_settings(
+        DatabaseSettings(url=f"sqlite:///{tmp_path}/journal.db")
+    )
+    service = JournalService(engine)
+    tools.configure(stub_service, service)
+    yield service
+    engine.dispose()
+
+
+async def test_journal_tools_preserve_subcent_prices_and_profit(real_journal_service):
+    opened = await tools.portfolio_journal_add_trade("PENNY", "LONG", 0.0041, 10000)
+    assert opened["status"] == "success"
+    assert opened["entry_price"] == 0.0041
+    closed = await tools.portfolio_journal_close_trade(opened["id"], 0.0051)
+    assert closed["status"] == "success"
+    assert closed["exit_price"] == 0.0051
+    assert closed["pnl"] == 10.0
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("side", "buy"),
+        ("entry_price", 0.0),
+        ("entry_price", float("nan")),
+        ("shares", -1.0),
+        ("shares", float("inf")),
+    ],
+)
+async def test_journal_add_tool_invalid_inputs_return_errors_without_writes(
+    real_journal_service, field, value
+):
+    inputs: dict[str, Any] = {
+        "symbol": "AAPL",
+        "side": "long",
+        "entry_price": 100.0,
+        "shares": 1.0,
+    }
+    inputs[field] = value
+    result = await tools.portfolio_journal_add_trade(**inputs)
+    assert result["status"] == "error"
+    assert field in result["error"]
+    assert await real_journal_service.list_trades() == []
+
+
+@pytest.mark.parametrize("exit_price", [0.0, -1.0, float("nan"), float("inf")])
+async def test_journal_close_tool_invalid_prices_leave_trade_open(
+    real_journal_service, exit_price
+):
+    entry = await real_journal_service.add_trade(
+        "AAPL", "long", Decimal("100"), Decimal("1")
+    )
+    result = await tools.portfolio_journal_close_trade(entry.id, exit_price)
+    assert result["status"] == "error"
+    assert "exit_price" in result["error"]
+    assert await real_journal_service.get_trade(entry.id) == entry
+
+
+async def test_watchlist_list_reads_real_service_ids_without_market_calls(tmp_path):
+    from tests.portfolio.test_service import StubMarketData, _service
+
+    market_data = StubMarketData()
+    service = _service(tmp_path, market_data)
+    tools.configure(service)
+    assert await tools.portfolio_watchlist_list() == {
+        "status": "success",
+        "count": 0,
+        "watchlists": [],
+    }
+    first = await service.create_watchlist("Zeta", "First")
+    second = await service.create_watchlist("Alpha")
+    mcp = FastMCP("watchlists")
+    tools.register(mcp)
+    async with Client(mcp) as client:
+        response = await client.call_tool("portfolio_watchlist_list", {})
+    payload = response.data
+    assert payload == {
+        "status": "success",
+        "count": 2,
+        "watchlists": [first.model_dump(), second.model_dump()],
+    }
+    assert await service.list_watchlists() == [first, second]
+    assert market_data.quote_calls == []
+    json.dumps(payload, allow_nan=False)
+    tool = await mcp.get_tool("portfolio_watchlist_list")
+    assert tool is not None and tool.annotations is not None
+    assert tool.annotations.read_only_hint is True
+
+
+async def test_watchlist_brief_unknown_id_errors_before_market_calls(tmp_path):
+    from tests.portfolio.test_service import StubMarketData, _service
+
+    market_data = StubMarketData()
+    service = _service(tmp_path, market_data)
+    tools.configure(service)
+    mcp = FastMCP("watchlists")
+    tools.register(mcp)
+    async with Client(mcp) as client:
+        response = await client.call_tool(
+            "portfolio_watchlist_brief", {"watchlist_id": 99999}
+        )
+    assert response.data == {"status": "error", "error": "Watchlist 99999 not found"}
+    assert market_data.quote_calls == []

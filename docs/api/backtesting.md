@@ -20,7 +20,7 @@ below.
 ### Key Features
 
 - **20 strategies total**: 12 rule-based templates (`STRATEGY_TEMPLATES`)
-  plus 8 ML strategy classes -- not "23" or "35+", which were stale claims
+  plus eight ML classes -- not "23" or "35+", which were stale claims
   from the legacy documentation.
 - **Strategy Optimization**: Grid search with coarse/medium/fine granularity
   (5 of the 12 strategies support optimization: `sma_cross`, `rsi`, `macd`,
@@ -126,6 +126,7 @@ Run a single-strategy backtest and return metrics, trades, and analysis.
     "max_drawdown": -0.08,
     "win_rate": 0.58,
     "profit_factor": 1.45,
+    "profit_factor_status": "finite",
     "expectancy": 152.4,
     "total_trades": 24,
     "winning_trades": 14,
@@ -148,7 +149,7 @@ Run a single-strategy backtest and return metrics, trades, and analysis.
       "size": 66.0,
       "pnl": 561.0,
       "return": 0.057,
-      "duration": ""
+      "duration": "26 days 00:00:00"
     }
   ],
   "equity_curve": {"2023-01-03 00:00:00": 10000.0, "2023-01-04 00:00:00": 10012.5},
@@ -191,8 +192,9 @@ Run a single-strategy backtest and return metrics, trades, and analysis.
 
 `avg_win`, `avg_loss`, `best_trade`, `worst_trade`, and `expectancy` are
 per-trade P&L in account currency, not returns. Each trade's `duration` is
-an empty string: vectorbt's trade records have no `Duration` column, so the
-engine has nothing to copy (`avg_duration` is still computed). With no
+elapsed calendar time between entry and exit timestamps. Open trades end at
+the last observed bar. `avg_duration` and `avg_duration_days` are calendar days,
+including fractional days. With no
 trades, `trade_quality` reports `"quality": "No trades"`,
 `"frequency": "None"`, and `null` for the per-trade fields. `equity_curve`
 and `drawdown_series` hold at most 60 points (see
@@ -223,6 +225,7 @@ faithfully-preserved legacy limitation (`generate_param_grid` raises
   "optimization_metric": "sharpe_ratio",
   "best_parameters": {"fast_period": 8, "slow_period": 21},
   "best_metric_value": 1.85,
+  "best_metric_status": null,
   "top_results": [
     {
       "parameters": {"fast_period": 8, "slow_period": 21},
@@ -344,6 +347,7 @@ every strategy ran):
       "max_drawdown": 0.07,
       "win_rate": 0.6,
       "profit_factor": 1.6,
+      "profit_factor_status": "finite",
       "total_trades": 20,
       "grade": "A",
       "rank": 1
@@ -511,7 +515,7 @@ vectorbt-expression string, but their runtime signal generation
 (`strategies/signals.py`) is real, self-contained pandas/numpy logic -- not
 a stub and not a delegation to the ML strategy classes below.
 
-### ML strategy classes (8 total)
+### ML classes (8 total)
 
 Six of these back the ML-enhanced tools below, not `backtesting_run_backtest`
 directly. `OnlineLearningStrategy` and `HybridAdaptiveStrategy` are ported
@@ -561,9 +565,10 @@ Run a backtest using an ML-enhanced strategy.
     "max_drawdown": -0.09,
     "win_rate": 0.62,
     "total_trades": 30,
-    "profit_factor": 1.7
+    "profit_factor": 1.7,
+    "profit_factor_status": "finite"
   },
-  "trades": [{"entry_date": "2023-02-01 00:00:00", "exit_date": "2023-02-20 00:00:00", "entry_price": 150.0, "exit_price": 156.0, "size": 20.0, "pnl": 120.0, "return": 0.04, "duration": ""}],
+  "trades": [{"entry_date": "2023-02-01 00:00:00", "exit_date": "2023-02-20 00:00:00", "entry_price": 150.0, "exit_price": 156.0, "size": 20.0, "pnl": 120.0, "return": 0.04, "duration": "19 days 00:00:00"}],
   "equity_curve": {"2023-01-03 00:00:00": 10000.0},
   "drawdown_series": {"2023-01-03 00:00:00": 0.0},
   "ml_metrics": {
@@ -667,8 +672,8 @@ fabricated uniform distribution.
 
 Create and backtest a weighted ensemble of base strategies across multiple
 symbols. Runs sequentially by design: `StrategyEnsemble` shares one mutable
-instance across symbols (weights mutate per call), so concurrency would
-make results order-dependent.
+instance across symbols. It resets weights between calls; concurrent access
+to that mutable instance would be unsafe.
 
 Each entry in `base_strategies` must be a valid name from the strategy
 catalog (`backtesting_list_strategies`) -- for example `"sma_cross"`,
@@ -680,9 +685,16 @@ addressable per requested strategy rather than collapsing onto one shared
 key. An unknown name raises a clear error rather than being silently
 dropped.
 
-Only the first five `symbols` are backtested. A symbol with fewer than 100
-bars in the range, or whose backtest fails, is skipped, and the call errors
-only when no symbol succeeds.
+Only the first five requested `symbols` are eligible for backtesting. A failed
+history fetch or fewer than 100 bars skips that symbol; a later symbol does not
+fill its slot. Successful partial results include `skipped_symbols`, each with
+a symbol and one of `fetch_failed`, `insufficient_history`, or `symbol_limit`.
+Every requested symbol after the first five receives `symbol_limit`.
+
+When no symbol succeeds, the error names all omissions and reasons. An unexpected
+strategy-computation error fails the whole request and names the failing symbol;
+partial successes are not returned in that case. It is not mislabeled as a
+history-fetch failure.
 
 **Tool name**: `backtesting_create_strategy_ensemble` (readOnlyHint: true)
 
@@ -715,6 +727,7 @@ only when no symbol succeeds.
   ],
   "final_strategy_weights": {"SMA Crossover": 0.42, "RSI Mean Reversion": 0.28, "MACD Signal": 0.30},
   "strategy_performance_analysis": {"...": "..."},
+  "skipped_symbols": [{"symbol": "SIXTH", "reason": "symbol_limit"}],
   "status": "success"
 }
 ```
@@ -808,3 +821,71 @@ asyncio.run(main())
 1. Use `backtesting_monte_carlo_simulation` to understand the distribution of outcomes, not just the point estimate.
 2. Use `backtesting_backtest_portfolio` to see how one strategy holds up across symbols (each symbol runs on its own; it does not model diversification).
 3. Watch `max_drawdown` and `sortino_ratio` in the `analysis.risk_assessment` block, not just `total_return`.
+
+## Ensemble weight timing
+
+Ensemble weights use lagged strategy returns strictly before each rebalance
+boundary, over the configured lookback. Each set of weights applies from that
+boundary to the bar before the next boundary. Weights stay equal when history
+is insufficient, and each run starts with fresh state.
+
+The return proxy uses the previous bar's entry or exit signal and the current
+bar's price return. It is not a simulation of held-position profit and loss.
+Later prices do not revise earlier ensemble weights or signals when the
+component strategies themselves use only information available at each bar.
+
+## Feature warm-up
+
+Machine learning features use earlier observations to fill missing values, then
+use zero when no earlier value is available. RSI features wait for their full
+warm-up period before exposing a value or threshold flag. Stochastic features
+handle a zero price range at that row, so a later flat period cannot change
+earlier features. The separate technical-indicator compatibility formulas stay
+unchanged. Prediction uses the scaler fitted on training data.
+
+
+## Metric conventions
+
+Annual return, Sharpe, Sortino, and Calmar use 252 trading sessions per year in
+both ordinary backtests and grid optimization. This is a session convention,
+not an exchange-calendar count. The engine does not change global vectorbt settings.
+
+Profit factor divides positive trade P&L by the absolute value of negative trade
+P&L. The existing vectorbt all-trades set includes open trades marked to market
+at the last observed bar. Full, simplified, and comparison results include
+`profit_factor_status` alongside the nullable `profit_factor` value.
+
+| Status | Meaning | Numeric value |
+| --- | --- | --- |
+| `finite` | Losses exist. | Finite ratio, including zero for loss-only trades. |
+| `no_losses` | Positive profit exists without losses. | `null` |
+| `no_trades` | There are no trade records. | `null` |
+| `no_realized_pnl` | All recorded trade P&L is zero. | `null` |
+
+The last status is the API name for breakeven-only evidence; it does not restrict
+the trade set to closed trades. Undefined ratios are never serialized as infinity
+or substituted with zero. Profit-factor optimization ranks `no_losses` first,
+then finite ratios from highest to lowest, then no-trade and breakeven-only
+results tied last. A no-loss winner has `best_metric_value: null` and
+`best_metric_status: no_losses`; other optimization metrics have a null status.
+If every candidate fails, the best value is also null and the result reports
+zero valid combinations. Walk-forward analysis returns an error for such a
+training window before evaluating an out-of-sample period.
+
+
+## Trade records in tool responses
+
+Every `trades` list in a backtesting MCP response, including nested portfolio,
+ensemble, and machine-learning results, contains at most the first 20 records in
+its existing order. The containing object includes:
+
+| Field | Meaning |
+| --- | --- |
+| `trades_total` | Number of records in the full service result. |
+| `trades_returned` | Number included in this response, at most 20. |
+| `trades_truncated` | Whether records were omitted. |
+
+The existing equity/drawdown limit remains 60 points per series. Full service
+models, stored calculations, and aggregate metrics retain every trade and data
+point. Counts describe the transmitted list, including zero-trade cases; they
+do not change the metric definitions or make a partial list a full trade history.

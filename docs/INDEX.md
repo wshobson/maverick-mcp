@@ -35,12 +35,14 @@ rather than the whole knowledge base up front.
   drafts (Docker MCP Catalog, Smithery, Glama, PulseMCP, mcp.so).
 - `generated/release-notes/v1.1.0.md` - release notes for v1.1.0.
 
+- `references/readme-search-research.md` - DataForSEO evidence and README wording decisions.
+
 ## Designs, Plans, And Engineering State
 
 - `design-docs/2026-10-04-project-review.md` - full review, merged maintenance
   queue, reproduced correctness findings, and distribution gates.
-- `exec-plans/active/2026-10-04-correctness-and-reliability.md` - proposed
-  prioritized implementation plan with regression checks for the review findings.
+- `exec-plans/completed/2026-10-04-correctness-and-reliability.md` - completed
+  sixteen-task plan, verification record, and remaining product/release gates.
 
 - `design-docs/2026-07-18-mcp-modernization.md` - approved v1.0 modernization
   design and migration plan.

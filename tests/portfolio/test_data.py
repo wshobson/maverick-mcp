@@ -519,3 +519,12 @@ def test_delete_position_on_portfolio_with_no_positions_returns_false(factory):
 
     with session_scope(factory) as session:
         assert delete_position(session, portfolio_id, "AAPL") is False
+
+
+def test_first_portfolio_creation_rolls_back_with_outer_transaction(factory):
+    with pytest.raises(ValueError, match="abort"):
+        with session_scope(factory) as session:
+            get_or_create_portfolio(session, "default", "Rolled back")
+            raise ValueError("abort")
+    with session_scope(factory) as session:
+        assert session.execute(select(PF_PORTFOLIOS)).all() == []

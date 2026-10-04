@@ -1211,15 +1211,11 @@ async def test_watchlist_brief_empty_watchlist_returns_zero_count(tmp_path):
     assert brief.items == []
 
 
-async def test_watchlist_brief_unknown_watchlist_id_returns_zero_count(tmp_path):
-    """No existence check on `watchlist_id`, matching legacy: an unknown id
-    reads as an empty watchlist, not an error."""
+async def test_watchlist_brief_unknown_watchlist_id_raises_not_found(tmp_path):
     service = _service(tmp_path)
 
-    brief = await service.watchlist_brief(999999)
-
-    assert brief.count == 0
-    assert brief.items == []
+    with pytest.raises(ValueError, match="Watchlist 999999 not found"):
+        await service.watchlist_brief(999999)
 
 
 async def test_watchlist_operations_carry_over_against_a_preexisting_legacy_database(

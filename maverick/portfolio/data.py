@@ -15,7 +15,7 @@ ledger computed. Two conventions worth calling out:
   (12345.6789 reads back as 12345.678900000001).
 * `purchase_date` is an opaque ISO 8601 string on `PositionPayload` (see
   `ledger.py`), but the column is a real `DateTime(timezone=True)`. SQLite
-  (this project's only tested backend) drops tzinfo on read, so writes
+  drops tzinfo on read, so writes
   normalize to UTC first and reads reattach UTC tzinfo. That preserves the
   exact instant (`==` on aware datetimes is offset-independent) but not the
   original UTC offset's string form.
@@ -48,6 +48,8 @@ from sqlalchemy import (
     select,
     update,
 )
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -88,7 +90,7 @@ PF_POSITIONS = Table(
 )
 
 
-def _find_portfolio_id(session: Session, user_id: str, name: str) -> uuid.UUID | None:
+def find_portfolio_id(session: Session, user_id: str, name: str) -> uuid.UUID | None:
     return session.execute(
         select(PF_PORTFOLIOS.c.id).where(
             PF_PORTFOLIOS.c.user_id == user_id, PF_PORTFOLIOS.c.name == name
@@ -101,28 +103,51 @@ def get_or_create_portfolio(session: Session, user_id: str, name: str) -> uuid.U
 
     Idempotent: repeat calls with the same pair return the same id and never
     create a duplicate row (the unique constraint enforces this even under a
-    concurrent first-create race, mirroring `market_data.data.get_or_create_stock`).
+    concurrent first-create race). Native conflict handling keeps insertion in
+    the outer transaction, including on SQLite's legacy transaction driver.
     """
-    portfolio_id = _find_portfolio_id(session, user_id, name)
+    portfolio_id = find_portfolio_id(session, user_id, name)
     if portfolio_id is not None:
         return portfolio_id
 
-    try:
-        with session.begin_nested():
-            session.execute(insert(PF_PORTFOLIOS).values(user_id=user_id, name=name))
-            session.flush()
-    except IntegrityError:
-        portfolio_id = _find_portfolio_id(session, user_id, name)
-        if portfolio_id is None:
-            raise
-        return portfolio_id
+    dialect = session.get_bind().dialect.name
+    if dialect in {"sqlite", "postgresql"}:
+        insert_portfolio = sqlite_insert if dialect == "sqlite" else pg_insert
+        session.execute(
+            insert_portfolio(PF_PORTFOLIOS)
+            .values(user_id=user_id, name=name)
+            .on_conflict_do_nothing(index_elements=["user_id", "name"])
+        )
+    else:
+        try:
+            with session.begin_nested():
+                session.execute(
+                    insert(PF_PORTFOLIOS).values(user_id=user_id, name=name)
+                )
+        except IntegrityError:
+            if find_portfolio_id(session, user_id, name) is None:
+                raise
 
-    portfolio_id = _find_portfolio_id(session, user_id, name)
+    portfolio_id = find_portfolio_id(session, user_id, name)
     if portfolio_id is None:
         raise RuntimeError(
             f"Failed to create or find portfolio row for ({user_id!r}, {name!r})"
         )
     return portfolio_id
+
+
+def lock_portfolio(session: Session, user_id: str, name: str) -> uuid.UUID:
+    """Lock the parent row before any position reads until commit/rollback.
+
+    PostgreSQL serializes all position mutations with this row lock. SQLite
+    ignores FOR UPDATE and relies on session_scope(sqlite_immediate=True).
+    """
+    portfolio_id = get_or_create_portfolio(session, user_id, name)
+    return session.execute(
+        select(PF_PORTFOLIOS.c.id)
+        .where(PF_PORTFOLIOS.c.id == portfolio_id)
+        .with_for_update()
+    ).scalar_one()
 
 
 def _purchase_date_to_datetime(value: str) -> datetime:

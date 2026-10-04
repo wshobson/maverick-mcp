@@ -109,8 +109,8 @@ every domain in the import graph.
 
 ## MCP Surface
 
-- **37 core tools**: `market_data_*` (7), `screening_*` (6),
-  `portfolio_*` (20, including risk dashboard, watchlist, and journal),
+- **38 core tools**: `market_data_*` (7), `screening_*` (6),
+  `portfolio_*` (21, including risk dashboard, watchlist, and journal),
   `technical_*` (4).
 - **12 `backtesting_*` tools** (`[backtesting]` extra).
 - **3 `research_*` tools** (`[research]` extra).
@@ -139,6 +139,46 @@ returned to the client labeled as data, never blended into instructions.
 - Redis is optional (`REDIS_HOST` presence enables it). With Redis disabled
   the cache runs an in-memory tier, then SQLite; with Redis enabled there is
   no SQLite tier, and an unreachable Redis degrades to the memory tier alone.
+
+Redis-backed memory promotion preserves the remaining Redis expiry. Expired or
+missing keys are cache misses. Keys without an expiry may be served directly
+but are not promoted into memory with an invented lifetime.
+
+The composed resilient HTTP request counts an exhausted retryable status as a
+circuit-breaker failure. A failed probe reopens the breaker; a successful probe
+closes it. The lower-level retry helper still returns its final response, and
+non-retryable statuses remain available to callers for provider-specific errors.
+
+## Adjusted-history snapshots
+
+Price-history reads refresh the complete stored/requested date union when the
+snapshot is older than 24 hours, the requested coverage expands, or a current
+exchange-local market-date bar is provisional. Each refresh reserves a generation in
+a short database transaction before fetching. A complete provider response is
+upserted atomically only if that generation is still current. An older response
+cannot replace a newer reservation's snapshot. Incomplete or failed responses
+preserve the previous snapshot and freshness, and a later request can retry.
+
+Daily history selects the exchange calendar and timezone for `.L`, `.T`, `.TO`,
+`.AX`, `.HK`, and `.DE`. US symbols use NYSE sessions. Other exchange suffixes
+return an unsupported-calendar error before fetching or reserving a generation;
+quote and fundamentals lookups do not use this calendar restriction.
+
+SQLite and PostgreSQL use native conflict-safe inserts and updates. The data
+layer's `write_price_bars` count is the number of distinct supplied dates,
+including updates. Nullable `md_stocks.history_refreshed_at` and
+`history_generation` columns migrate additively; older rows refresh on access.
+See the [database runbook](docs/runbooks/database-setup.md#adjusted-history-freshness)
+for freshness and provider limits.
+
+## Observed price levels
+
+Technical support and resistance are an observed-range heuristic: the lowest
+low and highest high in the selected history. An explicit `days` value selects
+that calendar window through today; omitting it uses `sr_lookback` bars (30 by
+default). Both the level tool and full analysis return `method: observed_range`
+and `bars_analyzed`. Indicator warm-up history does not widen an explicit level
+window. Levels retain observed price precision and contain no percentage offsets.
 
 ## MCP Transports
 

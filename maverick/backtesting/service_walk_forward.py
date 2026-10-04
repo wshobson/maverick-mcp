@@ -68,6 +68,11 @@ class _WalkForwardMixin:
                     top_n=1,
                     settings=self._settings,
                 )
+                if opt_result.best_metric_value is None:
+                    raise ValueError(
+                        f"No valid optimization candidates for {symbol} "
+                        f"from {opt_start} to {opt_end}"
+                    )
                 best_params = opt_result.best_parameters
 
                 if test_start < test_end:

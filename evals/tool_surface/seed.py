@@ -35,12 +35,21 @@ from maverick.portfolio.service_journal import JournalService
 from maverick.screening import data as screening_data
 
 STATES = ("empty", "seeded", "edge")
+FIXTURE_VERSION = "synthetic-v2-2026-10-04"
+FIXTURE_BASIS = (
+    f"Synthetic fixture {FIXTURE_VERSION}: all prices and dates are test inputs, "
+    "not historical quotes or real transactions. Returns against live prices "
+    "are hypothetical."
+)
 
+# All financial values and dates below are synthetic; FIXTURE_BASIS applies to
+# every position and journal entry, including the closed trade's exit. The NVDA
+# values deliberately exercise sub-cent entry prices and Decimal aggregation.
 # ticker, shares, average cost, purchase date, sector
 POSITIONS = (
     ("AAPL", "50", "198.40", "2025-11-14", "Technology"),
     ("MSFT", "30", "412.10", "2025-12-03", "Technology"),
-    ("NVDA", "120", "131.75", "2025-10-21", "Technology"),
+    ("NVDA", "120", "180.005", "2025-10-21", "Technology"),
     ("JPM", "40", "244.60", "2026-02-10", "Financial Services"),
     ("XOM", "60", "112.30", "2026-03-18", "Energy"),
 )
@@ -52,12 +61,12 @@ TRADES = (
     ("AMD", "161.20", "40", "2026-09-02", "momentum", "Relative strength leader", None),
     (
         "NVDA",
-        "118.00",
+        "100.005",
         "50",
         "2026-06-15",
         "breakout",
         "Earnings gap hold",
-        ("131.40", "2026-08-20"),
+        ("101.015", "2026-08-20"),
     ),
 )
 # The screener's universe: registered in `md_stocks`, never priced here.
@@ -82,7 +91,13 @@ def _write_rows(engine: Engine) -> None:
         )
         for ticker, shares, cost, bought, sector in POSITIONS:
             position = add_shares(
-                None, ticker, Decimal(shares), Decimal(cost), bought, None, sector
+                None,
+                ticker,
+                Decimal(shares),
+                Decimal(cost),
+                bought,
+                FIXTURE_BASIS,
+                sector,
             )
             portfolio_data.upsert_position(session, portfolio_id, position)
         for symbol in SCREENING_SYMBOLS:
@@ -93,15 +108,23 @@ async def _write_services(engine: Engine) -> None:
     factory = sessionmaker(bind=engine)
     name, description, symbols = WATCHLIST
     created = await service_watchlist.create_watchlist(
-        engine, factory, name, description
+        engine, factory, name, f"{description}. {FIXTURE_BASIS}"
     )
     for symbol in symbols:
-        await service_watchlist.add_item(engine, factory, created.id, symbol, None)
+        await service_watchlist.add_item(
+            engine, factory, created.id, symbol, FIXTURE_BASIS
+        )
 
     journal_service = JournalService(engine)
     for symbol, price, shares, entered, tag, rationale, close in TRADES:
         trade = await journal_service.add_trade(
-            symbol, "long", Decimal(price), Decimal(shares), entered, rationale, [tag]
+            symbol,
+            "long",
+            Decimal(price),
+            Decimal(shares),
+            entered,
+            f"{rationale}. {FIXTURE_BASIS}",
+            [tag],
         )
         if close is not None:
             await journal_service.close_trade(trade.id, Decimal(close[0]), close[1])

@@ -31,7 +31,6 @@ Status labels:
 | `exec-plans/active/2026-07-20-phase-9-distribution.md` | current | engineering | Phase 9 execution plan (distribution and registry rollout). |
 | `exec-plans/active/2026-09-05-open-items-remediation.md` | current | engineering | Execution plan for the 2026-09 open-items remediation (25 tasks: triage, contributor fixes, deps, FastMCP 4, SearXNG, v1.1.0). |
 | `design-docs/2026-10-04-project-review.md` | current | engineering | Review evidence, maintenance outcomes, financial/runtime findings, and distribution gates. |
-| `exec-plans/active/2026-10-04-correctness-and-reliability.md` | current | engineering | Proposed correctness and reliability implementation plan; no roadmap fixes claimed complete. |
 | `exec-plans/tech-debt-tracker.md` | current | engineering | Known debt, one line each. |
 | `product-specs/index.md` | current | product | Product spec index; no specs written yet. |
 | `generated/README.md` | current | docs | Describes `generated/`: hand-written registry drafts and release notes. |
@@ -58,11 +57,14 @@ Status labels:
 | `testing/exa-research.md` | current | engineering | Exa/research provider test strategy. |
 | `references/llm-documentation-hygiene.md` | current | docs | Agent-legible documentation rules. |
 
+| `references/readme-search-research.md` | current | docs | DataForSEO evidence and README wording decisions from October 4, 2026. |
+
 ## Historical
 
 | Path | Status | Notes |
 | --- | --- | --- |
 | `superpowers/` | historical | Historical specs and plans. Current designs live under `design-docs/` and execution plans under `exec-plans/active/`. |
+| `exec-plans/completed/2026-10-04-correctness-and-reliability.md` | historical | Completed sixteen-task correctness plan, independent review, verification, and separate release/human-review gates. |
 | `exec-plans/completed/2026-07-18-phase-0-harness-and-cleanup.md` | historical | Phase 0 execution plan (harness scaffold and cleanup). |
 | `exec-plans/completed/2026-07-18-phase-1-platform-seam.md` | historical | Phase 1 execution plan (platform seam). |
 | `exec-plans/completed/2026-07-19-phase-2-market-data-domain.md` | historical | Phase 2 execution plan (market data domain). |

@@ -234,6 +234,7 @@ async def request_resilient(
     url: str,
     *,
     settings: HttpSettings | None = None,
+    retry_statuses: frozenset[int] | set[int] = _DEFAULT_RETRY_STATUSES,
     **kwargs: Any,
 ) -> httpx.Response:
     """Rate-limited, circuit-broken, retrying request for a named dependency.
@@ -243,20 +244,25 @@ async def request_resilient(
     shared per-`name` rate limiter, then runs `request_with_retry` through
     the per-`name` circuit breaker so a persistently failing dependency
     stops taking traffic (raising `CircuitOpenError`) instead of retrying
-    into it forever.
+    into it forever. Exhausted retryable error statuses raise inside the
+    breaker; other statuses remain available to provider-specific handling.
     """
     resolved_settings = settings or get_platform_settings().http
     await _get_rate_limiter(name, resolved_settings).acquire()
     breaker = get_breaker(name, resolved_settings)
 
     async def _attempt() -> httpx.Response:
-        return await request_with_retry(
+        response = await request_with_retry(
             client,
             method,
             url,
             retries=resolved_settings.retries,
             backoff_base=resolved_settings.backoff_base_seconds,
+            retry_statuses=retry_statuses,
             **kwargs,
         )
+        if response.status_code in retry_statuses:
+            response.raise_for_status()
+        return response
 
     return await breaker.call(_attempt)

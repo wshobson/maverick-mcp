@@ -201,7 +201,7 @@ def test_research_report_findings_tolerates_vector_cache_hit_shape():
 
 
 def test_research_report_citations_are_typed_source_citation_on_normal_path():
-    report = _make_report()
+    report = _make_report(citations=[_make_citation()])
     assert report.citations == [_make_citation()]
 
 
@@ -344,6 +344,7 @@ def test_comprehensive_research_result_round_trips_and_has_exact_fields():
     assert set(data) == {
         "success",
         "query",
+        "citations",
         "research_results",
         "research_metadata",
         "request_id",
@@ -422,7 +423,7 @@ def test_company_analysis_metadata_extends_research_metadata_and_pins_analysis_t
 
 
 def _make_company_result(**overrides) -> CompanyResearchResult:
-    fields = {
+    fields: dict[str, Any] = {
         "success": True,
         "symbol": "AAPL",
         "company_analysis": _make_company_analysis(),
@@ -440,6 +441,7 @@ def test_company_research_result_round_trips_and_has_exact_fields():
     assert set(data) == {
         "success",
         "symbol",
+        "citations",
         "company_analysis",
         "analysis_metadata",
         "request_id",
@@ -494,7 +496,7 @@ def test_sentiment_analysis_metadata_extends_research_metadata_and_pins_analysis
 
 
 def _make_sentiment_result(**overrides) -> SentimentAnalysisResult:
-    fields = {
+    fields: dict[str, Any] = {
         "success": True,
         "topic": "inflation",
         "sentiment_analysis": _make_sentiment_analysis(),
@@ -512,6 +514,7 @@ def test_sentiment_analysis_result_round_trips_and_has_exact_fields():
     assert set(data) == {
         "success",
         "topic",
+        "citations",
         "sentiment_analysis",
         "analysis_metadata",
         "request_id",

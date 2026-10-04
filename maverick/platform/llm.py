@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
-from maverick.platform.config import _clean_env, _env_float
+from maverick.platform.config import _clean_env
 
 if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
@@ -52,12 +52,19 @@ def _resolve_secret(name: str) -> SecretStr | None:
     return SecretStr(raw) if raw is not None else None
 
 
+def _resolve_temperature() -> float | None:
+    raw = _clean_env("LLM_TEMPERATURE")
+    return float(raw) if raw is not None else None
+
+
 class LLMSettings(BaseModel):
     """BYOK LLM provider settings.
 
     `provider=None` means no LLM is configured; callers should use
     `get_llm()` only after checking `get_llm_settings().provider` or
-    handling the not-configured error it raises.
+    handling the not-configured error it raises. An unset `temperature` omits
+    the numeric override from outgoing requests so the provider/model controls
+    its default.
     """
 
     provider: LLMProvider | None = Field(default_factory=_resolve_provider)
@@ -66,9 +73,7 @@ class LLMSettings(BaseModel):
     )
     base_url: str | None = Field(default_factory=lambda: _clean_env("LLM_BASE_URL"))
     model: str | None = Field(default_factory=lambda: _clean_env("LLM_MODEL"))
-    temperature: float = Field(
-        default_factory=lambda: _env_float("LLM_TEMPERATURE", 0.0)
-    )
+    temperature: float | None = Field(default_factory=_resolve_temperature)
 
     @model_validator(mode="after")
     def _validate_configured_provider(self) -> LLMSettings:
@@ -130,6 +135,11 @@ def get_llm() -> BaseChatModel:
     assert settings.api_key is not None
     assert settings.model is not None
 
+    temperature_kwargs = (
+        {"temperature": settings.temperature}
+        if settings.temperature is not None
+        else {}
+    )
     if settings.provider is LLMProvider.ANTHROPIC:
         try:
             from langchain_anthropic import ChatAnthropic
@@ -142,7 +152,7 @@ def get_llm() -> BaseChatModel:
             api_key=settings.api_key,
             model_name=settings.model,
             base_url=settings.base_url,
-            temperature=settings.temperature,
+            **temperature_kwargs,
         )
 
     # openai, openai_compatible, and openrouter all speak the OpenAI wire
@@ -154,9 +164,14 @@ def get_llm() -> BaseChatModel:
             f"langchain_openai is required for LLM_PROVIDER={settings.provider.value}. "
             "Install it with: uv sync --extra research"
         ) from exc
+    # Suppress SDK numeric defaults when unset. Forward explicit values through
+    # extra_body because the SDK can drop temperature during model validation
+    # or Responses serialization; the configured provider decides support.
+    extra_body_kwargs = {"extra_body": temperature_kwargs} if temperature_kwargs else {}
     return ChatOpenAI(
         api_key=settings.api_key,
         model=settings.model,
         base_url=settings.base_url,
         temperature=settings.temperature,
+        **extra_body_kwargs,
     )

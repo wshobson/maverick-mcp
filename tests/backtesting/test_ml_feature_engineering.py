@@ -64,7 +64,7 @@ class TestFeatureExtractor:
         assert features.shape[1] == 6
 
     def test_extract_all_features_nan_policy(self, ohlcv):
-        """`extract_all_features` ffill/bfill/zero-fills and clips +/-inf to 0."""
+        """`extract_all_features` forward-fills, zero-fills warmup, and clips +/-inf to 0."""
         features = FeatureExtractor().extract_all_features(ohlcv)
         assert len(features) == len(ohlcv)
         assert features.shape[1] == 9 + 28 + 32 + 6  # == 75
@@ -73,6 +73,72 @@ class TestFeatureExtractor:
 
     def test_extract_all_features_empty_input(self):
         assert FeatureExtractor().extract_all_features(pd.DataFrame()).empty
+
+    def test_feature_prefix_is_independent_of_future_bars(self, ohlcv):
+        data = ohlcv.copy()
+        data.loc[data.index[12], "close"] = np.nan
+        data.loc[data.index[12], "high"] = np.nan
+        data.loc[data.index[12], "low"] = np.nan
+        data.loc[data.index[20], "volume"] = 0
+
+        extractor = FeatureExtractor()
+        short = extractor.extract_all_features(data.iloc[:30])
+        extended = extractor.extract_all_features(data.iloc[:100])
+
+        pd.testing.assert_frame_equal(short, extended.iloc[:30])
+        assert short["sma_50_ratio"].iloc[0] == 0
+        assert extended["sma_50_ratio"].iloc[0] == 0
+        assert np.isfinite(short.to_numpy()).all()
+        pd.testing.assert_frame_equal(
+            short, extractor.extract_all_features(data.iloc[:30])
+        )
+
+    def test_short_prefixes_match_extended_rsi_warmup(self):
+        dates = pd.bdate_range("2024-01-01", periods=100)
+        close = pd.Series(np.arange(100.0, 200.0), index=dates)
+        data = pd.DataFrame(
+            {
+                "open": close,
+                "high": close + 1,
+                "low": close - 1,
+                "close": close,
+                "volume": 1000.0,
+            },
+            index=dates,
+        )
+        extractor = FeatureExtractor()
+        extended = extractor.extract_all_features(data)
+
+        for length in (1, 10, 13, 14, 30):
+            prefix = extractor.extract_all_features(data.iloc[:length])
+            pd.testing.assert_frame_equal(prefix, extended.iloc[:length])
+
+        assert (extended["rsi"].iloc[:13] == 0).all()
+        assert (extended["rsi_overbought"].iloc[:13] == 0).all()
+        assert (extended["rsi"].iloc[13:] == 100).all()
+        assert (extended["rsi_overbought"].iloc[13:] == 1).all()
+
+    def test_future_flat_prices_do_not_change_stochastic_prefix(self):
+        dates = pd.bdate_range("2024-01-01", periods=60)
+        prefix_close = np.linspace(1e-12, 3e-12, 30)
+        close_values = np.concatenate([prefix_close, np.full(30, 3e-12)])
+        high_values = np.concatenate([prefix_close * 1.01, np.full(30, 3e-12)])
+        low_values = np.concatenate([prefix_close * 0.99, np.full(30, 3e-12)])
+        data = pd.DataFrame(
+            {
+                "open": close_values,
+                "high": high_values,
+                "low": low_values,
+                "close": close_values,
+                "volume": 1000.0,
+            },
+            index=dates,
+        )
+        extractor = FeatureExtractor()
+        prefix = extractor.extract_all_features(data.iloc[:30])
+        extended = extractor.extract_all_features(data)
+
+        pd.testing.assert_frame_equal(prefix, extended.iloc[:30])
 
     def test_short_frame_keeps_the_full_feature_width(self, ohlcv):
         extractor = FeatureExtractor()
@@ -88,9 +154,9 @@ class TestFeatureExtractor:
         features = FeatureExtractor().extract_technical_features(ohlcv)
         close, high, low = ohlcv["close"], ohlcv["high"], ohlcv["low"]
 
-        pd.testing.assert_series_equal(
-            features["rsi"], indicators.rsi(close, 14), check_names=False
-        )
+        expected_rsi = indicators.rsi(close, 14)
+        expected_rsi.iloc[:13] = np.nan
+        pd.testing.assert_series_equal(features["rsi"], expected_rsi, check_names=False)
         macd = indicators.macd(close)
         pd.testing.assert_series_equal(
             features["macd_histogram"], macd["histogram"], check_names=False
@@ -140,6 +206,18 @@ class TestMLPredictor:
         assert metrics_a["n_samples"] == metrics_b["n_samples"] == 400
         assert metrics_a["n_features"] == metrics_b["n_features"] == 75
         assert metrics_a["target_distribution"] == {1: 200, 0: 122, 2: 78}
+
+    def test_prediction_does_not_fit_scaler_on_held_out_rows(self, ohlcv):
+        predictor = MLPredictor(random_state=42, n_estimators=10, max_depth=5)
+        predictor.train(ohlcv.iloc[:300])
+        mean_before = np.asarray(predictor.scaler.mean_).copy()
+        scale_before = np.asarray(predictor.scaler.scale_).copy()
+
+        predictor.predict(ohlcv.iloc[300:])
+
+        np.testing.assert_array_equal(predictor.scaler.mean_, mean_before)
+        np.testing.assert_array_equal(predictor.scaler.scale_, scale_before)
+        assert predictor.scaler.n_samples_seen_ == 300
 
     def test_predict_shape_and_dtype(self, ohlcv):
         predictor = MLPredictor(random_state=42, n_estimators=50, max_depth=5)

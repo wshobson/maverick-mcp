@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from typing import Any, Protocol, cast, get_args
 
 from maverick.research.types import (
+    InsufficientEvidenceError,
     ParallelProcessingInfo,
     Persona,
     ResearchDepth,
@@ -230,7 +231,11 @@ def timeout_error(
 def execution_error(exc: Exception, *, request_id: str, **extra: Any) -> ResearchError:
     return ResearchError(
         error=f"Research error: {exc}",
-        error_type=type(exc).__name__,
+        error_type=(
+            "insufficient_evidence"
+            if isinstance(exc, InsufficientEvidenceError)
+            else type(exc).__name__
+        ),
         request_id=request_id,
         timestamp=now_iso(),
         **extra,

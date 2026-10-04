@@ -213,3 +213,21 @@ def read_items(session: Session, watchlist_id: int) -> list[WatchlistItemPayload
         .order_by(WATCHLIST_ITEMS.c.id)
     ).all()
     return [_row_to_item(row) for row in rows]
+
+
+def list_watchlists(session: Session) -> list[WatchlistPayload]:
+    """Read all named watchlists in deterministic creation order (`id`)."""
+    rows = session.execute(select(WATCHLISTS).order_by(WATCHLISTS.c.id)).all()
+    return [
+        WatchlistPayload(id=row.id, name=row.name, description=row.description)
+        for row in rows
+    ]
+
+
+def watchlist_exists(session: Session, watchlist_id: int) -> bool:
+    return (
+        session.execute(
+            select(WATCHLISTS.c.id).where(WATCHLISTS.c.id == watchlist_id)
+        ).scalar_one_or_none()
+        is not None
+    )

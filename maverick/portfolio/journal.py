@@ -28,6 +28,7 @@ and `limit` is applied only after the (Python-side) tag filter.
 """
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any, cast
 
 from sqlalchemy import (
@@ -137,8 +138,8 @@ def insert_trade(
     *,
     symbol: str,
     side: str,
-    entry_price: float,
-    shares: float,
+    entry_price: Decimal | float,
+    shares: Decimal | float,
     entry_date: datetime,
     rationale: str | None,
     tags: list[str],
@@ -152,8 +153,8 @@ def insert_trade(
             insert(JOURNAL_ENTRIES).values(
                 symbol=symbol.upper(),
                 side=side.lower(),
-                entry_price=entry_price,
-                shares=shares,
+                entry_price=float(entry_price),
+                shares=float(shares),
                 entry_date=entry_date,
                 rationale=rationale,
                 tags=tags,
@@ -180,9 +181,9 @@ def read_trade(session: Session, entry_id: int) -> JournalEntryPayload | None:
 def update_trade_close(
     session: Session,
     entry_id: int,
-    exit_price: float,
+    exit_price: Decimal | float,
     exit_date: datetime,
-    pnl: float,
+    pnl: Decimal | float,
     notes: str | None,
 ) -> JournalEntryPayload:
     """Mark an entry closed with the caller-computed `pnl`. The caller
@@ -192,9 +193,9 @@ def update_trade_close(
         update(JOURNAL_ENTRIES)
         .where(JOURNAL_ENTRIES.c.id == entry_id)
         .values(
-            exit_price=exit_price,
+            exit_price=float(exit_price),
             exit_date=exit_date,
-            pnl=pnl,
+            pnl=float(pnl),
             status="closed",
             notes=notes,
         )

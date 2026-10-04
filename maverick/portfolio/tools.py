@@ -303,6 +303,19 @@ async def portfolio_get_risk_alerts(
         return {"status": "error", "error": str(exc)}
 
 
+async def portfolio_watchlist_list() -> dict[str, Any]:
+    """List saved watchlist IDs, names, and descriptions in creation order."""
+    try:
+        watchlists = await _require_service().list_watchlists()
+        return {
+            "status": "success",
+            "count": len(watchlists),
+            "watchlists": [item.model_dump(mode="json") for item in watchlists],
+        }
+    except Exception as exc:
+        return {"status": "error", "error": str(exc)}
+
+
 async def portfolio_watchlist_create(
     name: str, description: str | None = None
 ) -> dict[str, Any]:
@@ -393,6 +406,7 @@ _READ_ONLY_TOOLS = (
     portfolio_get_regime_adjusted_sizing,
     portfolio_get_risk_alerts,
     portfolio_watchlist_brief,
+    portfolio_watchlist_list,
     portfolio_journal_list_trades,
     portfolio_journal_review,
     portfolio_get_strategy_performance,
@@ -400,7 +414,7 @@ _READ_ONLY_TOOLS = (
 
 
 def register(mcp: FastMCP) -> None:
-    """Register all twenty portfolio tools plus the `portfolio://my-holdings`
+    """Register all twenty-one portfolio tools plus the `portfolio://my-holdings`
     resource on `mcp`, with honest annotations."""
     for fn in _READ_ONLY_TOOLS:
         mcp.tool(name=fn.__name__, annotations=_READ_ONLY_ANNOTATIONS)(fn)

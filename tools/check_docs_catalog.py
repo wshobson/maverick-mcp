@@ -8,9 +8,11 @@ The checker intentionally stays lightweight:
 
 from __future__ import annotations
 
+import fnmatch
 import re
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -74,6 +76,36 @@ def git_ls_docs() -> list[Path]:
         for path in [Path(line)]
         if (REPO_ROOT / path).exists()
     ]
+
+
+def discover_docs() -> list[Path]:
+    """Use tracked files in a checkout, or the explicit sdist scope without Git."""
+    if (REPO_ROOT / ".git").exists():
+        return git_ls_docs()
+    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    build = project["tool"]["hatch"]["build"]
+    scope = build["targets"]["sdist"]
+    exclusions = [*build.get("exclude", []), *scope.get("exclude", [])]
+    paths: set[Path] = set()
+    for pattern in scope["include"]:
+        for entry in REPO_ROOT.glob(pattern):
+            candidates = entry.rglob("*") if entry.is_dir() else (entry,)
+            for candidate in candidates:
+                if not candidate.is_file() or candidate.suffix not in {
+                    ".md",
+                    ".mdx",
+                    ".txt",
+                }:
+                    continue
+                relative = candidate.relative_to(REPO_ROOT)
+                if any(
+                    not excluded.startswith("!")
+                    and fnmatch.fnmatchcase(relative.as_posix(), excluded.lstrip("/"))
+                    for excluded in exclusions
+                ):
+                    continue
+                paths.add(relative)
+    return sorted(paths)
 
 
 def is_allowlisted(path: Path) -> bool:
@@ -221,7 +253,7 @@ def validate_concise_entrypoints() -> list[str]:
 
 def main() -> int:
     """Run all documentation catalog checks."""
-    paths = git_ls_docs()
+    paths = discover_docs()
     errors = [
         *validate_catalog(paths),
         *validate_links(paths),
@@ -234,7 +266,7 @@ def main() -> int:
             print(f"- {error}")
         return 1
 
-    print(f"Documentation catalog check passed ({len(paths)} tracked docs/text files).")
+    print(f"Documentation catalog check passed ({len(paths)} docs/text files).")
     return 0
 
 

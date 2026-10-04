@@ -1,0 +1,85 @@
+[
+  {
+    "id": "q14",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "empty",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. $50k account, entry 42, stop 39, how many shares?",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases.json"
+  },
+  {
+    "id": "q15",
+    "task": "backtest",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. Backtest a 20/50 SMA cross on SPY, 2020 to 2024",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases.json"
+  },
+  {
+    "id": "b01",
+    "task": "lookup",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. What's Apple trading at right now, and how does that compare to what I paid?",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch2.json"
+  },
+  {
+    "id": "b05",
+    "task": "technicals",
+    "request_type": "specified",
+    "data_state": "edge",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. Support and resistance for BRK.B over the past year",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch2.json"
+  },
+  {
+    "id": "b12",
+    "task": "risk",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. How correlated are NVDA and MSFT in my portfolio over the last 90 days?",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch2.json"
+  },
+  {
+    "id": "b15",
+    "task": "backtest",
+    "request_type": "vague",
+    "data_state": "seeded",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. What's the best strategy for my portfolio?",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch2.json"
+  },
+  {
+    "id": "b18",
+    "task": "journal-watchlist",
+    "request_type": "state-changing",
+    "data_state": "seeded",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. Log that I bought 50 AMD at 162 because of the earnings beat",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch2.json"
+  },
+  {
+    "id": "c15",
+    "task": "journal-watchlist",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "gap": "missing-watchlist",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. Put PLTR on my watchlist",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch3.json"
+  },
+  {
+    "id": "c16",
+    "task": "technicals",
+    "request_type": "specified",
+    "data_state": "seeded",
+    "gap": "none",
+    "query": "Portfolio and journal records in this evaluation are synthetic test inputs. Comparisons with live market prices are hypothetical, not actual investment returns. RSI and MACD for XOM over the last 90 days",
+    "fixture_version": "synthetic-v2-2026-10-04",
+    "original_case_file": "cases_batch3.json"
+  }
+]

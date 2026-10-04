@@ -8,11 +8,11 @@ data. Passing tests and dependency updates do not establish that financial
 outputs are accurate: this review reproduced lost portfolio writes and future
 information changing historical backtest signals.
 
-This is a review and proposed improvement scope, not an assertion that the
-remaining defects are fixed. The implementation sequence is in
-[the improvement plan](../exec-plans/active/2026-10-04-correctness-and-reliability.md).
-Keep the personal-use, local-server scope; defer new product features until the
-correctness work passes its acceptance checks.
+The findings below record the pre-fix review. All sixteen accepted implementation
+tasks now have regression coverage and independent review; see the
+[completed plan](../exec-plans/completed/2026-10-04-correctness-and-reliability.md)
+for commits, verification, and remaining gates. Current behavior lives in the
+feature/API/runbook documentation, and unresolved scope remains in the debt tracker.
 
 ## Review scope and maintenance completed
 
