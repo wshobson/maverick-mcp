@@ -62,7 +62,7 @@ uses, so confirm it with `/status` before a run: a session on an API key
 would bill that key. Each trace records `apiKeySource` as `unverified`. The
 subagent is defined in `agent/maverick-eval-client.md`:
 
-- It sees only the 49 Maverick tools (no built-ins, no `research_*` tools).
+- It sees only the 50 Maverick tools (no built-ins, no `research_*` tools).
 - It runs `claude-opus-5-5` with `maxTurns: 8` and `omitClaudeMd: true`, and
   its system prompt is one line.
 - Its own Maverick server (`agent_server.py`) starts when the subagent starts.

@@ -436,6 +436,11 @@ class EnsembleSummary(BaseModel):
     average_trades_per_symbol: float
 
 
+class EnsembleSkippedSymbol(BaseModel):
+    symbol: str
+    reason: Literal["fetch_failed", "insufficient_history", "symbol_limit"]
+
+
 class EnsembleBacktestResult(BaseModel):
     """Return shape of the `create_strategy_ensemble` tool."""
 
@@ -443,3 +448,4 @@ class EnsembleBacktestResult(BaseModel):
     individual_results: list[EnsembleIndividualResult]
     final_strategy_weights: dict[str, Any]
     strategy_performance_analysis: dict[str, Any]
+    skipped_symbols: list[EnsembleSkippedSymbol] = Field(default_factory=list)

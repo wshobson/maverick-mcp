@@ -32,3 +32,9 @@ def test_research_tools_are_disallowed() -> None:
     # exclude.
     assert set(_list_under("disallowedTools")) == RESEARCH
     assert not RESEARCH & set(_list_under("tools"))
+
+
+def test_nonresearch_tool_allowlist_includes_watchlist_discovery():
+    allowed = _list_under("tools")
+    assert len(allowed) == len(set(allowed)) == 50
+    assert agent_trace.TOOL_PREFIX + "portfolio_watchlist_list" in allowed

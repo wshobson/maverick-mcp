@@ -39,6 +39,7 @@ from maverick.backtesting.types import (
     EnsembleBacktestResult,
     EnsembleIndividualResult,
     EnsembleMemberResult,
+    EnsembleSkippedSymbol,
     EnsembleSummary,
     MarketRegimeAnalysis,
     MLBacktestResult,
@@ -344,11 +345,28 @@ class _ExtendedBacktestingMixin(_WalkForwardMixin):
             results: list[EnsembleIndividualResult] = []
             total_return = 0.0
             total_trades = 0
-            for symbol in symbols[:5]:
+            skipped: list[EnsembleSkippedSymbol] = []
+            for index, symbol in enumerate(symbols):
+                if index >= 5:
+                    skipped.append(
+                        EnsembleSkippedSymbol(symbol=symbol, reason="symbol_limit")
+                    )
+                    continue
                 try:
                     frame = await self._fetch_frame(symbol, start, end)
-                    if len(frame) < 100:
-                        continue
+                except Exception:
+                    skipped.append(
+                        EnsembleSkippedSymbol(symbol=symbol, reason="fetch_failed")
+                    )
+                    continue
+                if len(frame) < 100:
+                    skipped.append(
+                        EnsembleSkippedSymbol(
+                            symbol=symbol, reason="insufficient_history"
+                        )
+                    )
+                    continue
+                try:
                     entries, exits = ensemble.generate_signals(frame)
                     full_result = engine.run_backtest(
                         frame,
@@ -360,28 +378,33 @@ class _ExtendedBacktestingMixin(_WalkForwardMixin):
                             update={"initial_capital": initial_capital}
                         ),
                     )
-                    member = EnsembleMemberResult(
-                        metrics=to_simple_metrics(full_result.metrics),
-                        trades=[
-                            t.model_dump(by_alias=True) for t in full_result.trades
-                        ],
-                        equity_curve=full_result.equity_curve,
-                        drawdown_series=full_result.drawdown_series,
-                        ensemble_metrics={
-                            "strategy_weights": ensemble.get_strategy_weights(),
-                            "strategy_performance": ensemble.get_strategy_performance(),
-                        },
-                    )
-                    results.append(
-                        EnsembleIndividualResult(symbol=symbol, results=member)
-                    )
-                    total_return += full_result.metrics.total_return
-                    total_trades += full_result.metrics.total_trades
-                except Exception:
-                    continue
+                except Exception as exc:
+                    raise ValueError(
+                        f"Ensemble backtest failed for {symbol}: {exc}"
+                    ) from exc
+
+                member = EnsembleMemberResult(
+                    metrics=to_simple_metrics(full_result.metrics),
+                    trades=[t.model_dump(by_alias=True) for t in full_result.trades],
+                    equity_curve=full_result.equity_curve,
+                    drawdown_series=full_result.drawdown_series,
+                    ensemble_metrics={
+                        "strategy_weights": ensemble.get_strategy_weights(),
+                        "strategy_performance": ensemble.get_strategy_performance(),
+                    },
+                )
+                results.append(EnsembleIndividualResult(symbol=symbol, results=member))
+                total_return += full_result.metrics.total_return
+                total_trades += full_result.metrics.total_trades
 
             if not results:
-                raise ValueError("No symbols could be processed")
+                omissions = ", ".join(
+                    f"{item.symbol} ({item.reason})" for item in skipped
+                )
+                raise ValueError(
+                    "No symbols could be processed"
+                    + (f": {omissions}" if omissions else "")
+                )
             avg_return = total_return / len(results)
             avg_trades = total_trades / len(results)
             return EnsembleBacktestResult(
@@ -396,6 +419,7 @@ class _ExtendedBacktestingMixin(_WalkForwardMixin):
                 individual_results=results,
                 final_strategy_weights=ensemble.get_strategy_weights(),
                 strategy_performance_analysis=ensemble.get_strategy_performance(),
+                skipped_symbols=skipped,
             )
 
         return await self._run(_impl())

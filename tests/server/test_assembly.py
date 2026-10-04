@@ -40,7 +40,7 @@ CORE_TOOL_NAMES = frozenset(
         "screening_get_all",
         "screening_get_by_criteria",
         "screening_run_screens",
-        # portfolio (20)
+        # portfolio (21)
         "portfolio_add_position",
         "portfolio_get_my_portfolio",
         "portfolio_remove_position",
@@ -56,6 +56,7 @@ CORE_TOOL_NAMES = frozenset(
         "portfolio_watchlist_add",
         "portfolio_watchlist_remove",
         "portfolio_watchlist_brief",
+        "portfolio_watchlist_list",
         "portfolio_journal_add_trade",
         "portfolio_journal_close_trade",
         "portfolio_journal_list_trades",
@@ -94,9 +95,10 @@ RESEARCH_TOOL_NAMES = frozenset(
     }
 )
 
-assert len(CORE_TOOL_NAMES) == 37
+assert len(CORE_TOOL_NAMES) == 38
 assert len(BACKTESTING_TOOL_NAMES) == 12
 assert len(RESEARCH_TOOL_NAMES) == 3
+assert len(CORE_TOOL_NAMES | BACKTESTING_TOOL_NAMES | RESEARCH_TOOL_NAMES) == 53
 
 
 async def _tool_names(mcp) -> set[str]:
@@ -153,7 +155,7 @@ class TestCoreToolSurface:
 
 
 class TestZeroExtraDegradation:
-    """A base install (neither extra) boots with only the 37 core tools and
+    """A base install (neither extra) boots with only the 38 core tools and
     2 prompts, and never raises -- simulated by monkeypatching every copy of
     each domain's own availability probe that assembly/tools/prompts call
     (assembly.py's own imported name gates service construction; each

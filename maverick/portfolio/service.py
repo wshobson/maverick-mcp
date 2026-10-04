@@ -19,7 +19,7 @@ fetches; `service_risk.py` converts those into `PositionExposure`s and
 calls `risk.py`'s pure functions, plus owns the SPY-history fetch for
 regime detection.
 
-The four watchlist methods delegate entirely to `service_watchlist.py` (same-layer sibling)."""
+Watchlist methods are inherited from `service_watchlist.py` (same-layer sibling)."""
 
 import asyncio
 from datetime import UTC, date, datetime
@@ -60,10 +60,6 @@ from maverick.portfolio.types import (
     RiskAlertsResult,
     RiskAnalysis,
     RiskDashboard,
-    WatchlistBrief,
-    WatchlistItemPayload,
-    WatchlistPayload,
-    WatchlistRemoveResult,
 )
 
 logger = get_logger(__name__)
@@ -71,7 +67,7 @@ logger = get_logger(__name__)
 _QUOTE_CONCURRENCY = 4
 
 
-class PortfolioService:
+class PortfolioService(service_watchlist.WatchlistServiceMixin):
     """Domain service: position CRUD plus the three portfolio-aware analyses.
     Owns the `pf_portfolios`/`pf_positions` schema, created lazily on first
     async call (not in `__init__`), matching the screening domain's pattern.
@@ -469,32 +465,3 @@ class PortfolioService:
         positions = await self._read_positions(user_id, portfolio_name)
         prices = await self._fetch_quote_prices([p.ticker for p in positions])
         return service_risk.get_risk_alerts(positions, prices, self._settings)
-
-    # -- watchlists: delegates entirely to service_watchlist.py (owns its own
-    # -- schema readiness; symbols are uppercased there, not validated here).
-
-    async def create_watchlist(
-        self, name: str, description: str | None = None
-    ) -> WatchlistPayload:
-        return await service_watchlist.create_watchlist(
-            self._engine, self._session_factory, name, description
-        )
-
-    async def add_watchlist_item(
-        self, watchlist_id: int, symbol: str, notes: str | None = None
-    ) -> WatchlistItemPayload:
-        return await service_watchlist.add_item(
-            self._engine, self._session_factory, watchlist_id, symbol, notes
-        )
-
-    async def remove_watchlist_item(
-        self, watchlist_id: int, symbol: str
-    ) -> WatchlistRemoveResult:
-        return await service_watchlist.remove_item(
-            self._engine, self._session_factory, watchlist_id, symbol
-        )
-
-    async def watchlist_brief(self, watchlist_id: int) -> WatchlistBrief:
-        return await service_watchlist.brief(
-            self._engine, self._session_factory, self._market_data, watchlist_id
-        )

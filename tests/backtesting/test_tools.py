@@ -822,3 +822,51 @@ async def test_register_in_memory_client_round_trips_parse_strategy(
     assert result.data["success"] is True
     assert result.data["method"] == "simple_degraded"
     assert result.data["strategy"]["strategy_type"] == "macd"
+
+
+async def test_mcp_five_symbol_large_trades_keep_full_service_results(stub_service):
+    import json
+
+    from maverick.backtesting.types import TradeRecord
+
+    full = _long_series()
+    symbols = ["AAPL", "MSFT", "NVDA", "GOOG", "AMZN"]
+    members = []
+    for symbol in symbols:
+        member = _long_backtest_result(symbol, full)
+        member.metrics.total_trades = 200
+        member.trades = [
+            TradeRecord(
+                entry_date=f"entry-{i}",
+                exit_date=f"exit-{i}",
+                entry_price=100,
+                exit_price=110,
+                size=1,
+                pnl=10,
+                return_=0.1,
+                duration="3 days 00:00:00",
+            )
+            for i in range(200)
+        ]
+        members.append(member)
+    source = _portfolio_result().model_copy(update={"individual_results": members})
+    source.portfolio_metrics.symbols_tested = 5
+    source.portfolio_metrics.total_trades = 1000
+    stub_service.results["backtest_portfolio"] = source
+    snapshot = source.model_dump(mode="json")
+    mcp = FastMCP("large-trades")
+    tools.register(mcp)
+    async with Client(mcp) as client:
+        response = await client.call_tool(
+            "backtesting_backtest_portfolio", {"symbols": symbols}
+        )
+    payload = response.data
+    assert payload["portfolio_metrics"]["total_trades"] == 1000
+    assert [item["symbol"] for item in payload["individual_results"]] == symbols
+    for item in payload["individual_results"]:
+        assert len(item["trades"]) == item["trades_returned"] == 20
+        assert item["trades_total"] == item["metrics"]["total_trades"] == 200
+        assert item["trades_truncated"] is True
+        _assert_downsampled(item["equity_curve"], full)
+    assert len(json.dumps(payload, allow_nan=False).encode()) < 80_000
+    assert source.model_dump(mode="json") == snapshot

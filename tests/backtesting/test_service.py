@@ -5,6 +5,7 @@ strategy imports), so this whole module is guarded.
 """
 
 import asyncio
+import json
 from datetime import date, timedelta
 
 import numpy as np
@@ -659,3 +660,57 @@ async def test_slow_fetch_raises_value_error_not_hang(ohlcv):
 
     with pytest.raises(ValueError, match="timed out"):
         await service.run_backtest("AAPL")
+
+
+async def test_ensemble_names_skips_at_each_service_decision(ohlcv):
+    symbols = ["BROKEN", "SHORT", "V0", "V1", "V2", "V3", "V4", "V5"]
+    market_data = StubMarketData(
+        ohlcv,
+        frames={"SHORT": _short_frame(99)},
+        raise_for={"BROKEN": RuntimeError("provider failed")},
+    )
+    result = await _service(market_data).create_strategy_ensemble(symbols)
+    assert [item.symbol for item in result.individual_results] == ["V0", "V1", "V2"]
+    assert [(item.symbol, item.reason) for item in result.skipped_symbols] == [
+        ("BROKEN", "fetch_failed"),
+        ("SHORT", "insufficient_history"),
+        ("V3", "symbol_limit"),
+        ("V4", "symbol_limit"),
+        ("V5", "symbol_limit"),
+    ]
+    assert [call[0] for call in market_data.calls] == symbols[:5]
+    assert result.ensemble_summary.symbols_tested == 3
+    assert result.ensemble_summary.total_trades == sum(
+        item.results.metrics.total_trades for item in result.individual_results
+    )
+    json.dumps(result.model_dump(), allow_nan=False)
+
+
+async def test_ensemble_unexpected_computation_failure_is_visible(ohlcv, monkeypatch):
+    from maverick.backtesting import engine
+
+    original = engine.run_backtest
+
+    def fail_second(*args, **kwargs):
+        if kwargs.get("symbol") == "BROKEN":
+            raise RuntimeError("Synthetic computation failed")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(engine, "run_backtest", fail_second)
+    market_data = StubMarketData(ohlcv)
+    with pytest.raises(
+        ValueError,
+        match="Ensemble backtest failed for BROKEN: Synthetic computation failed",
+    ):
+        await _service(market_data).create_strategy_ensemble(["AAPL", "BROKEN"])
+    assert [call[0] for call in market_data.calls] == ["AAPL", "BROKEN"]
+
+
+async def test_ensemble_no_successes_error_names_all_skips():
+    market_data = StubMarketData(
+        _short_frame(99), raise_for={"BROKEN": RuntimeError("provider failed")}
+    )
+    with pytest.raises(ValueError) as caught:
+        await _service(market_data).create_strategy_ensemble(["BROKEN", "SHORT"])
+    assert "BROKEN (fetch_failed)" in str(caught.value)
+    assert "SHORT (insufficient_history)" in str(caught.value)

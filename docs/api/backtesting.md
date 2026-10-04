@@ -20,7 +20,7 @@ below.
 ### Key Features
 
 - **20 strategies total**: 12 rule-based templates (`STRATEGY_TEMPLATES`)
-  plus 8 ML strategy classes -- not "23" or "35+", which were stale claims
+  plus eight ML classes -- not "23" or "35+", which were stale claims
   from the legacy documentation.
 - **Strategy Optimization**: Grid search with coarse/medium/fine granularity
   (5 of the 12 strategies support optimization: `sma_cross`, `rsi`, `macd`,
@@ -347,7 +347,7 @@ every strategy ran):
       "max_drawdown": 0.07,
       "win_rate": 0.6,
       "profit_factor": 1.6,
-    "profit_factor_status": "finite",
+      "profit_factor_status": "finite",
       "total_trades": 20,
       "grade": "A",
       "rank": 1
@@ -515,7 +515,7 @@ vectorbt-expression string, but their runtime signal generation
 (`strategies/signals.py`) is real, self-contained pandas/numpy logic -- not
 a stub and not a delegation to the ML strategy classes below.
 
-### ML strategy classes (8 total)
+### ML classes (8 total)
 
 Six of these back the ML-enhanced tools below, not `backtesting_run_backtest`
 directly. `OnlineLearningStrategy` and `HybridAdaptiveStrategy` are ported
@@ -672,8 +672,8 @@ fabricated uniform distribution.
 
 Create and backtest a weighted ensemble of base strategies across multiple
 symbols. Runs sequentially by design: `StrategyEnsemble` shares one mutable
-instance across symbols (weights mutate per call), so concurrency would
-make results order-dependent.
+instance across symbols. It resets weights between calls; concurrent access
+to that mutable instance would be unsafe.
 
 Each entry in `base_strategies` must be a valid name from the strategy
 catalog (`backtesting_list_strategies`) -- for example `"sma_cross"`,
@@ -685,9 +685,16 @@ addressable per requested strategy rather than collapsing onto one shared
 key. An unknown name raises a clear error rather than being silently
 dropped.
 
-Only the first five `symbols` are backtested. A symbol with fewer than 100
-bars in the range, or whose backtest fails, is skipped, and the call errors
-only when no symbol succeeds.
+Only the first five requested `symbols` are eligible for backtesting. A failed
+history fetch or fewer than 100 bars skips that symbol; a later symbol does not
+fill its slot. Successful partial results include `skipped_symbols`, each with
+a symbol and one of `fetch_failed`, `insufficient_history`, or `symbol_limit`.
+Every requested symbol after the first five receives `symbol_limit`.
+
+When no symbol succeeds, the error names all omissions and reasons. An unexpected
+strategy-computation error fails the whole request and names the failing symbol;
+partial successes are not returned in that case. It is not mislabeled as a
+history-fetch failure.
 
 **Tool name**: `backtesting_create_strategy_ensemble` (readOnlyHint: true)
 
@@ -720,6 +727,7 @@ only when no symbol succeeds.
   ],
   "final_strategy_weights": {"SMA Crossover": 0.42, "RSI Mean Reversion": 0.28, "MACD Signal": 0.30},
   "strategy_performance_analysis": {"...": "..."},
+  "skipped_symbols": [{"symbol": "SIXTH", "reason": "symbol_limit"}],
   "status": "success"
 }
 ```
@@ -860,3 +868,21 @@ or substituted with zero. Profit-factor optimization ranks `no_losses` first,
 then finite ratios from highest to lowest, then no-trade and breakeven-only
 results tied last. A no-loss winner has `best_metric_value: null` and
 `best_metric_status: no_losses`; other optimization metrics have a null status.
+
+
+## Trade records in tool responses
+
+Every `trades` list in a backtesting MCP response, including nested portfolio,
+ensemble, and machine-learning results, contains at most the first 20 records in
+its existing order. The containing object includes:
+
+| Field | Meaning |
+| --- | --- |
+| `trades_total` | Number of records in the full service result. |
+| `trades_returned` | Number included in this response, at most 20. |
+| `trades_truncated` | Whether records were omitted. |
+
+The existing equity/drawdown limit remains 60 points per series. Full service
+models, stored calculations, and aggregate metrics retain every trade and data
+point. Counts describe the transmitted list, including zero-trade cases; they
+do not change the metric definitions or make a partial list a full trade history.

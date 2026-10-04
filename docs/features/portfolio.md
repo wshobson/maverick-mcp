@@ -20,7 +20,7 @@ This is educational tooling only. It is not investment, tax, or trading advice.
 ## MCP Surfaces
 
 `maverick/portfolio/tools.py` (positions/risk/watchlist) and
-`tools_journal.py` (trade journal) register 20 `portfolio_*` tools total,
+`tools_journal.py` (trade journal) register 21 `portfolio_*` tools total,
 including:
 
 - `portfolio_add_position`
@@ -191,3 +191,15 @@ Unit prices retain sub-cent precision; cash amounts are displayed to cents.
 Correlation excludes matrix diagonals by position, so a correlation of exactly
 1.0 between two distinct symbols remains in the average. Constant prices or
 other undefined correlations produce an error instead of a diversification score.
+
+
+## Watchlist discovery
+
+`portfolio_watchlist_list` is read-only and returns `watchlists`, ordered by
+creation ID, with each list's ID, name, and description, plus the total count. It performs
+no quote lookup. Use an existing ID for additions, removals, and briefings.
+An empty database returns an empty list.
+
+`portfolio_watchlist_brief` returns success with no items for an existing empty
+watchlist. An unknown ID returns an error before fetching quotes, so a client
+can distinguish a missing list from an empty one.

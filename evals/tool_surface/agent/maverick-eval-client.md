@@ -44,6 +44,7 @@ tools:
   - mcp__maverick__portfolio_watchlist_add
   - mcp__maverick__portfolio_watchlist_brief
   - mcp__maverick__portfolio_watchlist_create
+  - mcp__maverick__portfolio_watchlist_list
   - mcp__maverick__portfolio_watchlist_remove
   - mcp__maverick__screening_get_all
   - mcp__maverick__screening_get_bearish

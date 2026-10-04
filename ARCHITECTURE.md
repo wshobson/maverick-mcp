@@ -109,8 +109,8 @@ every domain in the import graph.
 
 ## MCP Surface
 
-- **37 core tools**: `market_data_*` (7), `screening_*` (6),
-  `portfolio_*` (20, including risk dashboard, watchlist, and journal),
+- **38 core tools**: `market_data_*` (7), `screening_*` (6),
+  `portfolio_*` (21, including risk dashboard, watchlist, and journal),
   `technical_*` (4).
 - **12 `backtesting_*` tools** (`[backtesting]` extra).
 - **3 `research_*` tools** (`[research]` extra).
