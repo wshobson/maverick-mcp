@@ -1534,6 +1534,25 @@ async def test_journal_tools_preserve_subcent_prices_and_profit(real_journal_ser
     assert closed["pnl"] == 10.0
 
 
+async def test_journal_tools_keep_trade_status_next_to_success_flag(
+    real_journal_service,
+):
+    opened = await tools.portfolio_journal_add_trade("OPEN", "long", 10.0, 1.0)
+    assert opened["status"] == "success"
+    assert opened["trade_status"] == "open"
+
+    review_open = await tools.portfolio_journal_review(opened["id"])
+    assert review_open["status"] == "success"
+    assert review_open["trade_status"] == "open"
+
+    closed = await tools.portfolio_journal_close_trade(opened["id"], 12.0)
+    assert closed["status"] == "success"
+    assert closed["trade_status"] == "closed"
+
+    review_closed = await tools.portfolio_journal_review(opened["id"])
+    assert review_closed["trade_status"] == "closed"
+
+
 @pytest.mark.parametrize(
     "field,value",
     [
