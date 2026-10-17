@@ -4,7 +4,7 @@
 def test_version_is_importable():
     import maverick
 
-    assert maverick.__version__ == "1.2.0"
+    assert maverick.__version__ == "1.2.1"
 
 
 def verify_core_wheel_installation() -> None:

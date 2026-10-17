@@ -29,7 +29,7 @@ or provide financial advice. Market data can be delayed, incomplete, or wrong.
 | Portfolio tracking | Record positions, calculate average cost and profit or loss, review risk, manage watchlists, and keep a trade journal. |
 | Optional backtesting and research | Test strategies on historical data, compare results, or research companies and sectors with source citations. |
 
-The `v1.2.0` release has 38 core tools, 12 optional backtesting tools, and 3
+The `v1.2.1` release has 38 core tools, 12 optional backtesting tools, and 3
 optional research tools.
 
 Daily history supports US stock symbols and the exchange suffixes `.L`, `.T`,
@@ -74,7 +74,7 @@ The PyPI name `maverick-mcp-server` belongs to an unrelated project while the
 Do not install that name from PyPI. Run the release from its Git tag instead.
 
 ```bash
-uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.2.0" maverick-mcp --transport stdio
+uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.2.1" maverick-mcp --transport stdio
 ```
 
 ### Connect your MCP client
@@ -114,7 +114,7 @@ it local unless you have configured separate access controls.
 ### Docker with persistent data
 
 Build the image from source as shown below, or run the published
-`ghcr.io/wshobson/maverick-mcp:1.2.0` image with the same options.
+`ghcr.io/wshobson/maverick-mcp:1.2.1` image with the same options.
 
 ```bash
 cp .env.example .env

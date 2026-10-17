@@ -68,14 +68,14 @@ startCommand:
   # but those examples assume the package's console script is already on
   # PATH inside Smithery's build environment. maverick-mcp is not on PyPI:
   # the name `maverick-mcp-server` belongs to an unrelated project until the
-  # PEP 541 transfer completes, so this launches the v1.2.0 git tag instead
+  # PEP 541 transfer completes, so this launches the v1.2.1 git tag instead
   # of the bare PyPI name. Verify Smithery's
   # current expectations for Python/uv-based servers (their docs primarily
   # show Node/TypeScript examples) before relying on this verbatim.
   commandFunction: |-
     (config) => ({
       command: 'uvx',
-      args: ['--from', 'git+https://github.com/wshobson/maverick-mcp@v1.2.0', 'maverick-mcp', '--transport', 'stdio'],
+      args: ['--from', 'git+https://github.com/wshobson/maverick-mcp@v1.2.1', 'maverick-mcp', '--transport', 'stdio'],
       env: {
         ...(config.DATABASE_URL ? { DATABASE_URL: config.DATABASE_URL } : {}),
         ...(config.REDIS_HOST ? { REDIS_HOST: config.REDIS_HOST } : {}),
