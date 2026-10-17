@@ -16,6 +16,7 @@ anything.
 import pytest
 from fastmcp import Client
 
+import maverick
 from maverick.backtesting import backtesting_extra_available
 from maverick.backtesting import tools as backtesting_tools
 from maverick.research import research_extra_available
@@ -111,6 +112,13 @@ async def _prompt_names(mcp) -> set[str]:
     async with Client(mcp) as client:
         result = await client.list_prompts()
     return {p.name for p in result}
+
+
+async def test_server_reports_the_package_version():
+    async with Client(build_server()) as client:
+        server_info = client.server_info
+    assert server_info.name == "maverick-mcp"
+    assert server_info.version == maverick.__version__
 
 
 class TestCoreToolSurface:

@@ -2,6 +2,7 @@
 
 from fastmcp import FastMCP
 
+import maverick
 from maverick.backtesting import backtesting_extra_available
 from maverick.backtesting import tools as backtesting_tools
 from maverick.market_data import tools as market_data_tools
@@ -64,7 +65,7 @@ def build_server() -> FastMCP:
     technical = TechnicalService(market_data)
     journal = JournalService(engine)
 
-    mcp = FastMCP(name=_SERVER_NAME)
+    mcp = FastMCP(name=_SERVER_NAME, version=maverick.__version__)
 
     market_data_tools.configure(market_data)
     market_data_tools.register(mcp)
