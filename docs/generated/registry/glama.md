@@ -42,8 +42,8 @@ Glama documents two ways to list a server:
   cost-basis P&L, plus optional backtesting and deep-research extras. Not
   financial advice.
 - **Repo URL**: https://github.com/wshobson/maverick-mcp
-- **Install command**: `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.2.0" maverick-mcp --transport stdio`
-  or `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.2.0"`.
+- **Install command**: `uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.2.1" maverick-mcp --transport stdio`
+  or `pip install "maverick-mcp-server[backtesting,research] @ git+https://github.com/wshobson/maverick-mcp@v1.2.1"`.
   Not the bare PyPI name: it belongs to an unrelated project until the name
   transfer completes (see `docs/runbooks/releasing.md`).
 - **Transports**: stdio, streamable HTTP

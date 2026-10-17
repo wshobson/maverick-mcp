@@ -1,8 +1,8 @@
 # Reliability
 
 Current source behavior and remaining limits, verified on October 4, 2026.
-The v1.2.0 release includes the correctness changes below; v1.1.0 predates
-them.
+v1.2.0 and later releases include the correctness changes below; v1.1.0
+predates them.
 
 ## What exists
 

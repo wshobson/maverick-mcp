@@ -7,13 +7,13 @@
     "url": "https://github.com/wshobson/maverick-mcp",
     "source": "github"
   },
-  "version": "1.2.0",
+  "version": "1.2.1",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "maverick-mcp-server",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -89,8 +89,8 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/wshobson/maverick-mcp:1.2.0",
-      "version": "1.2.0",
+      "identifier": "ghcr.io/wshobson/maverick-mcp:1.2.1",
+      "version": "1.2.1",
       "transport": {
         "type": "stdio"
       }

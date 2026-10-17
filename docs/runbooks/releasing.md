@@ -17,8 +17,9 @@ and `server.json` declares the package/transport surface registries read.
 v1.0.0 was released on GitHub only and never reached PyPI. Pushing the
 v1.1.0 tag on 2026-09-05 ran the publish workflow: `build` and `publish-ghcr`
 succeeded, `publish-pypi` failed with `invalid-publisher` (see Step 1), and
-`publish-mcp-registry` was skipped. v1.2.0 (2026-10-17) was tagged the same
-way and takes the same path while the PyPI name is pending. The steps below
+`publish-mcp-registry` was skipped. v1.2.0 and v1.2.1 (both 2026-10-17)
+were tagged the same way and take the same path while the PyPI name is
+pending. The steps below
 take the latest release the rest of the way to installable-by-everyone.
 
 ## Sequence overview
@@ -54,9 +55,9 @@ transfer request is on file with PyPI support (https://github.com/pypi/support/i
 it has had no action since it was filed on 2026-09-05. After the transfer: add the
 publisher on the project's own Publishing settings (owner `wshobson`,
 repository `maverick-mcp`, workflow `publish.yml`, environment `pypi`), then
-run `gh workflow run publish.yml --ref v1.2.0 -f confirm=publish`, which
+run `gh workflow run publish.yml --ref v1.2.1 -f confirm=publish`, which
 rebuilds the tag and publishes PyPI, the MCP Registry, and GHCR (re-pushing
-the `1.2.0` and `latest` image tags). Without `--ref v1.2.0` the run builds
+the `1.2.1` and `latest` image tags). Without `--ref v1.2.1` the run builds
 `main`, which carries post-release changes under the same version number,
 and tags the image `main`. Until then the README must not point installs at
 the PyPI name.
@@ -75,11 +76,11 @@ the PyPI name.
      blank environment does not match and PyPI rejects the run as
      `invalid-publisher`.
 2. Start the workflow. For a new version, pushing its tag fires the tag
-   trigger (`git push origin vX.Y.Z`). The `v1.2.0` tag is already on
+   trigger (`git push origin vX.Y.Z`). The `v1.2.1` tag is already on
    GitHub, and pushing an existing tag again fires nothing, so dispatch the
    run against the tag instead:
    ```bash
-   gh workflow run publish.yml --repo wshobson/maverick-mcp --ref v1.2.0 -f confirm=publish
+   gh workflow run publish.yml --repo wshobson/maverick-mcp --ref v1.2.1 -f confirm=publish
    ```
 3. Watch the run: `gh run watch --repo wshobson/maverick-mcp`.
 
@@ -155,7 +156,8 @@ GHCR, but once pulled by others the image content is out in the world.
 
 **Status:** the workflow's `publish-ghcr` job pushed
 `ghcr.io/wshobson/maverick-mcp:1.1.0` and `:latest` on 2026-09-05, and the
-`v1.2.0` tag runs the same job for `:1.2.0` and `:latest`. The manual
+`v1.2.0` and `v1.2.1` tags ran the same job. From v1.2.1 the job builds
+`linux/amd64` and `linux/arm64` under QEMU. The manual
 commands below are for a later version; build from a checkout of that
 version's tag.
 
@@ -186,8 +188,8 @@ is not on `PATH`, so use `uv run python -m maverick.server --help` there.
 ```json
 {
   "registryType": "oci",
-  "identifier": "ghcr.io/wshobson/maverick-mcp:1.2.0",
-  "version": "1.2.0",
+  "identifier": "ghcr.io/wshobson/maverick-mcp:1.2.1",
+  "version": "1.2.1",
   "transport": { "type": "stdio" }
 }
 ```
@@ -242,7 +244,7 @@ delisting on request but there is no self-service undo for most of these.
 make bundle   # builds dist/maverick-mcp.mcpb (thin bundle: launches the
               # PyPI package via uvx; requires uv + the PyPI publish first)
 npx @anthropic-ai/mcpb validate dist/manifest.json  # official validator
-gh release upload v1.2.0 dist/maverick-mcp.mcpb
+gh release upload v1.2.1 dist/maverick-mcp.mcpb
 ```
 
 The bundle vendors no code -- its manifest launches
