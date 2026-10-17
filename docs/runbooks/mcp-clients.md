@@ -78,7 +78,7 @@ HTTP endpoint in whatever shape their config expects.
 ## Claude Desktop
 
 Claude Desktop's `claude_desktop_config.json` launches **local STDIO servers
-only**. Use `uvx` to run the v1.1.0 release tag with no checkout. The package
+only**. Use `uvx` to run the v1.2.0 release tag with no checkout. The package
 is not on PyPI: the name `maverick-mcp-server` there belongs to an unrelated
 project until a name transfer completes (see `releasing.md`), so do not point
 `uvx` at the bare name.
@@ -90,7 +90,7 @@ project until a name transfer completes (see `releasing.md`), so do not point
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/wshobson/maverick-mcp@v1.1.0",
+        "git+https://github.com/wshobson/maverick-mcp@v1.2.0",
         "maverick-mcp",
         "--transport",
         "stdio"
@@ -491,7 +491,7 @@ There is nothing client-specific to configure. Supply one of:
   `["run", "python", "-m", "maverick.server", "--transport", "stdio"]`, with the
   working directory set to your checkout. With no checkout, command `uvx`
   with args
-  `["--from", "git+https://github.com/wshobson/maverick-mcp@v1.1.0", "maverick-mcp", "--transport", "stdio"]`.
+  `["--from", "git+https://github.com/wshobson/maverick-mcp@v1.2.0", "maverick-mcp", "--transport", "stdio"]`.
 - **Streamable HTTP**: `http://localhost:8003/mcp` after `make dev`.
 
 ## Troubleshooting
