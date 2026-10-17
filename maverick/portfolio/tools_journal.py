@@ -21,6 +21,7 @@ from decimal import Decimal
 from typing import Any
 
 from maverick.portfolio.service_journal import JournalService
+from maverick.portfolio.types import JournalEntryPayload
 
 _journal_service: JournalService | None = None
 
@@ -37,6 +38,16 @@ def _require_journal_service() -> JournalService:
             "called with a journal_service"
         )
     return _journal_service
+
+
+def _trade_payload(entry: JournalEntryPayload) -> dict[str, Any]:
+    """Dump a journal entry for a tool result. The result's `status` is the
+    call's success flag, so the trade's own open/closed status moves to
+    `trade_status` instead of being overwritten."""
+    payload = entry.model_dump(mode="json")
+    payload["trade_status"] = payload["status"]
+    payload["status"] = "success"
+    return payload
 
 
 async def portfolio_journal_add_trade(
@@ -77,9 +88,7 @@ async def portfolio_journal_add_trade(
             tags=tags,
             notes=notes,
         )
-        payload = entry.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return _trade_payload(entry)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -100,9 +109,7 @@ async def portfolio_journal_close_trade(
             exit_price=Decimal(str(exit_price)),
             notes=notes,
         )
-        payload = entry.model_dump(mode="json")
-        payload["status"] = "success"
-        return payload
+        return _trade_payload(entry)
     except Exception as exc:
         return {"status": "error", "error": str(exc)}
 
@@ -131,14 +138,14 @@ async def portfolio_journal_list_trades(
 
 async def portfolio_journal_review(entry_id: int) -> dict[str, Any]:
     """Full detail for a single trade by ID, including the side-aware
-    `pnl_pct` (only populated once the trade is closed)."""
+    `pnl_pct` (only populated once the trade is closed). The trade's
+    open/closed state is `trade_status`; `status` is the call's result."""
     try:
         journal_service = _require_journal_service()
         review = await journal_service.review_trade(entry_id)
         if review is None:
             return {"status": "success", "found": False, "entry_id": entry_id}
-        payload = review.model_dump(mode="json")
-        payload["status"] = "success"
+        payload = _trade_payload(review)
         payload["found"] = True
         return payload
     except Exception as exc:

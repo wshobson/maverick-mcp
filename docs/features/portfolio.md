@@ -155,7 +155,9 @@ unknown to the caller.
 Journal sides accept `long` or `short`, without regard to letter case. Entry
 prices, exit prices, and share quantities must be finite and greater than zero.
 Invalid service calls raise `ValueError`; MCP tools return an error without
-changing the trade. A closed trade cannot be closed again.
+changing the trade. A closed trade cannot be closed again. In the add, close,
+and review tool results, `status` is the call's result (`success` or `error`)
+and `trade_status` is the trade's own `open` or `closed` state.
 
 Unit prices keep sub-cent precision within the existing Float storage limits.
 The service calculates profit or loss with `Decimal` and rounds the final
