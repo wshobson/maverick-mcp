@@ -95,7 +95,7 @@ class _SerializedStaticPool(StaticPool):
                 # Cancellation during reset can skip SQLAlchemy's checkin.
                 # Retire this record so a later stale checkin cannot release
                 # the lock belonging to a replacement connection.
-                record.dbapi_connection = None
+                record.dbapi_connection = None  # ty: ignore[missing-slot]  # the runtime _ConnectionRecord has the attribute
                 if self.__dict__.get("connection") is record:
                     del self.__dict__["connection"]
                 self._do_return_conn(record)
@@ -170,6 +170,17 @@ def _is_postgres(url: str) -> bool:
     return url.startswith("postgresql")
 
 
+def _sync_url(url: str) -> str:
+    """Pin a bare Postgres URL to psycopg2, the installed sync driver.
+
+    SQLAlchemy 2.1 maps ``postgresql://`` to psycopg 3, which is not a
+    dependency; an explicit ``postgresql+<driver>://`` URL is left alone.
+    """
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    return url
+
+
 def _async_url(url: str) -> str:
     """Rewrite a sync database URL to its async driver equivalent."""
     if url.startswith("sqlite://"):
@@ -199,7 +210,7 @@ def create_engine_from_settings(settings: DatabaseSettings) -> Engine:
     Postgres uses a QueuePool tuned from ``settings`` unless ``use_pooling``
     is False. Non-SQLite backends use NullPool when pooling is disabled.
     """
-    url = settings.url
+    url = _sync_url(settings.url)
 
     if _is_sqlite(url):
         engine = create_engine(

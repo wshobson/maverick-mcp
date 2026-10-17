@@ -16,7 +16,7 @@ import signal
 import socket
 import sys
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -150,7 +150,7 @@ class RecordedClient:
 @contextlib.asynccontextmanager
 async def http_connection(
     url: str, evidence_dir: Path, label: str = "client"
-) -> AsyncIterator[RecordedClient]:
+) -> AsyncGenerator[RecordedClient]:
     """Open a recorded SDK session that ignores ambient HTTP proxies."""
     async with (
         httpx2.AsyncClient(
@@ -250,7 +250,7 @@ class RunningServer:
             raise TimeoutError(f"Server did not listen; see {self.stderr_path}")
 
     @contextlib.asynccontextmanager
-    async def connect(self, label: str = "client") -> AsyncIterator[RecordedClient]:
+    async def connect(self, label: str = "client") -> AsyncGenerator[RecordedClient]:
         """Connect an SDK client to the running HTTP or STDIO process."""
         if self.transport == "http":
             assert self.url is not None
@@ -354,7 +354,7 @@ async def server_process(
     label: str = "server",
     launcher: list[str] | None = None,
     env_overrides: dict[str, str] | None = None,
-) -> AsyncIterator[RunningServer]:
+) -> AsyncGenerator[RunningServer]:
     """Own a CLI process and clean it up when the context exits."""
     server = RunningServer(
         transport, state_dir, evidence_dir, label, launcher, env_overrides

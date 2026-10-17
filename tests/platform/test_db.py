@@ -71,6 +71,17 @@ def test_postgres_engine_would_use_queuepool():
     assert engine.pool.size() == settings.pool_size
 
 
+def test_plain_postgres_url_keeps_the_psycopg2_driver():
+    # SQLAlchemy 2.1 maps a bare `postgresql://` URL to psycopg 3, which this
+    # project does not install; existing URLs must keep loading psycopg2.
+    for use_pooling in (True, False):
+        settings = DatabaseSettings(
+            url="postgresql://u:p@localhost/x", use_pooling=use_pooling
+        )
+        engine = create_engine_from_settings(settings)
+        assert engine.url.drivername == "postgresql+psycopg2"
+
+
 def test_ensure_schema_is_lazy_and_idempotent(tmp_path):
     engine = create_engine_from_settings(_settings(tmp_path))
     assert ensure_schema(engine, METADATA) is True

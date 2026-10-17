@@ -320,7 +320,10 @@ class StrategyEnsemble(Strategy):
         Returns:
             Dictionary mapping strategy names to weights
         """
-        return dict(zip([s.name for s in self.strategies], self.weights, strict=False))
+        return {
+            s.name: float(w)
+            for s, w in zip(self.strategies, self.weights, strict=False)
+        }
 
     def get_strategy_performance(self) -> dict[str, dict[str, float]]:
         """Get performance metrics for individual strategies.

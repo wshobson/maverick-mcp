@@ -29,7 +29,7 @@ class Provider(ThreadingHTTPServer):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server: Provider
+    server: Provider  # ty: ignore[invalid-mutable-override]  # narrows the handler's server to this fixture
 
     def reply(self, payload, status=200):
         """Return a finite JSON fixture with explicit length and status."""

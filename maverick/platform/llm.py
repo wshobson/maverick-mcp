@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field, SecretStr, model_validator
 
@@ -135,7 +135,7 @@ def get_llm() -> BaseChatModel:
     assert settings.api_key is not None
     assert settings.model is not None
 
-    temperature_kwargs = (
+    temperature_kwargs: dict[str, Any] = (
         {"temperature": settings.temperature}
         if settings.temperature is not None
         else {}
@@ -167,7 +167,9 @@ def get_llm() -> BaseChatModel:
     # Suppress SDK numeric defaults when unset. Forward explicit values through
     # extra_body because the SDK can drop temperature during model validation
     # or Responses serialization; the configured provider decides support.
-    extra_body_kwargs = {"extra_body": temperature_kwargs} if temperature_kwargs else {}
+    extra_body_kwargs: dict[str, Any] = (
+        {"extra_body": temperature_kwargs} if temperature_kwargs else {}
+    )
     return ChatOpenAI(
         api_key=settings.api_key,
         model=settings.model,
