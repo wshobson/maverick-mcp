@@ -29,10 +29,8 @@ or provide financial advice. Market data can be delayed, incomplete, or wrong.
 | Portfolio tracking | Record positions, calculate average cost and profit or loss, review risk, manage watchlists, and keep a trade journal. |
 | Optional backtesting and research | Test strategies on historical data, compare results, or research companies and sectors with source citations. |
 
-The current source has 38 core tools, 12 optional backtesting tools, and 3
-optional research tools. The published `v1.1.0` release has 37 core tools and
-predates the current correctness fixes. Follow the source installation below
-for the behavior documented here.
+The `v1.2.0` release has 38 core tools, 12 optional backtesting tools, and 3
+optional research tools.
 
 Daily history supports US stock symbols and the exchange suffixes `.L`, `.T`,
 `.TO`, `.AX`, `.HK`, and `.DE`. Other exchange suffixes return a calendar error
@@ -73,11 +71,10 @@ uv run --directory /absolute/path/to/maverick-mcp maverick-mcp --transport stdio
 
 The PyPI name `maverick-mcp-server` belongs to an unrelated project while the
 [name-transfer request](https://github.com/pypi/support/issues/12150) is pending.
-Do not install that name from PyPI. The existing release can be run from its
-Git tag, but it does not include the changes described for current source.
+Do not install that name from PyPI. Run the release from its Git tag instead.
 
 ```bash
-uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.1.0" maverick-mcp --transport stdio
+uvx --from "git+https://github.com/wshobson/maverick-mcp@v1.2.0" maverick-mcp --transport stdio
 ```
 
 ### Connect your MCP client
@@ -116,8 +113,8 @@ it local unless you have configured separate access controls.
 
 ### Docker with persistent data
 
-Build the current source to include the fixes documented here. The existing
-published `1.1.0` image predates them.
+Build the image from source as shown below, or run the published
+`ghcr.io/wshobson/maverick-mcp:1.2.0` image with the same options.
 
 ```bash
 cp .env.example .env

@@ -33,7 +33,8 @@ SQLite is the lowest-friction path and is enough for normal local MCP use.
 
 ## Docker data storage
 
-Build the current source and mount a named volume at `/data`, as shown in the
+Build the image from source, or run the published `1.2.0` image, and mount a
+named volume at `/data`, as shown in the
 [README Docker instructions](../../README.md#docker-with-persistent-data).
 The image uses `sqlite:////data/maverick.db` and `/data/maverick_cache.db`.
 Copying `.env.example` unchanged does not override these defaults. Set
