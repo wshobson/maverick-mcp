@@ -60,7 +60,9 @@ def fixture_history(
         start_date=start, end_date=pd.Timestamp(end).date() - timedelta(days=1)
     ).index
     index = pd.DatetimeIndex(index, name="Date").as_unit("ns")
-    elapsed = (index - pd.Timestamp("2018-01-01")).days.to_numpy(dtype=float)
+    elapsed = pd.TimedeltaIndex(index - pd.Timestamp("2018-01-01")).days.to_numpy(
+        dtype=float
+    )
     seed = sum(map(ord, symbol)) % 31
     # Oscillating but positive, nonconstant returns over >3 years support ML,
     # covariance, ATR, and both bullish and bearish screen paths.

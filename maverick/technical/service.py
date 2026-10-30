@@ -146,7 +146,7 @@ def _levels(
             raise ValueError("days must be positive")
         end = date.today()
         start = end - timedelta(days=days)
-        dates = pd.DatetimeIndex(df.index).date  # ty: ignore[unresolved-attribute]  # pandas exposes date, absent from stubs
+        dates = pd.DatetimeIndex(df.index).date
         df = df.loc[(dates >= start) & (dates <= end)]
         settings = settings.model_copy(update={"sr_lookback": len(df)})
     _require(df, ticker, ("Close", "High", "Low"), "support/resistance levels")
