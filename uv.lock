@@ -2834,15 +2834,15 @@ wheels = [
 
 [[package]]
 name = "pandas-market-calendars"
-version = "5.5.0"
+version = "5.6.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "exchange-calendars" },
     { name = "pandas" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/23/c3/66932222d7ea10f49a1c1dc5bfed1c42addf0283e6bd31445c59ca4eb655/pandas_market_calendars-5.5.0.tar.gz", hash = "sha256:3b586618e87b747e937636d0e1e4bf9e14f67e5996fa3170243e96278cb6e29d", size = 185923, upload-time = "2026-10-05T00:55:24.069Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/ac/47d6bea5c62f9369a3fb34d57a046ec203b172b743b45a65926c8717bff4/pandas_market_calendars-5.6.0.tar.gz", hash = "sha256:ba00843e02ca7627a23dfff05c6156f5678ac13dbea7426209507b075fc2b746", size = 200335, upload-time = "2026-10-31T17:35:27.701Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/e0/25f5c0cf8852681ec8a44c7678897e39cc219f4d8a7150fedf38a648e067/pandas_market_calendars-5.5.0-py3-none-any.whl", hash = "sha256:ddca6fb04b07b47bf026c33629e852d3c554caeb148cd0cfb1588ce25881e10d", size = 141132, upload-time = "2026-10-05T00:55:21.949Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/5a/acabd80dd3af12f87c43044cf5fe850b70ee02e6dc0247d072669dfd423d/pandas_market_calendars-5.6.0-py3-none-any.whl", hash = "sha256:cd3c954913b910f59458c475624a1fc88fae996cea09ae3b2b677efd0a4c6e78", size = 148347, upload-time = "2026-10-31T17:35:26.054Z" },
 ]
 
 [[package]]
