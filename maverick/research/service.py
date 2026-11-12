@@ -24,7 +24,7 @@ depth -- so, unlike `market_data`, the collaborator here can't be a single long-
 handed to the constructor. `AgentFactory` (`service_support.py`) is a `Protocol` called once per
 research call with the resolved `persona`/`default_depth`, returning a `ResearchRunner` (the
 structural subset of `DeepResearchAgent`'s public surface this service actually calls). The
-default factory (`_build_default_agent`) constructs a real `ExaSearchProvider` (or `SearXNGProvider`, per `ResearchSettings.search_backend`) +
+default factory (`_build_default_agent`) constructs a real `ExaSearchProvider` (or `SearXNGProvider` or `YouComSearchProvider`, per `ResearchSettings.search_backend`) +
 `DeepResearchAgent`; tests inject a fake `agent_factory` that returns a scripted double, never
 touching langgraph/langchain/exa-py.
 
@@ -110,6 +110,7 @@ from maverick.research.config import ResearchSettings, get_research_settings
 from maverick.research.providers.base import WebSearchProvider
 from maverick.research.providers.exa import ExaSearchProvider
 from maverick.research.providers.searxng import SearXNGProvider, time_range_for
+from maverick.research.providers.youcom import YouComSearchProvider, freshness_for
 from maverick.research.service_support import (
     AgentFactory,
     build_metadata,
@@ -175,6 +176,13 @@ class ResearchService:
                 settings=self._settings,
                 time_range=time_range_for(self._settings.default_timeframe),
             )
+        elif self._settings.search_backend == "youcom":
+            ydc_key = self._settings.ydc_api_key
+            search = YouComSearchProvider(
+                ydc_key.get_secret_value() if ydc_key is not None else "",
+                settings=self._settings,
+                freshness=freshness_for(self._settings.default_timeframe),
+            )
         else:
             assert self._settings.exa_api_key is not None, (
                 "_build_default_agent must only run after _configuration_error confirms "
@@ -191,6 +199,8 @@ class ResearchService:
         """Whether the selected search backend has what it needs."""
         if self._settings.search_backend == "searxng":
             return self._settings.searxng_base_url is not None
+        if self._settings.search_backend == "youcom":
+            return True  # keyless free tier; YDC_API_KEY is optional
         return self._settings.exa_api_key is not None
 
     def _configuration_error(

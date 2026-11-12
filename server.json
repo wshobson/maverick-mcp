@@ -75,7 +75,7 @@
         },
         {
           "name": "RESEARCH_SEARCH_BACKEND",
-          "description": "Optional research search backend: exa (default) or searxng.",
+          "description": "Optional research search backend: exa (default), searxng, or youcom.",
           "isRequired": false,
           "isSecret": false
         },
@@ -84,6 +84,12 @@
           "description": "Optional base URL of a self-hosted SearXNG instance with the JSON format enabled; used when RESEARCH_SEARCH_BACKEND=searxng.",
           "isRequired": false,
           "isSecret": false
+        },
+        {
+          "name": "YDC_API_KEY",
+          "description": "Optional You.com API key; used when RESEARCH_SEARCH_BACKEND=youcom. Without it, You.com's free keyless tier is used.",
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     },
@@ -166,7 +172,7 @@
         },
         {
           "name": "RESEARCH_SEARCH_BACKEND",
-          "description": "Optional research search backend: exa (default) or searxng.",
+          "description": "Optional research search backend: exa (default), searxng, or youcom.",
           "isRequired": false,
           "isSecret": false
         },
@@ -175,6 +181,12 @@
           "description": "Optional base URL of a self-hosted SearXNG instance with the JSON format enabled; used when RESEARCH_SEARCH_BACKEND=searxng.",
           "isRequired": false,
           "isSecret": false
+        },
+        {
+          "name": "YDC_API_KEY",
+          "description": "Optional You.com API key; used when RESEARCH_SEARCH_BACKEND=youcom. Without it, You.com's free keyless tier is used.",
+          "isRequired": false,
+          "isSecret": true
         }
       ]
     }

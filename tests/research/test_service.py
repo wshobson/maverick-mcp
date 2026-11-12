@@ -562,6 +562,39 @@ async def test_default_agent_factory_picks_the_searxng_provider(monkeypatch):
     assert client.time_range == "month"  # default_timeframe "1m"
 
 
+async def test_youcom_backend_needs_no_key(configured_llm):
+    service = ResearchService(
+        settings=_configured_settings(exa_api_key=None, search_backend="youcom"),
+        agent_factory=lambda **_kw: FakeAgent(report=_fixture_report()),
+    )
+
+    result = await service.run_comprehensive("AAPL outlook")
+
+    assert not isinstance(result, ResearchError)
+
+
+async def test_default_agent_factory_picks_the_youcom_provider(monkeypatch):
+    from maverick.research import service as service_module
+
+    captured: dict[str, Any] = {}
+
+    class _StubAgent:
+        def __init__(self, *, search_clients, persona, default_depth) -> None:
+            captured["clients"] = search_clients
+
+    monkeypatch.setattr("maverick.research.service.DeepResearchAgent", _StubAgent)
+    service = ResearchService(
+        settings=ResearchSettings(search_backend="youcom", ydc_api_key=None)
+    )
+
+    service._build_default_agent(persona="moderate", default_depth="basic")
+
+    (client,) = captured["clients"]
+    assert isinstance(client, service_module.YouComSearchProvider)
+    assert client.keyed is False
+    assert client.freshness == "month"  # default_timeframe "1m"
+
+
 async def test_default_agent_factory_picks_exa_by_default(monkeypatch):
     from maverick.research import service as service_module
 

@@ -17,6 +17,7 @@ _ENV_VARS = (
     "RESEARCH_SENTIMENT_DEFAULT_TIMEFRAME",
     "RESEARCH_SEARCH_BACKEND",
     "SEARXNG_BASE_URL",
+    "YDC_API_KEY",
 )
 
 
@@ -136,3 +137,18 @@ def test_searxng_base_url_requires_an_http_scheme(monkeypatch):
 
     with pytest.raises(ValidationError):
         ResearchSettings()
+
+
+def test_youcom_backend_reads_an_optional_ydc_api_key(monkeypatch):
+    monkeypatch.setenv("RESEARCH_SEARCH_BACKEND", "youcom")
+
+    s = ResearchSettings()
+
+    assert s.search_backend == "youcom"
+    assert s.ydc_api_key is None
+
+    monkeypatch.setenv("YDC_API_KEY", "ydc-key")
+
+    key = ResearchSettings().ydc_api_key
+    assert key is not None
+    assert key.get_secret_value() == "ydc-key"

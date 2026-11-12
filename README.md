@@ -240,7 +240,7 @@ for metric definitions, strategy parameters, and output limits.
 | `research_analyze_sentiment` | Market sentiment analysis for a topic or sector. |
 
 Install with `uv sync --extra research`, then configure a language model and
-Exa or SearXNG web search. Without the extra, no `research_*` tools are registered.
+Exa, SearXNG, or You.com web search. Without the extra, no `research_*` tools are registered.
 Research returns source citations and an explicit error when no usable evidence
 remains. See [research setup and behavior](docs/features/deep-research.md).
 
@@ -258,6 +258,7 @@ file lists the supported settings.
 | `LLM_TEMPERATURE` | Optionally override the model's sampling temperature. Omit it to use the provider default. |
 | `EXA_API_KEY` | Enable Exa web search for research. |
 | `RESEARCH_SEARCH_BACKEND`, `SEARXNG_BASE_URL` | Use `searxng` with a server that supports JSON responses instead of Exa. |
+| `RESEARCH_SEARCH_BACKEND`, `YDC_API_KEY` | Use `youcom` for You.com search instead of Exa. Works without a key; `YDC_API_KEY` is optional and raises the limits. |
 
 Supported model providers are `anthropic`, `openai`, `openrouter`, and
 `openai_compatible`. Core tools do not require a model API key. Optional research

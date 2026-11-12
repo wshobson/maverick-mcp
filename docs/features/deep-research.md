@@ -91,7 +91,7 @@ accessed without it installed.
 ## Configuration
 
 Research needs two independent things configured: a search backend (Exa by
-default, or a self-hosted SearXNG instance) and a BYOK LLM. Both are checked at call time; a tool call fails fast with a
+default, a self-hosted SearXNG instance, or You.com) and a BYOK LLM. Both are checked at call time; a tool call fails fast with a
 clear error naming exactly what to set if either is missing.
 
 ### Search backend
@@ -124,8 +124,29 @@ A 403 from the instance is reported by the research tools with that
 instruction. SearXNG returns result snippets rather than page text, so
 `raw_content` equals `content` for its results, and the recency window
 follows `RESEARCH_DEFAULT_TIMEFRAME` (`1m` maps to SearXNG's `month`
-range). The selected backend is the one "is research configured" gate for
-search: `EXA_API_KEY` for Exa, `SEARXNG_BASE_URL` for SearXNG.
+range).
+
+To use You.com instead, select the backend. It works with no key and no
+account on You.com's free keyless tier (about 100 searches a day):
+
+```bash
+RESEARCH_SEARCH_BACKEND=youcom
+# Optional: higher limits through the keyed Web Search API
+# YDC_API_KEY=your_you_com_api_key
+```
+
+Without `YDC_API_KEY`, requests go to `GET https://api.you.com/v1/agents/search`
+(up to 50 results per call). With it, they go to
+`POST https://ydc-index.io/v1/search` with an `X-API-Key` header. Keys are at
+[you.com/platform](https://you.com/platform?utm_source=wshobson-maverick-mcp&utm_medium=oss_integration&utm_campaign=2026-11-oss-integrations&utm_content=docs). Results
+carry the page description plus snippets as `content` (`raw_content` equals
+`content`), and the recency window follows `RESEARCH_DEFAULT_TIMEFRAME`
+(`1m` maps to You.com's `month` freshness). Requests send
+`User-Agent: youdotcom-integration/wshobson-maverick-mcp`.
+
+The selected backend is the one "is research configured" gate for search:
+`EXA_API_KEY` for Exa, `SEARXNG_BASE_URL` for SearXNG, and nothing for
+You.com.
 
 ### BYOK LLM
 
