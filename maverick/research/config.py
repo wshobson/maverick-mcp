@@ -65,6 +65,9 @@ package's import reach:
 - `search_backend` (`RESEARCH_SEARCH_BACKEND`, default `exa`) and
   `searxng_base_url` (`SEARXNG_BASE_URL`): the 2026-09 SearXNG backend
   selection (#186). See `providers/searxng.py`.
+- `ydc_api_key` (`YDC_API_KEY`): optional key for the `youcom` backend. The
+  backend works without it on You.com's free keyless tier; with it, requests
+  go to the keyed Web Search API. See `providers/youcom.py`.
 """
 
 from functools import lru_cache
@@ -88,14 +91,21 @@ def _resolve_exa_api_key() -> SecretStr | None:
     return SecretStr(value) if value is not None else None
 
 
-SearchBackend = Literal["exa", "searxng"]
+def _resolve_ydc_api_key() -> SecretStr | None:
+    value = _clean_env("YDC_API_KEY")
+    return SecretStr(value) if value is not None else None
+
+
+SearchBackend = Literal["exa", "searxng", "youcom"]
 """Which web search provider backs the research tools. `exa` needs `EXA_API_KEY`;
 `searxng` needs `SEARXNG_BASE_URL` (a self-hosted instance with the JSON format
-enabled) and no key."""
+enabled) and no key; `youcom` needs nothing (keyless free tier) and uses
+`YDC_API_KEY` when set."""
 
 
 class ResearchSettings(BaseModel):
     exa_api_key: SecretStr | None = Field(default_factory=_resolve_exa_api_key)
+    ydc_api_key: SecretStr | None = Field(default_factory=_resolve_ydc_api_key)
     search_backend: SearchBackend = Field(
         default_factory=lambda: _env_str("RESEARCH_SEARCH_BACKEND", "exa"),
         validate_default=True,

@@ -8,12 +8,12 @@ predates them.
 
 - Per-service circuit breakers around outbound HTTP calls
   (`maverick.platform.http.get_breaker`), used by market data fetchers, the
-  Exa search provider, and (through `request_resilient`) the SearXNG search
-  provider.
+  Exa search provider, and (through `request_resilient`) the SearXNG and
+  You.com search providers.
 - A per-service rate limiter (`DATA_PROVIDER_RATE_LIMIT`, default 5/s) on
   outbound HTTP requests made through
-  `maverick.platform.http.request_resilient`. Only the SearXNG provider uses
-  it today; yfinance and Exa calls do not pass through it.
+  `maverick.platform.http.request_resilient`. Only the SearXNG and You.com
+  providers use it today; yfinance and Exa calls do not pass through it.
 - Extras degrade gracefully: with `[backtesting]`/`[research]` absent, each
   domain's `tools.register()` logs one warning and registers zero tools
   instead of raising, so a base install boots and serves the other domains.
