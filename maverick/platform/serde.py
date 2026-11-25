@@ -19,6 +19,20 @@ _DATAFRAME_JSON_TYPE = "dataframe_json"
 _DATAFRAME_DICT_TYPE = "dataframe_dict"
 
 
+def _infer_freq(index: pd.DatetimeIndex) -> Any:
+    """``pd.infer_freq`` without pandas 3.1's FutureWarning about its return type.
+
+    Opting into the offset return is equivalent here: the result is only
+    assigned to ``DatetimeIndex.freq``, which accepts a string or an offset.
+    Older pandas (>=3.0.5 is allowed) lacks the option and keeps the string.
+    """
+    try:
+        with pd.option_context("future.infer_freq_returns_offset", True):
+            return pd.infer_freq(index)
+    except pd.errors.OptionError:
+        return pd.infer_freq(index)
+
+
 def normalize_timezone(index: pd.Index) -> pd.DatetimeIndex:
     """Return a timezone-naive :class:`~pandas.DatetimeIndex` in UTC."""
     dt_index = index if isinstance(index, pd.DatetimeIndex) else pd.DatetimeIndex(index)
@@ -70,7 +84,7 @@ def _msgpack_dict_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
 
     if payload.get("index_type") == "datetime":
         dt_index = normalize_timezone(pd.to_datetime(payload["index_data"]))
-        inferred_freq = pd.infer_freq(dt_index)
+        inferred_freq = _infer_freq(dt_index)
         if inferred_freq is not None:
             dt_index.freq = inferred_freq
         df.index = dt_index
@@ -120,7 +134,7 @@ def _json_envelope_to_dataframe(payload: dict[str, Any]) -> pd.DataFrame:
 
     if payload.get("index_type") == "datetime":
         dt_index = normalize_timezone(pd.to_datetime(df.index))
-        inferred_freq = pd.infer_freq(dt_index)
+        inferred_freq = _infer_freq(dt_index)
         if inferred_freq is not None:
             dt_index.freq = inferred_freq
         df.index = dt_index
