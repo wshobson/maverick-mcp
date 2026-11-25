@@ -40,6 +40,10 @@ def test_ci_selected_memory_database_survives_sessions(monkeypatch):
         engine.dispose()
 
 
+# The "?mode=memory" case without uri=true is deliberate: SQLAlchemy warns that it ignores it.
+@pytest.mark.filterwarnings(
+    "ignore:Query string argument.*'mode'.*:sqlalchemy.exc.SAWarning"
+)
 @pytest.mark.parametrize("use_pooling", [True, False])
 @pytest.mark.parametrize(
     "url,memory",
