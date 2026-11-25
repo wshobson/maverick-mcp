@@ -158,6 +158,10 @@ addopts = [
 filterwarnings = [
     "ignore:The inplace keyword in DataFrame.rename is deprecated:DeprecationWarning:vectorbt",
     "ignore:Series.dt.weekday is deprecated:DeprecationWarning:pandas_market_calendars",
+    # numba's reflected-list deprecation while compiling vectorbt kernels; only on a
+    # cold numba cache (CI), so it is easy to miss locally. Matched by message because
+    # numba is an optional extra and its warning class may not be importable.
+    "ignore:\\s*Encountered the use of a type that is scheduled for deprecation:PendingDeprecationWarning",
 ]
 # Async configuration
 asyncio_mode = "auto"
